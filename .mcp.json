@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "atlassian": {
+      "type": "url",
+      "url": "https://mcp.atlassian.com/v1/sse"
+    },
+    "fathom": {
+      "type": "url",
+      "url": "https://mcp-fathom-server-r6jhgfswwa-uc.a.run.app/mcp"
+    },
+    "context7": {
+      "type": "url",
+      "url": "https://mcp.context7.com/mcp"
+    }
+  }
+}
