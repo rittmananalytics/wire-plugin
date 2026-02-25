@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -43,18 +43,18 @@ Move a completed project to the archive folder to keep the active project list s
 ### Step 1: List Active Projects
 
 **Process**:
-1. Use Glob to find all active project folders: `.agent_v2/[0-9]*_*/status.md`
+1. Use Glob to find all active project folders: `.wire/[0-9]*_*/status.md`
 2. If `$ARGUMENTS` is provided, match against known projects
 3. If no arguments, present selection
 
 **If no projects found**:
 ```
-No active projects found in `.agent_v2/`. Nothing to archive.
+No active projects found in `.wire/`. Nothing to archive.
 ```
 
 ### Step 2: Select Project to Archive
 
-**If argument provided**: Validate the folder exists in `.agent_v2/`
+**If argument provided**: Validate the folder exists in `.wire/`
 
 **If no argument**: Use `AskUserQuestion` to present project options:
 
@@ -81,10 +81,10 @@ Build options dynamically from discovered projects. Include up to 4 projects as 
 ```json
 {
   "questions": [{
-    "question": "Archive this project? It will be moved to .agent_v2/archive/ and hidden from /dp:status and /dp:start.",
+    "question": "Archive this project? It will be moved to .wire/archive/ and hidden from /dp:status and /dp:start.",
     "header": "Confirm",
     "options": [
-      {"label": "Yes, archive it", "description": "Move project to .agent_v2/archive/"},
+      {"label": "Yes, archive it", "description": "Move project to .wire/archive/"},
       {"label": "Cancel", "description": "Keep the project active"}
     ],
     "multiSelect": false
@@ -103,11 +103,11 @@ And exit.
 **Process**:
 1. Create archive directory if it doesn't exist:
    ```bash
-   mkdir -p .agent_v2/archive/
+   mkdir -p .wire/archive/
    ```
 2. Move the project folder:
    ```bash
-   git mv .agent_v2/{folder_name}/ .agent_v2/archive/{folder_name}/
+   git mv .wire/{folder_name}/ .wire/archive/{folder_name}/
    ```
 
 ### Step 5: Confirm Archive
@@ -117,7 +117,7 @@ Output confirmation:
 ```
 ## Project Archived
 
-**Moved:** `.agent_v2/{folder_name}/` → `.agent_v2/archive/{folder_name}/`
+**Moved:** `.wire/{folder_name}/` → `.wire/archive/{folder_name}/`
 
 The project won't appear in `/dp:status` or `/dp:start`.
 
@@ -130,14 +130,14 @@ To view archived projects: `/dp:status --archived`
 
 If no project folders are found:
 ```
-No active projects found in `.agent_v2/`. Nothing to archive.
+No active projects found in `.wire/`. Nothing to archive.
 ```
 
 ### Project Not Found
 
 If the specified project doesn't exist:
 ```
-Project "{folder_name}" not found in `.agent_v2/`.
+Project "{folder_name}" not found in `.wire/`.
 
 Active projects:
 [list active projects]
@@ -145,7 +145,7 @@ Active projects:
 
 ### Already Archived
 
-If the project is already in `.agent_v2/archive/`:
+If the project is already in `.wire/archive/`:
 ```
 Project "{folder_name}" is already archived.
 ```
@@ -154,13 +154,13 @@ Project "{folder_name}" is already archived.
 
 If `git mv` fails, fall back to regular move:
 ```bash
-mv .agent_v2/{folder_name}/ .agent_v2/archive/{folder_name}/
+mv .wire/{folder_name}/ .wire/archive/{folder_name}/
 ```
 
 ## Output
 
 This command:
-- Moves `.agent_v2/{folder_name}/` to `.agent_v2/archive/{folder_name}/`
+- Moves `.wire/{folder_name}/` to `.wire/archive/{folder_name}/`
 
 Final output is a confirmation message.
 

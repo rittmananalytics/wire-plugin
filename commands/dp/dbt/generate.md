@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -34,6 +34,8 @@ Generate dbt models based on the data model design, following best practices for
 
 ## Prerequisites
 
+**Default** (all project types except `dashboard_first`):
+
 **Required Artifacts (must be complete)**:
 - `requirements`: Requirements specification
 - `data_model`: dbt model design specification
@@ -41,6 +43,21 @@ Generate dbt models based on the data model design, following best practices for
 **Optional**:
 - `pipeline_design`: Understanding of data sources
 - Existing dbt project structure
+
+**Dashboard-first** (`dashboard_first` project type):
+
+**Required Artifacts (must be complete)**:
+- `requirements`: Requirements specification
+- `data_model`: dbt model design specification
+- `seed_data`: `review: approved` — provides CSV seed files for initial data
+
+**Seed-based generation notes**:
+When `project_type` is `dashboard_first`, the dbt project should:
+1. Use `ref('seed_name')` in staging models instead of `source('source_name', 'table_name')`
+2. Include seed configuration in `dbt_project.yml` (seed paths, schema overrides)
+3. Read seed files from `.wire/<project_id>/dev/seed_data/` and include them in the dbt project's `seeds/` directory
+4. Generate source definitions that map to seed tables rather than external databases
+5. Keep the staging model SQL compatible with later refactoring to real sources (use the `data_refactor` command when real data becomes available)
 
 ## Inputs
 
@@ -56,7 +73,7 @@ Generate dbt models based on the data model design, following best practices for
 ### Step 1: Read Data Model Design
 
 **Process**:
-1. Read `.agent_v2/<project_id>/design/data_model_specification.md`
+1. Read `.wire/<project_id>/design/data_model_specification.md`
 2. Extract:
    - Source systems and tables
    - Staging layer specifications
@@ -1040,7 +1057,7 @@ capitalisation_policy = lower
 
 ### Step 9: Create Summary Document
 
-**File**: `.agent_v2/<project_id>/dev/dbt_models_summary.md`
+**File**: `.wire/<project_id>/dev/dbt_models_summary.md`
 
 ```markdown
 # dbt Models Summary
@@ -1162,7 +1179,7 @@ dbt/models/
 
 ### Quick Links
 
-- View summary: `.agent_v2/<project_id>/dev/dbt_models_summary.md`
+- View summary: `.wire/<project_id>/dev/dbt_models_summary.md`
 - dbt models: `dbt/models/`
 - View status: `/dp:status <project_id>`
 ```
@@ -1481,8 +1498,8 @@ The validate command will:
 This command creates:
 - Multiple `.sql` model files in `dbt/models/`
 - Multiple `.yml` documentation files
-- `.agent_v2/<project_id>/dev/dbt_models_summary.md`
-- Updates `.agent_v2/<project_id>/status.md`
+- `.wire/<project_id>/dev/dbt_models_summary.md`
+- Updates `.wire/<project_id>/status.md`
 
 Execute the complete workflow as specified above.
 

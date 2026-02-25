@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -48,7 +48,7 @@ Validate a generated requirements specification against completeness criteria. C
 
 **Process**:
 1. Parse `$ARGUMENTS` for project identifier
-2. Search `.agent_v2/` for matching folder
+2. Search `.wire/` for matching folder
 3. Verify `requirements/requirements_specification.md` exists
 
 **If requirements not found**:
@@ -88,7 +88,7 @@ Run `/dp:requirements:generate [folder]` first to generate requirements.
 ## Requirements Validation: [PROJECT_NAME]
 
 **Status:** PASS | FAIL
-**File:** .agent_v2/[folder]/requirements/requirements_specification.md
+**File:** .wire/[folder]/requirements/requirements_specification.md
 
 ### Validation Results
 

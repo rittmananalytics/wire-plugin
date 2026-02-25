@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -42,25 +42,39 @@ The data model specification narrows the LLM's generation space for the dbt phas
 
 ## Prerequisites
 
+**Default** (all project types except `dashboard_first`):
 - `requirements`: `review: approved`
 - `conceptual_model`: `review: approved` — provides the entity framework
 - `pipeline_design`: `review: approved` — provides source table names and replication details
+
+**Dashboard-first** (`dashboard_first` project type):
+- `requirements`: `review: approved`
+- `viz_catalog`: `generate: complete` — provides the measures, dimensions, and dashboard structure
 
 ## Workflow
 
 ### Step 1: Verify Prerequisites and Read Inputs
 
-1. Read `.agent_v2/<project_id>/status.md`
-2. Verify all three prerequisites are met. For each that is not:
-   ```
-   Error: [artifact] must be approved before data model generation.
-   Run: /dp:[artifact]:review <project_id>
-   ```
-3. Read the following in order:
-   - `requirements/requirements_specification.md`
-   - `design/conceptual_model.md` (entities, relationships)
-   - `design/pipeline_architecture.md` (source tables, staging model names)
-4. Use Glob to find all files in `.agent_v2/<project_id>/artifacts/**/*`
+1. Read `.wire/<project_id>/status.md`
+2. Read `project_type` from frontmatter
+3. **If `dashboard_first`**:
+   - Verify `requirements.review` is `approved` and `viz_catalog.generate` is `complete`
+   - Read the following in order:
+     - `requirements/requirements_specification.md`
+     - `design/visualization_catalog.md` (measures, dimensions, dashboard structure)
+     - `design/dashboard_spec.md` (dashboard purpose and layout)
+   - Also read `artifacts/` for SOW and domain context
+4. **Otherwise (default)**:
+   - Verify all three default prerequisites are met. For each that is not:
+     ```
+     Error: [artifact] must be approved before data model generation.
+     Run: /dp:[artifact]:review <project_id>
+     ```
+   - Read the following in order:
+     - `requirements/requirements_specification.md`
+     - `design/conceptual_model.md` (entities, relationships)
+     - `design/pipeline_architecture.md` (source tables, staging model names)
+4. Use Glob to find all files in `.wire/<project_id>/artifacts/**/*`
 5. Read any source schema examples, existing dbt models, or SQL files in `artifacts/`
 
 ### Step 2: Define Source Definitions
@@ -236,7 +250,7 @@ erDiagram
 
 ### Step 8: Write Data Model Specification Document
 
-Write to `.agent_v2/<project_id>/design/data_model_specification.md`:
+Write to `.wire/<project_id>/design/data_model_specification.md`:
 
 ```markdown
 # Data Model Specification: [Project Name]
@@ -298,7 +312,7 @@ Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
 ```
 ## Data Model Specification Generated
 
-**File**: .agent_v2/<project_id>/design/data_model_specification.md
+**File**: .wire/<project_id>/design/data_model_specification.md
 
 **Staging models**: [count]
 **Integration models**: [count]
@@ -345,11 +359,23 @@ If the conceptual model contains a many-to-many relationship, resolve it in the 
 - Create a bridge/junction table (e.g. `student_course_bridge`)
 - Name it clearly and document the resolution in Section 6
 
+## Additional Output for `dashboard_first` Projects
+
+When `project_type` is `dashboard_first`, additionally generate:
+
+1. **`design/source_tables_ddl.sql`** — SQL DDL (CREATE TABLE statements) defining the expected source data schema, derived from the requirements, visualization catalog, and domain knowledge. Use the target warehouse dialect (e.g., BigQuery).
+
+2. **`design/target_warehouse_ddl.sql`** — SQL DDL defining the target dimensional model (facts and dimensions) that will provide the measures and dimensions identified in the visualization catalog.
+
+These DDL files serve as inputs for seed data generation (`/dp:seed_data:generate`) and the dbt project structure.
+
 ## Output
 
 This command creates:
-- `.agent_v2/<project_id>/design/data_model_specification.md` (includes physical ERD)
-- Updates `.agent_v2/<project_id>/status.md`
+- `.wire/<project_id>/design/data_model_specification.md` (includes physical ERD)
+- `.wire/<project_id>/design/source_tables_ddl.sql` (dashboard_first projects only)
+- `.wire/<project_id>/design/target_warehouse_ddl.sql` (dashboard_first projects only)
+- Updates `.wire/<project_id>/status.md`
 
 Execute the complete workflow as specified above.
 
