@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -102,7 +102,7 @@ Before building the comment, identify the files this artifact produced. This pro
 **Process**:
 1. Check `artifacts.[artifact].generated_files` in status.md
 2. If the list is populated, use it directly
-3. If empty or missing, discover files using Glob based on the artifact type. Use the project's subdirectory within `.agent_v2/[folder]/` as the base path:
+3. If empty or missing, discover files using Glob based on the artifact type. Use the project's subdirectory within `.wire/[folder]/` as the base path:
 
 | Artifact | Glob Pattern |
 |----------|-------------|

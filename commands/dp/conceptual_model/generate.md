@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -48,14 +48,14 @@ The conceptual model captures *what the business cares about*, not *how the data
 
 ### Step 1: Verify Prerequisites and Read Inputs
 
-1. Read `.agent_v2/<project_id>/status.md`
+1. Read `.wire/<project_id>/status.md`
 2. Check `requirements.review == approved`. If not:
    ```
    Error: Requirements must be approved before generating the conceptual model.
    Run: /dp:requirements:review <project_id>
    ```
-3. Read `.agent_v2/<project_id>/requirements/requirements_specification.md`
-4. Use Glob to find all files in `.agent_v2/<project_id>/artifacts/**/*`
+3. Read `.wire/<project_id>/requirements/requirements_specification.md`
+4. Use Glob to find all files in `.wire/<project_id>/artifacts/**/*`
 5. Read any source schema examples, ERDs, domain glossaries, or data dictionaries found in `artifacts/`
 
 ### Step 2: Extract Business Entities
@@ -88,7 +88,7 @@ Flag any relationships that are ambiguous or require business clarification — 
 
 ### Step 4: Generate Conceptual Model Document
 
-Write to `.agent_v2/<project_id>/design/conceptual_model.md`:
+Write to `.wire/<project_id>/design/conceptual_model.md`:
 
 ```markdown
 # Conceptual Entity Model: [Project Name]
@@ -146,7 +146,7 @@ erDiagram
 
 ### Step 5: Update Status
 
-Read and update `.agent_v2/<project_id>/status.md` YAML frontmatter:
+Read and update `.wire/<project_id>/status.md` YAML frontmatter:
 
 ```yaml
 conceptual_model:
@@ -171,7 +171,7 @@ Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
 ```
 ## Conceptual Model Generated
 
-**File**: .agent_v2/<project_id>/design/conceptual_model.md
+**File**: .wire/<project_id>/design/conceptual_model.md
 
 **Entities identified**: [count]
 **Relationships defined**: [count]
@@ -218,8 +218,8 @@ If the engagement spans a large domain:
 ## Output
 
 This command creates:
-- `.agent_v2/<project_id>/design/conceptual_model.md`
-- Updates `.agent_v2/<project_id>/status.md`
+- `.wire/<project_id>/design/conceptual_model.md`
+- Updates `.wire/<project_id>/status.md`
 
 Execute the complete workflow as specified above.
 

@@ -1,9 +1,9 @@
 ---
-description: Review mockups with stakeholders
+description: Record stakeholder review of data refactor
 argument-hint: <project-folder>
 ---
 
-# Review mockups with stakeholders
+# Record stakeholder review of data refactor
 
 ## User Input
 
@@ -22,163 +22,154 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Record stakeholder review feedback on mockups
+description: Record stakeholder review of data refactor
 argument-hint: <project-folder>
 ---
 
-# mockups Review Command
+# Data Refactor Review Command
 
 ## Purpose
 
-Record stakeholder feedback on the mockups. Captures approval or change requests.
+Record stakeholder feedback on the refactored dbt project. The reviewer verifies the transition from seed data to real client data is complete and correct.
 
 ## Usage
 
 ```bash
-/dp:mockups:review YYYYMMDD_project_name
+/dp:data_refactor:review YYYYMMDD_project_name
 ```
 
 ## Prerequisites
 
-- mockups must exist and pass validation
-- `mockups.validate` should be `pass`
+- `data_refactor.validate` must be `pass` in status.md
 
 ## Workflow
 
 ### Step 1: Verify Prerequisites
 
 **Process**:
-1. Read `status.md`
-2. Check that `mockups.validate == pass`
+1. Read `.wire/<project-folder>/status.md`
+2. Verify `artifacts.data_refactor.validate` is `pass`
 
-**If validation not pass**:
+If not met:
 ```
-Warning: mockups has not passed validation yet.
+Error: Data refactor must pass validation first.
 
-Run `/dp:mockups:validate <project>` before review.
-
-Proceed anyway? (y/n)
+Run: /dp:data_refactor:validate <project>
 ```
 
-### Step 2: Present for Review
-
-**Output**:
-```
-## mockups Review Session
-
-**Project:** [PROJECT_NAME]
-**Files:** [List files being reviewed]
-
-Please review the mockups and provide feedback.
-```
-
-### Step 2.5: Retrieve External Context (Optional)
+### Step 2: Present Review Summary
 
 **Process**:
-1. Follow the meeting context retrieval workflow defined in `dp/utils/meeting_context.md`
-   - Pass the project folder and artifact name `mockups`
-   - If Fathom MCP is available and relevant meetings found, present the meeting context summary
-2. Follow the Atlassian search workflow defined in `dp/utils/atlassian_search.md`
-   - Pass the project folder and artifact name `mockups`
-   - If Atlassian MCP is available, search Confluence for design docs and Jira for issue comments
-   - Present any relevant findings
-3. If neither service is available, proceed directly to Step 3
+1. Read `.wire/<project-folder>/design/data_refactor_plan.md`
+2. Present a summary:
 
-This step enriches the review with context from meeting recordings, Confluence documents, and Jira issue comments.
+```
+## Data Refactor Review
 
-### Step 3: Gather Feedback
+### Refactoring Summary
+- Tables refactored: [count]
+- Staging models updated: [count]
+- Source definitions changed from seed to real data
+- Validation: PASSED
 
-**Use AskUserQuestion**:
+### Refactor Plan
+[Key points from data_refactor_plan.md]
+
+### Review Criteria
+- Are all source definitions pointing to the correct real data sources?
+- Do staging models correctly transform the real source data?
+- Are all dbt tests passing against real data?
+- Is the warehouse schema consistent with the design?
+- Are seed files preserved as reference?
+```
+
+### Step 3: Collect Review Decision
+
+Use `AskUserQuestion`:
 
 ```json
 {
   "questions": [{
-    "question": "What is the review outcome?",
-    "header": "Review Status",
+    "question": "What is the review decision for the data refactor?",
+    "header": "Review",
     "options": [
-      {"label": "Approved", "description": "mockups is complete and approved"},
-      {"label": "Changes requested", "description": "mockups needs revisions"},
-      {"label": "Needs discussion", "description": "Requires clarification"}
+      {"label": "Approved", "description": "Refactored project correctly uses real client data"},
+      {"label": "Changes requested", "description": "Additional refactoring needed before proceeding"}
     ],
     "multiSelect": false
   }]
 }
 ```
 
-### Step 4a: If Approved
-
-**Ask for reviewer**:
+If "Changes requested", ask in chat:
 ```
-Who approved the mockups? (Name and role)
+What changes are needed? Please describe the issues with the refactored project.
 ```
 
-**Update status**:
+### Step 4: Update Status
+
+**Process**:
+1. Read `status.md`
+2. Update artifacts.data_refactor section:
+
+**If approved**:
 ```yaml
-mockups:
+data_refactor:
   generate: complete
   validate: pass
   review: approved
-  reviewed_by: "[Reviewer]"
-  reviewed_date: 2026-02-13
+  reviewed_date: [today's date]
+  reviewer: [reviewer name if provided]
 ```
 
-**Suggest next steps**:
-```
-## mockups Approved ✅
-
-**Reviewed by:** [Reviewer]
-
-### Next Steps
-
-[Next artifact or phase]
-```
-
-### Step 4b: If Changes Requested
-
-**Ask for feedback**:
-```
-What changes are needed?
-```
-
-**Update status**:
+**If changes requested**:
 ```yaml
-mockups:
+data_refactor:
   generate: complete
   validate: pass
   review: changes_requested
-  feedback: "[Feedback]"
-  reviewed_date: 2026-02-13
+  reviewed_date: [today's date]
+  reviewer: [reviewer name if provided]
+  review_notes: [summary of requested changes]
 ```
 
-**Suggest iteration**:
-```
-## mockups Changes Requested 🔄
-
-### Change Requests:
-[Feedback]
-
-### Next Steps
-
-1. Address feedback
-2. Re-validate: `/dp:mockups:validate <project>`
-3. Re-submit for review
-```
+3. Write updated status.md
 
 ### Step 5: Sync to Jira (Optional)
 
 Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
-- Artifact: `mockups`
+- Artifact: `data_refactor`
 - Action: `review`
-- Status: the review state just written to status.md (approved/changes_requested/pending)
-- If approved, include reviewer name in Jira comment
-- If changes_requested, include feedback text in Jira comment
+- Status: the review state just written to status.md
+
+### Step 6: Confirm and Suggest Next Steps
+
+**If approved**:
+```
+## Data Refactor Review: Approved
+
+The project has been successfully transitioned from seed data to real client data.
+
+### Next Steps
+1. **Data quality checks**: `/dp:data_quality:generate <project>`
+2. **User acceptance testing**: `/dp:uat:generate <project>`
+```
+
+**If changes requested**:
+```
+## Data Refactor Review: Changes Requested
+
+**Feedback:** [summary]
+
+### Next Steps
+1. **Regenerate refactor**: `/dp:data_refactor:generate <project>`
+2. Then re-validate: `/dp:data_refactor:validate <project>`
+3. Then re-review: `/dp:data_refactor:review <project>`
+```
 
 ## Output
 
-This command:
-- Records review feedback in `status.md`
-- Updates review status
-- Suggests next steps
+This command updates `status.md` with the review outcome. No files are created.
 
 Execute the complete workflow as specified above.
 

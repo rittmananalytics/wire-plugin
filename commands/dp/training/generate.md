@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -56,7 +56,7 @@ Based on SOW deliverables, determine training types needed:
 ### Step 1: Determine Training Scope
 
 **Process**:
-1. Read requirements: `.agent_v2/<project_id>/requirements/requirements_specification.md`
+1. Read requirements: `.wire/<project_id>/requirements/requirements_specification.md`
 2. Extract from SOW deliverables section:
    - D4: Data Team Enablement Session
    - D5: End User Training Session
@@ -88,7 +88,7 @@ For each training type, read relevant artifacts to understand what needs to be t
 
 **For each training type, create:**
 
-**File**: `.agent_v2/<project_id>/enablement/training_<type>_session_plan.md`
+**File**: `.wire/<project_id>/enablement/training_<type>_session_plan.md`
 
 **Template**:
 
@@ -228,7 +228,7 @@ By the end of this session, participants will be able to:
 
 **For each training type, create:**
 
-**File**: `.agent_v2/<project_id>/enablement/training_<type>_slides.md`
+**File**: `.wire/<project_id>/enablement/training_<type>_slides.md`
 
 **Format**: Markdown slides (can be converted to Google Slides, PowerPoint, or Marp)
 
@@ -348,7 +348,7 @@ Questions?
 
 ### Step 5: Generate Exercise Workbook
 
-**File**: `.agent_v2/<project_id>/enablement/training_<type>_exercises.md`
+**File**: `.wire/<project_id>/enablement/training_<type>_exercises.md`
 
 ```markdown
 # Training Exercises: [Training Type]
@@ -409,7 +409,7 @@ Questions?
 
 **Quick Reference Guide**
 
-**File**: `.agent_v2/<project_id>/enablement/training_<type>_quick_reference.md`
+**File**: `.wire/<project_id>/enablement/training_<type>_quick_reference.md`
 
 ```markdown
 # Quick Reference: [Training Type]
@@ -584,7 +584,7 @@ By the end of this session, participants will be able to:
 
 ### Step 8: Create Training Delivery Checklist
 
-**File**: `.agent_v2/<project_id>/enablement/training_delivery_checklist.md`
+**File**: `.wire/<project_id>/enablement/training_delivery_checklist.md`
 
 ```markdown
 # Training Delivery Checklist
@@ -617,7 +617,7 @@ By the end of this session, participants will be able to:
 
 - [ ] Share recording and materials
 - [ ] Send follow-up email with resources
-- [ ] Update training status in `.agent_v2/<project_id>/status.md`
+- [ ] Update training status in `.wire/<project_id>/status.md`
 - [ ] Schedule office hours or check-in meeting
 - [ ] Gather feedback (survey or informal)
 
@@ -668,7 +668,7 @@ Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
 ### Files Created
 
 ```
-.agent_v2/<project_id>/enablement/
+.wire/<project_id>/enablement/
 ├── training_data_team_session_plan.md
 ├── training_data_team_slides.md
 ├── training_data_team_exercises.md
@@ -708,8 +708,8 @@ Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
 
 ### Quick Links
 
-- Session plans: `.agent_v2/<project_id>/enablement/`
-- Delivery checklist: `.agent_v2/<project_id>/enablement/training_delivery_checklist.md`
+- Session plans: `.wire/<project_id>/enablement/`
+- Delivery checklist: `.wire/<project_id>/enablement/training_delivery_checklist.md`
 - View status: `/dp:status <project_id>`
 ```
 
@@ -769,7 +769,7 @@ This command creates:
 - Exercise workbook for each training type
 - Quick reference guides
 - Delivery checklist
-- Updates `.agent_v2/<project_id>/status.md`
+- Updates `.wire/<project_id>/status.md`
 
 Execute the complete workflow as specified above.
 

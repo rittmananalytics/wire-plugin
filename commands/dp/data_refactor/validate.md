@@ -1,9 +1,9 @@
 ---
-description: Review mockups with stakeholders
+description: Validate refactored dbt project against real data
 argument-hint: <project-folder>
 ---
 
-# Review mockups with stakeholders
+# Validate refactored dbt project against real data
 
 ## User Input
 
@@ -22,163 +22,176 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Record stakeholder review feedback on mockups
+description: Validate refactored dbt project against real data
 argument-hint: <project-folder>
 ---
 
-# mockups Review Command
+# Data Refactor Validation Command
 
 ## Purpose
 
-Record stakeholder feedback on the mockups. Captures approval or change requests.
+Validate that the refactored dbt project (transitioned from seed data to real client data) compiles correctly and runs successfully against the actual data sources.
 
 ## Usage
 
 ```bash
-/dp:mockups:review YYYYMMDD_project_name
+/dp:data_refactor:validate YYYYMMDD_project_name
 ```
 
 ## Prerequisites
 
-- mockups must exist and pass validation
-- `mockups.validate` should be `pass`
+- `data_refactor.generate` must be `complete` in status.md
 
 ## Workflow
 
 ### Step 1: Verify Prerequisites
 
 **Process**:
-1. Read `status.md`
-2. Check that `mockups.validate == pass`
+1. Read `.wire/<project-folder>/status.md`
+2. Verify `artifacts.data_refactor.generate` is `complete`
 
-**If validation not pass**:
-```
-Warning: mockups has not passed validation yet.
-
-Run `/dp:mockups:validate <project>` before review.
-
-Proceed anyway? (y/n)
-```
-
-### Step 2: Present for Review
-
-**Output**:
-```
-## mockups Review Session
-
-**Project:** [PROJECT_NAME]
-**Files:** [List files being reviewed]
-
-Please review the mockups and provide feedback.
-```
-
-### Step 2.5: Retrieve External Context (Optional)
+### Step 2: Compile Check
 
 **Process**:
-1. Follow the meeting context retrieval workflow defined in `dp/utils/meeting_context.md`
-   - Pass the project folder and artifact name `mockups`
-   - If Fathom MCP is available and relevant meetings found, present the meeting context summary
-2. Follow the Atlassian search workflow defined in `dp/utils/atlassian_search.md`
-   - Pass the project folder and artifact name `mockups`
-   - If Atlassian MCP is available, search Confluence for design docs and Jira for issue comments
-   - Present any relevant findings
-3. If neither service is available, proceed directly to Step 3
+1. Navigate to the dbt project directory
+2. Run `dbt compile` to verify all models parse correctly
+3. Check for:
+   - Missing source references (seeds that weren't properly replaced)
+   - Undefined column references
+   - SQL syntax errors from schema changes
+   - Broken ref() chains
 
-This step enriches the review with context from meeting recordings, Confluence documents, and Jira issue comments.
+### Step 3: Run Models
 
-### Step 3: Gather Feedback
+**Process**:
+1. Run `dbt run` to execute all models against real data
+2. Track results per model:
+   - Staging models: do they run without SQL errors?
+   - Integration models: do joins work with real data?
+   - Mart models: do aggregations produce results?
+3. Note any failures with specific error messages
 
-**Use AskUserQuestion**:
+### Step 4: Run Tests
 
-```json
-{
-  "questions": [{
-    "question": "What is the review outcome?",
-    "header": "Review Status",
-    "options": [
-      {"label": "Approved", "description": "mockups is complete and approved"},
-      {"label": "Changes requested", "description": "mockups needs revisions"},
-      {"label": "Needs discussion", "description": "Requires clarification"}
-    ],
-    "multiSelect": false
-  }]
-}
+**Process**:
+1. Run `dbt test` to execute all configured tests
+2. Track results:
+   - Schema tests (unique, not_null, accepted_values, relationships)
+   - Custom data tests
+3. Note test failures — some may be expected if real data has quality issues
+
+### Step 5: Compare Outputs
+
+**Process**:
+1. Compare the refactored output against expected warehouse schema:
+   - Read `design/target_warehouse_ddl.sql`
+   - Verify all target tables were created
+   - Verify column counts and types match expectations
+2. Check row counts in mart tables (should be non-zero if data exists)
+
+### Step 6: Generate Validation Report
+
+**Process**:
+Present validation results:
+
+```
+## Data Refactor Validation Report
+
+**Project:** [project_name]
+**Date:** [today's date]
+**Result:** [PASS/FAIL]
+
+### Compile Check
+- Status: [PASS/FAIL]
+- Models compiled: [count]
+- Errors: [list if any]
+
+### Model Execution
+- Status: [PASS/FAIL]
+- Models run: [count]
+- Successful: [count]
+- Failed: [count]
+- Failures: [list with error details]
+
+### Test Results
+- Status: [PASS/FAIL]
+- Tests run: [count]
+- Passed: [count]
+- Failed: [count]
+- Failures: [list with details]
+
+### Schema Comparison
+- Target tables expected: [count]
+- Target tables created: [count]
+- Missing tables: [list if any]
+
+### Summary
+[Overall assessment — is the refactored project production-ready?]
 ```
 
-### Step 4a: If Approved
+### Step 7: Update Status
 
-**Ask for reviewer**:
-```
-Who approved the mockups? (Name and role)
-```
+**Process**:
+1. Read `status.md`
+2. Update artifacts.data_refactor section:
+   ```yaml
+   data_refactor:
+     generate: complete
+     validate: pass  # or fail
+     review: not_started
+     validated_date: [today's date]
+   ```
+3. Write updated status.md
 
-**Update status**:
-```yaml
-mockups:
-  generate: complete
-  validate: pass
-  review: approved
-  reviewed_by: "[Reviewer]"
-  reviewed_date: 2026-02-13
-```
-
-**Suggest next steps**:
-```
-## mockups Approved ✅
-
-**Reviewed by:** [Reviewer]
-
-### Next Steps
-
-[Next artifact or phase]
-```
-
-### Step 4b: If Changes Requested
-
-**Ask for feedback**:
-```
-What changes are needed?
-```
-
-**Update status**:
-```yaml
-mockups:
-  generate: complete
-  validate: pass
-  review: changes_requested
-  feedback: "[Feedback]"
-  reviewed_date: 2026-02-13
-```
-
-**Suggest iteration**:
-```
-## mockups Changes Requested 🔄
-
-### Change Requests:
-[Feedback]
-
-### Next Steps
-
-1. Address feedback
-2. Re-validate: `/dp:mockups:validate <project>`
-3. Re-submit for review
-```
-
-### Step 5: Sync to Jira (Optional)
+### Step 8: Sync to Jira (Optional)
 
 Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
-- Artifact: `mockups`
-- Action: `review`
-- Status: the review state just written to status.md (approved/changes_requested/pending)
-- If approved, include reviewer name in Jira comment
-- If changes_requested, include feedback text in Jira comment
+- Artifact: `data_refactor`
+- Action: `validate`
+- Status: the validate state just written to status.md
+
+### Step 9: Confirm and Suggest Next Steps
+
+**If all checks pass**:
+```
+## Data Refactor Validation: PASS
+
+The refactored project compiles and runs successfully against real data.
+
+### Next Steps
+1. **Review refactored project**: `/dp:data_refactor:review <project>`
+```
+
+**If checks fail**:
+```
+## Data Refactor Validation: FAIL
+
+### Failures
+[list failures]
+
+### Recommended Action
+Fix the issues identified above and re-run: `/dp:data_refactor:validate <project>`
+If schema changes are needed, regenerate: `/dp:data_refactor:generate <project>`
+```
+
+## Edge Cases
+
+### No Database Access
+
+If real database is unavailable for testing:
+- Run compile check only
+- Note that runtime validation was skipped
+- Set validate to `pass` with a note about compile-only validation
+
+### Partial Failures
+
+If some models succeed but others fail:
+- Report which layers are working (staging OK, integration fails, etc.)
+- Set validate to `fail` — all layers must pass for validation
 
 ## Output
 
-This command:
-- Records review feedback in `status.md`
-- Updates review status
-- Suggests next steps
+This command outputs a validation report to the conversation and updates `status.md`. No files are created.
 
 Execute the complete workflow as specified above.
 

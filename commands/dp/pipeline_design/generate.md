@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -47,7 +47,7 @@ Generate a comprehensive data pipeline architecture document covering: source sy
 
 ### Step 1: Verify Prerequisites and Read Inputs
 
-1. Read `.agent_v2/<project_id>/status.md`
+1. Read `.wire/<project_id>/status.md`
 2. Verify `requirements.review == approved`. If not:
    ```
    Error: Requirements must be approved before pipeline design.
@@ -59,9 +59,9 @@ Generate a comprehensive data pipeline architecture document covering: source sy
    The pipeline design maps source systems to the agreed business entities.
    Run: /dp:conceptual_model:review <project_id>
    ```
-4. Read `.agent_v2/<project_id>/requirements/requirements_specification.md`
-5. Read `.agent_v2/<project_id>/design/conceptual_model.md`
-6. Use Glob to find all files in `.agent_v2/<project_id>/artifacts/**/*`
+4. Read `.wire/<project_id>/requirements/requirements_specification.md`
+5. Read `.wire/<project_id>/design/conceptual_model.md`
+6. Use Glob to find all files in `.wire/<project_id>/artifacts/**/*`
 7. Read any source schema examples, SQL files, API documentation, or existing pipeline code in `artifacts/`
 
 ### Step 2: Analyse Source Systems
@@ -187,7 +187,7 @@ Replace all `<placeholders>` with project-specific values from the requirements 
 
 ### Step 7: Write Pipeline Architecture Document
 
-Write to `.agent_v2/<project_id>/design/pipeline_architecture.md`:
+Write to `.wire/<project_id>/design/pipeline_architecture.md`:
 
 ```markdown
 # Pipeline Architecture: [Project Name]
@@ -268,7 +268,7 @@ Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
 ```
 ## Pipeline Design Generated
 
-**File**: .agent_v2/<project_id>/design/pipeline_architecture.md
+**File**: .wire/<project_id>/design/pipeline_architecture.md
 
 **Source systems**: [count]
 **Pipeline scenarios**: [count — flag if > 1, as client decision required]
@@ -310,8 +310,8 @@ If the client already has a pipeline (e.g. Fivetran partially configured):
 ## Output
 
 This command creates:
-- `.agent_v2/<project_id>/design/pipeline_architecture.md` (includes DFD)
-- Updates `.agent_v2/<project_id>/status.md`
+- `.wire/<project_id>/design/pipeline_architecture.md` (includes DFD)
+- Updates `.wire/<project_id>/status.md`
 
 Execute the complete workflow as specified above.
 

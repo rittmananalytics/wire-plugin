@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -63,8 +63,8 @@ Run: /dp:conceptual_model:generate <project_id>
 
 ### Step 2: Read Inputs
 
-1. Read `.agent_v2/<project_id>/design/conceptual_model.md`
-2. Read `.agent_v2/<project_id>/requirements/requirements_specification.md` (to cross-check entity coverage)
+1. Read `.wire/<project_id>/design/conceptual_model.md`
+2. Read `.wire/<project_id>/requirements/requirements_specification.md` (to cross-check entity coverage)
 
 ### Step 3: Run Validation Checks
 
@@ -168,7 +168,7 @@ Common Mermaid erDiagram syntax issues to check:
 ## Output
 
 - Validation report (displayed to user)
-- Updates `.agent_v2/<project_id>/status.md` with validate result and date
+- Updates `.wire/<project_id>/status.md` with validate result and date
 
 Execute the complete workflow as specified above.
 

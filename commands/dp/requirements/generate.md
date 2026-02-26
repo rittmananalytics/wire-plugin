@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.agent_v2` (project data and status files)
+- **Projects**: `.wire` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -34,7 +34,7 @@ Extract and structure requirements from Statement of Work (SOW), requirements do
 ## Inputs
 
 **Required**:
-- Project folder: `.agent_v2/<project_id>/`
+- Project folder: `.wire/<project_id>/`
 - SOW or requirements documents in `artifacts/` folder
 
 **Optional**:
@@ -48,7 +48,7 @@ Extract and structure requirements from Statement of Work (SOW), requirements do
 ### Step 1: Read Source Materials
 
 **Process**:
-1. Use Glob to find all artifacts: `.agent_v2/<project_id>/artifacts/**/*`
+1. Use Glob to find all artifacts: `.wire/<project_id>/artifacts/**/*`
 2. Identify document types:
    - PDF files (SOW, proposals) - use Read tool for PDFs
    - Markdown files (notes, transcripts) - use Read tool
@@ -130,7 +130,7 @@ Update the requirements document with this mapping so the team knows which artif
 
 ### Step 5: Generate Requirements Document
 
-**Output Location**: `.agent_v2/<project_id>/requirements/requirements_specification.md`
+**Output Location**: `.wire/<project_id>/requirements/requirements_specification.md`
 
 **Document Structure**:
 
@@ -269,7 +269,7 @@ Update the requirements document with this mapping so the team knows which artif
 ### Step 6: Update Status
 
 **Process**:
-1. Read current status file: `.agent_v2/<project_id>/status.md`
+1. Read current status file: `.wire/<project_id>/status.md`
 2. Update artifacts.requirements section:
    ```yaml
    requirements:
@@ -296,7 +296,7 @@ Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
 ```
 ## Requirements Generated Successfully
 
-**File**: `.agent_v2/<project_id>/requirements/requirements_specification.md`
+**File**: `.wire/<project_id>/requirements/requirements_specification.md`
 
 ### Summary
 
@@ -336,7 +336,7 @@ Extracted requirements from:
 
 ### Quick Links
 
-- View requirements: `.agent_v2/<project_id>/requirements/requirements_specification.md`
+- View requirements: `.wire/<project_id>/requirements/requirements_specification.md`
 - View status: `/dp:status <project_id>`
 - Edit requirements: Make changes in the file, then re-validate
 ```
@@ -351,7 +351,7 @@ If no SOW or requirements documents found in artifacts/:
 No SOW or requirements documents found in artifacts folder.
 
 Options:
-1. Add SOW/requirements docs to `.agent_v2/<project_id>/artifacts/`
+1. Add SOW/requirements docs to `.wire/<project_id>/artifacts/`
 2. Create requirements from scratch (I'll ask you questions)
 3. Reference an existing SOW file (provide path)
 
@@ -402,8 +402,8 @@ The validate command will check:
 ## Output Files
 
 This command creates:
-- `.agent_v2/<project_id>/requirements/requirements_specification.md`
-- Updates `.agent_v2/<project_id>/status.md`
+- `.wire/<project_id>/requirements/requirements_specification.md`
+- Updates `.wire/<project_id>/status.md`
 
 Execute the complete workflow as specified above.
 
