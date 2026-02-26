@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.wire` (project data and status files)
+- **Projects**: `.agent_v2` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -76,7 +76,7 @@ Found 7 items needing clarification:
 
 ### Step 3: Generate Workshop Agenda
 
-**File**: `.wire/<project>/requirements/workshop_agenda.md`
+**File**: `.agent_v2/<project>/requirements/workshop_agenda.md`
 
 ```markdown
 # Requirements Clarification Workshop
@@ -181,7 +181,7 @@ After the workshop:
 
 ### Step 4: Generate Decision Matrix
 
-**File**: `.wire/<project>/requirements/workshop_decision_matrix.md`
+**File**: `.agent_v2/<project>/requirements/workshop_decision_matrix.md`
 
 ```markdown
 # Workshop Decisions Matrix
@@ -222,7 +222,7 @@ After the workshop:
 
 ### Step 5: Generate Technical Options Analysis (if needed)
 
-**File**: `.wire/<project>/requirements/workshop_technical_options.md`
+**File**: `.agent_v2/<project>/requirements/workshop_technical_options.md`
 
 ```markdown
 # Technical Options Analysis
@@ -308,9 +308,9 @@ Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
 ```
 ## Workshop Materials Generated Successfully
 
-**Workshop Agenda:** .wire/[folder]/requirements/workshop_agenda.md
-**Decision Matrix:** .wire/[folder]/requirements/workshop_decision_matrix.md
-**Technical Options:** .wire/[folder]/requirements/workshop_technical_options.md
+**Workshop Agenda:** .agent_v2/[folder]/requirements/workshop_agenda.md
+**Decision Matrix:** .agent_v2/[folder]/requirements/workshop_decision_matrix.md
+**Technical Options:** .agent_v2/[folder]/requirements/workshop_technical_options.md
 
 ### Clarifications Identified
 
@@ -363,10 +363,10 @@ Generate requirements first: /dp:requirements:generate [folder]
 ## Output
 
 This command creates:
-- `.wire/<project>/requirements/workshop_agenda.md`
-- `.wire/<project>/requirements/workshop_decision_matrix.md`
-- `.wire/<project>/requirements/workshop_technical_options.md` (if technical decisions needed)
-- Updates `.wire/<project>/status.md`
+- `.agent_v2/<project>/requirements/workshop_agenda.md`
+- `.agent_v2/<project>/requirements/workshop_decision_matrix.md`
+- `.agent_v2/<project>/requirements/workshop_technical_options.md` (if technical decisions needed)
+- Updates `.agent_v2/<project>/status.md`
 
 Execute the complete workflow as specified above.
 

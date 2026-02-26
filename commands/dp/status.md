@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.wire` (project data and status files)
+- **Projects**: `.agent_v2` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -44,8 +44,8 @@ Generate a concise status report showing artifact lifecycle progress. Outputs a 
 ### Step 1: Scan Project Folders
 
 **Process**:
-1. If `--archived` flag is present, use Glob: `.wire/archive/[0-9]*_*/status.md`
-2. Otherwise, use Glob to find all status files: `.wire/[0-9]*_*/status.md`
+1. If `--archived` flag is present, use Glob: `.agent_v2/archive/[0-9]*_*/status.md`
+2. Otherwise, use Glob to find all status files: `.agent_v2/[0-9]*_*/status.md`
 3. Extract folder names from the matched file paths
 4. Build list of all projects
 
@@ -175,13 +175,7 @@ Same artifact lifecycle table, plus a Highlights section with additional context
 
 **Logic for next action**:
 
-First, read the `project_type` from status.md frontmatter. Use the appropriate phase ordering:
-
-**Default ordering**: brief → wireframe → catalog → schema → mockdata → lookml (or for newer projects: requirements → workshops → pipeline_design → data_model → mockups → pipeline → dbt → semantic_layer → dashboards → data_quality → uat → deployment → training → documentation)
-
-**Dashboard-first ordering** (for `dashboard_first` projects): requirements → mockups → viz_catalog → data_model → seed_data → dbt → semantic_layer → dashboards → data_refactor → data_quality → uat → deployment → training → documentation
-
-For each artifact in the appropriate phase order:
+For each artifact in phase order (brief → wireframe → catalog → schema → mockdata → lookml):
 
 **For Brief, Wireframe, Schema** (full lifecycle):
 1. If `generate` is not `complete`: suggest generate command
@@ -210,22 +204,6 @@ For each artifact in the appropriate phase order:
 
 **Note:** When LookML is generated, show file count in Highlights (e.g., "LookML: 7 files generated").
 
-**For Viz Catalog** (generate-only, `dashboard_first` projects only):
-1. If `generate` is not `complete`: suggest generate command
-2. Else: artifact is ready, check next artifact
-
-**For Seed Data** (full lifecycle, `dashboard_first` projects only):
-1. If `generate` is not `complete`: suggest generate command
-2. Else if `validate` is not `pass`: suggest validate command
-3. Else if `review` is not `approved`: suggest review command
-4. Else: artifact is ready, check next artifact
-
-**For Data Refactor** (full lifecycle, `dashboard_first` projects only):
-1. If `generate` is not `complete`: suggest generate command
-2. Else if `validate` is not `pass`: suggest validate command
-3. Else if `review` is not `approved`: suggest review command
-4. Else: artifact is ready, check next artifact
-
 **Command Mapping**:
 ```
 Artifacts:
@@ -246,15 +224,6 @@ Artifacts:
   lookml.generate      → /dp:lookml:generate
   lookml.validate      → /dp:lookml:validate
   lookml.review        → /dp:lookml:review
-
-Dashboard-first artifacts:
-  viz_catalog.generate    → /dp:viz_catalog:generate     ← generate-only (like catalog)
-  seed_data.generate      → /dp:seed_data:generate
-  seed_data.validate      → /dp:seed_data:validate
-  seed_data.review        → /dp:seed_data:review
-  data_refactor.generate  → /dp:data_refactor:generate
-  data_refactor.validate  → /dp:data_refactor:validate
-  data_refactor.review    → /dp:data_refactor:review
 ```
 
 ### Output Examples

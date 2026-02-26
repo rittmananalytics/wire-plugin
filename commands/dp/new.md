@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.wire` (project data and status files)
+- **Projects**: `.agent_v2` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -39,7 +39,6 @@ Interactive workflow to create a new data platform project. Handles folder creat
 | `pipeline_only` | Data pipeline development only | pipeline_design, pipeline, data_quality, deployment |
 | `dbt_development` | dbt models and semantic layer | data_model, dbt, semantic_layer, data_quality |
 | `dashboard_extension` | Extends existing platform with new dashboards | requirements, mockups, dashboards, training |
-| `dashboard_first` | Interactive mocks drive data model, dbt with seed data first | mockups, viz_catalog, data_model, seed_data, dbt, semantic_layer, dashboards, data_refactor |
 | `enablement` | Training and documentation only | training, documentation |
 
 ## Workflow
@@ -48,7 +47,7 @@ Interactive workflow to create a new data platform project. Handles folder creat
 
 **Process**:
 1. Use today's date formatted as `YYYYMMDD` (e.g., `20260210`) as the `project_id`
-2. Use Glob to check if a folder with this date prefix already exists: `.wire/[0-9]*_*/`
+2. Use Glob to check if a folder with this date prefix already exists: `.agent_v2/[0-9]*_*/`
 3. If a folder starting with the same `YYYYMMDD_` prefix already exists, append a letter suffix: `20260210a_`, `20260210b_`, etc.
 4. `project_id` = the date string (e.g., `20260210`)
 
@@ -66,7 +65,6 @@ Use `AskUserQuestion` to determine the project type:
       {"label": "Pipeline only", "description": "Data pipeline development"},
       {"label": "dbt development", "description": "dbt models and semantic layer"},
       {"label": "Dashboard extension", "description": "New dashboards on existing platform"},
-      {"label": "Dashboard-first rapid dev", "description": "Interactive mocks drive data model, dbt with seed data first"},
       {"label": "Enablement", "description": "Training and documentation"}
     ],
     "multiSelect": false
@@ -79,7 +77,6 @@ Map selection to `project_type`:
 - "Pipeline only" → `pipeline_only`
 - "dbt development" → `dbt_development`
 - "Dashboard extension" → `dashboard_extension`
-- "Dashboard-first rapid dev" → `dashboard_first`
 - "Enablement" → `enablement`
 
 ### Step 3: Gather Project Details
@@ -129,7 +126,7 @@ I'll create the project with these settings:
 - Project Type: {project_type}
 - Client Name: {client_name}
 - Project Name: {project_name}
-- Folder: .wire/{folder_name}/
+- Folder: .agent_v2/{folder_name}/
 - SOW: {sow_path} (if provided)
 ```
 
@@ -229,7 +226,7 @@ Wait for user response. Store the `jira_project_key` and `jira_mode: "link"` for
 ### Step 6: Create Folder Structure
 
 **Process**:
-1. Create main project folder: `.wire/{folder_name}/`
+1. Create main project folder: `.agent_v2/{folder_name}/`
 2. Create subdirectories:
    - `artifacts/` - for source materials (SOW, requirements docs)
    - `requirements/` - requirements phase outputs
@@ -241,7 +238,7 @@ Wait for user response. Store the `jira_project_key` and `jira_mode: "link"` for
 
 **Bash command:**
 ```bash
-mkdir -p .wire/{folder_name}/{artifacts,requirements,design,dev,test,deploy,enablement}
+mkdir -p .agent_v2/{folder_name}/{artifacts,requirements,design,dev,test,deploy,enablement}
 ```
 
 ### Step 7: Copy SOW to Artifacts
@@ -250,7 +247,7 @@ If SOW path was provided:
 
 **Bash command:**
 ```bash
-cp {sow_path} .wire/{folder_name}/artifacts/
+cp {sow_path} .agent_v2/{folder_name}/artifacts/
 ```
 
 ### Step 8: Determine Artifact Scope
@@ -312,28 +309,6 @@ documentation: {generate: not_started, validate: not_started, review: not_starte
 # All others: not_applicable
 ```
 
-**dashboard_first**: Interactive mocks drive data model, dbt with seed data first
-```yaml
-requirements: {generate: not_started, validate: not_started, review: not_started}
-mockups: {generate: not_started, review: not_started}
-viz_catalog: {generate: not_started}
-data_model: {generate: not_started, validate: not_started, review: not_started}
-seed_data: {generate: not_started, validate: not_started, review: not_started}
-dbt: {generate: not_started, validate: not_started, review: not_started}
-semantic_layer: {generate: not_started, validate: not_started, review: not_started}
-dashboards: {generate: not_started, validate: not_started, review: not_started}
-data_refactor: {generate: not_started, validate: not_started, review: not_started}
-data_quality: {generate: not_started, validate: not_started, review: not_started}
-uat: {generate: not_started, review: not_started}
-deployment: {generate: not_started, validate: not_started, review: not_started}
-training: {generate: not_started, validate: not_started, review: not_started}
-documentation: {generate: not_started, validate: not_started, review: not_started}
-# workshops: not_applicable
-# conceptual_model: not_applicable
-# pipeline_design: not_applicable
-# pipeline: not_applicable
-```
-
 ### Step 9: Create Status File
 
 **Process**:
@@ -346,7 +321,7 @@ documentation: {generate: not_started, validate: not_started, review: not_starte
    - `{{CREATED_DATE}}` → today's date (YYYY-MM-DD)
    - `{{LAST_UPDATED}}` → today's date (YYYY-MM-DD)
    - `{{ARTIFACTS}}` → artifact scope from Step 8
-3. Write to `.wire/{folder_name}/status.md`
+3. Write to `.agent_v2/{folder_name}/status.md`
 
 ### Step 9.5: Set Up Jira Tracking (if opted in)
 
@@ -366,14 +341,14 @@ Output confirmation:
 ```
 ## Project Created Successfully
 
-**Folder:** `.wire/{folder_name}/`
+**Folder:** `.agent_v2/{folder_name}/`
 **Type:** {project_type}
 **Client:** {client_name}
 **Branch:** {branch_name}
 
 ### Folder Structure
 
-.wire/{folder_name}/
+.agent_v2/{folder_name}/
 ├── status.md           # Project tracking
 ├── artifacts/          # Source materials (SOW, requirements docs)
 │   └── SOW.pdf        # [if copied]
@@ -391,7 +366,7 @@ Output confirmation:
 
 ### Next Steps
 
-1. **Review source materials** in `.wire/{folder_name}/artifacts/`
+1. **Review source materials** in `.agent_v2/{folder_name}/artifacts/`
    - SOW has been copied (if provided)
    - Add any other requirements documents or references
 
@@ -474,8 +449,8 @@ If folder creation fails:
 ## Output
 
 This command creates files and folders:
-- `.wire/{folder_name}/` directory structure
-- `.wire/{folder_name}/status.md` file
+- `.agent_v2/{folder_name}/` directory structure
+- `.agent_v2/{folder_name}/status.md` file
 - Copies SOW to artifacts/ (if provided)
 
 Final output is a confirmation message with next steps.

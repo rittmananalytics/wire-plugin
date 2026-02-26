@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.wire` (project data and status files)
+- **Projects**: `.agent_v2` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification

@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.wire` (project data and status files)
+- **Projects**: `.agent_v2` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -38,18 +38,18 @@ Interactive workflow to remove an existing Data Platform project. Handles regist
 **Process**:
 1. Use Bash to find all existing project folders:
    ```bash
-   ls -d .wire/[0-9]*_*/ 2>/dev/null
+   ls -d .agent_v2/[0-9]*_*/ 2>/dev/null
    ```
 2. If no projects found (empty output), output message and exit:
    ```
-   No projects found in `.wire/`. Nothing to remove.
+   No projects found in `.agent_v2/`. Nothing to remove.
    ```
 3. Parse folder names to extract:
    - `project_id`: Everything before the first underscore (e.g., "20260210")
    - `project_name`: Everything after the first underscore (e.g., "acme_corp")
    - `folder_name`: Full folder name (e.g., "20260210_acme_corp")
 
-4. For each project, read `.wire/{folder_name}/status.md` to get the client name (if available)
+4. For each project, read `.agent_v2/{folder_name}/status.md` to get the client name (if available)
 
 ### Step 2: Ask Which Project to Remove
 
@@ -74,7 +74,7 @@ Build options dynamically from discovered projects. Include up to 4 projects as 
 ### Step 3: Show Deletion Preview & Confirm
 
 **Process**:
-1. Use `find .wire/{folder_name}/ -type f` to list all files that will be deleted
+1. Use `find .agent_v2/{folder_name}/ -type f` to list all files that will be deleted
 2. Count files and subdirectories
 
 **Display preview:**
@@ -82,7 +82,7 @@ Build options dynamically from discovered projects. Include up to 4 projects as 
 ## Deletion Preview
 
 **Project:** {project_id} - {client_name}
-**Folder:** .wire/{folder_name}/
+**Folder:** .agent_v2/{folder_name}/
 
 ### Contents to be deleted:
 - status.md
@@ -120,7 +120,7 @@ And exit.
 
 **Bash command:**
 ```bash
-rm -rf .wire/{folder_name}/
+rm -rf .agent_v2/{folder_name}/
 ```
 
 Capture exit code. If non-zero, report error and suggest manual deletion.
@@ -132,7 +132,7 @@ Output confirmation:
 ```
 ## Project Removed Successfully
 
-**Deleted:** .wire/{folder_name}/
+**Deleted:** .agent_v2/{folder_name}/
 
 ### Summary
 - Removed {N} files
@@ -147,7 +147,7 @@ Run `/dp:status` to see remaining projects.
 
 If no project folders are found:
 ```
-No projects found in `.wire/`. Nothing to remove.
+No projects found in `.agent_v2/`. Nothing to remove.
 ```
 Exit without further prompts.
 
@@ -168,7 +168,7 @@ If `rm -rf` fails:
 2. Suggest manual deletion:
    ```
    Could not delete folder. Try manually:
-   rm -rf .wire/{folder_name}/
+   rm -rf .agent_v2/{folder_name}/
    ```
 
 ### User Cancels
@@ -181,7 +181,7 @@ Removal cancelled. No changes were made.
 ## Output
 
 This command:
-- Deletes `.wire/{folder_name}/` directory and all contents
+- Deletes `.agent_v2/{folder_name}/` directory and all contents
 
 Final output is a confirmation message with summary.
 

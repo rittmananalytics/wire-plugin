@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.wire` (project data and status files)
+- **Projects**: `.agent_v2` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -54,7 +54,7 @@ How would you like to run dbt?
 ### Step 2a: If dbt Cloud
 
 **Process**:
-1. Check if `.wire/config.md` has dbt Cloud project ID and API key
+1. Check if `.agent_v2/config.md` has dbt Cloud project ID and API key
 2. If not configured, prompt user to add credentials
 3. Use dbt Cloud API to trigger job
 
@@ -321,7 +321,7 @@ See: https://docs.getdbt.com/docs/core/connect-data-platform/profiles.yml
 ```
 Error: dbt Cloud credentials not found
 
-Please add to .wire/config.md:
+Please add to .agent_v2/config.md:
 
 ```yaml
 dbt_cloud:

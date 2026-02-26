@@ -13,10 +13,10 @@ $ARGUMENTS
 
 ## Path Configuration
 
-- **Projects**: `.wire` (project data and status files)
+- **Projects**: `.agent_v2` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -30,9 +30,7 @@ argument-hint: <project-folder>
 
 ## Purpose
 
-Generate dashboard mockups based on requirements. Supports two modes:
-- **Dashboard-first mode** (`dashboard_first` projects): Guides consultant through creating interactive Lovable mocks via `getmock.rittmananalytics.com`
-- **Standard mode** (all other project types): Generates ASCII wireframe mockups directly from requirements
+Generate mockups based on requirements and design specifications.
 
 ## Usage
 
@@ -42,139 +40,28 @@ Generate dashboard mockups based on requirements. Supports two modes:
 
 ## Prerequisites
 
-- `requirements.review` must be `approved` in status.md
+- Requirements must be approved
+- Relevant design artifacts should be complete
 
 ## Workflow
 
-### Step 0: Determine Mode
+### Step 1: Read Inputs
 
 **Process**:
-1. Read `.wire/<project-folder>/status.md`
-2. Parse YAML frontmatter to extract `project_type`
-3. If `project_type` is `dashboard_first` → follow **Dashboard-First Mode** (Step 1A onwards)
-4. Otherwise → follow **Standard Mode** (Step 1B onwards)
+1. Read `requirements/requirements_specification.md`
+2. Read relevant design documents
+3. Identify what needs to be generated
 
-Also verify prerequisites:
-- Check `artifacts.requirements.review` is `approved`
-- If not, show error and suggest `/dp:requirements:review <project>`
-
----
-
-## Dashboard-First Mode (for `dashboard_first` projects)
-
-### Step 1A: Read Requirements and Generate Lovable Brief
+### Step 2: Generate mockups
 
 **Process**:
-1. Read `.wire/<project-folder>/requirements/requirements_specification.md`
-2. Read `.wire/<project-folder>/artifacts/` for any SOW or supplementary materials
-3. From the requirements, extract:
-   - The primary use case or domain (e.g., "student retention analytics", "retail sales dashboard")
-   - Key questions to be answered / jobs-to-be-done
-   - Known data sources and their general nature
-   - Target audience and their roles
+1. Apply templates and best practices
+2. Generate structured output
+3. Save to appropriate location
 
-4. Generate a **Lovable session brief** summarizing what the mock dashboards should demonstrate. Save this to `.wire/<project-folder>/design/lovable_session_brief.md` with this structure:
+[Detailed generation logic here - specific to artifact type]
 
-```markdown
-# Lovable Dashboard Mock Brief
-
-## Use Case
-[One-line description of the use case]
-
-## Key Questions to Answer
-- [Question 1 from requirements]
-- [Question 2]
-- ...
-
-## Suggested Dashboard Pages
-Based on the requirements, the mock should include these dashboard pages:
-1. [Page name] — [what it shows]
-2. [Page name] — [what it shows]
-...
-
-## Data Domain Context
-[Brief description of the domain, data sources, and typical metrics for this vertical]
-
-## Target Users
-- [Role 1]: needs [what]
-- [Role 2]: needs [what]
-```
-
-### Step 2A: Present Lovable URL and Instructions
-
-**Process**:
-1. URL-encode the use case description (spaces → `%20`, special chars encoded)
-2. Construct the URL: `https://getmock.rittmananalytics.com/?usecase=<url_encoded_use_case>`
-
-3. Present to the consultant:
-
-```
-## Dashboard Mock Creation — Lovable
-
-### Session Brief
-I've generated a session brief at:
-**File:** `design/lovable_session_brief.md`
-
-### Create the Mock Dashboard
-
-1. Open this URL in your browser:
-   **[getmock URL]**
-
-2. Select the **Rittman Analytics** workspace when prompted
-
-3. Lovable will create an interactive dashboard mock. Once it's ready:
-   - Review the dashboard and iterate with Lovable if needed
-   - **Publish** the dashboard using the Publish button (give it a descriptive subdomain)
-
-4. Once you're happy with the mock, run this prompt in the Lovable session:
-
-   ```
-   create two text files that you should link-to from the help (question-mark icon)
-   button in the top-right-hand side of the dashboard app:
-   - a csv file-format document called "dashboard_visualization_catalog.csv" that
-     details, one-row per dashboard data visualization, the dashboard page name,
-     data visualisation name, data visualization chart or table type and the measures
-     and dimensions that data visualization would require in-order to produce
-   - a specification document in markdown (.md) format called "dashboard_spec.md"
-     that details the purpose, design and contents of this dashboard in enough-detail
-     that an LLM agent separate to loveable.dev could use this spec to produce a
-     Looker LookML dashboard matching its design. The document should exclude any
-     details about colours, fonts, headers etc as these will automatically be added
-     by Looker, or data model details etc. Just focus on the dashboard data viz
-     contents, and make it so that the user doesn't have to login to loveable.dev
-     to see these docs
-   ```
-
-5. Download both files from Lovable and save them into the project:
-   - `design/dashboard_visualization_catalog.csv`
-   - `design/dashboard_spec.md`
-
-### When you're done, tell me:
-- The published Lovable URL (e.g., https://myproject-demo.lovable.app/)
-- Confirm the CSV and MD files are saved in the design/ folder
-```
-
-### Step 3A: Validate Files and Record URL
-
-**Process**:
-Wait for the consultant to respond. Then:
-
-1. Verify the files exist:
-   - Check `.wire/<project-folder>/design/dashboard_visualization_catalog.csv` exists and has content
-   - Check `.wire/<project-folder>/design/dashboard_spec.md` exists and has content
-
-2. If either file is missing, inform the consultant and re-prompt them to save the files
-
-3. Once both files are confirmed:
-   - Read the CSV to verify it has the expected columns (dashboard page, visualization name, chart type, measures, dimensions)
-   - Read the MD to verify it contains dashboard specification content
-
-4. Record the Lovable URL in status.md frontmatter:
-   ```yaml
-   lovable_url: https://[subdomain].lovable.app/
-   ```
-
-### Step 4A: Update Status
+### Step 3: Update Status
 
 **Process**:
 1. Read `status.md`
@@ -182,107 +69,32 @@ Wait for the consultant to respond. Then:
    ```yaml
    mockups:
      generate: complete
+     validate: not_started
      review: not_started
-     generated_date: [today's date]
-     lovable_url: [the published URL]
+     generated_date: 2026-02-13
    ```
 3. Write updated status.md
 
-### Step 5A: Sync to Jira (Optional)
+### Step 4: Sync to Jira (Optional)
 
 Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
 - Artifact: `mockups`
 - Action: `generate`
 - Status: the generate state just written to status.md
 
-### Step 6A: Confirm and Suggest Next Steps
+### Step 5: Confirm and Suggest Next Steps
 
 **Output**:
 ```
-## Dashboard Mocks Generated Successfully
+## mockups Generated Successfully
 
-**Lovable URL:** [published URL]
-**Session Brief:** `design/lovable_session_brief.md`
-**Visualization Catalog:** `design/dashboard_visualization_catalog.csv`
-**Dashboard Spec:** `design/dashboard_spec.md`
+**File(s):** [list generated files]
 
 ### Next Steps
 
-1. **Share the published mock** with stakeholders for feedback
-2. **Review mockups**: `/dp:mockups:review <project>`
-3. After review approval, **generate visualization catalog**: `/dp:viz_catalog:generate <project>`
+1. **Validate mockups**: `/dp:mockups:validate <project>`
+2. After validation, review: `/dp:mockups:review <project>`
 ```
-
----
-
-## Standard Mode (for non-dashboard_first projects)
-
-### Step 1B: Read Inputs
-
-**Process**:
-1. Read `.wire/<project-folder>/requirements/requirements_specification.md`
-2. Read any design documents in `.wire/<project-folder>/design/`
-3. Identify the dashboards, reports, or UI screens that need mockups based on requirements
-
-### Step 2B: Generate Wireframe Mockups
-
-**Process**:
-For each dashboard or screen identified in the requirements:
-
-1. Create an ASCII wireframe mockup showing:
-   - Dashboard layout with sections and panels
-   - Chart/visualization placeholders with type labels (bar chart, line chart, KPI tile, table, etc.)
-   - Filter bar with expected filter controls
-   - Data labels showing which measures and dimensions power each visualization
-
-2. Format each mockup as a markdown document with:
-   - Dashboard title and purpose
-   - Target audience
-   - ASCII wireframe diagram
-   - Data requirements table listing measures and dimensions per visualization
-   - Filter specifications
-   - Interaction notes (drill-downs, cross-filtering, etc.)
-
-3. Save all mockups to `.wire/<project-folder>/design/mockups/`:
-   - One file per dashboard: `mockup_[dashboard_name].md`
-   - Summary file: `mockups_index.md` listing all mockups with links
-
-### Step 3B: Update Status
-
-**Process**:
-1. Read `status.md`
-2. Update artifacts.mockups section:
-   ```yaml
-   mockups:
-     generate: complete
-     review: not_started
-     generated_date: [today's date]
-   ```
-3. Write updated status.md
-
-### Step 4B: Sync to Jira (Optional)
-
-Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
-- Artifact: `mockups`
-- Action: `generate`
-- Status: the generate state just written to status.md
-
-### Step 5B: Confirm and Suggest Next Steps
-
-**Output**:
-```
-## Mockups Generated Successfully
-
-**File(s):** [list generated mockup files]
-**Index:** `design/mockups/mockups_index.md`
-
-### Next Steps
-
-1. **Review mockups** with stakeholders: `/dp:mockups:review <project>`
-2. After approval, proceed with data model design
-```
-
----
 
 ## Edge Cases
 
@@ -297,25 +109,10 @@ Current status: [status]
 Complete requirements approval: /dp:requirements:review <project>
 ```
 
-### Lovable Files Not Found (Dashboard-First Mode)
-
-If the consultant says they've saved the files but they can't be found:
-1. Check common alternative locations (project root, `design/` subdirectories)
-2. Ask the consultant to confirm the exact file paths
-3. Offer to help move files to the correct location
-
-### CSV Format Issues (Dashboard-First Mode)
-
-If the CSV doesn't have expected columns:
-- Inform the consultant
-- Suggest re-running the Lovable prompt with the exact template
-- Offer to proceed anyway if the data is usable in a different format
-
 ## Output
 
 This command creates:
-- **Dashboard-first mode**: `design/lovable_session_brief.md`, `design/dashboard_visualization_catalog.csv`, `design/dashboard_spec.md`
-- **Standard mode**: `design/mockups/mockup_*.md`, `design/mockups/mockups_index.md`
+- [List of output files specific to artifact]
 - Updates `status.md`
 
 Execute the complete workflow as specified above.

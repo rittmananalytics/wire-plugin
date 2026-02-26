@@ -6,10 +6,10 @@ description: Project startup - shows all data platform projects and helps user s
 
 ## Path Configuration
 
-- **Projects**: `.wire` (project data and status files)
+- **Projects**: `.agent_v2` (project data and status files)
 
 When following the workflow specification below, resolve paths as follows:
-- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `.agent_v2/` in specs refers to the `.agent_v2/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 
 ## Workflow Specification
@@ -34,15 +34,11 @@ Entry point when starting Claude Code for data platform delivery work. Shows sta
 ### Step 2: Scan Project Statuses
 
 **Process**:
-1. Use Glob to find all status files: `.wire/[0-9]*_*/status.md`
+1. Use Glob to find all status files: `.agent_v2/[0-9]*_*/status.md`
 2. Read each status.md and parse the frontmatter artifacts section
 3. **Determine "Next Action"** by finding the first incomplete lifecycle step
 
 **Next Action Logic:**
-
-First, read the `project_type` from each project's status.md frontmatter. Use the appropriate phase ordering below.
-
-**Default phase ordering** (for `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `enablement`):
 
 Check artifacts in this order by phase:
 
@@ -54,37 +50,6 @@ Check artifacts in this order by phase:
 
 **Development Phase:**
 - `pipeline → dbt → semantic_layer → dashboards`
-
-**Testing Phase:**
-- `data_quality → uat`
-
-**Deployment Phase:**
-- `deployment`
-
-**Enablement Phase:**
-- `training → documentation`
-
-**Dashboard-first phase ordering** (for `dashboard_first`):
-
-Check artifacts in this order by phase:
-
-**Requirements Phase:**
-- `requirements`
-
-**Mock Phase:**
-- `mockups → viz_catalog`
-
-**Design Phase:**
-- `data_model`
-
-**Seed Phase:**
-- `seed_data`
-
-**Development Phase:**
-- `dbt → semantic_layer → dashboards`
-
-**Refactor Phase:**
-- `data_refactor`
 
 **Testing Phase:**
 - `data_quality → uat`
@@ -137,7 +102,7 @@ Show the overview and suggest the next command based on the first incomplete art
 
 | Artifact | Incomplete Step | Suggested Command |
 |----------|-----------------|-------------------|
-| (no artifacts) | - | "Add source materials to `.wire/<folder>/artifacts/`" |
+| (no artifacts) | - | "Add source materials to `.agent_v2/<folder>/artifacts/`" |
 | requirements | generate | `/dp:requirements:generate <folder>` |
 | requirements | validate | `/dp:requirements:validate <folder>` |
 | requirements | review | `/dp:requirements:review <folder>` |
@@ -163,13 +128,6 @@ Show the overview and suggest the next command based on the first incomplete art
 | dashboards | generate | `/dp:dashboards:generate <folder>` |
 | dashboards | validate | `/dp:dashboards:validate <folder>` |
 | dashboards | review | `/dp:dashboards:review <folder>` |
-| viz_catalog | generate | `/dp:viz_catalog:generate <folder>` |
-| seed_data | generate | `/dp:seed_data:generate <folder>` |
-| seed_data | validate | `/dp:seed_data:validate <folder>` |
-| seed_data | review | `/dp:seed_data:review <folder>` |
-| data_refactor | generate | `/dp:data_refactor:generate <folder>` |
-| data_refactor | validate | `/dp:data_refactor:validate <folder>` |
-| data_refactor | review | `/dp:data_refactor:review <folder>` |
 | data_quality | generate | `/dp:data_quality:generate <folder>` |
 | data_quality | validate | `/dp:data_quality:validate <folder>` |
 | data_quality | review | `/dp:data_quality:review <folder>` |
@@ -206,7 +164,7 @@ Quick commands:
 
 ### No Projects Found
 
-If no status files found in `.wire/`:
+If no status files found in `.agent_v2/`:
 
 ```
 # Data Platform Project Status
