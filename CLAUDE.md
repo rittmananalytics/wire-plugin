@@ -4,32 +4,32 @@ This plugin provides the **Wire Framework**, an AI-accelerated delivery system f
 
 ## Usage
 
-All commands are available immediately — no install step required. Commands are namespaced under `/wire:dp:*`:
+All commands are available after installing and restarting Claude Code. Commands are namespaced under `/wire:dp-*`:
 
 ```
-/wire:dp:start              — See all projects and available commands
-/wire:dp:new                — Create a new project
-/wire:dp:status <project>   — Check project status
+/wire:dp-start              — See all projects and available commands
+/wire:dp-new                — Create a new project
+/wire:dp-status <project>   — Check project status
 ```
 
 ### Delivery commands
 
 ```
-/wire:dp:requirements:generate <project>   — Extract requirements from SOW
-/wire:dp:requirements:validate <project>   — Validate requirements
-/wire:dp:requirements:review <project>     — Stakeholder review
+/wire:dp-requirements-generate <project>   — Extract requirements from SOW
+/wire:dp-requirements-validate <project>   — Validate requirements
+/wire:dp-requirements-review <project>     — Stakeholder review
 
-/wire:dp:conceptual_model:generate <project>
-/wire:dp:data_model:generate <project>
-/wire:dp:dbt:generate <project>
-/wire:dp:semantic_layer:generate <project>
-/wire:dp:dashboards:generate <project>
-... (and validate/review for each)
+/wire:dp-conceptual_model-generate <project>
+/wire:dp-data_model-generate <project>
+/wire:dp-dbt-generate <project>
+/wire:dp-semantic_layer-generate <project>
+/wire:dp-dashboards-generate <project>
+... (and -validate/-review for each)
 ```
 
 ### Project data
 
-Project data is stored in `.agent_v2/` in the current repository. This directory is created automatically when you run `/wire:dp:new`.
+Project data is stored in `.wire/` in the current repository. This directory is created automatically when you run `/wire:dp-new`.
 
 ## MCP Integrations
 
