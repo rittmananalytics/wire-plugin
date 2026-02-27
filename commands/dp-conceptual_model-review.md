@@ -41,7 +41,7 @@ Present the conceptual entity model to business stakeholders for approval. This 
 ## Usage
 
 ```bash
-/dp:conceptual_model:review YYYYMMDD_project_name
+/wire:dp-conceptual_model-review YYYYMMDD_project_name
 ```
 
 ## Prerequisites
@@ -57,7 +57,7 @@ Check `conceptual_model.validate == pass` in `status.md`.
 If validation has not passed:
 ```
 Error: Conceptual model must pass validation before stakeholder review.
-Run: /dp:conceptual_model:validate <project_id>
+Run: /wire:dp-conceptual_model-validate <project_id>
 ```
 
 If there are unresolved Open Questions (Section 5 of conceptual_model.md is non-empty), flag this to the consultant:
@@ -107,7 +107,7 @@ If "Changes requested": prompt "Please describe the required changes (which enti
 If "Needs discussion": suggest running a workshop.
 ```
 Suggested next step: generate workshop materials to facilitate the discussion.
-/dp:workshops:generate <project_id>
+/wire:dp-workshops-generate <project_id>
 ```
 
 ### Step 4: Update Status
@@ -148,10 +148,10 @@ artifacts are now unblocked.
 ### Next Steps (can be run in parallel or either order)
 
 Design the data pipeline architecture:
-  /dp:pipeline_design:generate <project_id>
+  /wire:dp-pipeline_design-generate <project_id>
 
 Begin the data model specification (dbt layers):
-  /dp:data_model:generate <project_id>
+  /wire:dp-data_model-generate <project_id>
 
 Both commands will read the approved conceptual model as a primary input.
 ```
@@ -164,8 +164,8 @@ Update design/conceptual_model.md with the requested changes:
 [list changes captured]
 
 Then re-validate and re-review:
-  /dp:conceptual_model:validate <project_id>
-  /dp:conceptual_model:review <project_id>
+  /wire:dp-conceptual_model-validate <project_id>
+  /wire:dp-conceptual_model-review <project_id>
 ```
 
 ### Step 6: Sync to Jira (Optional)
@@ -240,22 +240,22 @@ If the file does not exist, create it with the header:
 Then append one row per execution:
 
 ```markdown
-| YYYY-MM-DD HH:MM | /dp:<command> | <result> | <detail> |
+| YYYY-MM-DD HH:MM | /wire:dp-<command> | <result> | <detail> |
 ```
 
 ### Field Definitions
 
 - **Timestamp**: Current date and time in `YYYY-MM-DD HH:MM` format (24-hour, local time)
-- **Command**: The `/dp:*` command that was invoked (e.g., `/dp:requirements:generate`, `/dp:new`, `/dp:dbt:validate`)
+- **Command**: The `/wire:dp-*` command that was invoked (e.g., `/wire:dp-requirements-generate`, `/wire:dp-new`, `/wire:dp-dbt-validate`)
 - **Result**: The outcome of the command. Use one of:
   - `complete` — generate command finished successfully
   - `pass` — validate command passed all checks
   - `fail` — validate command found failures
   - `approved` — review command: stakeholder approved
   - `changes_requested` — review command: stakeholder requested changes
-  - `created` — `/dp:new` created a new project
-  - `archived` — `/dp:archive` archived a project
-  - `removed` — `/dp:remove` deleted a project
+  - `created` — `/wire:dp-new` created a new project
+  - `archived` — `/wire:dp-archive` archived a project
+  - `removed` — `/wire:dp-remove` deleted a project
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
@@ -278,16 +278,16 @@ Then append one row per execution:
 
 | Timestamp | Command | Result | Detail |
 |-----------|---------|--------|--------|
-| 2026-02-22 14:35 | /dp:new | created | Project created (type: full_platform, client: Acme Corp) |
-| 2026-02-22 14:40 | /dp:requirements:generate | complete | Generated requirements specification (3 files) |
-| 2026-02-22 15:12 | /dp:requirements:validate | pass | 14 checks passed, 0 failed |
-| 2026-02-22 16:00 | /dp:requirements:review | approved | Reviewed by Jane Smith |
-| 2026-02-23 09:15 | /dp:conceptual_model:generate | complete | Generated entity model with 8 entities |
-| 2026-02-23 10:30 | /dp:conceptual_model:validate | fail | 2 issues: missing relationship, orphaned entity |
-| 2026-02-23 11:00 | /dp:conceptual_model:generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
-| 2026-02-23 11:15 | /dp:conceptual_model:validate | pass | 12 checks passed, 0 failed |
-| 2026-02-23 14:00 | /dp:conceptual_model:review | changes_requested | Reviewed by John Doe — add Customer entity |
-| 2026-02-23 15:30 | /dp:conceptual_model:generate | complete | Regenerated entity model (9 entities, added Customer) |
-| 2026-02-23 15:45 | /dp:conceptual_model:validate | pass | 14 checks passed, 0 failed |
-| 2026-02-23 16:00 | /dp:conceptual_model:review | approved | Reviewed by John Doe |
+| 2026-02-22 14:35 | /wire:dp-new | created | Project created (type: full_platform, client: Acme Corp) |
+| 2026-02-22 14:40 | /wire:dp-requirements-generate | complete | Generated requirements specification (3 files) |
+| 2026-02-22 15:12 | /wire:dp-requirements-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-22 16:00 | /wire:dp-requirements-review | approved | Reviewed by Jane Smith |
+| 2026-02-23 09:15 | /wire:dp-conceptual_model-generate | complete | Generated entity model with 8 entities |
+| 2026-02-23 10:30 | /wire:dp-conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity |
+| 2026-02-23 11:00 | /wire:dp-conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
+| 2026-02-23 11:15 | /wire:dp-conceptual_model-validate | pass | 12 checks passed, 0 failed |
+| 2026-02-23 14:00 | /wire:dp-conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity |
+| 2026-02-23 15:30 | /wire:dp-conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) |
+| 2026-02-23 15:45 | /wire:dp-conceptual_model-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-23 16:00 | /wire:dp-conceptual_model-review | approved | Reviewed by John Doe |
 ```

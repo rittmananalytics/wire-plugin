@@ -36,17 +36,17 @@ Set up Jira tracking for a data platform project. Supports two modes:
 - **Link mode**: Search an existing Jira project for issues that match framework artifacts and link to them instead of creating duplicates
 
 Can be used in three ways:
-- **During project creation**: Called automatically from `/dp:new` (Step 9.5) when the user opts in to Jira tracking
+- **During project creation**: Called automatically from `/wire:dp-new` (Step 9.5) when the user opts in to Jira tracking
 - **Mid-project enablement**: Run standalone on an existing project to retroactively add Jira tracking at any point
 - **Linking to existing boards**: When a Jira project already has issues (e.g. in a running sprint), search and link to the most appropriate existing issues
 
 ## Usage
 
 ```bash
-/dp:utils:jira-create YYYYMMDD_project_name
+/wire:dp-utils-jira-create YYYYMMDD_project_name
 ```
 
-When invoked standalone (not from `/dp:new`), prompt the user for the Jira project key and the desired mode (create or link).
+When invoked standalone (not from `/wire:dp-new`), prompt the user for the Jira project key and the desired mode (create or link).
 
 ## Prerequisites
 
@@ -65,20 +65,20 @@ When invoked standalone (not from `/dp:new`), prompt the user for the Jira proje
    - `client_name`
    - `project_type`
    - `artifacts` section (to determine in-scope artifacts)
-3. Accept `jira_project_key` from the calling context (provided by user during `/dp:new`), or if running standalone, ask the user directly:
+3. Accept `jira_project_key` from the calling context (provided by user during `/wire:dp-new`), or if running standalone, ask the user directly:
    ```
    What is the Jira project key? (e.g., DP, ACME, PROJ)
    ```
 
 ### Step 1.5: Determine Workflow Mode
 
-**If invoked from `/dp:new` with `jira_mode: "link"`**:
+**If invoked from `/wire:dp-new` with `jira_mode: "link"`**:
 - Proceed to **Step 2A** (Search for Existing Issues)
 
-**If invoked from `/dp:new` with `jira_mode: "create"` (or no mode specified)**:
+**If invoked from `/wire:dp-new` with `jira_mode: "create"` (or no mode specified)**:
 - Proceed to **Step 2** (Create Epic) — existing creation workflow
 
-**If invoked standalone** (not from `/dp:new`):
+**If invoked standalone** (not from `/wire:dp-new`):
 - After getting the Jira project key in Step 1, use `AskUserQuestion`:
 
 ```json
@@ -379,7 +379,7 @@ For any manually specified issue key, fetch it with `getJiraIssue` to verify it 
 
 **"Cancel":**
 - Skip Jira integration entirely
-- Continue to Step 10 of `/dp:new` (or exit if standalone)
+- Continue to Step 10 of `/wire:dp-new` (or exit if standalone)
 
 ### Step 2E: Add Linking Comments
 
@@ -509,7 +509,7 @@ All issue keys have been recorded in status.md.
 ```
 Note: Could not connect to Jira (Atlassian MCP server not configured).
 Skipping Jira issue creation. You can create issues later by running:
-/dp:utils:jira-create [folder]
+/wire:dp-utils-jira-create [folder]
 ```
 
 **Epic creation fails:**
@@ -622,22 +622,22 @@ If the file does not exist, create it with the header:
 Then append one row per execution:
 
 ```markdown
-| YYYY-MM-DD HH:MM | /dp:<command> | <result> | <detail> |
+| YYYY-MM-DD HH:MM | /wire:dp-<command> | <result> | <detail> |
 ```
 
 ### Field Definitions
 
 - **Timestamp**: Current date and time in `YYYY-MM-DD HH:MM` format (24-hour, local time)
-- **Command**: The `/dp:*` command that was invoked (e.g., `/dp:requirements:generate`, `/dp:new`, `/dp:dbt:validate`)
+- **Command**: The `/wire:dp-*` command that was invoked (e.g., `/wire:dp-requirements-generate`, `/wire:dp-new`, `/wire:dp-dbt-validate`)
 - **Result**: The outcome of the command. Use one of:
   - `complete` — generate command finished successfully
   - `pass` — validate command passed all checks
   - `fail` — validate command found failures
   - `approved` — review command: stakeholder approved
   - `changes_requested` — review command: stakeholder requested changes
-  - `created` — `/dp:new` created a new project
-  - `archived` — `/dp:archive` archived a project
-  - `removed` — `/dp:remove` deleted a project
+  - `created` — `/wire:dp-new` created a new project
+  - `archived` — `/wire:dp-archive` archived a project
+  - `removed` — `/wire:dp-remove` deleted a project
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
@@ -660,16 +660,16 @@ Then append one row per execution:
 
 | Timestamp | Command | Result | Detail |
 |-----------|---------|--------|--------|
-| 2026-02-22 14:35 | /dp:new | created | Project created (type: full_platform, client: Acme Corp) |
-| 2026-02-22 14:40 | /dp:requirements:generate | complete | Generated requirements specification (3 files) |
-| 2026-02-22 15:12 | /dp:requirements:validate | pass | 14 checks passed, 0 failed |
-| 2026-02-22 16:00 | /dp:requirements:review | approved | Reviewed by Jane Smith |
-| 2026-02-23 09:15 | /dp:conceptual_model:generate | complete | Generated entity model with 8 entities |
-| 2026-02-23 10:30 | /dp:conceptual_model:validate | fail | 2 issues: missing relationship, orphaned entity |
-| 2026-02-23 11:00 | /dp:conceptual_model:generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
-| 2026-02-23 11:15 | /dp:conceptual_model:validate | pass | 12 checks passed, 0 failed |
-| 2026-02-23 14:00 | /dp:conceptual_model:review | changes_requested | Reviewed by John Doe — add Customer entity |
-| 2026-02-23 15:30 | /dp:conceptual_model:generate | complete | Regenerated entity model (9 entities, added Customer) |
-| 2026-02-23 15:45 | /dp:conceptual_model:validate | pass | 14 checks passed, 0 failed |
-| 2026-02-23 16:00 | /dp:conceptual_model:review | approved | Reviewed by John Doe |
+| 2026-02-22 14:35 | /wire:dp-new | created | Project created (type: full_platform, client: Acme Corp) |
+| 2026-02-22 14:40 | /wire:dp-requirements-generate | complete | Generated requirements specification (3 files) |
+| 2026-02-22 15:12 | /wire:dp-requirements-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-22 16:00 | /wire:dp-requirements-review | approved | Reviewed by Jane Smith |
+| 2026-02-23 09:15 | /wire:dp-conceptual_model-generate | complete | Generated entity model with 8 entities |
+| 2026-02-23 10:30 | /wire:dp-conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity |
+| 2026-02-23 11:00 | /wire:dp-conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
+| 2026-02-23 11:15 | /wire:dp-conceptual_model-validate | pass | 12 checks passed, 0 failed |
+| 2026-02-23 14:00 | /wire:dp-conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity |
+| 2026-02-23 15:30 | /wire:dp-conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) |
+| 2026-02-23 15:45 | /wire:dp-conceptual_model-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-23 16:00 | /wire:dp-conceptual_model-review | approved | Reviewed by John Doe |
 ```

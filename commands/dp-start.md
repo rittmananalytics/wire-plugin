@@ -109,7 +109,7 @@ The first incomplete step becomes the "Next Action".
 
 ### Step 3: Present Overview
 
-**Invoke `/dp:status`** (no argument) to show the overview.
+**Invoke `/wire:dp-status`** (no argument) to show the overview.
 
 This displays a detailed artifact lifecycle table per project with **Next** action line under each.
 
@@ -138,68 +138,68 @@ Show the overview and suggest the next command based on the first incomplete art
 | Artifact | Incomplete Step | Suggested Command |
 |----------|-----------------|-------------------|
 | (no artifacts) | - | "Add source materials to `.wire/<folder>/artifacts/`" |
-| requirements | generate | `/dp:requirements:generate <folder>` |
-| requirements | validate | `/dp:requirements:validate <folder>` |
-| requirements | review | `/dp:requirements:review <folder>` |
-| workshops | generate | `/dp:workshops:generate <folder>` |
-| workshops | review | `/dp:workshops:review <folder>` |
-| pipeline_design | generate | `/dp:pipeline_design:generate <folder>` |
-| pipeline_design | validate | `/dp:pipeline_design:validate <folder>` |
-| pipeline_design | review | `/dp:pipeline_design:review <folder>` |
-| data_model | generate | `/dp:data_model:generate <folder>` |
-| data_model | validate | `/dp:data_model:validate <folder>` |
-| data_model | review | `/dp:data_model:review <folder>` |
-| mockups | generate | `/dp:mockups:generate <folder>` |
-| mockups | review | `/dp:mockups:review <folder>` |
-| pipeline | generate | `/dp:pipeline:generate <folder>` |
-| pipeline | validate | `/dp:pipeline:validate <folder>` |
-| pipeline | review | `/dp:pipeline:review <folder>` |
-| dbt | generate | `/dp:dbt:generate <folder>` |
-| dbt | validate | `/dp:dbt:validate <folder>` |
-| dbt | review | `/dp:dbt:review <folder>` |
-| semantic_layer | generate | `/dp:semantic_layer:generate <folder>` |
-| semantic_layer | validate | `/dp:semantic_layer:validate <folder>` |
-| semantic_layer | review | `/dp:semantic_layer:review <folder>` |
-| dashboards | generate | `/dp:dashboards:generate <folder>` |
-| dashboards | validate | `/dp:dashboards:validate <folder>` |
-| dashboards | review | `/dp:dashboards:review <folder>` |
-| viz_catalog | generate | `/dp:viz_catalog:generate <folder>` |
-| seed_data | generate | `/dp:seed_data:generate <folder>` |
-| seed_data | validate | `/dp:seed_data:validate <folder>` |
-| seed_data | review | `/dp:seed_data:review <folder>` |
-| data_refactor | generate | `/dp:data_refactor:generate <folder>` |
-| data_refactor | validate | `/dp:data_refactor:validate <folder>` |
-| data_refactor | review | `/dp:data_refactor:review <folder>` |
-| data_quality | generate | `/dp:data_quality:generate <folder>` |
-| data_quality | validate | `/dp:data_quality:validate <folder>` |
-| data_quality | review | `/dp:data_quality:review <folder>` |
-| uat | generate | `/dp:uat:generate <folder>` |
-| uat | review | `/dp:uat:review <folder>` |
-| deployment | generate | `/dp:deployment:generate <folder>` |
-| deployment | validate | `/dp:deployment:validate <folder>` |
-| deployment | review | `/dp:deployment:review <folder>` |
-| training | generate | `/dp:training:generate <folder>` |
-| training | validate | `/dp:training:validate <folder>` |
-| training | review | `/dp:training:review <folder>` |
-| documentation | generate | `/dp:documentation:generate <folder>` |
-| documentation | validate | `/dp:documentation:validate <folder>` |
-| documentation | review | `/dp:documentation:review <folder>` |
+| requirements | generate | `/wire:dp-requirements-generate <folder>` |
+| requirements | validate | `/wire:dp-requirements-validate <folder>` |
+| requirements | review | `/wire:dp-requirements-review <folder>` |
+| workshops | generate | `/wire:dp-workshops-generate <folder>` |
+| workshops | review | `/wire:dp-workshops-review <folder>` |
+| pipeline_design | generate | `/wire:dp-pipeline_design-generate <folder>` |
+| pipeline_design | validate | `/wire:dp-pipeline_design-validate <folder>` |
+| pipeline_design | review | `/wire:dp-pipeline_design-review <folder>` |
+| data_model | generate | `/wire:dp-data_model-generate <folder>` |
+| data_model | validate | `/wire:dp-data_model-validate <folder>` |
+| data_model | review | `/wire:dp-data_model-review <folder>` |
+| mockups | generate | `/wire:dp-mockups-generate <folder>` |
+| mockups | review | `/wire:dp-mockups-review <folder>` |
+| pipeline | generate | `/wire:dp-pipeline-generate <folder>` |
+| pipeline | validate | `/wire:dp-pipeline-validate <folder>` |
+| pipeline | review | `/wire:dp-pipeline-review <folder>` |
+| dbt | generate | `/wire:dp-dbt-generate <folder>` |
+| dbt | validate | `/wire:dp-dbt-validate <folder>` |
+| dbt | review | `/wire:dp-dbt-review <folder>` |
+| semantic_layer | generate | `/wire:dp-semantic_layer-generate <folder>` |
+| semantic_layer | validate | `/wire:dp-semantic_layer-validate <folder>` |
+| semantic_layer | review | `/wire:dp-semantic_layer-review <folder>` |
+| dashboards | generate | `/wire:dp-dashboards-generate <folder>` |
+| dashboards | validate | `/wire:dp-dashboards-validate <folder>` |
+| dashboards | review | `/wire:dp-dashboards-review <folder>` |
+| viz_catalog | generate | `/wire:dp-viz_catalog-generate <folder>` |
+| seed_data | generate | `/wire:dp-seed_data-generate <folder>` |
+| seed_data | validate | `/wire:dp-seed_data-validate <folder>` |
+| seed_data | review | `/wire:dp-seed_data-review <folder>` |
+| data_refactor | generate | `/wire:dp-data_refactor-generate <folder>` |
+| data_refactor | validate | `/wire:dp-data_refactor-validate <folder>` |
+| data_refactor | review | `/wire:dp-data_refactor-review <folder>` |
+| data_quality | generate | `/wire:dp-data_quality-generate <folder>` |
+| data_quality | validate | `/wire:dp-data_quality-validate <folder>` |
+| data_quality | review | `/wire:dp-data_quality-review <folder>` |
+| uat | generate | `/wire:dp-uat-generate <folder>` |
+| uat | review | `/wire:dp-uat-review <folder>` |
+| deployment | generate | `/wire:dp-deployment-generate <folder>` |
+| deployment | validate | `/wire:dp-deployment-validate <folder>` |
+| deployment | review | `/wire:dp-deployment-review <folder>` |
+| training | generate | `/wire:dp-training-generate <folder>` |
+| training | validate | `/wire:dp-training-validate <folder>` |
+| training | review | `/wire:dp-training-review <folder>` |
+| documentation | generate | `/wire:dp-documentation-generate <folder>` |
+| documentation | validate | `/wire:dp-documentation-validate <folder>` |
+| documentation | review | `/wire:dp-documentation-review <folder>` |
 | (all complete) | - | "All artifacts complete! Ready for handover." |
 
 **If "Create new project" selected:**
 
-Invoke the `/dp:new` command to run the interactive project creation workflow.
+Invoke the `/wire:dp-new` command to run the interactive project creation workflow.
 
 **If "Skip" selected:**
 
 Acknowledge and exit:
 ```
-No problem! You can run `/dp:start` anytime to see project status and select a project.
+No problem! You can run `/wire:dp-start` anytime to see project status and select a project.
 
 Quick commands:
-- `/dp:status` - View all project statuses
-- `/dp:status <folder>` - View specific project details
-- `/dp:requirements:generate <folder>` - Start with requirements
+- `/wire:dp-status` - View all project statuses
+- `/wire:dp-status <folder>` - View specific project details
+- `/wire:dp-requirements-generate <folder>` - Start with requirements
 ```
 
 ## Edge Cases

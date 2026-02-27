@@ -37,7 +37,7 @@ The data model specification narrows the LLM's generation space for the dbt phas
 ## Usage
 
 ```bash
-/dp:data_model:generate YYYYMMDD_project_name
+/wire:dp-data_model-generate YYYYMMDD_project_name
 ```
 
 ## Prerequisites
@@ -68,7 +68,7 @@ The data model specification narrows the LLM's generation space for the dbt phas
    - Verify all three default prerequisites are met. For each that is not:
      ```
      Error: [artifact] must be approved before data model generation.
-     Run: /dp:[artifact]:review <project_id>
+     Run: /wire:dp-[artifact]:review <project_id>
      ```
    - Read the following in order:
      - `requirements/requirements_specification.md`
@@ -324,10 +324,10 @@ Follow the Jira sync workflow in `dp/utils/jira_sync.md`:
 ### Next Steps
 
 1. Validate the data model:
-   /dp:data_model:validate <project_id>
+   /wire:dp-data_model-validate <project_id>
 
 2. After validation, review with analytics engineering lead:
-   /dp:data_model:review <project_id>
+   /wire:dp-data_model-review <project_id>
 
 NOTE: This is the most consequential review gate. Approving a model with
 incorrect grain, wrong join keys, or missing entities is expensive to fix
@@ -367,7 +367,7 @@ When `project_type` is `dashboard_first`, additionally generate:
 
 2. **`design/target_warehouse_ddl.sql`** — SQL DDL defining the target dimensional model (facts and dimensions) that will provide the measures and dimensions identified in the visualization catalog.
 
-These DDL files serve as inputs for seed data generation (`/dp:seed_data:generate`) and the dbt project structure.
+These DDL files serve as inputs for seed data generation (`/wire:dp-seed_data-generate`) and the dbt project structure.
 
 ## Output
 
@@ -411,22 +411,22 @@ If the file does not exist, create it with the header:
 Then append one row per execution:
 
 ```markdown
-| YYYY-MM-DD HH:MM | /dp:<command> | <result> | <detail> |
+| YYYY-MM-DD HH:MM | /wire:dp-<command> | <result> | <detail> |
 ```
 
 ### Field Definitions
 
 - **Timestamp**: Current date and time in `YYYY-MM-DD HH:MM` format (24-hour, local time)
-- **Command**: The `/dp:*` command that was invoked (e.g., `/dp:requirements:generate`, `/dp:new`, `/dp:dbt:validate`)
+- **Command**: The `/wire:dp-*` command that was invoked (e.g., `/wire:dp-requirements-generate`, `/wire:dp-new`, `/wire:dp-dbt-validate`)
 - **Result**: The outcome of the command. Use one of:
   - `complete` — generate command finished successfully
   - `pass` — validate command passed all checks
   - `fail` — validate command found failures
   - `approved` — review command: stakeholder approved
   - `changes_requested` — review command: stakeholder requested changes
-  - `created` — `/dp:new` created a new project
-  - `archived` — `/dp:archive` archived a project
-  - `removed` — `/dp:remove` deleted a project
+  - `created` — `/wire:dp-new` created a new project
+  - `archived` — `/wire:dp-archive` archived a project
+  - `removed` — `/wire:dp-remove` deleted a project
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
@@ -449,16 +449,16 @@ Then append one row per execution:
 
 | Timestamp | Command | Result | Detail |
 |-----------|---------|--------|--------|
-| 2026-02-22 14:35 | /dp:new | created | Project created (type: full_platform, client: Acme Corp) |
-| 2026-02-22 14:40 | /dp:requirements:generate | complete | Generated requirements specification (3 files) |
-| 2026-02-22 15:12 | /dp:requirements:validate | pass | 14 checks passed, 0 failed |
-| 2026-02-22 16:00 | /dp:requirements:review | approved | Reviewed by Jane Smith |
-| 2026-02-23 09:15 | /dp:conceptual_model:generate | complete | Generated entity model with 8 entities |
-| 2026-02-23 10:30 | /dp:conceptual_model:validate | fail | 2 issues: missing relationship, orphaned entity |
-| 2026-02-23 11:00 | /dp:conceptual_model:generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
-| 2026-02-23 11:15 | /dp:conceptual_model:validate | pass | 12 checks passed, 0 failed |
-| 2026-02-23 14:00 | /dp:conceptual_model:review | changes_requested | Reviewed by John Doe — add Customer entity |
-| 2026-02-23 15:30 | /dp:conceptual_model:generate | complete | Regenerated entity model (9 entities, added Customer) |
-| 2026-02-23 15:45 | /dp:conceptual_model:validate | pass | 14 checks passed, 0 failed |
-| 2026-02-23 16:00 | /dp:conceptual_model:review | approved | Reviewed by John Doe |
+| 2026-02-22 14:35 | /wire:dp-new | created | Project created (type: full_platform, client: Acme Corp) |
+| 2026-02-22 14:40 | /wire:dp-requirements-generate | complete | Generated requirements specification (3 files) |
+| 2026-02-22 15:12 | /wire:dp-requirements-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-22 16:00 | /wire:dp-requirements-review | approved | Reviewed by Jane Smith |
+| 2026-02-23 09:15 | /wire:dp-conceptual_model-generate | complete | Generated entity model with 8 entities |
+| 2026-02-23 10:30 | /wire:dp-conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity |
+| 2026-02-23 11:00 | /wire:dp-conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
+| 2026-02-23 11:15 | /wire:dp-conceptual_model-validate | pass | 12 checks passed, 0 failed |
+| 2026-02-23 14:00 | /wire:dp-conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity |
+| 2026-02-23 15:30 | /wire:dp-conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) |
+| 2026-02-23 15:45 | /wire:dp-conceptual_model-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-23 16:00 | /wire:dp-conceptual_model-review | approved | Reviewed by John Doe |
 ```

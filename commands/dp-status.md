@@ -34,9 +34,9 @@ Generate a concise status report showing artifact lifecycle progress. Outputs a 
 ## Usage
 
 ```bash
-/dp:status                    # Show all project statuses
-/dp:status 20260210_rowcal    # Show detailed status for specific project
-/dp:status --archived         # Show archived projects
+/wire:dp-status                    # Show all project statuses
+/wire:dp-status 20260210_rowcal    # Show detailed status for specific project
+/wire:dp-status --archived         # Show archived projects
 ```
 
 ## Workflow
@@ -122,7 +122,7 @@ For each project, show a project header followed by the artifact lifecycle table
 | Mock Data  | ⬜          | ⬜          | ⬜            | ⬜     |
 | LookML     | ⬜          | ⬜          | ⬜            | ⬜     |
 
-**Next:** `/dp:wireframe:review 20260205_omni_channel_retail_aws`
+**Next:** `/wire:dp-wireframe-review 20260205_omni_channel_retail_aws`
 
 ---
 
@@ -156,9 +156,9 @@ Same artifact lifecycle table, plus a Highlights section with additional context
 
 ### Highlights
 
-- **Next:** Run `/dp:mockdata:validate 20260210_rowcal` to validate mock data
+- **Next:** Run `/wire:dp-mockdata-validate 20260210_rowcal` to validate mock data
 - **Wireframe:** https://lovable.dev/projects/[ID]
-- **Snowflake:** Mock data not loaded yet (run `/dp:utils:load-mock-data` when ready)
+- **Snowflake:** Mock data not loaded yet (run `/wire:dp-utils-load-mock-data` when ready)
 ```
 
 **Highlights section rules:**
@@ -200,7 +200,7 @@ For each artifact in the appropriate phase order:
 4. Else if `snowflake_table` is not set: artifact NOT ready (show in Highlights)
 5. Else: artifact is ready, check next artifact
 
-**Note:** The load utility (`/dp:utils:load-mock-data`) is shown in Highlights when `snowflake_table` is not set, but does NOT block the normal lifecycle progression.
+**Note:** The load utility (`/wire:dp-utils-load-mock-data`) is shown in Highlights when `snowflake_table` is not set, but does NOT block the normal lifecycle progression.
 
 **For LookML** (full lifecycle):
 1. If `generate` is not `complete`: suggest generate command
@@ -229,32 +229,32 @@ For each artifact in the appropriate phase order:
 **Command Mapping**:
 ```
 Artifacts:
-  brief.generate       → /dp:brief:generate
-  brief.validate       → /dp:brief:validate
-  brief.review         → /dp:brief:review
-  wireframe.generate   → /dp:wireframe:generate
-  wireframe.validate   → /dp:wireframe:validate
-  wireframe.review     → /dp:wireframe:review
-  catalog.generate     → /dp:catalog:generate
-  schema.generate      → /dp:schema:generate
-  schema.validate      → /dp:schema:validate
-  schema.review        → /dp:schema:review
-  mockdata.generate    → /dp:mockdata:generate
-  mockdata.load        → /dp:utils:load-mock-data  ← utility, not lifecycle step
-  mockdata.validate    → /dp:mockdata:validate
-  mockdata.review      → /dp:mockdata:review
-  lookml.generate      → /dp:lookml:generate
-  lookml.validate      → /dp:lookml:validate
-  lookml.review        → /dp:lookml:review
+  brief.generate       → /wire:dp-brief-generate
+  brief.validate       → /wire:dp-brief-validate
+  brief.review         → /wire:dp-brief-review
+  wireframe.generate   → /wire:dp-wireframe-generate
+  wireframe.validate   → /wire:dp-wireframe-validate
+  wireframe.review     → /wire:dp-wireframe-review
+  catalog.generate     → /wire:dp-catalog-generate
+  schema.generate      → /wire:dp-schema-generate
+  schema.validate      → /wire:dp-schema-validate
+  schema.review        → /wire:dp-schema-review
+  mockdata.generate    → /wire:dp-mockdata-generate
+  mockdata.load        → /wire:dp-utils-load-mock-data  ← utility, not lifecycle step
+  mockdata.validate    → /wire:dp-mockdata-validate
+  mockdata.review      → /wire:dp-mockdata-review
+  lookml.generate      → /wire:dp-lookml-generate
+  lookml.validate      → /wire:dp-lookml-validate
+  lookml.review        → /wire:dp-lookml-review
 
 Dashboard-first artifacts:
-  viz_catalog.generate    → /dp:viz_catalog:generate     ← generate-only (like catalog)
-  seed_data.generate      → /dp:seed_data:generate
-  seed_data.validate      → /dp:seed_data:validate
-  seed_data.review        → /dp:seed_data:review
-  data_refactor.generate  → /dp:data_refactor:generate
-  data_refactor.validate  → /dp:data_refactor:validate
-  data_refactor.review    → /dp:data_refactor:review
+  viz_catalog.generate    → /wire:dp-viz_catalog-generate     ← generate-only (like catalog)
+  seed_data.generate      → /wire:dp-seed_data-generate
+  seed_data.validate      → /wire:dp-seed_data-validate
+  seed_data.review        → /wire:dp-seed_data-review
+  data_refactor.generate  → /wire:dp-data_refactor-generate
+  data_refactor.validate  → /wire:dp-data_refactor-validate
+  data_refactor.review    → /wire:dp-data_refactor-review
 ```
 
 ### Output Examples
@@ -274,7 +274,7 @@ Dashboard-first artifacts:
 | Mock Data  | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
 | LookML     | ⬜          | ⬜          | ⬜            | ⬜     |
 
-**Next:** `/dp:lookml:generate 0001_rowcal`
+**Next:** `/wire:dp-lookml-generate 0001_rowcal`
 
 ---
 
@@ -296,7 +296,7 @@ Summary: 1 project(s) | 0 ready for Prod
 
 ### Highlights
 
-- **Next:** Run `/dp:lookml:validate 0001_rowcal` to validate LookML
+- **Next:** Run `/wire:dp-lookml-validate 0001_rowcal` to validate LookML
 - **Wireframe:** https://lovable.dev/projects/c3dbf5fc-a317-4698-a9b5-c6f0c82e9ff7
 - **LookML:** 7 files generated (3 views, 1 explore, 3 dashboards)
 ```
@@ -311,7 +311,7 @@ If `jira` section exists in `status.md` and `jira.epic_key` is not null:
 4. If any discrepancies are found, add them to the Highlights section
 5. If Atlassian MCP is unavailable, skip silently
 
-This ensures Jira stays in sync every time `/dp:status` is run.
+This ensures Jira stays in sync every time `/wire:dp-status` is run.
 
 ## State Icons Reference
 
