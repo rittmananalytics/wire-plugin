@@ -32,6 +32,8 @@ argument-hint: <path-to-sow>
 
 Wire Autopilot takes a Statement of Work (SOW), asks a small set of clarifying questions, then autonomously executes the entire project lifecycle — generating, validating, and self-reviewing every artifact without further human involvement. It produces a complete, demonstrable set of deliverables.
 
+**Safety gates** automatically pause execution before any phase that could affect external systems — activating data connectors, running SQL against databases, or deploying to live environments. At each safety gate, Autopilot presents what it has done so far and asks for explicit confirmation before proceeding.
+
 Autopilot shares the same state files (`status.md`, `execution_log.md`) as the individual commands. A user can switch between Autopilot and manual commands at any point.
 
 ## Inputs
@@ -397,17 +399,61 @@ Process artifacts in the order specified by the project type:
 1. training
 2. documentation
 
+## Safety Gates
+
+Certain artifacts, when executed for real, can touch external systems — activating data connectors, running SQL against production databases, or deploying to live environments. Before processing any of these artifacts, Autopilot **must pause** and request explicit user confirmation.
+
+**Safety-gated artifacts:**
+
+| Artifact | Risk | Warning |
+|----------|------|---------|
+| `pipeline` | Activates real data connectors (Fivetran, Airbyte) that begin replicating from production sources | "This phase will generate pipeline configuration. When activated, this could start replicating data from your production source systems. Please confirm the target environment and connector credentials are correct before proceeding." |
+| `data_refactor` | Modifies dbt source definitions to point to real client data; validate step runs dbt against a real database | "This phase will switch dbt models from seed data to real client data sources. The validate step will run `dbt compile` and potentially `dbt run` against your database. Please confirm the database connection is pointing to the correct (non-production) environment." |
+| `data_quality` | Runs SQL-based data quality tests against the database | "This phase will run data quality tests that execute SQL queries against your database. Please confirm the target database connection is correct." |
+| `deployment` | Creates and potentially executes deployment scripts against live environments | "This phase will generate deployment runbooks and scripts. Executing these would deploy changes to a live environment. Please confirm you are ready to proceed with deployment planning." |
+
+**Safety gate behavior:**
+
+When the execution loop reaches a safety-gated artifact, it MUST:
+
+1. Pause execution
+2. Present a summary of all completed phases so far (from the checkpoint)
+3. Display the risk-specific warning message from the table above
+4. Use `AskUserQuestion` to get explicit confirmation:
+
+```json
+{
+  "questions": [{
+    "question": "[Warning message for this artifact]. How would you like to proceed?",
+    "header": "Safety Gate",
+    "options": [
+      {"label": "Proceed", "description": "Continue with this phase — I have verified the target environment"},
+      {"label": "Review first", "description": "Pause here so I can review the artifacts generated so far before continuing"},
+      {"label": "Stop here", "description": "End Autopilot execution — I will continue manually from this point"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+**Handling responses:**
+- **Proceed**: Continue with the artifact's generate/validate/review cycle
+- **Review first**: Output a summary of all files generated so far with their paths, then wait for the user to say "continue" before proceeding
+- **Stop here**: Output the final summary (Phase 4) with current progress and exit. The user can resume later with manual commands or re-invoke Autopilot.
+
 ## Execution Loop
 
 For each artifact in the sequence:
 
 1. **Check status**: Read `.wire/{folder_name}/status.md`. If this artifact's generate state is already `complete` and review state is `approved`, skip it.
 
-2. **Generate**: Execute the generate logic for this artifact (see Per-Artifact Blocks below).
+2. **Safety gate check**: If this artifact is in the safety-gated list (`pipeline`, `data_refactor`, `data_quality`, `deployment`), execute the Safety Gate protocol above before proceeding. If the user chooses "Stop here", jump to Phase 4 (Final Summary).
+
+3. **Generate**: Execute the generate logic for this artifact (see Per-Artifact Blocks below).
    - Update status.md: set `generate: complete`, `generated_date: [today]`
    - Log to execution_log.md
 
-3. **Validate** (if the artifact has a validate step): Execute validation checks.
+4. **Validate** (if the artifact has a validate step): Execute validation checks.
    - If validation **passes**: Update status.md: `validate: pass`
    - If validation **fails**:
      - Re-generate the artifact incorporating the specific validation failures
@@ -416,7 +462,7 @@ For each artifact in the sequence:
      - If still failing after 3 cycles, set `validate: fail`, log as blocked, continue to next artifact
    - Log to execution_log.md
 
-4. **Self-Review**: Execute the self-review for this artifact (see Self-Review Criteria below).
+5. **Self-Review**: Execute the self-review for this artifact (see Self-Review Criteria below).
    - If self-review **approves**: Update status.md: `review: approved`, `reviewed_by: "Wire Autopilot (self-review)"`, `reviewed_date: [today]`
    - If self-review **finds issues**:
      - Re-generate incorporating review feedback
@@ -426,15 +472,15 @@ For each artifact in the sequence:
      - If still failing, set `review: changes_requested`, add feedback to status.md, log as blocked
    - Log to execution_log.md
 
-5. **Jira sync** (if configured): Follow `dp/utils/jira_sync.md` to update Jira. If Jira fails, continue.
+6. **Jira sync** (if configured): Follow `dp/utils/jira_sync.md` to update Jira. If Jira fails, continue.
 
-6. **Update checkpoint**: Update `.wire/{folder_name}/autopilot_checkpoint.md` with:
+7. **Update checkpoint**: Update `.wire/{folder_name}/autopilot_checkpoint.md` with:
    - Move this artifact to "Completed Phases" with a brief summary
    - Update "Current Phase" to the next artifact
    - Add any key context discovered during this phase to "Key Context"
    - Add any decisions made to "Decisions Made"
 
-7. **Report progress**:
+8. **Report progress**:
    ```
    --- Phase Complete: [artifact_name] ---
    Status: [approved/blocked]
