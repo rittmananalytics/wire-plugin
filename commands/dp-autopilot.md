@@ -183,13 +183,17 @@ Type "no" to skip.
 
 Store any additional context as `additional_context`.
 
-## Step 1.7: Confirm and Launch
+## Step 1.7: Confirm, Launch, and Request Permissions
 
-Display summary:
+After gathering all inputs, use plan mode to present the execution plan and pre-authorize the bash operations needed for autonomous execution. This prevents Claude Code from prompting for permission at every shell command during Phases 2 and 3.
 
-```
-## Wire Autopilot Configuration
+1. Call `EnterPlanMode`
+2. Write a plan file with the following content (replacing placeholders with actual values):
 
+```markdown
+# Wire Autopilot Execution Plan
+
+## Configuration
 - **Client**: [client_name]
 - **Project**: [project_name]
 - **Type**: [project_type]
@@ -198,29 +202,52 @@ Display summary:
 - **Mockups**: [wireframe/pause_for_lovable or "N/A"]
 - **Additional Context**: [summary or "None"]
 
-### Artifact Sequence ([count] phases)
-[List the artifact sequence for the selected project_type]
+## Execution Sequence ([count] phases)
+[List the numbered artifact sequence for the selected project_type]
 
-Ready to begin autonomous execution. I will generate, validate, and self-review every artifact, reporting progress after each phase.
+## What Autopilot Will Do
+For each phase, Autopilot will:
+1. **Generate** the artifact from upstream outputs
+2. **Validate** against quality criteria (up to 3 retry cycles)
+3. **Self-review** for completeness and accuracy (up to 2 review cycles)
+4. Update status tracking and execution log
+
+## Safety Gates
+These phases will **pause for explicit confirmation** before proceeding:
+- **pipeline** — Activates data connectors
+- **data_refactor** — Runs dbt against real databases
+- **data_quality** — Executes SQL tests against databases
+- **deployment** — Deploys to live environments
+
+## Shell Operations Required
+Autopilot needs to run shell commands for:
+- Git operations (branch creation, status checks, commits)
+- Directory and file management (mkdir, cp)
+- dbt commands (compile, run, test, seed, deps)
+- Data quality validation scripts
+- File listing and existence checks
 ```
 
-Use `AskUserQuestion` to confirm:
+3. Call `ExitPlanMode` with the following `allowedPrompts` to pre-authorize shell operations:
 
 ```json
 {
-  "questions": [{
-    "question": "Launch Wire Autopilot with these settings?",
-    "header": "Confirm",
-    "options": [
-      {"label": "Launch Autopilot", "description": "Begin autonomous execution"},
-      {"label": "Change settings", "description": "Let me provide different settings"}
-    ],
-    "multiSelect": false
-  }]
+  "allowedPrompts": [
+    {"tool": "Bash", "prompt": "git operations (checkout, branch, status, add, commit, rev-parse, diff)"},
+    {"tool": "Bash", "prompt": "create project directories and copy files (mkdir, cp, mv)"},
+    {"tool": "Bash", "prompt": "run dbt commands (compile, run, test, seed, deps, debug, ls)"},
+    {"tool": "Bash", "prompt": "run data quality checks and validation scripts"},
+    {"tool": "Bash", "prompt": "list files and check file existence (ls, find, wc, cat, head, tail)"}
+  ]
 }
 ```
 
-If "Change settings", return to Step 1.2.
+4. If the user approves the plan, proceed to Phase 2.
+5. If the user rejects or requests changes, return to Step 1.2 to reconfigure.
+
+**Important**: Safety gates (`pipeline`, `data_refactor`, `data_quality`, `deployment`) still pause for explicit confirmation via `AskUserQuestion` regardless of pre-authorized permissions. The permissions only cover mechanical shell operations within each phase, not the decision to proceed with externally-impacting phases.
+
+**Runtime note**: This step uses Claude Code's plan mode (`EnterPlanMode`/`ExitPlanMode`). In Gemini CLI or other runtimes that do not support these tools, skip this step and proceed directly to Phase 2. Gemini CLI users should launch with appropriate permission flags (e.g., `--yolo`) for autonomous execution.
 
 ---
 
