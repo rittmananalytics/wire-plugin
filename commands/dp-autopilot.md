@@ -221,11 +221,12 @@ These phases will **pause for explicit confirmation** before proceeding:
 
 ## Shell Operations Required
 Autopilot needs to run shell commands for:
-- Git operations (branch creation, status checks, commits)
+- Git operations (branch creation, status checks, commits, push)
 - Directory and file management (mkdir, cp)
 - dbt commands (compile, run, test, seed, deps)
 - Data quality validation scripts
 - File listing and existence checks
+- GitHub CLI (create pull request)
 ```
 
 3. Call `ExitPlanMode` with the following `allowedPrompts` to pre-authorize shell operations:
@@ -233,11 +234,12 @@ Autopilot needs to run shell commands for:
 ```json
 {
   "allowedPrompts": [
-    {"tool": "Bash", "prompt": "git operations (checkout, branch, status, add, commit, rev-parse, diff)"},
+    {"tool": "Bash", "prompt": "git operations (checkout, branch, status, add, commit, push, rev-parse, diff)"},
     {"tool": "Bash", "prompt": "create project directories and copy files (mkdir, cp, mv)"},
     {"tool": "Bash", "prompt": "run dbt commands (compile, run, test, seed, deps, debug, ls)"},
     {"tool": "Bash", "prompt": "run data quality checks and validation scripts"},
-    {"tool": "Bash", "prompt": "list files and check file existence (ls, find, wc, cat, head, tail)"}
+    {"tool": "Bash", "prompt": "list files and check file existence (ls, find, wc, cat, head, tail)"},
+    {"tool": "Bash", "prompt": "GitHub CLI operations (gh pr create, gh pr view)"}
   ]
 }
 ```
@@ -295,6 +297,8 @@ Write to `.wire/{folder_name}/status.md`.
 Follow the Jira workflow in `dp/utils/jira_create.md`:
 - If `jira_mode` is "create": Create Epic → Task → Sub-task hierarchy
 - If `jira_mode` is "link": Search existing issues, link them
+- Assign all Task-level issues to a sprint (active, future, or newly created) — see Step 4.5 in jira_create.md
+- Start the sprint if it is not already active
 - Update status.md with issue keys
 - If Jira fails, note the failure and continue
 
@@ -479,6 +483,7 @@ For each artifact in the sequence:
 3. **Generate**: Execute the generate logic for this artifact (see Per-Artifact Blocks below).
    - Update status.md: set `generate: complete`, `generated_date: [today]`
    - Log to execution_log.md
+   - **Jira sync**: If Jira is configured, sync now — artifact=[artifact_name], action=generate, status=complete
 
 4. **Validate** (if the artifact has a validate step): Execute validation checks.
    - If validation **passes**: Update status.md: `validate: pass`
@@ -488,6 +493,7 @@ For each artifact in the sequence:
      - Maximum 3 generate-validate cycles
      - If still failing after 3 cycles, set `validate: fail`, log as blocked, continue to next artifact
    - Log to execution_log.md
+   - **Jira sync**: If Jira is configured, sync now — artifact=[artifact_name], action=validate, status=[pass/fail]
 
 5. **Self-Review**: Execute the self-review for this artifact (see Self-Review Criteria below).
    - If self-review **approves**: Update status.md: `review: approved`, `reviewed_by: "Wire Autopilot (self-review)"`, `reviewed_date: [today]`
@@ -498,8 +504,9 @@ For each artifact in the sequence:
      - Maximum 2 review cycles
      - If still failing, set `review: changes_requested`, add feedback to status.md, log as blocked
    - Log to execution_log.md
+   - **Jira sync**: If Jira is configured, sync now — artifact=[artifact_name], action=review, status=[approved/changes_requested]
 
-6. **Jira sync** (if configured): Follow `dp/utils/jira_sync.md` to update Jira. If Jira fails, continue.
+6. **Jira sync** (mandatory if configured): If `jira_project_key` is set in status.md's YAML frontmatter, you MUST have called the Jira sync workflow (`dp/utils/jira_sync.md`) after each lifecycle step above (generate, validate, review). This step is a checkpoint — verify all three syncs happened. If any were missed, sync them now. If the Jira API call fails, log the failure and continue — but you must always attempt the sync.
 
 7. **Update checkpoint**: Update `.wire/{folder_name}/autopilot_checkpoint.md` with:
    - Move this artifact to "Completed Phases" with a brief summary
@@ -512,6 +519,7 @@ For each artifact in the sequence:
    --- Phase Complete: [artifact_name] ---
    Status: [approved/blocked]
    Files: [list of created/updated files]
+   Jira: [synced/skipped/failed] (3 transitions: generate, validate, review)
    Progress: [N/total] phases complete
    Next: [next_artifact_name]
    ---
@@ -903,30 +911,33 @@ No specific validate step for viz_catalog.
 ### Generate
 
 **Input**: `design/data_model_specification.md`, dbt conventions (if found)
-**Output**: dbt project directory structure with models, tests, docs
+**Output**: dbt models in the repository's `dbt/` directory (NOT in `.wire/{folder_name}/dev/`). The only dbt-related output inside the project folder is `.wire/{folder_name}/dev/dbt_models_summary.md` (documentation only).
 
 **Process**:
 1. Check for project-specific dbt conventions file
-2. Determine dbt project location (detect existing or create new)
-3. Generate staging models:
-   - `stg_<source>__<entity>.sql` — source() calls, surrogate keys, renames, filters
-   - `_sources.yml` per source system with freshness
+2. Determine dbt project location: check if a `dbt/` directory exists in the repository root. If yes, use it. If not, create `dbt/` with `dbt_project.yml`, `models/`, `macros/` subdirectories.
+3. Generate staging models in `dbt/models/staging/<source_system>/`:
+   - `dbt/models/staging/<source_system>/stg_<source>__<entity>.sql` — source() calls, surrogate keys, renames, filters
+   - `dbt/models/staging/<source_system>/_sources.yml` per source system with freshness
+   - `dbt/models/staging/<source_system>/stg_<source_system>.yml` — model docs and tests
    - Materialized as view
-4. Generate integration models (if needed):
-   - `int__<entity>__<description>.sql` — cross-system joins, complex logic
+4. Generate integration models in `dbt/models/integration/`:
+   - `dbt/models/integration/int__<entity>.sql` — one per entity, consolidating staging inputs
+   - `dbt/models/integration/intermediate/int__<entity>__<description>.sql` — optional intermediate models for complex multi-step logic
    - Ephemeral or view materialization
-5. Generate warehouse models:
-   - `<entity>_dim.sql` — dimensions with SCD handling
-   - `<entity>_fct.sql` — facts with measures, FKs
-   - `<entity>_agg.sql` — pre-aggregated tables (if needed)
+   - **Always create integration models, even if they are simple pass-throughs with `select *` from the staging model.** This ensures consistent 3-layer architecture (staging → integration → warehouse) and makes it easy to add business logic later.
+5. Generate warehouse models in `dbt/models/warehouse/core/`:
+   - `dbt/models/warehouse/core/<entity>_dim.sql` — dimensions with SCD handling
+   - `dbt/models/warehouse/core/<entity>_fct.sql` — facts with measures, FKs
+   - `dbt/models/warehouse/core/<entity>_agg.sql` — pre-aggregated tables (if needed)
    - Table materialization
-6. Generate schema.yml files with:
+6. Generate schema.yml files (placed in the same directory as the models they document) with:
    - Model descriptions
    - Column descriptions in business terms
    - Tests: unique/not_null on PKs, relationships on FKs, accepted_values on enums
-7. Generate dbt_project.yml (if new project)
-8. **For dashboard_first with seed data**: Generate seed-based source definitions using `ref('seed_name')` instead of `source()` in staging models. Include seed config in dbt_project.yml.
-9. Create `dev/dbt_models_summary.md` with model counts, test coverage
+7. Generate `dbt/dbt_project.yml` (if new project)
+8. **For dashboard_first with seed data**: Generate seed-based source definitions using `ref('seed_name')` instead of `source()` in staging models. Include seed config in `dbt/dbt_project.yml`. Place seed CSVs in `dbt/seeds/`.
+9. Create `.wire/{folder_name}/dev/dbt_models_summary.md` with model counts, test coverage, and a directory listing of all generated files with their full paths
 
 **SQL Standards**:
 - 4-space indentation, max 80 char lines
@@ -970,6 +981,18 @@ No specific validate step for viz_catalog.
 - [ ] No circular dependencies
 - [ ] Proper layer order (staging → integration → warehouse)
 
+**Checks — Architecture Completeness**:
+- [ ] Integration layer exists: at least one `int__*.sql` file is present
+- [ ] Every warehouse model (`*_dim.sql`, `*_fct.sql`) references an integration model via `ref('int__...')`, not a staging model directly
+- [ ] Every staging entity that feeds a warehouse model has a corresponding integration model (even if it is a pass-through `select *`)
+
+**Checks — Directory Structure**:
+- [ ] All staging models are in `dbt/models/staging/<source_system>/`
+- [ ] All integration models are in `dbt/models/integration/` (or `dbt/models/integration/intermediate/`)
+- [ ] All warehouse models are in `dbt/models/warehouse/core/`
+- [ ] No `.sql` model files exist inside `.wire/{folder_name}/dev/` (documentation only goes there)
+- [ ] `dbt/dbt_project.yml` exists
+
 ### Self-Review
 
 **Criteria**:
@@ -978,6 +1001,7 @@ No specific validate step for viz_catalog.
 3. **Test Coverage**: All PKs, FKs, and critical fields have tests
 4. **Documentation**: All models and columns have business-friendly descriptions
 5. **Seed/Source Correctness**: Source definitions match the data sources (or seeds for dashboard_first)
+6. **Architecture**: All three layers present (staging → integration → warehouse), with integration models for every entity
 
 ---
 
@@ -1199,6 +1223,12 @@ No specific validate checks for UAT.
    - Post-deployment verification
    - Rollback procedure
    - Communication plan
+   - **dbt deployment section** (if dbt models were generated): The runbook MUST reference the actual file locations of generated dbt models (in `dbt/models/staging/`, `dbt/models/integration/`, `dbt/models/warehouse/core/`) and include instructions for running dbt from the `dbt/` directory:
+     - `cd dbt && dbt deps` (install packages)
+     - `dbt run --select staging` (run staging layer first)
+     - `dbt run --select integration` (then integration)
+     - `dbt run --select warehouse` (then warehouse)
+     - `dbt test` (run all tests)
 3. Generate deployment scripts (if applicable)
 4. Create production configuration files
 
@@ -1209,6 +1239,8 @@ No specific validate checks for UAT.
 - [ ] Rollback procedure is defined
 - [ ] Pre/post-deployment verification steps are clear
 - [ ] Deployment order handles dependencies
+- [ ] If dbt models exist: runbook references actual file paths in `dbt/models/` (not `.wire/` paths)
+- [ ] If dbt models exist: runbook includes `dbt run` and `dbt test` commands with correct working directory (`dbt/`)
 
 ### Self-Review
 
@@ -1380,6 +1412,78 @@ documentation: {generate: not_started, validate: not_started, review: not_starte
 
 ---
 
+# Phase 3.5: Commit, Push, and Pull Request
+
+After all artifacts have been processed (or when Autopilot stops due to a safety gate or blocked phases), commit the work, push to the remote, and create a pull request.
+
+## Step 3.5.1: Git Commit
+
+1. Stage all project files and any dbt/model files created:
+   ```bash
+   git add .wire/{folder_name}/ dbt/ 2>/dev/null; git add -u; true
+   ```
+
+2. Check if there are staged changes:
+   ```bash
+   git diff --cached --quiet
+   ```
+   If exit code is 0 (no changes), skip commit/push/PR and proceed to Phase 4 with a note: "No uncommitted changes — skipping PR creation."
+
+3. Commit with a descriptive message:
+   ```bash
+   git commit -m "Wire Autopilot: {project_name} — {project_type} ({completed_count}/{total_count} artifacts generated)
+
+   Client: {client_name}
+   Branch: {branch_name}
+   Project folder: .wire/{folder_name}/
+
+   Artifacts: {comma-separated list of completed artifact names}"
+   ```
+
+## Step 3.5.2: Git Push
+
+1. Push the branch to the remote:
+   ```bash
+   git push -u origin {branch_name}
+   ```
+2. If push fails (e.g., no remote configured), log: `"Note: Could not push to remote. Commit is saved locally."` and skip PR creation.
+
+## Step 3.5.3: Create Pull Request
+
+1. Check that `gh` CLI is available:
+   ```bash
+   which gh
+   ```
+   If not available, log: `"Note: GitHub CLI (gh) not found. Please create a PR manually for branch {branch_name}."` and skip to Phase 4.
+
+2. Create the PR:
+   ```bash
+   gh pr create \
+     --title "Wire: {client_name} — {project_name}" \
+     --body "## Summary
+
+   Wire Autopilot generated {completed_count}/{total_count} artifacts for the **{project_type}** project.
+
+   **Client**: {client_name}
+   **Project**: {project_name}
+   **Type**: {project_type}
+
+   ## Artifacts
+
+   | Artifact | Generate | Validate | Review |
+   |----------|----------|----------|--------|
+   | [for each artifact: name, gen_status, val_status, rev_status] |
+
+   ---
+   Generated by Wire Autopilot"
+   ```
+
+3. Capture the PR URL from the `gh pr create` output. Store as `pr_url` for inclusion in the Phase 4 summary.
+
+4. If PR creation fails, log: `"Note: Could not create PR. Branch has been pushed — create a PR manually."` and continue to Phase 4.
+
+---
+
 # Phase 4: Final Summary
 
 After all artifacts have been processed, output a comprehensive summary:
@@ -1391,6 +1495,7 @@ After all artifacts have been processed, output a comprehensive summary:
 **Type:** [project_type]
 **Branch:** [branch_name]
 **Folder:** .wire/[folder_name]/
+**Pull Request:** [pr_url or "Not created — see notes above"]
 
 ### Results
 
@@ -1421,11 +1526,10 @@ After all artifacts have been processed, output a comprehensive summary:
 [List of concrete deliverables that can be shown to the client, with file paths]
 
 ### Next Steps
-1. Review all generated artifacts in `.wire/[folder_name]/`
+1. Review the pull request: [pr_url]
 2. [If blocked phases] Address blocked phases manually, then re-run: `/wire:dp-autopilot [folder_name]`
-3. [If dbt generated] Run dbt models against real data
-4. Create a pull request: `/wire:dp-utils-create-pr [folder_name]`
-5. [If applicable] Schedule stakeholder demos using training materials
+3. [If dbt generated] Run dbt models against real data: `cd dbt && dbt deps && dbt run`
+4. [If applicable] Schedule stakeholder demos using training materials
 ```
 
 Log final entry to execution_log.md:

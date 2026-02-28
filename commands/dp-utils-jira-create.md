@@ -445,6 +445,90 @@ All issue keys have been recorded in status.md.
 
 ---
 
+## Step 4.5: Sprint Assignment (Both Paths)
+
+After creating or linking all Tasks and Sub-tasks, assign them to a sprint on the project's board.
+
+### 4.5.1: Find the Board
+
+Use the Atlassian MCP to find the board for this Jira project:
+
+```
+fetch:
+  method: GET
+  url: "/rest/agile/1.0/board?projectKeyOrId=[jira_project_key]"
+```
+
+Extract the first `boardId` from the response. If no board is found, log `"Note: No Jira board found for project [jira_project_key]. Skipping sprint assignment."` and proceed to Step 5.
+
+### 4.5.2: Check for Existing Sprints
+
+Query for active and future sprints on the board:
+
+```
+fetch:
+  method: GET
+  url: "/rest/agile/1.0/board/{boardId}/sprint?state=active,future"
+```
+
+### 4.5.3: Determine Sprint
+
+- If an **active sprint** exists: use it (store `sprintId` and `sprint_name`)
+- If no active sprint but a **future sprint** exists: use the future sprint (will be started in Step 4.5.5)
+- If **no sprints** exist: create a new sprint:
+
+```
+jiraWrite:
+  method: POST
+  url: "/rest/agile/1.0/sprint"
+  body:
+    name: "[client_name] — [project_name]"
+    boardId: [boardId]
+    startDate: "[today ISO format]"
+    endDate: "[today + 14 days ISO format]"
+```
+
+Store the returned `sprintId` and `sprint_name`.
+
+### 4.5.4: Move Issues into Sprint
+
+Move all Task-level issue keys into the sprint (Sub-tasks inherit from their parent):
+
+```
+jiraWrite:
+  method: POST
+  url: "/rest/agile/1.0/sprint/{sprintId}/issue"
+  body:
+    issues:
+      - "[task_key_1]"
+      - "[task_key_2]"
+      - ...
+```
+
+### 4.5.5: Start Sprint (if not active)
+
+If the sprint used in Step 4.5.3 is not already active (i.e., it was a future or newly created sprint), start it:
+
+```
+jiraWrite:
+  method: POST
+  url: "/rest/agile/1.0/sprint/{sprintId}"
+  body:
+    state: "active"
+    startDate: "[today ISO format]"
+    endDate: "[today + 14 days ISO format]"
+```
+
+### 4.5.6: Handle Edge Cases
+
+- **Kanban board** (no sprints concept): Skip sprint assignment silently — issues will appear on the Kanban board automatically
+- **Sprint API fails**: Log `"Note: Could not assign issues to sprint. Issues are created in backlog."` and continue — do not block the workflow
+- **Board has multiple active sprints**: Use the most recently created active sprint
+
+Store `sprint_name` for inclusion in the Step 6 report.
+
+---
+
 ## Common Steps (Both Paths)
 
 ### Step 5: Update status.md with Jira Keys
@@ -491,6 +575,7 @@ This ensures the Jira board immediately reflects the project's actual state rath
 **Epic**: [PROJ-123] [client_name] - [project_name] Data Platform
 **Tasks**: [count] artifact tasks
 **Sub-tasks**: [count] lifecycle step sub-tasks
+**Sprint**: [sprint_name] ([active/started])
 
 ### Issue Hierarchy
 
