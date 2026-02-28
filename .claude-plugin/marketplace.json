@@ -1,23 +1,14 @@
 {
-  "name": "wire",
+  "name": "rittman-analytics",
   "owner": {
     "name": "Rittman Analytics",
     "email": "hello@rittmananalytics.com"
   },
-  "metadata": {
-    "description": "The Wire Framework — AI-accelerated data platform delivery",
-    "version": "1.0.0"
-  },
+  "description": "Rittman Analytics plugin marketplace",
   "plugins": [
     {
       "name": "wire",
-      "source": "./",
-      "description": "The Wire Framework — AI-accelerated data platform delivery for the full lifecycle: requirements, design, development, testing, deployment, enablement",
-      "version": "1.0.0",
-      "author": {
-        "name": "Rittman Analytics",
-        "email": "hello@rittmananalytics.com"
-      }
+      "source": "./"
     }
   ]
 }
