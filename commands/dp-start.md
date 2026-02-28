@@ -125,7 +125,9 @@ Use `AskUserQuestion` to prompt user selection:
   - Description: Current next action from status.md
 - Plus static options:
   - Label: "Create new project"
-  - Description: "Set up a new data platform project"
+  - Description: "Set up a new data platform project interactively"
+  - Label: "Wire Autopilot"
+  - Description: "Autonomous end-to-end execution from a SOW — generates, validates, and reviews all artifacts automatically"
   - Label: "Skip"
   - Description: "Just exploring, no specific project"
 
@@ -189,6 +191,10 @@ Show the overview and suggest the next command based on the first incomplete art
 **If "Create new project" selected:**
 
 Invoke the `/wire:dp-new` command to run the interactive project creation workflow.
+
+**If "Wire Autopilot" selected:**
+
+Invoke the `/wire:dp-autopilot` command to begin autonomous end-to-end project execution. Autopilot will ask a small set of clarifying questions (SOW path, project type, client name, Jira preferences), then autonomously generate, validate, and self-review every artifact without further user involvement.
 
 **If "Skip" selected:**
 

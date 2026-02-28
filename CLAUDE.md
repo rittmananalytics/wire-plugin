@@ -9,6 +9,7 @@ All commands are available after installing and restarting Claude Code. Commands
 ```
 /wire:dp-start              — See all projects and available commands
 /wire:dp-new                — Create a new project
+/wire:dp-autopilot <sow>    — Autonomous end-to-end execution from SOW
 /wire:dp-status <project>   — Check project status
 ```
 
@@ -29,7 +30,7 @@ All commands are available after installing and restarting Claude Code. Commands
 
 ### Project data
 
-Project data is stored in `.wire/` in the current repository. This directory is created automatically when you run `/wire:dp-new`.
+Project data is stored in `.wire/` in the current repository. This directory is created automatically when you run `/wire:dp-new` or `/wire:dp-autopilot`.
 
 ## MCP Integrations
 
