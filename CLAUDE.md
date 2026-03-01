@@ -4,33 +4,33 @@ This plugin provides the **Wire Framework**, an AI-accelerated delivery system f
 
 ## Usage
 
-All commands are available after installing and restarting Claude Code. Commands are namespaced under `/wire:dp-*`:
+All commands are available after installing and restarting Claude Code. Commands are namespaced under `/wire:*`:
 
 ```
-/wire:dp-start              — See all projects and available commands
-/wire:dp-new                — Create a new project
-/wire:dp-autopilot <sow>    — Autonomous end-to-end execution from SOW
-/wire:dp-status <project>   — Check project status
+/wire:start              — See all projects and available commands
+/wire:new                — Create a new project
+/wire:autopilot <sow>    — Autonomous end-to-end execution from SOW
+/wire:status <project>   — Check project status
 ```
 
 ### Delivery commands
 
 ```
-/wire:dp-requirements-generate <project>   — Extract requirements from SOW
-/wire:dp-requirements-validate <project>   — Validate requirements
-/wire:dp-requirements-review <project>     — Stakeholder review
+/wire:requirements-generate <project>   — Extract requirements from SOW
+/wire:requirements-validate <project>   — Validate requirements
+/wire:requirements-review <project>     — Stakeholder review
 
-/wire:dp-conceptual_model-generate <project>
-/wire:dp-data_model-generate <project>
-/wire:dp-dbt-generate <project>
-/wire:dp-semantic_layer-generate <project>
-/wire:dp-dashboards-generate <project>
+/wire:conceptual_model-generate <project>
+/wire:data_model-generate <project>
+/wire:dbt-generate <project>
+/wire:semantic_layer-generate <project>
+/wire:dashboards-generate <project>
 ... (and -validate/-review for each)
 ```
 
 ### Project data
 
-Project data is stored in `.wire/` in the current repository. This directory is created automatically when you run `/wire:dp-new` or `/wire:dp-autopilot`.
+Project data is stored in `.wire/` in the current repository. This directory is created automatically when you run `/wire:new` or `/wire:autopilot`.
 
 ## MCP Integrations
 
