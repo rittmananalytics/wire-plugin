@@ -1,0 +1,331 @@
+version: 2
+
+models:
+  # Staging Model Example
+  - name: stg_salesforce__contact
+    description: |
+      Salesforce contact records with basic cleaning and standardization.
+      Filters out deleted records and normalizes field formats.
+    columns:
+      - name: contact_pk
+        description: |
+          Primary key for contact. Generated using surrogate_key from
+          Salesforce ID and source system name.
+        tests:
+          - unique
+          - not_null
+
+      - name: salesforce_contact_natural_key
+        description: Original Salesforce contact ID
+        tests:
+          - not_null
+          - unique
+
+      - name: salesforce_account_natural_key
+        description: Salesforce account ID this contact belongs to
+
+      - name: created_ts
+        description: Timestamp when contact was created in Salesforce (UTC)
+        tests:
+          - not_null
+
+      - name: updated_ts
+        description: Timestamp when contact was last modified (UTC)
+        tests:
+          - not_null
+
+      - name: last_activity_date
+        description: Date of last recorded activity for this contact
+
+      - name: email
+        description: Contact email address (normalized to lowercase)
+        tests:
+          - not_null
+
+      - name: first_name
+        description: Contact first name
+
+      - name: last_name
+        description: Contact last name
+        tests:
+          - not_null
+
+      - name: phone
+        description: Contact phone number
+
+      - name: job_title
+        description: Contact job title or role
+
+      - name: lead_source
+        description: Original source/channel where contact was acquired
+        tests:
+          - accepted_values:
+              values:
+                - 'web'
+                - 'referral'
+                - 'partner'
+                - 'event'
+                - 'advertisement'
+                - 'other'
+
+      - name: city
+        description: Contact mailing city
+
+      - name: state
+        description: Contact mailing state/province
+
+      - name: country
+        description: Contact mailing country
+
+      - name: employee_count
+        description: Number of employees at contact's company
+
+      - name: is_deleted
+        description: Whether this contact has been deleted in Salesforce
+
+      - name: source_updated_ts
+        description: System timestamp from source system
+
+  # Integration Model Example
+  - name: int__contact
+    description: |
+      Integrated contact data from Salesforce and HubSpot.
+      Deduplicates by email and enriches with engagement metrics.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - contact_pk
+            - source_system
+    columns:
+      - name: contact_pk
+        description: Primary key for contact
+        tests:
+          - not_null
+
+      - name: source_system
+        description: Source system for this contact record
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['salesforce', 'hubspot']
+
+      - name: source_natural_key
+        description: Natural key from source system
+        tests:
+          - not_null
+
+      - name: email
+        description: Contact email address
+        tests:
+          - not_null
+
+      - name: first_name
+        description: Contact first name
+
+      - name: last_name
+        description: Contact last name
+        tests:
+          - not_null
+
+      - name: engagement_level
+        description: |
+          Calculated engagement level based on days since last activity.
+          Categories: high (<=7 days), medium (<=30 days),
+          low (<=90 days), dormant (>90 days)
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['high', 'medium', 'low', 'dormant']
+
+      - name: days_since_last_activity
+        description: Number of days since last recorded activity
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "days_since_last_activity >= 0"
+
+      - name: has_email
+        description: Whether contact has a valid email address
+        tests:
+          - not_null
+
+      - name: has_phone
+        description: Whether contact has a phone number
+        tests:
+          - not_null
+
+  # Warehouse Model Example
+  - name: contact_dim
+    description: |
+      Contact dimension for BI consumption. Contains unified contact
+      information from all sources with enriched engagement and
+      transaction metrics. Updated nightly.
+    columns:
+      - name: contact_pk
+        description: "{{ doc('contact_pk') }}"
+        tests:
+          - unique
+          - not_null
+
+      - name: account_fk
+        description: Foreign key to account dimension
+        tests:
+          - relationships:
+              to: ref('account_dim')
+              field: account_pk
+
+      - name: created_ts
+        description: Timestamp when contact was first created (UTC)
+        tests:
+          - not_null
+
+      - name: updated_ts
+        description: Timestamp when contact was last updated (UTC)
+        tests:
+          - not_null
+
+      - name: last_activity_date
+        description: Date of last recorded activity
+
+      - name: last_activity_ts
+        description: Timestamp of last activity (UTC)
+
+      - name: first_transaction_ts
+        description: Timestamp of first transaction (UTC)
+
+      - name: last_transaction_ts
+        description: Timestamp of most recent transaction (UTC)
+
+      - name: contact_email
+        description: Contact email address
+        tests:
+          - not_null
+
+      - name: contact_first_name
+        description: Contact first name
+
+      - name: contact_last_name
+        description: Contact last name
+        tests:
+          - not_null
+
+      - name: contact_full_name
+        description: Contact full name (first + last)
+        tests:
+          - not_null
+
+      - name: contact_phone
+        description: Contact phone number
+
+      - name: contact_job_title
+        description: Contact job title or role
+
+      - name: contact_lead_source
+        description: Original acquisition source/channel
+
+      - name: contact_city
+        description: Contact city
+
+      - name: contact_state
+        description: Contact state/province
+
+      - name: contact_country
+        description: Contact country
+
+      - name: account_name
+        description: Name of account this contact belongs to
+
+      - name: account_industry
+        description: Industry of account
+
+      - name: account_type
+        description: Type of account (prospect, customer, partner, etc.)
+
+      - name: contact_engagement_level
+        description: Current engagement level (high, medium, low, dormant)
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['high', 'medium', 'low', 'dormant']
+
+      - name: days_since_last_activity
+        description: Days since last activity
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "days_since_last_activity >= 0"
+
+      - name: total_activities
+        description: Total number of recorded activities
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "total_activities >= 0"
+
+      - name: total_emails
+        description: Total number of email activities
+        tests:
+          - not_null
+
+      - name: total_calls
+        description: Total number of call activities
+        tests:
+          - not_null
+
+      - name: total_meetings
+        description: Total number of meeting activities
+        tests:
+          - not_null
+
+      - name: total_transactions
+        description: Total number of transactions
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "total_transactions >= 0"
+
+      - name: lifetime_value
+        description: Total transaction value (USD)
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "lifetime_value >= 0"
+
+      - name: average_transaction_value
+        description: Average value per transaction (USD)
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "average_transaction_value >= 0"
+
+      - name: days_since_last_transaction
+        description: Days since most recent transaction
+
+      - name: is_emailable
+        description: Whether contact can be reached by email
+        tests:
+          - not_null
+
+      - name: is_callable
+        description: Whether contact can be reached by phone
+        tests:
+          - not_null
+
+      - name: is_customer
+        description: Whether contact has made at least one transaction
+        tests:
+          - not_null
+
+      - name: is_active_customer
+        description: |
+          Whether contact has made a transaction in last 90 days
+        tests:
+          - not_null
+
+      - name: contact_source_system
+        description: Original source system for contact
+        tests:
+          - not_null
+
+      - name: contact_source_natural_key
+        description: Natural key from original source system
+        tests:
+          - not_null

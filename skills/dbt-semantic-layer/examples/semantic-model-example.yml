@@ -1,0 +1,128 @@
+# Example: BigQuery-based semantic model for an orders fact table
+# Spec version: Latest (dbt Core 1.12+ / Fusion)
+# Naming convention: sem_{entity}
+
+semantic_models:
+  - name: sem_orders
+    description: >
+      Semantic model for the orders fact table. Represents completed and pending
+      customer orders with revenue, quantity, and status dimensions. Grain: one
+      row per order.
+    model: ref('fct_orders')
+    primary_entity: order
+    defaults:
+      agg_time_dimension: order_date
+
+    entities:
+      - name: order
+        type: primary
+        expr: order_pk
+        description: "Surrogate primary key for the order"
+
+      - name: customer
+        type: foreign
+        expr: customer_fk
+        description: "Foreign key to the customer dimension"
+
+      - name: product
+        type: foreign
+        expr: product_fk
+        description: "Foreign key to the product dimension"
+
+      - name: location
+        type: foreign
+        expr: location_fk
+        description: "Foreign key to the location dimension"
+
+    dimensions:
+      # Time dimensions
+      - name: order_date
+        type: time
+        type_params:
+          time_granularity: day
+        expr: order_date
+        description: "Date the order was placed"
+
+      - name: shipped_date
+        type: time
+        type_params:
+          time_granularity: day
+        expr: shipped_date
+        description: "Date the order was shipped"
+
+      # Categorical dimensions
+      - name: order_status
+        type: categorical
+        expr: order_status
+        description: "Current status: pending, processing, shipped, completed, cancelled"
+
+      - name: order_channel
+        type: categorical
+        expr: order_channel
+        description: "Sales channel: web, mobile, in_store, phone"
+
+      - name: payment_method
+        type: categorical
+        expr: payment_method
+        description: "Payment method used: credit_card, debit_card, bank_transfer, paypal"
+
+      - name: is_completed
+        type: categorical
+        expr: "order_status = 'completed'"
+        description: "Whether the order has been completed"
+
+      - name: is_first_order
+        type: categorical
+        expr: is_first_order
+        description: "Whether this is the customer's first order"
+
+    measures:
+      - name: order_count
+        type: count
+        expr: "1"
+        description: "Count of orders"
+
+      - name: total_revenue
+        type: sum
+        expr: order_total
+        description: "Sum of order totals (net of discounts, before tax)"
+
+      - name: total_tax
+        type: sum
+        expr: tax_amount
+        description: "Sum of tax amounts"
+
+      - name: total_discount
+        type: sum
+        expr: discount_amount
+        description: "Sum of discount amounts applied"
+
+      - name: total_quantity
+        type: sum
+        expr: quantity
+        description: "Sum of item quantities ordered"
+
+      - name: unique_customers
+        type: count_distinct
+        expr: customer_fk
+        description: "Count of distinct customers who placed orders"
+
+      - name: avg_order_total
+        type: avg
+        expr: order_total
+        description: "Average order total"
+
+      - name: max_order_total
+        type: max
+        expr: order_total
+        description: "Maximum single order total"
+
+      - name: completed_orders
+        type: sum_boolean
+        expr: "order_status = 'completed'"
+        description: "Count of completed orders"
+
+      - name: median_order_total
+        type: median
+        expr: order_total
+        description: "Median order total"

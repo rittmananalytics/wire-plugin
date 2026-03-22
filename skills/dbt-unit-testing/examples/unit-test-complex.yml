@@ -1,0 +1,137 @@
+# Complex Unit Test Example
+# Model: fct_customer_orders
+# Tests: Window functions, date calculations, and multi-join business logic
+#
+# The warehouse fact model calculates:
+# - Order sequence number per customer (window function)
+# - Days since previous order (date calculation)
+# - Customer lifetime value running total (window function)
+# - Order classification based on value thresholds (case statement)
+
+unit_tests:
+  - name: test_fct_customer_orders__order_sequence_number
+    description: >
+      Verify that order_sequence_number correctly assigns sequential numbers
+      per customer based on order date, with the earliest order being 1.
+    model: fct_customer_orders
+    given:
+      - input: ref('int_orders_enriched')
+        rows:
+          - {order_pk: "order_001", customer_fk: "cust_A", ordered_at: "2024-01-10 08:00:00", order_total: 150.00}
+          - {order_pk: "order_002", customer_fk: "cust_A", ordered_at: "2024-02-15 10:00:00", order_total: 200.00}
+          - {order_pk: "order_003", customer_fk: "cust_A", ordered_at: "2024-03-20 14:00:00", order_total: 75.00}
+          - {order_pk: "order_004", customer_fk: "cust_B", ordered_at: "2024-01-05 09:00:00", order_total: 500.00}
+          - {order_pk: "order_005", customer_fk: "cust_B", ordered_at: "2024-04-01 11:00:00", order_total: 300.00}
+      - input: ref('dim_customers')
+        rows:
+          - {customer_pk: "cust_A", customer_name: "Alice Corp", customer_segment: "SMB"}
+          - {customer_pk: "cust_B", customer_name: "Bob Industries", customer_segment: "Enterprise"}
+    expect:
+      rows:
+        - {order_pk: "order_001", customer_fk: "cust_A", order_sequence_number: 1}
+        - {order_pk: "order_002", customer_fk: "cust_A", order_sequence_number: 2}
+        - {order_pk: "order_003", customer_fk: "cust_A", order_sequence_number: 3}
+        - {order_pk: "order_004", customer_fk: "cust_B", order_sequence_number: 1}
+        - {order_pk: "order_005", customer_fk: "cust_B", order_sequence_number: 2}
+
+  - name: test_fct_customer_orders__days_since_previous_order
+    description: >
+      Verify that days_since_previous_order is calculated correctly using
+      date_diff between consecutive orders per customer. First order should be NULL.
+    model: fct_customer_orders
+    given:
+      - input: ref('int_orders_enriched')
+        rows:
+          - {order_pk: "order_001", customer_fk: "cust_A", ordered_at: "2024-01-10 08:00:00", order_total: 100.00}
+          - {order_pk: "order_002", customer_fk: "cust_A", ordered_at: "2024-01-20 10:00:00", order_total: 100.00}
+          - {order_pk: "order_003", customer_fk: "cust_A", ordered_at: "2024-03-01 14:00:00", order_total: 100.00}
+          - {order_pk: "order_004", customer_fk: "cust_B", ordered_at: "2024-06-15 09:00:00", order_total: 100.00}
+      - input: ref('dim_customers')
+        rows:
+          - {customer_pk: "cust_A", customer_name: "Alice Corp", customer_segment: "SMB"}
+          - {customer_pk: "cust_B", customer_name: "Bob Industries", customer_segment: "Enterprise"}
+    expect:
+      rows:
+        - {order_pk: "order_001", customer_fk: "cust_A", days_since_previous_order: null}
+        - {order_pk: "order_002", customer_fk: "cust_A", days_since_previous_order: 10}
+        - {order_pk: "order_003", customer_fk: "cust_A", days_since_previous_order: 41}
+        - {order_pk: "order_004", customer_fk: "cust_B", days_since_previous_order: null}
+
+  - name: test_fct_customer_orders__running_lifetime_value
+    description: >
+      Verify that customer_lifetime_value_running_total correctly accumulates
+      order totals per customer in chronological order using a window function.
+    model: fct_customer_orders
+    given:
+      - input: ref('int_orders_enriched')
+        rows:
+          - {order_pk: "order_001", customer_fk: "cust_A", ordered_at: "2024-01-01 00:00:00", order_total: 100.00}
+          - {order_pk: "order_002", customer_fk: "cust_A", ordered_at: "2024-02-01 00:00:00", order_total: 250.00}
+          - {order_pk: "order_003", customer_fk: "cust_A", ordered_at: "2024-03-01 00:00:00", order_total: 50.00}
+      - input: ref('dim_customers')
+        rows:
+          - {customer_pk: "cust_A", customer_name: "Alice Corp", customer_segment: "SMB"}
+    expect:
+      rows:
+        - {order_pk: "order_001", customer_lifetime_value_running_total: 100.00}
+        - {order_pk: "order_002", customer_lifetime_value_running_total: 350.00}
+        - {order_pk: "order_003", customer_lifetime_value_running_total: 400.00}
+
+  - name: test_fct_customer_orders__order_value_classification
+    description: >
+      Verify the CASE statement that classifies orders into value tiers:
+      - 'high_value' when order_total >= 500
+      - 'medium_value' when order_total >= 100
+      - 'low_value' when order_total > 0
+      - 'zero_value' when order_total = 0 or NULL
+    model: fct_customer_orders
+    given:
+      - input: ref('int_orders_enriched')
+        rows:
+          - {order_pk: "order_high", customer_fk: "cust_A", ordered_at: "2024-01-01 00:00:00", order_total: 750.00}
+          - {order_pk: "order_med", customer_fk: "cust_A", ordered_at: "2024-01-02 00:00:00", order_total: 200.00}
+          - {order_pk: "order_low", customer_fk: "cust_A", ordered_at: "2024-01-03 00:00:00", order_total: 25.00}
+          - {order_pk: "order_zero", customer_fk: "cust_A", ordered_at: "2024-01-04 00:00:00", order_total: 0.00}
+          - {order_pk: "order_null", customer_fk: "cust_A", ordered_at: "2024-01-05 00:00:00", order_total: null}
+          - {order_pk: "order_boundary", customer_fk: "cust_A", ordered_at: "2024-01-06 00:00:00", order_total: 500.00}
+          - {order_pk: "order_boundary2", customer_fk: "cust_A", ordered_at: "2024-01-07 00:00:00", order_total: 100.00}
+      - input: ref('dim_customers')
+        rows:
+          - {customer_pk: "cust_A", customer_name: "Alice Corp", customer_segment: "SMB"}
+    expect:
+      rows:
+        - {order_pk: "order_high", order_value_tier: "high_value"}
+        - {order_pk: "order_med", order_value_tier: "medium_value"}
+        - {order_pk: "order_low", order_value_tier: "low_value"}
+        - {order_pk: "order_zero", order_value_tier: "zero_value"}
+        - {order_pk: "order_null", order_value_tier: "zero_value"}
+        - {order_pk: "order_boundary", order_value_tier: "high_value"}
+        - {order_pk: "order_boundary2", order_value_tier: "medium_value"}
+
+  - name: test_fct_customer_orders__bigquery_timestamp_handling
+    description: >
+      Verify correct handling of BigQuery TIMESTAMP precision in date
+      calculations. Uses SQL format to ensure precise timestamp comparisons.
+    model: fct_customer_orders
+    given:
+      - input: ref('int_orders_enriched')
+        format: sql
+        rows: |
+          SELECT
+            'order_ts1' AS order_pk,
+            'cust_A' AS customer_fk,
+            TIMESTAMP '2024-01-15 23:59:59.999999 UTC' AS ordered_at,
+            NUMERIC '100.00' AS order_total
+          UNION ALL
+          SELECT
+            'order_ts2' AS order_pk,
+            'cust_A' AS customer_fk,
+            TIMESTAMP '2024-01-16 00:00:00.000000 UTC' AS ordered_at,
+            NUMERIC '200.00' AS order_total
+      - input: ref('dim_customers')
+        rows:
+          - {customer_pk: "cust_A", customer_name: "Alice Corp", customer_segment: "SMB"}
+    expect:
+      rows:
+        - {order_pk: "order_ts1", days_since_previous_order: null}
+        - {order_pk: "order_ts2", days_since_previous_order: 1}

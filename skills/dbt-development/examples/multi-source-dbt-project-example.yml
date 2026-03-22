@@ -1,0 +1,252 @@
+# =============================================================================
+# MULTI-SOURCE DBT PROJECT CONFIGURATION EXAMPLE
+# File: dbt_project.yml
+# =============================================================================
+#
+# This example shows how to configure source enablement arrays and per-source
+# variables for the multi-source data warehouse framework.
+#
+# =============================================================================
+
+name: 'multi_source_warehouse'
+version: '1.0.0'
+
+require-dbt-version: [">=1.0.0", "<2.0.0"]
+config-version: 2
+
+profile: 'data_warehouse'
+
+# Paths
+model-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+seed-paths: ["data"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_modules", "dbt_packages"]
+
+# =============================================================================
+# MODEL CONFIGURATION
+# =============================================================================
+models:
+  multi_source_warehouse:
+    # Sources layer: lightweight views
+    sources:
+      materialized: view
+      schema: staging
+      +tags: ['staging']
+    
+    # Integration layer: views or tables depending on complexity
+    integration:
+      materialized: view
+      schema: integration
+      +tags: ['integration']
+    
+    # Warehouse layer: always tables for performance
+    warehouse:
+      materialized: table
+      +tags: ['warehouse']
+
+# =============================================================================
+# SEED CONFIGURATION
+# =============================================================================
+seeds:
+  multi_source_warehouse:
+    schema: seed
+    # Merge list files for entity resolution
+    companies_merge_list:
+      +column_types:
+        company_id: string
+        old_company_id: string
+    contacts_merge_list:
+      +column_types:
+        contact_id: string
+        old_contact_id: string
+
+# =============================================================================
+# VARIABLES - SOURCE ENABLEMENT
+# =============================================================================
+# 
+# These arrays control which sources are included in each entity type.
+# To add a source: add it to the appropriate array
+# To remove a source: remove it from the array (model will auto-disable)
+#
+# =============================================================================
+vars:
+  # -------------------------------------------------------------------------
+  # CRM WAREHOUSE SOURCES
+  # -------------------------------------------------------------------------
+  crm_warehouse_company_sources:
+    - 'hubspot_crm'
+    - 'xero_accounting'
+    - 'harvest_projects'
+    - 'stripe_payments'
+    # - 'salesforce_crm'  # Uncomment to enable
+    # - 'pipedrive_crm'   # Uncomment to enable
+  
+  crm_warehouse_contact_sources:
+    - 'hubspot_crm'
+    - 'mailchimp_email'
+    - 'harvest_projects'
+    - 'jira_projects'
+    - 'asana_projects'
+  
+  crm_warehouse_deal_sources:
+    - 'hubspot_crm'
+    # - 'salesforce_crm'
+  
+  # -------------------------------------------------------------------------
+  # FINANCE WAREHOUSE SOURCES
+  # -------------------------------------------------------------------------
+  finance_warehouse_invoice_sources:
+    - 'xero_accounting'
+    - 'harvest_projects'
+    # - 'quickbooks'
+  
+  finance_warehouse_payment_sources:
+    - 'xero_accounting'
+    - 'stripe_payments'
+  
+  finance_warehouse_transaction_sources:
+    - 'stripe_payments'
+  
+  # -------------------------------------------------------------------------
+  # PROJECTS WAREHOUSE SOURCES
+  # -------------------------------------------------------------------------
+  projects_warehouse_delivery_sources:
+    - 'asana_projects'
+    - 'jira_projects'
+    # - 'monday_projects'
+  
+  projects_warehouse_timesheet_sources:
+    - 'harvest_projects'
+    # - 'toggl_timesheets'
+  
+  # -------------------------------------------------------------------------
+  # MARKETING WAREHOUSE SOURCES
+  # -------------------------------------------------------------------------
+  marketing_warehouse_ad_campaign_sources:
+    - 'google_ads'
+    - 'facebook_ads'
+    - 'linkedin_ads'
+  
+  marketing_warehouse_email_sources:
+    - 'mailchimp_email'
+    - 'hubspot_email'
+  
+  # -------------------------------------------------------------------------
+  # PRODUCT WAREHOUSE SOURCES
+  # -------------------------------------------------------------------------
+  product_warehouse_event_sources:
+    - 'segment_events'
+    # - 'mixpanel_events'
+    # - 'amplitude_events'
+  
+  # =========================================================================
+  # PER-SOURCE CONFIGURATION
+  # =========================================================================
+  
+  # -------------------------------------------------------------------------
+  # HubSpot CRM
+  # -------------------------------------------------------------------------
+  stg_hubspot_crm_id-prefix: 'hubspot-'
+  stg_hubspot_crm_etl: 'fivetran'
+  stg_hubspot_crm_database: 'raw_data'
+  stg_hubspot_crm_schema: 'fivetran_hubspot'
+  
+  # -------------------------------------------------------------------------
+  # Xero Accounting
+  # -------------------------------------------------------------------------
+  stg_xero_accounting_id-prefix: 'xero-'
+  stg_xero_accounting_etl: 'fivetran'
+  stg_xero_accounting_database: 'raw_data'
+  stg_xero_accounting_schema: 'fivetran_xero'
+  
+  # -------------------------------------------------------------------------
+  # Harvest Projects
+  # -------------------------------------------------------------------------
+  stg_harvest_projects_id-prefix: 'harvest-'
+  stg_harvest_projects_etl: 'stitch'
+  stg_harvest_projects_database: 'raw_data'
+  stg_harvest_projects_schema: 'stitch_harvest'
+  stg_harvest_projects_staff_email_domain: 'yourcompany.com'
+  
+  # -------------------------------------------------------------------------
+  # Stripe Payments
+  # -------------------------------------------------------------------------
+  stg_stripe_payments_id-prefix: 'stripe-'
+  stg_stripe_payments_etl: 'stitch'
+  stg_stripe_payments_database: 'raw_data'
+  stg_stripe_payments_schema: 'stitch_stripe'
+  
+  # -------------------------------------------------------------------------
+  # Asana Projects
+  # -------------------------------------------------------------------------
+  stg_asana_projects_id-prefix: 'asana-'
+  stg_asana_projects_etl: 'stitch'
+  stg_asana_projects_database: 'raw_data'
+  stg_asana_projects_schema: 'stitch_asana'
+  
+  # -------------------------------------------------------------------------
+  # Jira Projects
+  # -------------------------------------------------------------------------
+  stg_jira_projects_id-prefix: 'jira-'
+  stg_jira_projects_etl: 'fivetran'
+  stg_jira_projects_database: 'raw_data'
+  stg_jira_projects_schema: 'fivetran_jira'
+  stg_jira_projects_jira_url: 'yourcompany.atlassian.net/jira'
+  
+  # -------------------------------------------------------------------------
+  # Mailchimp Email
+  # -------------------------------------------------------------------------
+  stg_mailchimp_email_id-prefix: 'mailchimp-'
+  stg_mailchimp_email_etl: 'stitch'
+  stg_mailchimp_email_database: 'raw_data'
+  stg_mailchimp_email_schema: 'stitch_mailchimp'
+  
+  # -------------------------------------------------------------------------
+  # Google Ads
+  # -------------------------------------------------------------------------
+  stg_google_ads_id-prefix: 'gads-'
+  stg_google_ads_etl: 'fivetran'
+  stg_google_ads_database: 'raw_data'
+  stg_google_ads_schema: 'fivetran_google_ads'
+  
+  # -------------------------------------------------------------------------
+  # Facebook Ads
+  # -------------------------------------------------------------------------
+  stg_facebook_ads_id-prefix: 'fbads-'
+  stg_facebook_ads_etl: 'fivetran'
+  stg_facebook_ads_database: 'raw_data'
+  stg_facebook_ads_schema: 'fivetran_facebook_ads'
+  
+  # -------------------------------------------------------------------------
+  # LinkedIn Ads
+  # -------------------------------------------------------------------------
+  stg_linkedin_ads_id-prefix: 'liads-'
+  stg_linkedin_ads_etl: 'fivetran'
+  stg_linkedin_ads_database: 'raw_data'
+  stg_linkedin_ads_schema: 'fivetran_linkedin_ads'
+  
+  # -------------------------------------------------------------------------
+  # Segment Events
+  # -------------------------------------------------------------------------
+  stg_segment_events_id-prefix: 'segment-'
+  stg_segment_events_database: 'raw_data'
+  stg_segment_events_schema: 'segment_production'
+  stg_segment_events_site: 'yourcompany.com'
+  
+  # =========================================================================
+  # FEATURE FLAGS
+  # =========================================================================
+  
+  # Enable manual merge files for entity resolution
+  enable_companies_merge_file: true
+  enable_contacts_merge_file: true
+  
+  # Enable IP-based geo enrichment
+  enable_ip_geo_enrichment: false
+  
+  # Attribution settings
+  attribution_lookback_days: 30
+  attribution_conversion_event: 'purchase'

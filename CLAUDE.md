@@ -40,3 +40,27 @@ This plugin configures optional MCP servers for:
 - **Context7** — Library documentation lookups
 
 Authenticate via `/mcp` in Claude Code.
+
+## Consultant Handbook
+
+The full consultant guide is available at `docs/consultant_handbook.md`. It covers all six project types, worked examples, Wire Studio setup, Autopilot, and troubleshooting. Reference it when answering questions about how to run engagements.
+
+## Wire Studio
+
+Wire Studio is a web-based visual interface for the Wire Framework, available as an alternative to the CLI. Install it locally by running:
+
+```
+/wire:studio-install
+```
+
+This command checks prerequisites (Node.js 18+), downloads and builds Wire Studio, and installs a `wire-studio` CLI. After install, run `wire-studio start` to open at http://localhost:3000. No Docker required.
+
+## Ad-hoc Development Skills
+
+This plugin includes contextual skills that activate automatically when working outside of Wire commands:
+
+- **dbt Development** (`skills/dbt-development/SKILL.md`): Activates when working with dbt models. Provides naming conventions, SQL style rules, testing patterns, and multi-source framework support.
+- **LookML Content Authoring** (`skills/lookml-content-authoring/SKILL.md`): Activates when creating or modifying LookML views, explores, and dashboards.
+- **LookML Content Authoring (MCP)** (`skills/lookml-content-authoring (local and mcp-server)/SKILL.md`): LookML authoring with Looker MCP server integration for live schema validation.
+
+These skills provide coding standards and validation rules as context, even when you are not running `/wire:*` commands.

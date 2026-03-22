@@ -1,0 +1,106 @@
+# Example: Metrics covering all five types
+# Spec version: Latest (dbt Core 1.12+ / Fusion)
+# Naming convention: verb_noun
+#
+# These metrics reference measures defined in sem_orders (semantic-model-example.yml)
+# and sem_website_sessions (assumed to exist for the conversion metric example).
+
+metrics:
+  # ---------------------------------------------------------------------------
+  # 1. Simple Metric
+  #    Wraps a single measure with an optional filter.
+  # ---------------------------------------------------------------------------
+  - name: count_completed_orders
+    description: "Total number of completed orders"
+    type: simple
+    type_params:
+      measure: order_count
+    filter: |
+      {{ Dimension('order__order_status') }} = 'completed'
+
+  - name: sum_revenue
+    description: "Total revenue from all orders"
+    type: simple
+    type_params:
+      measure: total_revenue
+
+  # ---------------------------------------------------------------------------
+  # 2. Derived Metric
+  #    Mathematical operations on other metrics.
+  # ---------------------------------------------------------------------------
+  - name: avg_revenue_per_customer
+    description: "Average revenue per unique customer"
+    type: derived
+    type_params:
+      expr: sum_revenue / count_unique_customers
+      metrics:
+        - name: sum_revenue
+        - name: count_unique_customers
+          offset_window: null
+
+  - name: count_unique_customers
+    description: "Number of distinct customers who placed orders"
+    type: simple
+    type_params:
+      measure: unique_customers
+
+  # ---------------------------------------------------------------------------
+  # 3. Cumulative Metric
+  #    Running totals over time windows.
+  # ---------------------------------------------------------------------------
+
+  # 3a. Rolling 28-day revenue
+  - name: cumulative_revenue_28d
+    description: "Rolling 28-day cumulative revenue"
+    type: cumulative
+    type_params:
+      measure: total_revenue
+      window: 28
+
+  # 3b. Month-to-date revenue (resets at start of each month)
+  - name: cumulative_revenue_mtd
+    description: "Month-to-date cumulative revenue"
+    type: cumulative
+    type_params:
+      measure: total_revenue
+      grain_to_date: month
+
+  # ---------------------------------------------------------------------------
+  # 4. Ratio Metric
+  #    Divides one metric by another for rates and percentages.
+  # ---------------------------------------------------------------------------
+  - name: rate_order_completion
+    description: "Percentage of all orders that are completed"
+    type: ratio
+    type_params:
+      numerator: count_completed_orders
+      denominator: count_all_orders
+
+  - name: count_all_orders
+    description: "Total number of orders regardless of status"
+    type: simple
+    type_params:
+      measure: order_count
+
+  # ---------------------------------------------------------------------------
+  # 5. Conversion Metric
+  #    Measures the rate at which a base event leads to a conversion event.
+  #    Requires two semantic models sharing a common entity.
+  #
+  #    This example assumes:
+  #    - sem_website_sessions exists with a `session_count` measure
+  #      and a `customer` foreign entity
+  #    - sem_orders exists with an `order_count` measure
+  #      and a `customer` foreign entity
+  # ---------------------------------------------------------------------------
+  - name: rate_visit_to_purchase
+    description: >
+      Conversion rate from website session to purchase within 7 days.
+      Tracked at the customer entity level.
+    type: conversion
+    type_params:
+      entity: customer
+      calculation: conversion_rate
+      base_measure: session_count
+      conversion_measure: order_count
+      window: 7
