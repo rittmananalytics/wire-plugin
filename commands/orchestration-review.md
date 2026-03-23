@@ -1,9 +1,9 @@
 ---
-description: Archive a completed project
+description: Review orchestration setup with stakeholders
 argument-hint: <project-folder>
 ---
 
-# Archive a completed project
+# Review orchestration setup with stakeholders
 
 ## User Input
 
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"archive\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.3.1\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"orchestration-review\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.3.1\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -76,147 +76,131 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Archive a completed Data Platform project
-argument-hint: <dashboard-folder>
+description: Review the orchestration layer with stakeholders — covers approach, asset/job coverage, and operational readiness
+argument-hint: <project-folder>
 ---
 
-# Data Platform Archive Project Command
+# Orchestration Review Command
 
 ## Purpose
 
-Move a completed project to the archive folder to keep the active project list small. Archived projects are excluded from `/wire:status` and `/wire:start` scans but remain accessible via `/wire:status --archived`.
+Present the orchestration layer design to the technical lead or client for approval. This review covers the chosen orchestration tool, the asset/job graph, schedule cadences, and operational considerations.
 
-## Usage
+## Prerequisites
 
-```bash
-/wire:archive 20260210_rowcal
-```
+- `orchestration` validate must be complete (status: `complete` not `failed`)
 
 ## Workflow
 
-### Step 1: List Active Projects
+### Step 1: Load Context
 
-**Process**:
-1. Use Glob to find all active project folders: `.wire/[0-9]*_*/status.md`
-2. If `$ARGUMENTS` is provided, match against known projects
-3. If no arguments, present selection
+1. Read `.wire/<project_id>/status.md` — confirm `orchestration.validate: complete`
+2. Read `.wire/<project_id>/development/orchestration/dagster_setup.md` **or** `dbt_cloud_config.md` depending on `orchestration_tool`
+3. Read `.wire/<project_id>/development/orchestration/.orchestration_validation.md` for validation findings
+4. Read `.wire/<project_id>/design/pipeline_design.md` for run cadences and source systems
 
-**If no projects found**:
-```
-No active projects found in `.wire/`. Nothing to archive.
-```
+### Step 2: Search Meeting Context
 
-### Step 2: Select Project to Archive
+Search for relevant meeting context using the Fathom MCP server (`specs/utils/meeting_context.md`):
+- Search terms: "orchestration", "dagster", "dbt cloud", "scheduling", "pipeline execution", "job scheduling", "data freshness"
+- Note any prior decisions or concerns about orchestration tool choice
 
-**If argument provided**: Validate the folder exists in `.wire/`
+### Step 3: Present Review Summary
 
-**If no argument**: Use `AskUserQuestion` to present project options:
+Present a structured summary for the reviewer:
 
-```json
-{
-  "questions": [{
-    "question": "Which project do you want to archive?",
-    "header": "Archive",
-    "options": [
-      {"label": "20260210_rowcal", "description": "Client: RowCal"},
-      {"label": "20260203_b2b_template_tabs", "description": "Client: Internal"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
+```markdown
+## Orchestration Review: <project_name>
 
-Build options dynamically from discovered projects. Include up to 4 projects as options (AskUserQuestion limit). If more than 4 projects exist, list them all in chat first and ask user to specify by name.
+**Tool chosen**: <Dagster | dbt Cloud>
+**Validation**: PASS
+**Meeting context**: [any relevant prior discussions]
 
-### Step 3: Confirm Archive
+### What Was Built
 
-**Use AskUserQuestion** for confirmation:
+[2-3 sentence summary of the orchestration setup]
 
-```json
-{
-  "questions": [{
-    "question": "Archive this project? It will be moved to .wire/archive/ and hidden from /wire:status and /wire:start.",
-    "header": "Confirm",
-    "options": [
-      {"label": "Yes, archive it", "description": "Move project to .wire/archive/"},
-      {"label": "Cancel", "description": "Keep the project active"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
+### Asset / Job Coverage
 
-If user selects "Cancel":
-```
-Archive cancelled. No changes were made.
-```
-And exit.
+<For Dagster>
+| Asset Group | Assets | Cadence |
+|------------|--------|---------|
+[one row per group]
 
-### Step 4: Move to Archive
+<For dbt Cloud>
+| Job | Trigger | Models in scope |
+|-----|---------|----------------|
+[one row per job]
 
-**Process**:
-1. Create archive directory if it doesn't exist:
-   ```bash
-   mkdir -p .wire/archive/
-   ```
-2. Move the project folder:
-   ```bash
-   git mv .wire/{folder_name}/ .wire/archive/{folder_name}/
-   ```
+### Schedule Cadences
 
-### Step 5: Confirm Archive
+[Table: cadence name, frequency, assets/models, timezone]
 
-Output confirmation:
+### Operational Considerations
 
-```
-## Project Archived
+- **Monitoring**: [how failures will be detected and alerted]
+- **Retry policy**: [any retry/backfill strategy]
+- **Secrets management**: [how credentials are handled]
+- **Local dev**: [how developers run the pipeline locally]
 
-**Moved:** `.wire/{folder_name}/` → `.wire/archive/{folder_name}/`
+### Open Questions
 
-The project won't appear in `/wire:status` or `/wire:start`.
-
-To view archived projects: `/wire:status --archived`
+[Any items requiring stakeholder input before approval]
 ```
 
-## Edge Cases
+### Step 4: Gather Review Feedback
 
-### No Projects Exist
+Ask the reviewer:
 
-If no project folders are found:
 ```
-No active projects found in `.wire/`. Nothing to archive.
-```
+Please review the orchestration setup above.
 
-### Project Not Found
+1. Is the orchestration tool choice (Dagster / dbt Cloud) correct for this project?
+2. Do the schedule cadences match the agreed SLAs from the requirements?
+3. Are there any missing source systems or dbt models that should be orchestrated?
+4. Any concerns about operational readiness?
 
-If the specified project doesn't exist:
-```
-Project "{folder_name}" not found in `.wire/`.
-
-Active projects:
-[list active projects]
-```
-
-### Already Archived
-
-If the project is already in `.wire/archive/`:
-```
-Project "{folder_name}" is already archived.
+Outcome:
+- Approved — orchestration is ready for deployment
+- Changes requested — describe what needs to change
+- Needs discussion — flag the topic for a follow-up conversation
 ```
 
-### Git Not Available
+### Step 5: Record Outcome
 
-If `git mv` fails, fall back to regular move:
-```bash
-mv .wire/{folder_name}/ .wire/archive/{folder_name}/
+**If Approved**:
+
+Update `.wire/<project_id>/status.md`:
+```yaml
+orchestration:
+  review: approved
+  review_date: <today>
+  reviewer: <reviewer_name>
 ```
 
-## Output
+Output:
+```
+## Orchestration Approved ✓
 
-This command:
-- Moves `.wire/{folder_name}/` to `.wire/archive/{folder_name}/`
+Orchestration layer is approved and ready for deployment.
 
-Final output is a confirmation message.
+Next step: `/wire:deployment:generate <project>` — include orchestration setup in the deployment runbook
+```
+
+**If Changes Requested**:
+
+Record the feedback in status.md notes, set `review: not_started`, and output required changes.
+
+**If Needs Discussion**:
+
+Record the open topics in status.md notes and output next steps for resolution.
+
+### Step 6: Sync to Jira (Optional)
+
+Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
+- Artifact: `orchestration`
+- Action: `review`
+- Status: `approved` / `changes_requested` / `discussion`
 
 Execute the complete workflow as specified above.
 

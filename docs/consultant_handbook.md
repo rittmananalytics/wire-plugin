@@ -385,6 +385,10 @@ graph LR
 /wire:utils-run-dbt <project_id>
 /wire:dbt-review <project_id>
 
+/wire:orchestration-generate <project_id>    # choose Dagster or dbt Cloud
+/wire:orchestration-validate <project_id>
+/wire:orchestration-review <project_id>
+
 /wire:semantic_layer-generate <project_id>
 /wire:semantic_layer-validate <project_id>
 /wire:semantic_layer-review <project_id>
@@ -548,6 +552,21 @@ Runs the generated dbt models in dbt Cloud or locally. Verify all models build a
 /wire:dbt-validate <project_id>
 ```
 Validates dbt models against a comprehensive checklist: file and model naming conventions (singular names, correct layer prefixes/suffixes), field naming conventions (`_pk`, `_fk`, `_ts`, boolean prefixes), field ordering, SQL structure (CTE patterns, style compliance), model configuration (materialization by layer), testing coverage (PK tests, FK relationships, integration model unique combinations), documentation coverage (100% for staging and warehouse layers), and optionally runs sqlfluff linting. Produces a structured validation report with severity-rated issues (critical, important, nice-to-have) and actionable recommendations.
+
+```
+/wire:orchestration-generate <project_id>
+```
+Sets up the orchestration layer. Prompts you to choose between **Dagster** (Python-native, assets-first) and **dbt Cloud** (managed scheduling):
+
+- **Dagster**: scaffolds a Dagster project, adds `dagster-dbt` integration via a `DbtProjectComponent` YAML (one asset per dbt model), generates `@dg.asset` definitions per source system, and creates schedules/sensors matching the pipeline design cadences. Run locally with `dg dev` (Dagster UI at localhost:3000) and `dg launch --assets "*"`.
+- **dbt Cloud**: generates environment configs (dev/prod), job definitions per cadence, a CI/PR job, and a `.env.template` for credentials. Includes Terraform HCL snippets for IaC management.
+
+The tool choice is stored in `status.md` as `orchestration_tool` and reused by validate and review.
+
+```
+/wire:orchestration-validate <project_id>
+```
+For Dagster: runs `dg check defs` to verify the asset graph loads, checks all dbt models have corresponding assets, and verifies schedule cadences match the pipeline design. For dbt Cloud: validates config completeness, model selectors, and cron expressions.
 
 ```
 /wire:semantic_layer-generate <project_id>

@@ -1,9 +1,9 @@
 ---
-description: Archive a completed project
+description: Validate orchestration layer against pipeline design
 argument-hint: <project-folder>
 ---
 
-# Archive a completed project
+# Validate orchestration layer against pipeline design
 
 ## User Input
 
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"archive\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.3.1\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"orchestration-validate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.3.1\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -76,147 +76,192 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Archive a completed Data Platform project
-argument-hint: <dashboard-folder>
+description: Validate the orchestration layer — checks Dagster asset graph or dbt Cloud job configs against the pipeline design
+argument-hint: <project-folder>
 ---
 
-# Data Platform Archive Project Command
+# Orchestration Validate Command
 
 ## Purpose
 
-Move a completed project to the archive folder to keep the active project list small. Archived projects are excluded from `/wire:status` and `/wire:start` scans but remain accessible via `/wire:status --archived`.
+Validate the generated orchestration layer. The validation checks differ by tool:
 
-## Usage
+- **Dagster**: verifies the asset graph loads cleanly, covers all dbt models, and the schedule cadences match the pipeline design
+- **dbt Cloud**: verifies job configurations reference valid environments, selectors match existing dbt models, and schedules reflect the pipeline design cadences
 
-```bash
-/wire:archive 20260210_rowcal
-```
+## Prerequisites
+
+- `orchestration` generate must be complete
+- For Dagster: `dagster_orchestration/` directory must exist with a valid `Definitions` object
 
 ## Workflow
 
-### Step 1: List Active Projects
+### Step 1: Read Configuration
 
-**Process**:
-1. Use Glob to find all active project folders: `.wire/[0-9]*_*/status.md`
-2. If `$ARGUMENTS` is provided, match against known projects
-3. If no arguments, present selection
+1. Read `.wire/<project_id>/status.md` to determine `orchestration_tool`
+2. If `orchestration_tool` is not set, stop with: "Run `/wire:orchestration:generate <project>` first to set up the orchestration layer."
 
-**If no projects found**:
-```
-No active projects found in `.wire/`. Nothing to archive.
-```
+### Step 2a: Validate Dagster (if tool = dagster)
 
-### Step 2: Select Project to Archive
+#### 2a.1 — Check defs load
 
-**If argument provided**: Validate the folder exists in `.wire/`
+Run from the `dagster_orchestration/` directory:
 
-**If no argument**: Use `AskUserQuestion` to present project options:
-
-```json
-{
-  "questions": [{
-    "question": "Which project do you want to archive?",
-    "header": "Archive",
-    "options": [
-      {"label": "20260210_rowcal", "description": "Client: RowCal"},
-      {"label": "20260203_b2b_template_tabs", "description": "Client: Internal"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-Build options dynamically from discovered projects. Include up to 4 projects as options (AskUserQuestion limit). If more than 4 projects exist, list them all in chat first and ask user to specify by name.
-
-### Step 3: Confirm Archive
-
-**Use AskUserQuestion** for confirmation:
-
-```json
-{
-  "questions": [{
-    "question": "Archive this project? It will be moved to .wire/archive/ and hidden from /wire:status and /wire:start.",
-    "header": "Confirm",
-    "options": [
-      {"label": "Yes, archive it", "description": "Move project to .wire/archive/"},
-      {"label": "Cancel", "description": "Keep the project active"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-If user selects "Cancel":
-```
-Archive cancelled. No changes were made.
-```
-And exit.
-
-### Step 4: Move to Archive
-
-**Process**:
-1. Create archive directory if it doesn't exist:
-   ```bash
-   mkdir -p .wire/archive/
-   ```
-2. Move the project folder:
-   ```bash
-   git mv .wire/{folder_name}/ .wire/archive/{folder_name}/
-   ```
-
-### Step 5: Confirm Archive
-
-Output confirmation:
-
-```
-## Project Archived
-
-**Moved:** `.wire/{folder_name}/` → `.wire/archive/{folder_name}/`
-
-The project won't appear in `/wire:status` or `/wire:start`.
-
-To view archived projects: `/wire:status --archived`
-```
-
-## Edge Cases
-
-### No Projects Exist
-
-If no project folders are found:
-```
-No active projects found in `.wire/`. Nothing to archive.
-```
-
-### Project Not Found
-
-If the specified project doesn't exist:
-```
-Project "{folder_name}" not found in `.wire/`.
-
-Active projects:
-[list active projects]
-```
-
-### Already Archived
-
-If the project is already in `.wire/archive/`:
-```
-Project "{folder_name}" is already archived.
-```
-
-### Git Not Available
-
-If `git mv` fails, fall back to regular move:
 ```bash
-mv .wire/{folder_name}/ .wire/archive/{folder_name}/
+cd dagster_orchestration
+dg check defs
 ```
 
-## Output
+This verifies:
+- All Python imports resolve
+- All `@dg.asset` and `@dg.multi_asset` decorators are valid
+- The `Definitions` object loads without errors
+- No circular asset dependencies
+- All referenced resources are defined
 
-This command:
-- Moves `.wire/{folder_name}/` to `.wire/archive/{folder_name}/`
+If `dg check defs` fails, report the full error and stop.
 
-Final output is a confirmation message.
+#### 2a.2 — Verify dbt model coverage
+
+Run:
+```bash
+cd dagster_orchestration
+dg list defs --select "kind:dbt"
+```
+
+Compare the listed dbt-kind assets against the models in the dbt project (`dbt ls --select "*" --output name`). Every dbt model should have a corresponding Dagster asset.
+
+Report any missing models as validation findings.
+
+#### 2a.3 — Verify schedule cadences
+
+List all defined schedules:
+```bash
+dg list defs --select "type:schedule"
+```
+
+For each schedule, verify:
+- The cron expression is valid (parseable)
+- It matches a run cadence specified in `pipeline_design.md`
+- It targets at least one asset or job
+
+Report any cadences in the pipeline design that have no corresponding schedule.
+
+#### 2a.4 — Check asset group completeness
+
+Verify that every source system in `pipeline_design.md` has at least one ingestion asset defined in `assets/`.
+
+#### 2a.5 — Compile validation report
+
+Write `.wire/<project_id>/development/orchestration/.orchestration_validation.md`:
+
+```markdown
+# Orchestration Validation Report
+
+**Date**: <date>
+**Tool**: Dagster
+**Result**: PASS | FAIL
+
+## Checks
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| dg check defs | PASS/FAIL | [error if failed] |
+| dbt model coverage | PASS/FAIL | [N of M models covered] |
+| Schedule cadence coverage | PASS/FAIL | [missing cadences if any] |
+| Source ingestion coverage | PASS/FAIL | [missing sources if any] |
+
+## Findings
+
+[List any warnings or required fixes]
+```
+
+### Step 2b: Validate dbt Cloud (if tool = dbt_cloud)
+
+#### 2b.1 — Check config file completeness
+
+Read `.wire/<project_id>/development/orchestration/dbt_cloud_config.md` and verify it contains:
+- At least one Production environment definition
+- At least one job per run cadence identified in `pipeline_design.md`
+- A CI/PR job for pull request validation
+- Notification configuration on each job
+
+#### 2b.2 — Verify model selectors
+
+For each job, verify the `dbt run --select <selector>` expression is valid by running:
+
+```bash
+dbt ls --select <selector>
+```
+
+If the selector returns 0 models, flag as a warning. If the command errors, flag as a failure.
+
+#### 2b.3 — Verify cron expressions
+
+For each scheduled job, confirm the cron expression is syntactically valid and matches the stated cadence description.
+
+#### 2b.4 — Compile validation report
+
+Write `.wire/<project_id>/development/orchestration/.orchestration_validation.md`:
+
+```markdown
+# Orchestration Validation Report
+
+**Date**: <date>
+**Tool**: dbt Cloud
+**Result**: PASS | FAIL
+
+## Checks
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| Config file completeness | PASS/FAIL | |
+| Model selectors valid | PASS/FAIL | [any selectors matching 0 models] |
+| Cron expressions valid | PASS/FAIL | |
+| Cadence coverage | PASS/FAIL | [cadences from pipeline_design not covered] |
+
+## Findings
+
+[List any warnings or required fixes]
+```
+
+### Step 3: Update Status
+
+Update `.wire/<project_id>/status.md`:
+
+```yaml
+orchestration:
+  validate: complete   # or failed
+```
+
+If any FAIL check was found, set `validate: failed` and include findings in the notes.
+
+### Step 4: Sync to Jira (Optional)
+
+Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
+- Artifact: `orchestration`
+- Action: `validate`
+- Status: `complete` or `failed`
+
+### Step 5: Report Results
+
+If PASS:
+```
+## Orchestration Validation: PASS
+
+All checks passed. Ready for review.
+
+Next step: `/wire:orchestration:review <project>`
+```
+
+If FAIL:
+```
+## Orchestration Validation: FAIL
+
+[List failing checks and required fixes]
+
+Fix the issues above and re-run: `/wire:orchestration:validate <project>`
+```
 
 Execute the complete workflow as specified above.
 
