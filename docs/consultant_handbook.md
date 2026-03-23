@@ -1671,7 +1671,8 @@ Either method will:
 1. Download Wire Studio to `~/.wire-studio/`
 2. Install npm dependencies and build the app
 3. Prompt for your Anthropic API key
-4. Create a `wire-studio` CLI command
+4. Optionally prompt for a GitHub token (for cloning private repos — see below)
+5. Create a `wire-studio` CLI command
 
 **After installation:**
 
@@ -1867,7 +1868,7 @@ As of v3.2.1, Wire Studio can be deployed as a fully hosted, multi-tenant servic
 
 The local deployment model (Docker + SQLite + localhost) works well for individual consultants, but creates friction for teams:
 
-- Each consultant must install Docker, Node.js, and configure OAuth locally
+- Each consultant must install Node.js and run Wire Studio locally
 - Projects cannot be shared without Git push/pull cycles
 - There is no central visibility into project status across engagements
 - Client demonstrations require screen-sharing from a consultant's laptop
@@ -2090,7 +2091,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 | Aspect | Local (Docker) | Hosted (GCP) |
 |--------|---------------|--------------|
-| Setup | Docker + Node.js + OAuth app | Terraform apply + CI/CD |
+| Setup | Node.js (no Docker, no OAuth app) | Terraform apply + CI/CD |
 | Runtime | Docker containers via dockerode | GKE Autopilot pods via @kubernetes/client-node |
 | Database | SQLite (file-based) | Cloud SQL PostgreSQL (managed) |
 | File access | Docker volumes (local) | PVCs + file server sidecars (persistent) |
@@ -2368,6 +2369,19 @@ Yes. Wire Studio and the CLI share the same project structure (`.wire/`), the sa
 **Q: Does Wire Studio require Docker?**
 
 No. Wire Studio runs Wire commands directly on your local filesystem via Node.js — no Docker volumes or containers required. The only requirement is Node.js 18+. Install via the plugin command `/wire:studio-install`, or directly with: `curl -fsSL https://raw.githubusercontent.com/rittmananalytics/wire/main/install-wire-studio.sh | bash`
+
+---
+
+**Q: How do I connect Wire Studio to GitHub for cloning private repos?**
+
+The installer will prompt you automatically. It tries two options in order:
+
+1. **GitHub CLI** — if `gh` is installed and authenticated (`gh auth login`), the installer detects the token automatically and you won't be prompted
+2. **Personal Access Token** — if no CLI is found, you'll be prompted to paste a PAT (generate one at github.com/settings/tokens with `repo` scope). Press Enter to skip and configure later.
+
+Either way, the token is stored once and reused silently for all future clones — you won't be asked again. If you skipped the install-time prompt, open Wire Studio, click **Clone from GitHub**, and you'll see the same options: use the GitHub CLI or paste a PAT.
+
+Public repos can be cloned without a token.
 
 ---
 

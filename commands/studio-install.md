@@ -154,14 +154,23 @@ If `$HOME/.wire-studio/wire-web-ui/.env.local` does not already exist:
   ```
 - Otherwise, ask the user for their Anthropic API key and write it to the file.
 
-### Step 6: Set up the database
+### Step 6: Configure GitHub token (optional)
+
+This allows Wire Studio to clone private repositories. If `$HOME/.wire-studio/wire-web-ui/.env.local` does not already contain a `GITHUB_TOKEN` line:
+
+1. Check if the GitHub CLI is available: run `gh auth token 2>/dev/null`.
+   - If it outputs a token, ask the user: *"GitHub CLI detected — use this token for cloning repos? (y/n)"*. If yes, append `GITHUB_TOKEN=<token>` to `.env.local`.
+2. If no CLI token, ask: *"Enter a GitHub Personal Access Token for cloning repos (press Enter to skip)"*. If provided, append `GITHUB_TOKEN=<token>` to `.env.local`.
+3. If skipped, inform the user they can connect GitHub later in Wire Studio via **Clone from GitHub > Save Token**.
+
+### Step 7: Set up the database
 
 ```bash
 cd "$HOME/.wire-studio/wire-web-ui"
 npx prisma db push --skip-generate --accept-data-loss
 ```
 
-### Step 7: Install the `wire-studio` CLI
+### Step 8: Install the `wire-studio` CLI
 
 Write the following script to `/usr/local/bin/wire-studio` (fall back to `$HOME/.local/bin/wire-studio` if `/usr/local/bin` is not writable without sudo):
 
