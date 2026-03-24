@@ -4,6 +4,55 @@ All notable changes to the Rittman Analytics Claude Skills repository will be do
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.4.0] — March 2026
+
+### Added (Wire Framework v3.4.0)
+
+**Skills**:
+- Research Persistence (`research/SKILL.md`) — auto-activates during technical research; saves structured summaries to `.wire/research/sessions/`; `session:start` surfaces prior findings
+
+**Wire Framework**:
+- Two-tier engagement structure (`.wire/engagement/` + `.wire/releases/`)
+- Discovery release type (Shape Up methodology): problem definition → pitch → release brief → sprint plan
+- Session lifecycle commands: `session:start` / `session:end`
+- `/wire:migrate` command for migrating pre-v3.4.0 flat layouts
+- Wire Studio: all UI labels updated from "Project" to "Release"
+
+---
+
+## [3.3.2] — February 2026
+
+### Added
+
+**Skills**:
+- dbt Fusion Migration (`dbt-fusion/SKILL.md`) — migrates dbt projects to the Fusion runtime
+- dbt MCP Server (`dbt-mcp-server/SKILL.md`) — sets up dbt MCP server for Claude Code
+- dbt Analytics Q&A (`dbt-analytics-qa/SKILL.md`) — answers business data questions against dbt projects
+- dbt DAG Visualisation (`dbt-dag/SKILL.md`) — generates Mermaid lineage flowcharts
+
+---
+
+## [3.3.1] — January 2026
+
+### Added
+
+**Skills**:
+- Dagster (`dagster/SKILL.md`) — assets-first pattern, dagster-dbt integration, Wire-specific conventions
+
+---
+
+## [3.3.0] — January 2026
+
+### Added
+
+**Skills**:
+- dbt Semantic Layer (`dbt-semantic-layer/SKILL.md`)
+- dbt Unit Testing (`dbt-unit-testing/SKILL.md`)
+- dbt Migration (`dbt-migration/SKILL.md`)
+- dbt Troubleshooting (`dbt-troubleshooting/SKILL.md`)
+
+---
+
 ## [1.0.0] - November 2025
 
 ### Initial Release
@@ -80,9 +129,13 @@ Supports integration with:
 
 ## Version History Summary
 
-| Version | Date | Skills | Tools | Notes |
-|---------|------|--------|-------|-------|
-| 1.0.0 | Nov 2025 | 8 | 8 | Initial release |
+| Version | Date | Skills | Notes |
+|---------|------|--------|-------|
+| 3.4.0 | Mar 2026 | Research Persistence | Wire v3.4.0 engagement planning |
+| 3.3.2 | Feb 2026 | dbt Fusion, dbt MCP Server, dbt Analytics Q&A, dbt DAG | 4 new dbt agent skills |
+| 3.3.1 | Jan 2026 | Dagster | Orchestration skill |
+| 3.3.0 | Jan 2026 | dbt Semantic Layer, Unit Testing, Migration, Troubleshooting | 4 new dbt skills |
+| 1.0.0 | Nov 2025 | 8 business ops skills | Initial release |
 
 ---
 

@@ -1182,6 +1182,8 @@ When running dbt commands:
 - **Check `target/run_results.json`** after runs to get per-model timing, status, and row counts — useful for performance analysis and debugging
 - **Prefer `dbt build` over separate `dbt run` + `dbt test`** — `build` runs models and their tests together in dependency order, catching failures earlier
 - **Use `--warn-error-options`** to promote specific warnings to errors — prevents silent issues from accumulating
+- **dbt Fusion** (`dbtf`): if the project uses the Fusion runtime, invoke with `dbtf` or `~/.local/bin/dbt` (not the venv `dbt`). Fusion is faster and has stricter SQL parsing — see the `dbt-fusion` skill for migration guidance.
+- **Fetching dbt documentation**: append `.md` to any `docs.getdbt.com` URL to get clean markdown (e.g. `https://docs.getdbt.com/reference/commands/run.md`). Use `https://docs.getdbt.com/llms.txt` to find available pages, or `https://docs.getdbt.com/llms-full.txt` for full-text search.
 
 ---
 

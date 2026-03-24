@@ -2,7 +2,7 @@
 
 **Rittman Analytics — Internal Use**
 
-**Version**: 3.3.0 | **Date**: March 2026
+**Version**: 3.4.0 | **Date**: March 2026
 
 ---
 
@@ -10,21 +10,23 @@
 
 1. [What Is the Wire Framework?](#1-what-is-the-wire-framework)
 2. [The Problem It Solves](#2-the-problem-it-solves)
-3. [Project Types](#3-project-types)
-4. [Installation and Setup](#4-installation-and-setup)
-5. [Core Concepts You Need to Know](#5-core-concepts-you-need-to-know)
-6. [Running a Full Platform Engagement (End-to-End)](#6-running-a-full-platform-engagement-end-to-end)
-7. [Running a Pipeline + dbt Engagement](#7-running-a-pipeline--dbt-engagement)
-8. [Running a dbt Development Engagement](#8-running-a-dbt-development-engagement)
-9. [Running a Dashboard Extension Engagement](#9-running-a-dashboard-extension-engagement)
-10. [Running a Dashboard-First Rapid Development Engagement](#10-running-a-dashboard-first-rapid-development-engagement)
-11. [Running an Enablement Engagement](#11-running-an-enablement-engagement)
-12. [Worked Example: Barton Peveril Live Pastoral Analytics](#12-worked-example-barton-peveril-live-pastoral-analytics)
-13. [Wire Autopilot: Autonomous Execution](#13-wire-autopilot-autonomous-execution)
-14. [Wire Studio: Web-Based Interface (Experimental)](#14-wire-studio-web-based-interface-experimental)
-15. [Extending and Customising the Framework](#15-extending-and-customising-the-framework)
-16. [FAQ](#16-faq)
-17. [Troubleshooting](#17-troubleshooting)
+3. [Engagements and Releases](#3-engagements-and-releases)
+4. [Release Types](#4-release-types)
+5. [Installation and Setup](#5-installation-and-setup)
+6. [Core Concepts You Need to Know](#6-core-concepts-you-need-to-know)
+7. [Running a Discovery Release (Shape Up Planning)](#7-running-a-discovery-release-shape-up-planning)
+8. [Running a Full Platform Release (End-to-End)](#8-running-a-full-platform-release-end-to-end)
+9. [Running a Pipeline + dbt Release](#9-running-a-pipeline--dbt-release)
+10. [Running a dbt Development Release](#10-running-a-dbt-development-release)
+11. [Running a Dashboard Extension Release](#11-running-a-dashboard-extension-release)
+12. [Running a Dashboard-First Rapid Development Release](#12-running-a-dashboard-first-rapid-development-release)
+13. [Running an Enablement Release](#13-running-an-enablement-release)
+14. [Worked Example: Barton Peveril Live Pastoral Analytics](#14-worked-example-barton-peveril-live-pastoral-analytics)
+15. [Wire Autopilot: Autonomous Execution](#15-wire-autopilot-autonomous-execution)
+16. [Wire Studio: Web-Based Interface](#16-wire-studio-web-based-interface)
+17. [Extending and Customising the Framework](#17-extending-and-customising-the-framework)
+18. [FAQ](#18-faq)
+19. [Troubleshooting](#19-troubleshooting)
 
 ---
 
@@ -85,33 +87,169 @@ The AI fills in the blanks within a tightly constrained template rather than inv
 
 ---
 
-## 3. Project Types
+## 3. Engagements and Releases
 
-The framework encodes our delivery methodology as six project types, each one defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a project type, the framework instantiates that process definition into the project's `status.md` file - writing the in-scope artifacts and their gate states as YAML frontmatter. This is how our specific delivery process gets applied to each engagement: the project type determines which artifacts to produce, in what order, and which gates each one must pass through. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped entirely.
+### Key terminology
+
+Wire v3.4.0 introduces a two-tier structure with precise terminology. Understanding these two concepts is essential before using the framework.
+
+**Engagement** — a complete client engagement from start to finish. The engagement holds all context that spans the whole relationship with that client: the Statement of Work, call transcripts and meeting notes, org charts, stakeholder lists, and the current-state architecture of their systems. This context belongs to the engagement, not to any specific unit of delivery.
+
+**Release** — a scoped, time-boxed unit of delivery within an engagement. Every piece of work the team does for a client is a release. Releases have a type (discovery, full_platform, pipeline_only, etc.), a defined scope, a planned start and end date, and their own `status.md` tracking file.
+
+An engagement typically contains several releases in sequence. A typical engagement might look like:
+
+```
+01-discovery       ← Shape Up planning: what do we build and why?
+02-data-foundation ← Pipeline + dbt: get data into the warehouse
+03-reporting       ← Dashboard extension: client-facing dashboards
+04-enablement      ← Training and documentation
+```
+
+### The two-tier folder structure
+
+Every Wire engagement uses this structure in the `.wire/` directory:
+
+```
+.wire/
+  engagement/
+    context.md          ← engagement overview, objectives, key stakeholders
+    sow.md              ← statement of work (copied at engagement setup)
+    calls/              ← call transcripts and meeting notes
+    org/                ← org charts and roles/responsibilities
+  releases/
+    01-discovery/       ← discovery release type
+      status.md
+      planning/
+        problem_definition.md
+        pitch.md
+        release_brief.md
+        sprint_plan.md
+    02-data-foundation/  ← delivery release type (e.g. pipeline_only)
+      status.md
+      requirements/
+      design/
+      dev/
+      test/
+      deploy/
+      enablement/
+    03-reporting/        ← another delivery release
+      status.md
+      ...
+  research/
+    sessions/            ← persisted technical research (auto-populated)
+      2026-03-01-1430/
+        summary.md
+```
+
+```mermaid
+graph TD
+    ENG["<b>Engagement</b><br/>.wire/engagement/"]
+    SOW["context.md<br/>sow.md"]
+    CALLS["calls/<br/><i>transcripts</i>"]
+    ORG["org/<br/><i>stakeholders</i>"]
+    RESEARCH["<b>Research</b><br/>.wire/research/sessions/"]
+    RELEASES["<b>Releases</b><br/>.wire/releases/"]
+    R1["01-discovery/<br/><i>status.md</i>"]
+    R2["02-data-foundation/<br/><i>status.md</i>"]
+    R3["03-reporting/<br/><i>status.md</i>"]
+
+    ENG --> SOW
+    ENG --> CALLS
+    ENG --> ORG
+    RESEARCH -.->|"surfaced by<br/>session:start"| RELEASES
+    RELEASES --> R1
+    RELEASES --> R2
+    RELEASES --> R3
+
+    style ENG fill:#e8f0ff,stroke:#5b8dee
+    style RESEARCH fill:#fff3e0,stroke:#f5a623
+    style RELEASES fill:#e8f5e9,stroke:#4caf50
+```
+
+### Setting up a new engagement
+
+Run `/wire:new`. The framework asks:
+
+1. **Client and engagement name** — for folder naming and status files
+2. **Repo mode**:
+   - *Combined* (default): `.wire/` lives directly in the client's code repo — the simplest setup, suitable for most engagements
+   - *Dedicated delivery repo*: this repo is exclusively for Wire artifacts; client code lives in a separate repo (stored in `engagement/context.md`). Use for regulated clients where adding files to their code repo is not acceptable, or clients with multiple code repos
+3. **First release type** — usually `discovery` for a new engagement, or a delivery type if joining mid-stream
+4. **SOW path** — optional; copied to `engagement/sow.md`
+
+To add a subsequent release to an existing engagement, run `/wire:new` again. The framework detects the existing engagement context and skips directly to asking for the new release type.
+
+### Repo mode: combined vs dedicated delivery
+
+```mermaid
+graph LR
+    subgraph combined["Option A — Combined"]
+        CCR["client-code-repo/"]
+        CWire[".wire/"]
+        CModels["models/<br/>pipelines/"]
+        CCR --> CWire
+        CCR --> CModels
+    end
+
+    subgraph dedicated["Option B — Dedicated Delivery Repo"]
+        DDR["client-delivery-repo/"]
+        DWire[".wire/"]
+        DDR --> DWire
+        DWire -.->|"client repo URL stored<br/>in engagement/context.md"| ClientRepo["client-code-repo/"]
+    end
+```
+
+**Option A** is the default. Wire artifacts live in the same repo as the client's code. Simple, no extra configuration.
+
+**Option B** is for engagements where adding files directly to the client's code repo is not acceptable (regulated industries, multi-stakeholder repos) or where the client has several code repos and it's unclear which one should hold the Wire artifacts. The delivery repo is typically named `<client_name>-delivery`. Client repo details are stored in `engagement/context.md` so Wire commands can reference the codebase when needed.
+
+### Session lifecycle
+
+Every working session on any release should begin and end with Wire's session commands:
+
+```
+/wire:session:start [release-folder]   ← starts a focused session
+/wire:session:end   [release-folder]   ← closes the session, updates history
+```
+
+`session:start` enters Plan Mode, scans the current release status and prior research, and proposes a focused 3–5 step session plan before any work begins. `session:end` records what was accomplished in the release's `session_history` table and suggests the focus for the next session.
+
+These commands ensure every session is grounded in current state — not re-establishing context from scratch — and that progress is captured automatically.
+
+---
+
+## 4. Release Types
+
+The framework encodes delivery methodology as seven release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
 
 | Type | Scope | Typical Duration | Artifacts in Scope |
 |------|-------|------------------|--------------------|
-| **Full Platform** | SOW → production dashboards + trained users | 2–3 weeks | All 15 artifact types |
+| **Discovery** | Shape Up planning: problem definition → pitch → release brief → sprint plan | 1–2 weeks | problem_definition, pitch, release_brief, sprint_plan |
+| **Full Platform** | SOW → production dashboards + trained users | 2–3 weeks | All 15 delivery artifact types |
 | **Dashboard-First** | Interactive mocks drive data model; seed data enables immediate dbt | 1–2 weeks | 14 artifacts (omits workshops, conceptual_model, pipeline_design, pipeline; adds viz_catalog, seed_data, data_refactor) |
 | **Pipeline + dbt** | New data pipeline + dbt transformation layer | 1–2 weeks | requirements, pipeline_design, data_model, pipeline, dbt, data_quality, deployment |
 | **dbt Development** | Analytics engineering on existing infrastructure | 1 week | requirements, data_model, dbt, data_quality |
 | **Dashboard Extension** | New dashboards on an existing semantic layer | 3–5 days | requirements, mockups, dashboards, uat |
 | **Enablement** | Training and documentation for an existing platform | 2–3 days | training, documentation |
 
-### Choosing the right type
+### Choosing the right release type
 
-- If the client needs a new data source connected end-to-end through to a dashboard: **Full Platform**
-- If you want early stakeholder feedback via interactive dashboard mocks before building the data layer, especially when client data access may be delayed: **Dashboard-First**
-- If the client has a BI tool / semantic layer and just needs new data flowing in: **Pipeline + dbt**
-- If the data is already in the warehouse and you just need to build the transformation layer: **dbt Development**
-- If the semantic layer already has the data and the client just needs new dashboards: **Dashboard Extension**
-- If the platform exists and you've been engaged to train and document it: **Enablement**
+- **Starting a new engagement where scope is unclear or needs shaping**: **Discovery** first, then delivery releases
+- **Client needs a new data source connected end-to-end through to a dashboard**: **Full Platform**
+- **Early stakeholder feedback via interactive mocks before building the data layer**: **Dashboard-First**
+- **Client has a BI tool / semantic layer and just needs new data flowing in**: **Pipeline + dbt**
+- **Data is already in the warehouse; need to build the transformation layer**: **dbt Development**
+- **Semantic layer already has the data; adding new dashboards**: **Dashboard Extension**
+- **Platform exists; engaged to train and document it**: **Enablement**
+
+**When to start with Discovery**: Any engagement where the scope is not already well-defined in a signed SOW, where the client isn't sure what they need built, or where the team wants to formally validate the problem and shape the solution before committing to a delivery estimate. Discovery produces a release brief and sprint plan — the formal inputs to a delivery release.
 
 **Full Platform vs Dashboard-First**: Both produce the same end result (production dashboards with a dbt warehouse). The difference is the *order of operations*. Full Platform follows the traditional flow: requirements → conceptual model → pipeline design → data model → dbt → dashboards. Dashboard-First inverts this: requirements → interactive dashboard mocks → visualization catalog → data model → seed data → dbt → dashboards → data refactor. Choose Dashboard-First when getting visual feedback early is more valuable than following the traditional top-down design sequence — typically when the SOW is well-defined enough to mock dashboards immediately but client data access may take time.
 
 ---
 
-## 4. Installation and Setup
+## 5. Installation and Setup
 
 ### Prerequisites
 
@@ -174,7 +312,7 @@ Wire Studio is a separate web-based interface that runs alongside (not instead o
 
 No Docker required. No GitHub OAuth app required.
 
-See [Section 14: Wire Studio](#14-wire-studio-web-based-interface-experimental) for full setup and usage instructions.
+See [Section 16: Wire Studio](#16-wire-studio-web-based-interface) for full setup and usage instructions.
 
 ### Upgrading
 
@@ -182,7 +320,7 @@ Plugin and extension users get updates automatically when a new version is publi
 
 ---
 
-## 5. Core Concepts You Need to Know
+## 6. Core Concepts You Need to Know
 
 > **Command notation:** Commands in this handbook are shown in Claude Code format (`/wire:*`). If you are using Gemini CLI, drop the `/wire:` prefix and replace colons with spaces — e.g., `/wire:requirements-generate my_project` becomes `/dp requirements generate my_project`.
 
@@ -211,6 +349,28 @@ sequenceDiagram
 Each command file contains the full workflow inline — from 100 lines for a simple review command to over 1,500 lines for dbt generation. No external files are referenced. This means:
 - Adding a new command = write one command file, rebuild the plugin/extension
 - Modifying a command's behaviour = edit that one file. The change applies on the next invocation — no build step, no reinstallation
+
+### Session lifecycle
+
+Every working session should begin and end with Wire's session commands:
+
+```
+/wire:session:start [release-folder]   ← enter Plan Mode, scan status + research, get a session plan
+/wire:session:end   [release-folder]   ← record accomplishments, surface next focus
+```
+
+`session:start` reads the release's `status.md`, surfaces any prior research from `.wire/research/sessions/`, and proposes a focused 3–5 step plan before any work begins. This ensures every session starts from current state rather than reconstructing context from scratch.
+
+`session:end` records what was accomplished in the release's `session_history` table and suggests the focus for the next session. The session history table is appended to `status.md` and builds into a running audit trail over the course of the release.
+
+### Research persistence
+
+When the AI performs technical research during a session (looking up warehouse schemas, reading documentation, investigating a library), it automatically saves structured summaries to `.wire/research/sessions/YYYY-MM-DD-HHMM/summary.md` — one file per research session at the engagement level (not inside any individual release).
+
+At the start of the next session, `session:start` checks these saved summaries before any new research begins. If a relevant finding already exists, it surfaces it rather than re-doing the work. This means:
+- **Cross-release knowledge carries over**: research done during the discovery release is available when working on the delivery release
+- **Re-starting a session doesn't lose context**: prior technical findings are always available
+- **Less AI context consumed**: the AI reads a condensed summary instead of re-running the same web searches
 
 ### The artifact lifecycle
 
@@ -242,18 +402,20 @@ An artifact should not progress until all three gates are passed. Downstream art
 
 If you're already on a feature branch, the check passes silently — no action required.
 
-This ensures all project work lives on a branch that can be reviewed via pull request before merging. When the engagement is complete, create a PR with `/wire:utils-create-pr <project_id>`.
+This ensures all release work lives on a branch that can be reviewed via pull request before merging. When all releases in the engagement are complete, create a PR to merge the work.
 
 ### The status file
 
-Each project has a `status.md` file at `.wire/<project_id>/status.md`. This is the running instance of the delivery process - created by `/wire:new` when you select a project type, and updated by every subsequent command. It has two roles:
+Each release has a `status.md` file at `.wire/releases/<release-folder>/status.md`. This is the running instance of the delivery process — created by `/wire:new` when you select a release type, and updated by every subsequent command. It has two roles:
 
-1. **Human-readable**: project overview, notes, blockers
-2. **Machine-readable YAML frontmatter**: the instantiated process definition - which artifacts are in scope, which gates have been passed, and what comes next
+1. **Human-readable**: release overview, notes, blockers, and session history
+2. **Machine-readable YAML frontmatter**: the instantiated process definition — which artifacts are in scope, which gates have been passed, and what comes next
 
-The YAML frontmatter lists every in-scope artifact with its generate/validate/review gate states. Out-of-scope artifacts (determined by the project type) are marked `not_applicable`. Each command reads this state before executing - that's how the framework enforces phase discipline and prerequisite ordering. The framework updates `status.md` automatically after each command. You can also edit it manually to add notes or record decisions.
+The YAML frontmatter lists every in-scope artifact with its generate/validate/review gate states. Out-of-scope artifacts (determined by the release type) are marked `not_applicable`. Each command reads this state before executing — that's how the framework enforces phase discipline and prerequisite ordering. The framework updates `status.md` automatically after each command. You can also edit it manually to add notes or record decisions.
 
-When you run `/wire:start`, the framework reads all `status.md` files and tells you the suggested next action across all active projects.
+At the bottom of `status.md`, a `Session History` table is maintained by `session:end` — providing a running record of every working session, what was accomplished, and what the next focus should be.
+
+When you run `/wire:start`, the framework reads all `status.md` files across all releases and tells you the suggested next action.
 
 ### The execution log
 
@@ -329,9 +491,282 @@ graph LR
 
 ---
 
-## 6. Running a Full Platform Engagement (End-to-End)
+## 7. Running a Discovery Release (Shape Up Planning)
 
-Use this for engagements that go from SOW to production dashboards and trained users. All 15 artifact types are in scope.
+A discovery release is the scoping and planning phase for a new engagement. It answers the question: *what do we build and why?* The output is a release brief and sprint plan — the formal inputs to a delivery release.
+
+Discovery uses the **Shape Up** methodology: fixed time, variable scope. You work within an *appetite* (how much time this is worth) and produce a shaped solution — specific enough to build from, but leaving room for implementation decisions. Scope is adjusted to fit the appetite, not the other way around.
+
+### When to start with Discovery
+
+- The client is not sure exactly what they need built
+- The scope needs to be negotiated before a fixed SOW is signed
+- The team wants to formally validate the problem before committing to a delivery estimate
+- There are multiple competing priorities that need to be shaped into a coherent release brief
+
+If you already have a signed, well-scoped SOW, you may not need a discovery release — go straight to the appropriate delivery type.
+
+### Discovery artifact flow
+
+```mermaid
+graph LR
+    PD["Problem\nDefinition"]
+    PI["Pitch"]
+    RB["Release\nBrief"]
+    SP["Sprint\nPlan"]
+    DR["Delivery\nReleases"]
+
+    PD -->|"shapes"| PI
+    PI -->|"formalises"| RB
+    RB -->|"decomposes"| SP
+    SP -->|"spawns"| DR
+
+    style PD fill:#e8f0ff,stroke:#5b8dee
+    style PI fill:#e8f0ff,stroke:#5b8dee
+    style RB fill:#e8f5e9,stroke:#4caf50
+    style SP fill:#e8f5e9,stroke:#4caf50
+    style DR fill:#fff3e0,stroke:#f5a623
+```
+
+### Discovery workflow
+
+```
+/wire:new                                          # release_type: discovery
+
+# Begin each session:
+/wire:session:start 01-discovery
+
+# Step 1: Problem Definition
+/wire:problem-definition-generate 01-discovery
+/wire:problem-definition-validate 01-discovery
+/wire:problem-definition-review 01-discovery
+
+# Step 2: Pitch
+/wire:pitch-generate 01-discovery
+/wire:pitch-validate 01-discovery
+/wire:pitch-review 01-discovery                    # betting table review
+
+# Step 3: Release Brief
+/wire:release-brief-generate 01-discovery
+/wire:release-brief-validate 01-discovery
+/wire:release-brief-review 01-discovery            # client sign-off
+
+# Step 4: Sprint Plan
+/wire:sprint-plan-generate 01-discovery
+/wire:sprint-plan-validate 01-discovery
+/wire:sprint-plan-review 01-discovery              # team approval
+
+# Spawn the downstream delivery releases:
+/wire:release:spawn 01-discovery
+
+# End each session:
+/wire:session:end 01-discovery
+```
+
+### Step 1: Problem Definition
+
+```
+/wire:problem-definition-generate 01-discovery
+```
+
+The AI reads the engagement context (`engagement/context.md`, `engagement/sow.md`) and any call transcripts in `engagement/calls/`, and produces a structured problem framing with six components:
+- **Who has the problem**: the specific role or team experiencing the friction
+- **What they are trying to do**: the goal or job to be done
+- **What the current friction is**: the specific obstacle or pain
+- **Why it matters**: business impact if not addressed
+- **Current workarounds**: what people are doing instead
+- **Constraints**: time, budget, technology, regulatory
+
+```
+/wire:problem-definition-validate 01-discovery
+```
+
+Validation checks that the problem is specific (not vague), measurable (impact is quantifiable), and framed as a problem (not a solution). Flags any "solution-baked-in" problem statements for revision.
+
+```
+/wire:problem-definition-review 01-discovery
+```
+
+Review with stakeholders. The goal is to reach agreement that the problem statement accurately reflects the real friction — before any solution design begins. Problems with poor framing produce pitches that solve the wrong thing.
+
+### Step 2: Pitch
+
+```
+/wire:pitch-generate 01-discovery
+```
+
+Produces a 10-section Shape Up pitch:
+1. **Problem** — the approved problem statement
+2. **Appetite** — how much time this is worth (1–2 weeks small batch, or 6 weeks big batch)
+3. **Solution sketch** — a fat-marker description (specific enough to be actionable, not so detailed it locks the team in)
+4. **Rabbit holes** — known implementation traps to avoid
+5. **No-gos** — scope items explicitly excluded
+6. **Risks** — technical or business risks that need monitoring
+7. **Success criteria** — how we'll know this release succeeded
+8. **Downstream releases** — delivery releases this pitch would spawn
+9. **Timeline** — proposed start date, end date, and key milestones
+10. **The bet** — the decision to commit: why this is the right thing to build now
+
+```
+/wire:pitch-validate 01-discovery
+```
+
+Validates appetite specificity (must be a concrete timeframe, not "TBD"), section completeness, and that the solution sketch is shaped — not a wireframe or a vague goal, but a directional description leaving room for implementation.
+
+```
+/wire:pitch-review 01-discovery
+```
+
+**The betting table review.** This is where the pitch is presented to decision-makers — typically the engagement lead and client sponsor. The purpose is to make an explicit commitment: "We bet [appetite] that building [solution] will [success criteria]." The outcome is recorded in the pitch document (bet approved, modified, or deferred). If deferred, the reasons are captured for future consideration.
+
+### Step 3: Release Brief
+
+```
+/wire:release-brief-generate 01-discovery
+```
+
+Formalises the approved pitch as a client-facing release brief — a commitment document. Includes: the approved problem statement, solution description, deliverables list, constraints and assumptions, dependencies, downstream releases, timeline with milestones, and a sign-off section.
+
+```
+/wire:release-brief-review 01-discovery
+```
+
+**Client sign-off.** The brief is presented to the client for approval. Once signed off, it becomes the authorising document for the downstream delivery releases. If the client requests changes, update the brief and re-review.
+
+### Step 4: Sprint Plan
+
+```
+/wire:sprint-plan-generate 01-discovery
+```
+
+Decomposes the approved release brief into a sprint plan: epics, stories, and tasks with Fibonacci point estimates (1, 2, 3, 5, 8 — no 13-point stories; anything larger must be broken down). The total points are checked against the appetite budget.
+
+```
+/wire:sprint-plan-validate 01-discovery
+```
+
+Validates that: no single story is 13 points or more, total points fit the appetite budget, every deliverable from the release brief has at least one story, and no orphan tasks exist without a parent story.
+
+```
+/wire:sprint-plan-review 01-discovery
+```
+
+Team review and approval. Once approved, the sprint plan marks the discovery release as complete. The AI suggests running `release:spawn`.
+
+### Spawning delivery releases
+
+```
+/wire:release:spawn 01-discovery
+```
+
+Reads the approved release brief to identify the planned downstream delivery releases, then creates the folder structure and `status.md` for each one:
+
+```
+.wire/releases/
+  01-discovery/         ← source
+    status.md
+    planning/
+      problem_definition.md
+      pitch.md
+      release_brief.md
+      sprint_plan.md
+  02-data-foundation/   ← spawned (pipeline_only or full_platform)
+    status.md
+    requirements/
+    design/
+    dev/
+    test/
+    deploy/
+    enablement/
+  03-reporting/         ← spawned (dashboard_extension)
+    status.md
+    ...
+```
+
+The spawned releases are ready to start immediately — their `status.md` files are pre-populated with the correct artifact scope for each release type, and their first session can begin with `/wire:session:start`.
+
+### Engagement artifacts and the discovery release
+
+The `.wire/engagement/` folder holds context that belongs to the whole engagement — context that any release can draw on:
+
+```
+.wire/engagement/
+  context.md          ← engagement objectives, stakeholders, working agreements
+  sow.md              ← statement of work or proposal (if available)
+  calls/              ← meeting transcripts (added manually as engagements progress)
+  org/                ← org charts, RACI, stakeholder maps
+```
+
+The discovery release reads from `engagement/` heavily — the problem definition draws from `context.md`, the pitch references the SOW, and reviews use Fathom call transcripts from `calls/`. The delivery releases that follow also read `engagement/context.md` for client background and stakeholder details. The engagement folder is never generated by a command — it is built up over time by the consultant adding transcripts, org charts, and context notes.
+
+### Discovery release: worked example
+
+A new engagement with an uncertain scope:
+
+```
+# Set up the engagement and first release
+/wire:new
+→ Client: Acme Corp
+→ Repo mode: A (combined — .wire/ lives in this repo)
+→ First release type: discovery
+→ Release ID: 01-discovery
+→ SOW path: ./proposals/acme_sow_draft.pdf   ← copied to engagement/sow.md
+
+# Add meeting transcript from kick-off call
+# Copy transcript to .wire/engagement/calls/2026-03-10-kickoff.md
+
+# Start the first discovery session
+/wire:session:start 01-discovery
+→ [Plan Mode] Scans status.md and research sessions
+→ Proposes 4-step session plan: Problem Definition → Pitch draft → ...
+
+/wire:problem-definition-generate 01-discovery
+→ Reads engagement/sow.md + engagement/calls/2026-03-10-kickoff.md
+→ Produces structured problem framing
+
+/wire:problem-definition-validate 01-discovery
+→ PASS
+
+/wire:problem-definition-review 01-discovery
+→ Stakeholder review — approved with one change (friction statement refined)
+
+/wire:pitch-generate 01-discovery
+→ Produces 10-section pitch
+→ Appetite set: 6 weeks (big batch — full pipeline + dbt + dashboards)
+
+/wire:session:end 01-discovery
+→ Records session in session_history: "Problem Definition complete and approved. Pitch drafted."
+→ Suggests next session focus: Pitch review (betting table)
+
+# Session 2 (next day)
+/wire:session:start 01-discovery
+→ Surfaces prior research saved from session 1
+→ Proposes: pitch review → brief generation
+
+/wire:pitch-validate 01-discovery  → PASS
+/wire:pitch-review 01-discovery    → Bet approved: 6-week full_platform release
+/wire:release-brief-generate 01-discovery
+/wire:release-brief-validate 01-discovery  → PASS
+/wire:release-brief-review 01-discovery    → Client sign-off received
+
+/wire:sprint-plan-generate 01-discovery
+/wire:sprint-plan-validate 01-discovery    → PASS
+/wire:sprint-plan-review 01-discovery      → Team approved
+
+/wire:release:spawn 01-discovery
+→ Creates .wire/releases/02-acme-data-foundation/ (full_platform)
+→ Creates .wire/releases/03-acme-enablement/ (enablement)
+→ Both releases ready to start
+
+/wire:session:end 01-discovery
+→ Discovery release complete.
+```
+
+---
+
+## 8. Running a Full Platform Release (End-to-End)
+
+Use this for releases that go from SOW to production dashboards and trained users. All 15 artifact types are in scope. If you are starting from a discovery release, the release brief and sprint plan from discovery serve as additional inputs alongside the SOW.
 
 ```mermaid
 graph LR
@@ -352,137 +787,140 @@ graph LR
 ### Workflow
 
 ```
-/wire:new                                          # project_type: full_platform
+/wire:new                                          # release_type: full_platform
+/wire:session:start <release-folder>               # begin each session
 
 # Phase 1: Requirements
-/wire:requirements-generate <project_id>
-/wire:requirements-validate <project_id>
-/wire:requirements-review <project_id>
+/wire:requirements-generate <release-folder>
+/wire:requirements-validate <release-folder>
+/wire:requirements-review <release-folder>
 
 # Phase 2: Design
-/wire:conceptual_model-generate <project_id>
-/wire:conceptual_model-validate <project_id>
-/wire:conceptual_model-review <project_id>
+/wire:conceptual_model-generate <release-folder>
+/wire:conceptual_model-validate <release-folder>
+/wire:conceptual_model-review <release-folder>
 
-/wire:pipeline_design-generate <project_id>
-/wire:pipeline_design-validate <project_id>
-/wire:pipeline_design-review <project_id>
+/wire:pipeline_design-generate <release-folder>
+/wire:pipeline_design-validate <release-folder>
+/wire:pipeline_design-review <release-folder>
 
-/wire:data_model-generate <project_id>
-/wire:data_model-validate <project_id>
-/wire:data_model-review <project_id>
+/wire:data_model-generate <release-folder>
+/wire:data_model-validate <release-folder>
+/wire:data_model-review <release-folder>
 
-/wire:mockups-generate <project_id>
-/wire:mockups-review <project_id>
+/wire:mockups-generate <release-folder>
+/wire:mockups-review <release-folder>
 
 # Phase 3: Development
-/wire:pipeline-generate <project_id>
-/wire:pipeline-validate <project_id>
-/wire:pipeline-review <project_id>
+/wire:pipeline-generate <release-folder>
+/wire:pipeline-validate <release-folder>
+/wire:pipeline-review <release-folder>
 
-/wire:dbt-generate <project_id>
-/wire:dbt-validate <project_id>
-/wire:utils-run-dbt <project_id>
-/wire:dbt-review <project_id>
+/wire:dbt-generate <release-folder>
+/wire:dbt-validate <release-folder>
+/wire:utils-run-dbt <release-folder>
+/wire:dbt-review <release-folder>
 
-/wire:orchestration-generate <project_id>    # choose Dagster or dbt Cloud
-/wire:orchestration-validate <project_id>
-/wire:orchestration-review <project_id>
+/wire:orchestration-generate <release-folder>    # choose Dagster or dbt Cloud
+/wire:orchestration-validate <release-folder>
+/wire:orchestration-review <release-folder>
 
-/wire:semantic_layer-generate <project_id>
-/wire:semantic_layer-validate <project_id>
-/wire:semantic_layer-review <project_id>
+/wire:semantic_layer-generate <release-folder>
+/wire:semantic_layer-validate <release-folder>
+/wire:semantic_layer-review <release-folder>
 
-/wire:dashboards-generate <project_id>
-/wire:dashboards-validate <project_id>
-/wire:dashboards-review <project_id>
+/wire:dashboards-generate <release-folder>
+/wire:dashboards-validate <release-folder>
+/wire:dashboards-review <release-folder>
 
 # Phase 4: Testing
-/wire:data_quality-generate <project_id>
-/wire:data_quality-validate <project_id>
-/wire:data_quality-review <project_id>
+/wire:data_quality-generate <release-folder>
+/wire:data_quality-validate <release-folder>
+/wire:data_quality-review <release-folder>
 
-/wire:uat-generate <project_id>
-/wire:uat-review <project_id>
+/wire:uat-generate <release-folder>
+/wire:uat-review <release-folder>
 
 # Phase 5: Deployment
-/wire:deployment-generate <project_id>
-/wire:deployment-validate <project_id>
-/wire:deployment-review <project_id>
-/wire:utils-deploy-to-prod <project_id>
+/wire:deployment-generate <release-folder>
+/wire:deployment-validate <release-folder>
+/wire:deployment-review <release-folder>
+/wire:utils-deploy-to-dev <release-folder>
+/wire:utils-deploy-to-prod <release-folder>
 
 # Phase 6: Enablement
-/wire:training-generate <project_id>
-/wire:training-validate <project_id>
-/wire:training-review <project_id>
+/wire:training-generate <release-folder>
+/wire:training-validate <release-folder>
+/wire:training-review <release-folder>
 
-/wire:documentation-generate <project_id>
-/wire:documentation-validate <project_id>
-/wire:documentation-review <project_id>
+/wire:documentation-generate <release-folder>
+/wire:documentation-validate <release-folder>
+/wire:documentation-review <release-folder>
 
-/wire:archive <project_id>
+/wire:archive <release-folder>
+/wire:session:end <release-folder>               # end each session
 ```
 
 ### Session start
 
-Begin every Claude Code session with:
+Begin every session on this release with:
 
 ```
-/wire:start
+/wire:session:start <release-folder>
 ```
 
-The framework shows all active projects and recommends the next action. This is your dashboard.
+The framework scans `status.md`, surfaces relevant research from `.wire/research/sessions/`, and proposes the session plan.
 
 ### Phase 1: Requirements (Day 1)
 
 ```
 /wire:new
 ```
-Answer the prompts: project type (`full_platform`), client name, project name, SOW path. Selecting `full_platform` is the key decision - it tells the framework to instantiate our full delivery process, activating all 15 artifact workflows across six phases and writing them into `status.md` as the project's process definition. Each artifact starts at `not_started` for all three gates (generate, validate, review). A `pipeline_only` project would only activate seven artifacts; a `dashboard_extension` just four. If you're on `main` or `master`, the framework will ask you to create a feature branch (e.g., `feature/20260202_barton_peveril_live_pastoral`) before creating any files. Optionally set up Jira tracking — you can create new issues, link to existing issues in the client's Jira board, or skip.
+Answer the prompts: release type (`full_platform`), client name, engagement name, SOW path. Selecting `full_platform` instantiates the complete delivery process into the release's `status.md` — all 15 artifacts across six phases, each with generate/validate/review gates set to `not_started`. A `pipeline_only` release would only activate seven artifacts; a `dashboard_extension` just four. If you're on `main` or `master`, the framework will ask you to create a feature branch before creating any files. Optionally set up Jira tracking.
 
-**After `/wire:new` completes**: Copy the SOW PDF (and any other source materials — meeting notes, SQL examples, existing data model docs) into the newly created `.wire/<project_id>/artifacts/` directory before running the next command.
-
-```
-/wire:requirements-generate <project_id>
-```
-The AI reads the SOW PDF, extracts structured requirements (functional, non-functional, data, technical, user), maps each SOW deliverable to the framework artifacts that will produce it, and writes `requirements/requirements_specification.md`.
+**After `/wire:new` completes**: Copy the SOW PDF (and any other source materials — meeting notes, SQL examples, existing data model docs) into the release's `requirements/` directory. Also ensure `engagement/sow.md` and `engagement/context.md` are populated — these are read by all commands throughout the release.
 
 ```
-/wire:requirements-validate <project_id>
+/wire:requirements-generate <release-folder>
+```
+The AI reads the SOW and engagement context, extracts structured requirements (functional, non-functional, data, technical, user), maps each SOW deliverable to the framework artifacts that will produce it, and writes `requirements/requirements_specification.md`.
+
+```
+/wire:requirements-validate <release-folder>
 ```
 Checks completeness across all 13 sections, verifies each deliverable has acceptance criteria, and flags any timeline feasibility concerns.
 
 ```
-/wire:requirements-review <project_id>
+/wire:requirements-review <release-folder>
 ```
 Present the requirements to the client stakeholder. Record their approval (or requested changes) in the framework. If changes are needed: address them and re-run generate + validate + review.
 
 **If requirements need workshop clarification**:
 ```
-/wire:workshops-generate <project_id>
-/wire:workshops-review <project_id>
+/wire:workshops-generate <release-folder>
+/wire:workshops-review <release-folder>
 ```
 
 **Ready criteria**: requirements artifact is `review: approved`.
 
 ### Phase 2: Design (Days 2–4)
 
-The design phase now follows a defined sequence. The conceptual model gates everything else.
+The design phase follows a defined sequence. The conceptual model gates everything else.
 
 #### Step 1: Conceptual entity model (Day 2 morning)
 
 ```
-/wire:conceptual_model-generate <project_id>
+/wire:conceptual_model-generate <release-folder>
 ```
 Produces a business-level entity model: an inventory of domain entities, a Mermaid `erDiagram` (entity names and relationships, no columns), and a relationship narrative. Any ambiguous entity boundaries or scope questions are surfaced as Open Questions.
 
 ```
-/wire:conceptual_model-validate <project_id>
+/wire:conceptual_model-validate <release-folder>
 ```
 Checks entity coverage against functional requirements, cardinality completeness, diagram syntax, PascalCase naming, and that no column-level detail has leaked in.
 
 ```
-/wire:conceptual_model-review <project_id>
+/wire:conceptual_model-review <release-folder>
 ```
 **Review audience: business stakeholders, not just the technical team.** The goal is to confirm the entity landscape — what the business cares about — before pipeline architecture and detailed modelling begins. Approving entities here constrains everything that follows.
 
@@ -491,41 +929,41 @@ Checks entity coverage against functional requirements, cardinality completeness
 #### Step 2: Pipeline design + data flow diagram (Day 2–3)
 
 ```
-/wire:pipeline_design-generate <project_id>
+/wire:pipeline_design-generate <release-folder>
 ```
 Produces the full pipeline architecture document — source system analysis, replication scenarios with cost analysis, scheduling, error handling, design decisions requiring client input — **plus an embedded Data Flow Diagram (DFD)** as a Mermaid flowchart showing the end-to-end movement of data from source systems through ingestion, staging, warehouse, to BI dashboards.
 
 ```
-/wire:pipeline_design-validate <project_id>
+/wire:pipeline_design-validate <release-folder>
 ```
 Validates the architecture text and the DFD: all sources present, entity coverage through the flow, staging naming conventions, node labels populated (no placeholders), and Mermaid syntax.
 
 ```
-/wire:pipeline_design-review <project_id>
+/wire:pipeline_design-review <release-folder>
 ```
 Technical review with the data engineering lead. Resolve any open design decisions (replication scenarios, scheduling choices) before this is approved.
 
 #### Step 3: Data model specification + physical ERD (Day 3–4)
 
 ```
-/wire:data_model-generate <project_id>
+/wire:data_model-generate <release-folder>
 ```
 Produces the complete dbt-layer data model specification — source definitions with freshness thresholds, staging models with grain and column mappings, integration models, warehouse models with surrogate keys and FK paths, seed files — **plus an embedded Physical ERD** as a Mermaid `erDiagram` with every warehouse model, all columns with types, PKs, FKs, and relationship lines. This is the most consequential design artifact.
 
 ```
-/wire:data_model-validate <project_id>
+/wire:data_model-validate <release-folder>
 ```
 Validates naming conventions, grain definitions, PK/FK traceability, test coverage plan, and ERD consistency (every ERD entity matches the model spec, every FK has a corresponding join definition).
 
 ```
-/wire:data_model-review <project_id>
+/wire:data_model-review <release-folder>
 ```
 **This is the most important review gate in the full-platform workflow.** Approving a model with incorrect grain, wrong join keys, or missing entities is expensive to fix after dbt code is generated. Reviewer: analytics engineering lead. Allow adequate time.
 
 #### Step 4: Dashboard mockups (Day 4)
 
 ```
-/wire:mockups-generate <project_id>
+/wire:mockups-generate <release-folder>
 ```
 Produces dashboard wireframes based on the requirements. Review with end users, not the technical stakeholder.
 
@@ -534,27 +972,27 @@ Produces dashboard wireframes based on the requirements. Review with end users, 
 ### Phase 3: Development (Days 5–8)
 
 ```
-/wire:pipeline-generate <project_id>
+/wire:pipeline-generate <release-folder>
 ```
 Generates data pipeline code (Python, Cloud Functions, or equivalent) based on the approved pipeline design. Includes extract logic, load logic, error handling, and scheduling configuration.
 
 ```
-/wire:dbt-generate <project_id>
+/wire:dbt-generate <release-folder>
 ```
-Generates all dbt models — staging, integration, and warehouse layers — from the approved data model specification. The generation workflow embeds comprehensive analytics engineering conventions: field naming rules (`_pk`, `_fk`, `_natural_key`, `_ts`, `is_`/`has_` prefixes), field ordering (keys → dates → attributes → metrics → metadata), SQL style rules (4-space indentation, 80-char lines, explicit joins, `s_` CTE prefix, `final` CTE pattern), and multi-source framework support for projects with multiple source systems (configuration-driven source management, entity deduplication with `merge_sources` macro, `IN UNNEST()` join patterns). Convention loading follows a 2-tier system: project-specific conventions (`.dbt-conventions.md`) take priority over embedded defaults. Includes YAML documentation files and automated tests (not_null + unique on every PK, relationships on every FK, typically 40–50 tests for a mid-sized engagement).
+Generates all dbt models — staging, integration, and warehouse layers — from the approved data model specification. The generation workflow embeds comprehensive analytics engineering conventions: field naming rules (`_pk`, `_fk`, `_natural_key`, `_ts`, `is_`/`has_` prefixes), field ordering (keys → dates → attributes → metrics → metadata), SQL style rules (4-space indentation, 80-char lines, explicit joins, `s_` CTE prefix, `final` CTE pattern), and multi-source framework support for releases with multiple source systems (configuration-driven source management, entity deduplication with `merge_sources` macro, `IN UNNEST()` join patterns). Convention loading follows a 2-tier system: project-specific conventions (`.dbt-conventions.md`) take priority over embedded defaults. Includes YAML documentation files and automated tests (not_null + unique on every PK, relationships on every FK, typically 40–50 tests for a mid-sized engagement).
 
 ```
-/wire:utils-run-dbt <project_id>
+/wire:utils-run-dbt <release-folder>
 ```
 Runs the generated dbt models in dbt Cloud or locally. Verify all models build and tests pass before proceeding.
 
 ```
-/wire:dbt-validate <project_id>
+/wire:dbt-validate <release-folder>
 ```
 Validates dbt models against a comprehensive checklist: file and model naming conventions (singular names, correct layer prefixes/suffixes), field naming conventions (`_pk`, `_fk`, `_ts`, boolean prefixes), field ordering, SQL structure (CTE patterns, style compliance), model configuration (materialization by layer), testing coverage (PK tests, FK relationships, integration model unique combinations), documentation coverage (100% for staging and warehouse layers), and optionally runs sqlfluff linting. Produces a structured validation report with severity-rated issues (critical, important, nice-to-have) and actionable recommendations.
 
 ```
-/wire:orchestration-generate <project_id>
+/wire:orchestration-generate <release-folder>
 ```
 Sets up the orchestration layer. Prompts you to choose between **Dagster** (Python-native, assets-first) and **dbt Cloud** (managed scheduling):
 
@@ -564,17 +1002,17 @@ Sets up the orchestration layer. Prompts you to choose between **Dagster** (Pyth
 The tool choice is stored in `status.md` as `orchestration_tool` and reused by validate and review.
 
 ```
-/wire:orchestration-validate <project_id>
+/wire:orchestration-validate <release-folder>
 ```
 For Dagster: runs `dg check defs` to verify the asset graph loads, checks all dbt models have corresponding assets, and verifies schedule cadences match the pipeline design. For dbt Cloud: validates config completeness, model selectors, and cron expressions.
 
 ```
-/wire:semantic_layer-generate <project_id>
+/wire:semantic_layer-generate <release-folder>
 ```
 Generates LookML views, explores, measures, and dimension definitions from the approved dbt models. The generation follows a 9-phase workflow: understand the task, examine existing LookML project, parse schema information (with full data type mapping), design the LookML structure, create view files (with embedded templates for primary keys, string/date/numeric dimensions, derived fields, measures, and drill sets), update model files, validate syntax, and provide a handover summary. Includes 5 embedded patterns (dimension table, fact table, aggregated PDT, multi-join explore, native derived table with parameters) and BigQuery-specific support (nested/repeated fields with UNNEST, partitioned table optimization, JSON field handling). Validation includes mandatory table/column reference cross-checking against source DDL and `preferred_slug` compliance checking.
 
 ```
-/wire:dashboards-generate <project_id>
+/wire:dashboards-generate <release-folder>
 ```
 Generates Looker dashboard LookML from the approved mockups and semantic layer. Validate and review.
 
@@ -583,22 +1021,22 @@ Generates Looker dashboard LookML from the approved mockups and semantic layer. 
 ### Phase 4: Testing (Days 9–10)
 
 ```
-/wire:data_quality-generate <project_id>
+/wire:data_quality-generate <release-folder>
 ```
 Generates additional data quality tests beyond the embedded dbt tests: freshness checks, row count reconciliation, cross-system validation, custom business rules.
 
 ```
-/wire:utils-run-dbt <project_id>
+/wire:utils-run-dbt <release-folder>
 ```
 Run dbt tests (use `--test` flag). Review any failures and fix the underlying data or model issues.
 
 ```
-/wire:uat-generate <project_id>
+/wire:uat-generate <release-folder>
 ```
 Generates a UAT plan mapped to the functional requirements. Conduct UAT sessions with end users, record outcomes, and iterate on any issues.
 
 ```
-/wire:uat-review <project_id>
+/wire:uat-review <release-folder>
 ```
 Records UAT sign-off. Do not proceed to deployment without this.
 
@@ -607,22 +1045,22 @@ Records UAT sign-off. Do not proceed to deployment without this.
 ### Phase 5: Deployment (Day 11)
 
 ```
-/wire:deployment-generate <project_id>
+/wire:deployment-generate <release-folder>
 ```
 Generates the deployment runbook (step-by-step production deployment instructions), CI/CD pipeline configuration, monitoring and alerting setup, and rollback procedures.
 
 ```
-/wire:deployment-validate <project_id>
+/wire:deployment-validate <release-folder>
 ```
 Pre-deployment checklist: verifies all upstream artifacts are ready, no outstanding blockers, monitoring configuration complete.
 
 ```
-/wire:utils-deploy-to-dev <project_id>
+/wire:utils-deploy-to-dev <release-folder>
 ```
 Test the deployment process in the dev environment.
 
 ```
-/wire:utils-deploy-to-prod <project_id>
+/wire:utils-deploy-to-prod <release-folder>
 ```
 Follow the runbook. Smoke-test after deployment. Monitor for the first 24 hours.
 
@@ -631,47 +1069,47 @@ Follow the runbook. Smoke-test after deployment. Monitor for the first 24 hours.
 ### Phase 6: Enablement (Days 12–13)
 
 ```
-/wire:training-generate <project_id>
+/wire:training-generate <release-folder>
 ```
 Generates two training packages:
 - **Data team enablement**: technical session plan (2 hours), covering how to extend the models, add new data sources, interpret monitoring alerts
 - **End user training**: dashboard usage session (90 minutes), including responsible interpretation of data signals
 
 ```
-/wire:training-review <project_id>
+/wire:training-review <release-folder>
 ```
 Rehearse sessions internally before delivering. Record any adjustments.
 
 Deliver the training sessions. Record attendance in status.
 
 ```
-/wire:documentation-generate <project_id>
+/wire:documentation-generate <release-folder>
 ```
 Generates technical architecture documentation and end-user guides. Validate and finalise.
 
 ```
-/wire:archive <project_id>
+/wire:archive <release-folder>
 ```
-Archives the completed project and produces a project summary. The engagement is done.
+Archives the completed release and produces a release summary. Run `session:end` to record the final session.
 
 ### Utility commands available at any phase
 
-In addition to the phase-specific commands above, the framework provides utility commands that can be used at any point during an engagement:
+In addition to the phase-specific commands above, the framework provides utility commands that can be used at any point during a release:
 
-- **`/wire:utils-run-dbt <project_id>`** — Runs the generated dbt models in dbt Cloud or locally
-- **`/wire:utils-deploy-to-dev <project_id>`** — Deploys to the development environment
-- **`/wire:utils-deploy-to-prod <project_id>`** — Deploys to the production environment
-- **`/wire:utils-meeting-context <project_id>`** — Retrieves Fathom meeting transcripts for project context, useful for capturing client decisions and requirements discussed in calls
-- **`/wire:utils-jira-sync <project_id>`** — Syncs artifact status to Jira issues, keeping project management tools in sync with framework state
-- **`/wire:utils-jira-status-sync <project_id>`** — Full reconciliation of all artifact states to Jira, ensuring complete alignment between framework status and Jira
-- **`/wire:utils-jira-create <project_id>`** — Creates or links Jira issues for a project. Can create a new Epic/Task/Sub-task hierarchy from scratch, or search an existing Jira project for matching issues and link to them (e.g. when the client's board already has issues in a running sprint)
-- **`/wire:utils-atlassian-search <project_id>`** — Searches Confluence for project documentation, useful for finding existing client documentation and prior engagement materials
+- **`/wire:utils-run-dbt <release-folder>`** — Runs the generated dbt models in dbt Cloud or locally
+- **`/wire:utils-deploy-to-dev <release-folder>`** — Deploys to the development environment
+- **`/wire:utils-deploy-to-prod <release-folder>`** — Deploys to the production environment
+- **`/wire:utils-meeting-context <release-folder>`** — Retrieves Fathom meeting transcripts for context, useful for capturing client decisions and requirements discussed in calls
+- **`/wire:utils-jira-sync <release-folder>`** — Syncs artifact status to Jira issues, keeping project management tools in sync with framework state
+- **`/wire:utils-jira-status-sync <release-folder>`** — Full reconciliation of all artifact states to Jira, ensuring complete alignment between framework status and Jira
+- **`/wire:utils-jira-create <release-folder>`** — Creates or links Jira issues for a release. Can create a new Epic/Task/Sub-task hierarchy from scratch, or search an existing Jira project for matching issues and link to them
+- **`/wire:utils-atlassian-search <release-folder>`** — Searches Confluence for documentation, useful for finding existing client documentation and prior engagement materials
 
 ---
 
-## 7. Running a Pipeline + dbt Engagement
+## 9. Running a Pipeline + dbt Release
 
-Use this when the client needs a new data source connected through to the dbt layer, but already has a BI tool / semantic layer in place or that work is out of scope.
+Use this when a new data source needs connecting through to the dbt layer, but a BI tool / semantic layer is already in place or out of scope.
 
 **In-scope artifacts**: `requirements`, `workshops` (if needed), `pipeline_design`, `data_model`, `pipeline`, `dbt`, `data_quality`, `deployment`
 
@@ -680,43 +1118,46 @@ Use this when the client needs a new data source connected through to the dbt la
 ### Workflow
 
 ```
-/wire:new                                   # project_type: pipeline_dbt
-/wire:requirements-generate <project_id>
-/wire:requirements-validate <project_id>
-/wire:requirements-review <project_id>
+/wire:new                                   # release_type: pipeline_dbt
+/wire:session:start <release-folder>
 
-/wire:pipeline_design-generate <project_id>
-/wire:pipeline_design-validate <project_id>
-/wire:pipeline_design-review <project_id>
+/wire:requirements-generate <release-folder>
+/wire:requirements-validate <release-folder>
+/wire:requirements-review <release-folder>
 
-/wire:data_model-generate <project_id>
-/wire:data_model-validate <project_id>
-/wire:data_model-review <project_id>
+/wire:pipeline_design-generate <release-folder>
+/wire:pipeline_design-validate <release-folder>
+/wire:pipeline_design-review <release-folder>
 
-/wire:pipeline-generate <project_id>
-/wire:pipeline-validate <project_id>
-/wire:pipeline-review <project_id>
+/wire:data_model-generate <release-folder>
+/wire:data_model-validate <release-folder>
+/wire:data_model-review <release-folder>
 
-/wire:dbt-generate <project_id>
-/wire:dbt-validate <project_id>
-/wire:utils-run-dbt <project_id>
-/wire:dbt-review <project_id>
+/wire:pipeline-generate <release-folder>
+/wire:pipeline-validate <release-folder>
+/wire:pipeline-review <release-folder>
 
-/wire:data_quality-generate <project_id>
-/wire:data_quality-validate <project_id>
-/wire:data_quality-review <project_id>
+/wire:dbt-generate <release-folder>
+/wire:dbt-validate <release-folder>
+/wire:utils-run-dbt <release-folder>
+/wire:dbt-review <release-folder>
 
-/wire:deployment-generate <project_id>
-/wire:deployment-validate <project_id>
-/wire:deployment-review <project_id>
-/wire:utils-deploy-to-prod <project_id>
+/wire:data_quality-generate <release-folder>
+/wire:data_quality-validate <release-folder>
+/wire:data_quality-review <release-folder>
 
-/wire:archive <project_id>
+/wire:deployment-generate <release-folder>
+/wire:deployment-validate <release-folder>
+/wire:deployment-review <release-folder>
+/wire:utils-deploy-to-prod <release-folder>
+
+/wire:archive <release-folder>
+/wire:session:end <release-folder>
 ```
 
 ---
 
-## 8. Running a dbt Development Engagement
+## 10. Running a dbt Development Release
 
 Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or manual loads) and you need to build or extend the dbt transformation layer.
 
@@ -725,38 +1166,41 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 ### Workflow
 
 ```
-/wire:new                                   # project_type: dbt_development
-/wire:requirements-generate <project_id>    # Focus on transformation requirements
-/wire:requirements-validate <project_id>
-/wire:requirements-review <project_id>
+/wire:new                                         # release_type: dbt_development
+/wire:session:start <release-folder>
 
-/wire:conceptual_model-generate <project_id>
-/wire:conceptual_model-validate <project_id>
-/wire:conceptual_model-review <project_id>
+/wire:requirements-generate <release-folder>      # Focus on transformation requirements
+/wire:requirements-validate <release-folder>
+/wire:requirements-review <release-folder>
 
-/wire:data_model-generate <project_id>      # Read existing source schema + requirements
-/wire:data_model-validate <project_id>
-/wire:data_model-review <project_id>
+/wire:conceptual_model-generate <release-folder>
+/wire:conceptual_model-validate <release-folder>
+/wire:conceptual_model-review <release-folder>
 
-/wire:dbt-generate <project_id>
-/wire:dbt-validate <project_id>
-/wire:utils-run-dbt <project_id>
-/wire:dbt-review <project_id>
+/wire:data_model-generate <release-folder>        # Read existing source schema + requirements
+/wire:data_model-validate <release-folder>
+/wire:data_model-review <release-folder>
 
-/wire:data_quality-generate <project_id>
-/wire:data_quality-validate <project_id>
-/wire:data_quality-review <project_id>
+/wire:dbt-generate <release-folder>
+/wire:dbt-validate <release-folder>
+/wire:utils-run-dbt <release-folder>
+/wire:dbt-review <release-folder>
 
-/wire:archive <project_id>
+/wire:data_quality-generate <release-folder>
+/wire:data_quality-validate <release-folder>
+/wire:data_quality-review <release-folder>
+
+/wire:archive <release-folder>
+/wire:session:end <release-folder>
 ```
 
-**Tips for dbt-only engagements**:
-- Add any existing dbt project files (existing `schema.yml`, source definitions, SQL examples) to `artifacts/` before running `data_model:generate` — the AI will use them to understand the existing model structure and extend it correctly
-- Use `artifacts/` to store SQL examples from the source database — schema introspection results, sample queries — so the AI understands actual column names and types
+**Tips for dbt-only releases**:
+- Add any existing dbt project files (existing `schema.yml`, source definitions, SQL examples) to `requirements/` before running `data_model:generate` — the AI will use them to understand the existing model structure and extend it correctly
+- Store SQL examples from the source database (schema introspection results, sample queries) so the AI understands actual column names and types
 
 ---
 
-## 9. Running a Dashboard Extension Engagement
+## 11. Running a Dashboard Extension Release
 
 Use this when the semantic layer already has the data, and you're adding new dashboards on top.
 
@@ -765,31 +1209,34 @@ Use this when the semantic layer already has the data, and you're adding new das
 ### Workflow
 
 ```
-/wire:new                                   # project_type: dashboard_extension
-/wire:requirements-generate <project_id>    # Focus on dashboard/user requirements
-/wire:requirements-validate <project_id>
-/wire:requirements-review <project_id>
+/wire:new                                         # release_type: dashboard_extension
+/wire:session:start <release-folder>
 
-/wire:mockups-generate <project_id>         # Wireframes for review with end users
-/wire:mockups-review <project_id>
+/wire:requirements-generate <release-folder>      # Focus on dashboard/user requirements
+/wire:requirements-validate <release-folder>
+/wire:requirements-review <release-folder>
 
-/wire:dashboards-generate <project_id>
-/wire:dashboards-validate <project_id>
-/wire:dashboards-review <project_id>
+/wire:mockups-generate <release-folder>           # Wireframes for review with end users
+/wire:mockups-review <release-folder>
 
-/wire:uat-generate <project_id>
-/wire:uat-review <project_id>
+/wire:dashboards-generate <release-folder>
+/wire:dashboards-validate <release-folder>
+/wire:dashboards-review <release-folder>
 
-/wire:archive <project_id>
+/wire:uat-generate <release-folder>
+/wire:uat-review <release-folder>
+
+/wire:archive <release-folder>
+/wire:session:end <release-folder>
 ```
 
 **Tips**:
-- Add existing LookML view files to `artifacts/` before generating dashboards — the AI needs to know which dimensions and measures are available
-- Mock data files or screenshot of existing Looker explores also help
+- Add existing LookML view files to `requirements/` before generating dashboards — the AI needs to know which dimensions and measures are available
+- Screenshots of existing Looker explores also help
 
 ---
 
-## 10. Running a Dashboard-First Rapid Development Engagement
+## 12. Running a Dashboard-First Rapid Development Release
 
 Use this when you want early stakeholder feedback via interactive dashboard mocks before building the data layer. This approach is especially effective when the SOW is well-defined but client data access may be delayed — you can have a working prototype with seed data before the client provides database credentials.
 
@@ -830,84 +1277,86 @@ flowchart TB
 ### Workflow
 
 ```
-/wire:new                                          # project_type: dashboard_first
+/wire:new                                               # release_type: dashboard_first
+/wire:session:start <release-folder>
 
 # Phase 1: Requirements (Day 1)
-/wire:requirements-generate <project_id>
-/wire:requirements-validate <project_id>
-/wire:requirements-review <project_id>
+/wire:requirements-generate <release-folder>
+/wire:requirements-validate <release-folder>
+/wire:requirements-review <release-folder>
 
 # Phase 2: Interactive Dashboard Mocks (Day 1–2)
-/wire:mockups-generate <project_id>               # Lovable-guided workflow
-/wire:mockups-review <project_id>
+/wire:mockups-generate <release-folder>                 # Lovable-guided workflow
+/wire:mockups-review <release-folder>
 
 # Phase 3: Visualization Catalog (Day 2)
-/wire:viz_catalog-generate <project_id>           # Generate-only, no validate/review
+/wire:viz_catalog-generate <release-folder>             # Generate-only, no validate/review
 
 # Phase 4: Data Model (Day 2–3)
-/wire:data_model-generate <project_id>            # Driven by viz_catalog, not conceptual model
-/wire:data_model-validate <project_id>
-/wire:data_model-review <project_id>
+/wire:data_model-generate <release-folder>              # Driven by viz_catalog, not conceptual model
+/wire:data_model-validate <release-folder>
+/wire:data_model-review <release-folder>
 
 # Phase 5: Seed Data (Day 3)
-/wire:seed_data-generate <project_id>             # CSV files with referential integrity
-/wire:seed_data-validate <project_id>
-/wire:seed_data-review <project_id>
+/wire:seed_data-generate <release-folder>               # CSV files with referential integrity
+/wire:seed_data-validate <release-folder>
+/wire:seed_data-review <release-folder>
 
 # Phase 6: Development — seed-based (Days 3–5)
-/wire:dbt-generate <project_id>                   # Uses ref() to seeds, not source()
-/wire:dbt-validate <project_id>
-/wire:utils-run-dbt <project_id>                  # dbt seed && dbt run && dbt test
-/wire:dbt-review <project_id>
+/wire:dbt-generate <release-folder>                     # Uses ref() to seeds, not source()
+/wire:dbt-validate <release-folder>
+/wire:utils-run-dbt <release-folder>                    # dbt seed && dbt run && dbt test
+/wire:dbt-review <release-folder>
 
-/wire:semantic_layer-generate <project_id>
-/wire:semantic_layer-validate <project_id>
-/wire:semantic_layer-review <project_id>
+/wire:semantic_layer-generate <release-folder>
+/wire:semantic_layer-validate <release-folder>
+/wire:semantic_layer-review <release-folder>
 
-/wire:dashboards-generate <project_id>
-/wire:dashboards-validate <project_id>
-/wire:dashboards-review <project_id>
+/wire:dashboards-generate <release-folder>
+/wire:dashboards-validate <release-folder>
+/wire:dashboards-review <release-folder>
 
 # Phase 7: Data Refactor — seeds → real data (when client data available)
-/wire:data_refactor-generate <project_id>         # Compares seed schema to real schema
-/wire:data_refactor-validate <project_id>         # Verifies dbt compiles against real data
-/wire:data_refactor-review <project_id>
+/wire:data_refactor-generate <release-folder>           # Compares seed schema to real schema
+/wire:data_refactor-validate <release-folder>           # Verifies dbt compiles against real data
+/wire:data_refactor-review <release-folder>
 
 # Phase 8: Testing
-/wire:data_quality-generate <project_id>
-/wire:data_quality-validate <project_id>
-/wire:data_quality-review <project_id>
+/wire:data_quality-generate <release-folder>
+/wire:data_quality-validate <release-folder>
+/wire:data_quality-review <release-folder>
 
-/wire:uat-generate <project_id>
-/wire:uat-review <project_id>
+/wire:uat-generate <release-folder>
+/wire:uat-review <release-folder>
 
 # Phase 9: Deployment + Enablement
-/wire:deployment-generate <project_id>
-/wire:deployment-validate <project_id>
-/wire:deployment-review <project_id>
-/wire:utils-deploy-to-prod <project_id>
+/wire:deployment-generate <release-folder>
+/wire:deployment-validate <release-folder>
+/wire:deployment-review <release-folder>
+/wire:utils-deploy-to-prod <release-folder>
 
-/wire:training-generate <project_id>
-/wire:training-validate <project_id>
-/wire:training-review <project_id>
+/wire:training-generate <release-folder>
+/wire:training-validate <release-folder>
+/wire:training-review <release-folder>
 
-/wire:documentation-generate <project_id>
-/wire:documentation-validate <project_id>
-/wire:documentation-review <project_id>
+/wire:documentation-generate <release-folder>
+/wire:documentation-validate <release-folder>
+/wire:documentation-review <release-folder>
 
-/wire:archive <project_id>
+/wire:archive <release-folder>
+/wire:session:end <release-folder>
 ```
 
 ### Phase 1: Requirements (Day 1)
 
-Same as Full Platform — copy the SOW to `artifacts/`, run requirements generate/validate/review. The key difference is that requirements approval unblocks **mockups** (not conceptual model).
+Same as Full Platform — ensure `engagement/sow.md` is present, run requirements generate/validate/review. The key difference is that requirements approval unblocks **mockups** (not conceptual model).
 
 ### Phase 2: Interactive Dashboard Mocks (Day 1–2)
 
 This is the key differentiator. Instead of generating ASCII wireframes, the mockups command for `dashboard_first` projects guides you through creating interactive dashboard mocks using [Lovable](https://lovable.dev).
 
 ```
-/wire:mockups-generate <project_id>
+/wire:mockups-generate <release-folder>
 ```
 
 The framework:
@@ -918,10 +1367,10 @@ The framework:
 5. Run the Lovable prompt (provided by the framework) to generate two files:
    - A **CSV visualization catalog** (one row per chart: dashboard page, visualization name, chart type, measures, dimensions)
    - A **markdown dashboard specification**
-6. Save both files into `.wire/<project_id>/design/`
+6. Save both files into the release's `design/` folder
 
 ```
-/wire:mockups-review <project_id>
+/wire:mockups-review <release-folder>
 ```
 
 Review the Lovable mocks with end users and stakeholders. Share the published Lovable URL (e.g. `https://project-demo.lovable.app/`) for async feedback.
@@ -933,7 +1382,7 @@ Review the Lovable mocks with end users and stakeholders. Share the published Lo
 ### Phase 3: Visualization Catalog (Day 2)
 
 ```
-/wire:viz_catalog-generate <project_id>
+/wire:viz_catalog-generate <release-folder>
 ```
 
 This is a **generate-only** artifact (no separate validate or review gates). The command parses the CSV and markdown from Lovable into a structured catalog: a dashboard inventory, measures index, dimensions index, and requirements coverage analysis. This answers the question: exactly which measures and dimensions must the data model provide?
@@ -941,7 +1390,7 @@ This is a **generate-only** artifact (no separate validate or review gates). The
 ### Phase 4: Data Model (Day 2–3)
 
 ```
-/wire:data_model-generate <project_id>
+/wire:data_model-generate <release-folder>
 ```
 
 For `dashboard_first`, the data model is driven by the **visualization catalog** instead of a conceptual model and pipeline design. The prerequisites are `requirements: approved` and `viz_catalog: complete` (not `conceptual_model: approved` + `pipeline_design: approved` as in Full Platform).
@@ -951,7 +1400,7 @@ The command also generates `source_tables_ddl.sql` and `target_warehouse_ddl.sql
 ### Phase 5: Seed Data (Day 3)
 
 ```
-/wire:seed_data-generate <project_id>
+/wire:seed_data-generate <release-folder>
 ```
 
 After the data model is approved, the framework generates **internally consistent CSV seed data files** — one per source table — with realistic, domain-appropriate values that maintain referential integrity across all foreign key relationships.
@@ -965,7 +1414,7 @@ The seed data validation gate checks:
 ### Phase 6: Development — seed-based (Days 3–5)
 
 ```
-/wire:dbt-generate <project_id>
+/wire:dbt-generate <release-folder>
 ```
 
 For `dashboard_first`, dbt generation uses `ref('seed_name')` instead of `source()` — meaning `dbt seed && dbt run && dbt test` works immediately without any client data access. You have a working dbt project, populated warehouse, and functional dashboards before the client provides database credentials.
@@ -975,7 +1424,7 @@ The rest of development (semantic layer, dashboards) proceeds as in Full Platfor
 ### Phase 7: Data Refactor (when client data available)
 
 ```
-/wire:data_refactor-generate <project_id>
+/wire:data_refactor-generate <release-folder>
 ```
 
 Once the client provides access to their actual data sources (DDLs, database credentials, or standard SaaS connector schemas), this command:
@@ -995,48 +1444,51 @@ The transition from `ref('customers_seed')` to `source('salesforce', 'accounts')
 
 ---
 
-## 11. Running an Enablement Engagement
+## 13. Running an Enablement Release
 
-Use this when an existing platform needs training and documentation — either as a standalone engagement or as the final phase of a delivery that was not originally run through the Wire Framework.
+Use this when an existing platform needs training and documentation — either as a standalone release or as the final phase of a delivery that was not originally run through the Wire Framework.
 
 **In-scope artifacts**: `training`, `documentation`
 
 ### Workflow
 
 ```
-/wire:new                                   # project_type: enablement
-/wire:requirements-generate <project_id>    # Capture training audience and learning objectives
+/wire:new                                         # release_type: enablement
+/wire:session:start <release-folder>
 
-/wire:training-generate <project_id>
-/wire:training-validate <project_id>
-/wire:training-review <project_id>
+/wire:requirements-generate <release-folder>      # Capture training audience and learning objectives
 
-/wire:documentation-generate <project_id>
-/wire:documentation-validate <project_id>
-/wire:documentation-review <project_id>
+/wire:training-generate <release-folder>
+/wire:training-validate <release-folder>
+/wire:training-review <release-folder>
 
-/wire:archive <project_id>
+/wire:documentation-generate <release-folder>
+/wire:documentation-validate <release-folder>
+/wire:documentation-review <release-folder>
+
+/wire:archive <release-folder>
+/wire:session:end <release-folder>
 ```
 
 **Tips**:
-- Add any existing technical documentation, data dictionaries, or architecture diagrams to `artifacts/` — the AI will use them as the basis for generated materials
-- Add the client stakeholder list (names, roles, technical levels) to `artifacts/` so training materials can be calibrated appropriately
+- Add any existing technical documentation, data dictionaries, or architecture diagrams to `requirements/` — the AI will use them as the basis for generated materials
+- Add the client stakeholder list (names, roles, technical levels) so training materials can be calibrated appropriately
 
 ---
 
-## 12. Worked Example: Barton Peveril Live Pastoral Analytics
+## 14. Worked Example: Barton Peveril Live Pastoral Analytics
 
-This section shows how a real engagement — a Full Platform project for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step.
+This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step. This engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined), so it starts with the full_platform delivery release.
 
 ### Engagement overview
 
 | | |
 |-|-|
 | **Client** | Barton Peveril Sixth Form College, Hampshire |
-| **Project** | Live Pastoral Analytics (SOW 2) |
+| **Engagement** | Live Pastoral Analytics (SOW 2) |
 | **Duration** | 2 weeks (Feb 2–13, 2026) |
 | **Budget** | $7,100 / 35 hours |
-| **Project type** | Full Platform |
+| **Release type** | Full Platform |
 
 **SOW deliverables**:
 
@@ -1098,29 +1550,37 @@ graph LR
 
 ### Week 1: Requirements → Design → Development (Part 1)
 
-#### Day 1 — Requirements and design kick-off
+#### Day 1 — Engagement setup and requirements
 
 ```bash
-# Initialise the project
+# Set up the engagement and the delivery release
 /wire:new
-# → project_type: full_platform (activates all 15 artifact workflows)
-# → client: Barton Peveril Sixth Form College
-# → project_name: barton_peveril_live_pastoral
-# → project_id: 20260202_barton_peveril_live_pastoral
-# → branch: feature/20260202_barton_peveril_live_pastoral (created automatically if on main)
-# → status.md created with full delivery process: requirements through enablement
+# → Client: Barton Peveril Sixth Form College
+# → Engagement name: barton_peveril
+# → Repo mode: A (combined — .wire/ in this repo)
+# → First release type: full_platform (activates all 15 artifact workflows)
+# → Release ID: 01-barton-peveril-live-pastoral
+# → Branch: feature/barton-peveril-live-pastoral (created automatically if on main)
+# → .wire/engagement/context.md and sow.md created
+# → .wire/releases/01-barton-peveril-live-pastoral/status.md created
+#   with full delivery process: requirements through enablement
+
+/wire:session:start 01-barton-peveril-live-pastoral
+# → Scans status.md: all artifacts at not_started
+# → No prior research found
+# → Proposes session plan: requirements → design kick-off
 ```
 
-Selecting `full_platform` instantiated our complete delivery process into the project's `status.md` - all 15 artifacts across six phases, each with generate/validate/review gates set to `not_started`. This is the process definition that will govern the entire engagement.
+Selecting `full_platform` instantiated the complete delivery process into the release's `status.md` — all 15 artifacts across six phases, each with generate/validate/review gates set to `not_started`. This is the process definition that will govern the entire release.
 
-Copy the SOW PDF to `.wire/20260202_barton_peveril_live_pastoral/artifacts/`.
+The SOW PDF was copied to `.wire/engagement/sow.md` during `/wire:new`.
 
-Also copy into `artifacts/`:
-- Client SQL examples showing the ProSolution schema (`vw_AttendanceDaily`, `RegisterMark`, `RegisterStudent`, etc.)
-- Meeting notes from the pre-engagement call
+Also add to the engagement folder:
+- Client SQL examples showing the ProSolution schema (`vw_AttendanceDaily`, `RegisterMark`, `RegisterStudent`, etc.) → place in `releases/01-barton-peveril-live-pastoral/requirements/`
+- Meeting notes from the pre-engagement call → add to `engagement/calls/2026-02-01-kickoff.md`
 
 ```
-/wire:requirements-generate 20260202_barton_peveril_live_pastoral
+/wire:requirements-generate 01-barton-peveril-live-pastoral
 ```
 
 **What the AI produced**:
@@ -1131,15 +1591,15 @@ Also copy into `artifacts/`:
 - Key design flags requiring workshop resolution: attendance granularity (register-level vs daily snapshot), Fivetran replication cost vs data refresh frequency
 
 ```
-/wire:requirements-validate 20260202_barton_peveril_live_pastoral
+/wire:requirements-validate 01-barton-peveril-live-pastoral
 → PASS (all 13 sections complete, acceptance criteria present for all deliverables)
 
-/wire:requirements-review 20260202_barton_peveril_live_pastoral
+/wire:requirements-review 01-barton-peveril-live-pastoral
 → Approved by Head of MIS, 2026-02-03
 ```
 
 ```
-/wire:mockups-generate 20260202_barton_peveril_live_pastoral
+/wire:mockups-generate 01-barton-peveril-live-pastoral
 ```
 
 Dashboard wireframes for the SPA Operational Dashboard:
@@ -1152,7 +1612,7 @@ Reviewed with SPAs and pastoral leads on Day 2.
 #### Day 2 — Design review and development start
 
 ```
-/wire:pipeline_design-generate 20260202_barton_peveril_live_pastoral
+/wire:pipeline_design-generate 01-barton-peveril-live-pastoral
 ```
 
 **What the AI produced** (using the SQL examples from artifacts/):
@@ -1167,7 +1627,7 @@ Reviewed with SPAs and pastoral leads on Day 2.
 **Decision taken**: Scenario C (Hybrid). Client DBA created `vw_AttendanceDaily` on the ProSolution SQL Server. Pipeline design went through two versions (v2.0 added Markbook/Assignment data to scope).
 
 ```
-/wire:data_model-generate 20260202_barton_peveril_live_pastoral
+/wire:data_model-generate 01-barton-peveril-live-pastoral
 ```
 
 **What the AI produced**:
@@ -1182,13 +1642,13 @@ Note: the AI flagged that note body text should be excluded at the Fivetran leve
 #### Days 3–4 — Development: Pipeline and dbt
 
 ```
-/wire:pipeline-generate 20260202_barton_peveril_live_pastoral
+/wire:pipeline-generate 01-barton-peveril-live-pastoral
 ```
 
 Generated Fivetran connector configuration and supplementary Python Cloud Functions for transformations outside Fivetran's capability. Error handling and alerting on pipeline failures.
 
 ```
-/wire:dbt-generate 20260202_barton_peveril_live_pastoral
+/wire:dbt-generate 01-barton-peveril-live-pastoral
 ```
 
 **Generated models** (using templates from the workflow spec):
@@ -1198,13 +1658,13 @@ Generated Fivetran connector configuration and supplementary Python Cloud Functi
 - 47 automated tests: not_null + unique on every PK, relationship tests on every FK, custom freshness tests on live data
 
 ```
-/wire:utils-run-dbt 20260202_barton_peveril_live_pastoral
+/wire:utils-run-dbt 01-barton-peveril-live-pastoral
 → 9 models built successfully
 → 47 tests passing
 ```
 
 ```
-/wire:dbt-validate 20260202_barton_peveril_live_pastoral
+/wire:dbt-validate 01-barton-peveril-live-pastoral
 → PASS
 → Naming conventions: compliant
 → Test coverage: 100% PK and FK coverage
@@ -1216,7 +1676,7 @@ Generated Fivetran connector configuration and supplementary Python Cloud Functi
 #### Day 5 — Semantic layer and dashboard development
 
 ```
-/wire:semantic_layer-generate 20260202_barton_peveril_live_pastoral
+/wire:semantic_layer-generate 01-barton-peveril-live-pastoral
 ```
 
 Generated LookML:
@@ -1225,7 +1685,7 @@ Generated LookML:
 - `pastoral_risk` explore with joins across student, attendance, notes, and alerts
 
 ```
-/wire:dashboards-generate 20260202_barton_peveril_live_pastoral
+/wire:dashboards-generate 01-barton-peveril-live-pastoral
 ```
 
 Generated SPA Operational Dashboard from approved mockups:
@@ -1237,12 +1697,12 @@ Generated SPA Operational Dashboard from approved mockups:
 #### Day 6 — Testing and iteration
 
 ```
-/wire:data_quality-generate 20260202_barton_peveril_live_pastoral
+/wire:data_quality-generate 01-barton-peveril-live-pastoral
 → Added: freshness alerts (data older than 90 minutes triggers Slack notification)
 → Added: row count reconciliation (ProSolution register count vs attendance_fct row count)
 → Added: null rate monitoring on attendance mark fields
 
-/wire:uat-generate 20260202_barton_peveril_live_pastoral
+/wire:uat-generate 01-barton-peveril-live-pastoral
 ```
 
 UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
@@ -1251,20 +1711,20 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 - Dashboard iterated and re-reviewed
 
 ```
-/wire:uat-review 20260202_barton_peveril_live_pastoral
+/wire:uat-review 01-barton-peveril-live-pastoral
 → Approved by Head of Student Services, 2026-02-10
 ```
 
 #### Day 7 — Deployment
 
 ```
-/wire:deployment-generate 20260202_barton_peveril_live_pastoral
+/wire:deployment-generate 01-barton-peveril-live-pastoral
 → Generated: deployment runbook, dbt Cloud job configuration, Looker deployment steps, rollback procedures
 
-/wire:utils-deploy-to-dev 20260202_barton_peveril_live_pastoral
+/wire:utils-deploy-to-dev 01-barton-peveril-live-pastoral
 → Dev deployment verified
 
-/wire:utils-deploy-to-prod 20260202_barton_peveril_live_pastoral
+/wire:utils-deploy-to-prod 01-barton-peveril-live-pastoral
 → Production deployment successful
 → Fivetran connectors active
 → dbt Cloud jobs scheduled
@@ -1274,7 +1734,7 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 #### Day 8 — Enablement
 
 ```
-/wire:training-generate 20260202_barton_peveril_live_pastoral
+/wire:training-generate 01-barton-peveril-live-pastoral
 ```
 
 **D4 — Data Team Enablement** (morning, Chris, Joanne, Ethan):
@@ -1285,14 +1745,16 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 - Session plan: Dashboard navigation, interpreting risk signals responsibly, when to act vs when to investigate further, data freshness expectations
 
 ```
-/wire:archive 20260202_barton_peveril_live_pastoral
+/wire:archive 01-barton-peveril-live-pastoral
 ```
 
 ---
 
-## 13. Wire Autopilot: Autonomous Execution
+## 15. Wire Autopilot: Autonomous Execution
 
-Wire Autopilot is an autonomous mode that takes a Statement of Work and executes the entire project lifecycle — generating, validating, and self-reviewing every artifact. Safety gates automatically pause execution before any phase that could affect external systems (activating pipelines, running dbt against databases, deploying to environments), requiring explicit confirmation before proceeding.
+Wire Autopilot v3.4.0 takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
+
+Safety gates automatically pause execution before any phase that could affect external systems (activating pipelines, running dbt against databases, deploying to environments), requiring explicit confirmation before proceeding.
 
 ### When to use Autopilot
 
@@ -1303,40 +1765,39 @@ Wire Autopilot is an autonomous mode that takes a Statement of Work and executes
 
 ### When NOT to use Autopilot
 
-- **Complex, ambiguous SOWs**: When the SOW needs significant interpretation or clarification
-- **Client-facing review gates**: When the client must approve each phase before moving forward
+- **Complex, ambiguous SOWs**: When the SOW needs significant interpretation or clarification before planning
+- **Client-facing review gates required**: When the client must approve each phase before moving forward
 - **Novel architectures**: When the project involves unfamiliar technologies or unconventional patterns
-- **Lovable mockups needed**: Dashboard-first projects that require interactive Lovable sessions (Autopilot can use wireframes instead, or pause for the Lovable session)
+- **Single-release engagements**: If you only need one delivery release without a discovery phase, use `/wire:new` + `/wire:session:start` instead
 
 ### How it works
 
 ```mermaid
 flowchart TB
-    A["Invoke /wire:autopilot"] --> B["Clarifying Questions<br/>(SOW, project type, client, Jira)"]
-    B --> C["Project Setup<br/>(folders, status.md, git branch)"]
-    C --> D{"For each artifact<br/>in sequence"}
-    D --> SG{"Safety-gated<br/>artifact?"}
-    SG -->|No| E["Generate"]
-    SG -->|Yes| SGP["⚠ Safety Gate<br/>Show progress + risk warning<br/>Ask: Proceed / Review / Stop"]
-    SGP -->|Proceed| E
-    SGP -->|Review| REV["Show all files generated so far<br/>Wait for user confirmation"]
-    REV --> E
-    SGP -->|Stop| M
-    E --> F["Validate"]
-    F --> G{"Pass?"}
-    G -->|Yes| H["Self-Review"]
-    G -->|No| I["Re-generate<br/>(max 3 retries)"]
-    I --> F
-    H --> J{"Approved?"}
-    J -->|Yes| K["Update status.md<br/>+ Jira sync"]
-    J -->|No| L["Re-generate<br/>(max 2 retries)"]
-    L --> F
-    K --> D
-    D -->|All done| M["Final Summary<br/>+ demo-ready deliverables"]
+    A["Invoke /wire:autopilot"] --> B["Clarifying Questions\n(SOW, client, Jira)"]
+    B --> C["Engagement Setup\n(.wire/engagement/ + 01-discovery/)"]
+    C --> D["Discovery Sprint\nproblem_definition → pitch → release_brief → sprint_plan"]
+    D --> E{"Discovery complete\n— confirm releases?"}
+    E -->|"Yes, proceed"| F["For each planned release"]
+    E -->|"Review first"| G["Show discovery artifacts\nwait for 'continue'"]
+    G --> F
+    E -->|"Stop here"| Z
+    F --> H["Create release folder\n(spawn)"]
+    H --> I{"For each artifact\nin release sequence"}
+    I --> SG{"Safety-gated?"}
+    SG -->|No| J["Generate → Validate → Self-review"]
+    SG -->|Yes| SGP["⚠ Safety Gate\nProceed / Review / Stop"]
+    SGP -->|Proceed| J
+    SGP -->|Stop| Z
+    J --> K["Update status.md + commit"]
+    K --> I
+    I -->|"Release done"| F
+    F -->|"All releases done"| Z["Final Summary\n+ PR created"]
 
     style A fill:#e3f2fd,stroke:#1565c0
-    style M fill:#e8f5e9,stroke:#2e7d32
-    style SGP fill:#fff3e0,stroke:#e65100
+    style D fill:#fff3e0,stroke:#e65100
+    style Z fill:#e8f5e9,stroke:#2e7d32
+    style SGP fill:#fce4ec,stroke:#c62828
 ```
 
 ### Invoking Autopilot
@@ -1353,16 +1814,64 @@ Or without a path argument (Autopilot will ask for it):
 
 ### Clarifying questions
 
-Autopilot asks a small set of questions before going autonomous:
+Autopilot asks a small number of questions before going autonomous — notably, it does **not** ask for a project type upfront. The delivery release types are determined by the discovery sprint:
 
 1. **SOW file path** (if not provided as argument)
-2. **Project type** — inferred from the SOW, confirmed by you
-3. **Client name and project name**
-4. **Jira tracking** — create new issues, link existing, or skip
-5. **Mockup mode** (dashboard-first only) — wireframes (autonomous) or pause for Lovable
-6. **Additional context** — technologies, naming conventions, preferences
+2. **Client name and engagement name**
+3. **Engagement lead name**
+4. **Repo mode** — combined (default) or dedicated delivery repo
+5. **Supporting documents** — org charts, call transcripts, architecture diagrams (optional)
+6. **Additional context** — technologies, naming conventions, preferences (optional)
+7. **Jira tracking** — create new issues, link existing, or skip
 
-After confirmation, Autopilot runs autonomously — pausing only at safety gates.
+After confirmation of the execution plan, Autopilot runs autonomously.
+
+### Phase 1: Discovery Sprint
+
+Before any delivery work begins, Autopilot runs a complete discovery sprint to plan the engagement:
+
+| Artifact | How Autopilot handles it |
+|----------|--------------------------|
+| **Problem Definition** | Generated from SOW and context. Pre-populates all 7 problem-framing questions from source material. Auto-approved if all 10 sections are complete. |
+| **Pitch** | Generated from problem definition. Autopilot decides appetite from SOW timeline (6+ weeks → big batch, 2–3 weeks → small batch). Shapes the solution from SOW deliverables. Identifies downstream release types from SOW scope. Auto-approved if all 10 sections complete and at least one release identified. |
+| **Release Brief** | Formalised from the approved pitch. Downstream releases table is the canonical list of delivery releases. Auto-approved if deliverables table and releases are populated. |
+| **Sprint Plan** | Generated from release brief. Sprint length and story estimates set autonomously. Includes a Downstream Releases table used by Phase 2. Auto-approved if all deliverables have epics with point estimates. |
+
+After the discovery sprint, Autopilot presents the planned releases and asks for your confirmation before proceeding with delivery:
+
+```
+Discovery sprint complete. Ready to execute 3 delivery releases:
+  02-data-foundation   (pipeline_only)
+  03-reporting         (dashboard_extension)
+  04-enablement        (enablement)
+
+Proceed with autonomous execution?
+  ○ Yes, execute all releases
+  ○ Review discovery artifacts first
+  ○ Stop here
+```
+
+### Phase 2: Delivery Release Execution
+
+For each planned delivery release, Autopilot:
+
+1. Creates the release folder structure (equivalent to `/wire:release:spawn`)
+2. Creates the release `status.md` with the correct artifact scope for the release type
+3. Runs the full artifact sequence for that release type (same as the old single-release autopilot)
+4. Commits all artifacts after the release is complete before moving to the next
+
+**Artifact sequences by release type:**
+
+| Type | Artifacts |
+|------|-----------|
+| `full_platform` | requirements → workshops → conceptual_model → pipeline_design → data_model → mockups → pipeline → dbt → semantic_layer → dashboards → data_quality → uat → deployment → training → documentation |
+| `pipeline_only` | requirements → pipeline_design → pipeline → data_quality → deployment |
+| `dbt_development` | requirements → data_model → dbt → semantic_layer → data_quality → deployment |
+| `dashboard_extension` | requirements → mockups → dashboards → training |
+| `dashboard_first` | requirements → mockups → viz_catalog → data_model → seed_data → dbt → semantic_layer → dashboards → data_refactor → data_quality → uat → deployment → training → documentation |
+| `enablement` | training → documentation |
+
+Each artifact follows the same generate → validate (up to 3 retries) → self-review (up to 2 retries) cycle.
 
 ### Safety gates
 
@@ -1371,48 +1880,46 @@ Autopilot automatically pauses before any phase that could affect systems outsid
 | Gated Artifact | Risk | What happens |
 |----------------|------|-------------|
 | `pipeline` | Activates data connectors (Fivetran, Airbyte) that replicate from production sources | Warns about connector activation, asks to confirm target environment |
-| `data_refactor` | Switches dbt from seed data to real client data; validate runs `dbt run` against a database | Warns about database connection, asks to confirm non-production environment |
+| `data_refactor` | Switches dbt from seed data to real client data | Warns about database connection, asks to confirm non-production environment |
 | `data_quality` | Executes SQL queries against the database | Warns about database queries, asks to confirm target database |
 | `deployment` | Creates deployment scripts that, if executed, affect live environments | Warns about live environment impact, asks to confirm readiness |
 
 At each safety gate, Autopilot presents:
-1. A summary of everything completed so far
+1. A summary of everything completed so far (across all releases)
 2. A risk-specific warning for the upcoming phase
-3. Three options: **Proceed** (continue), **Review first** (inspect generated files before continuing), or **Stop here** (end Autopilot, continue manually)
-
-This means all file-generation phases (requirements, design, dbt models, LookML, dashboards, training, documentation) run fully autonomously, while anything that touches external systems requires your explicit go-ahead.
+3. Three options: **Proceed**, **Review first** (inspect generated files before continuing), or **Stop here** (end Autopilot, continue manually)
 
 ### Self-review
 
-Instead of pausing for human review at each gate, Autopilot performs structured self-review. For each artifact, it cross-references:
+For each artifact (including discovery artifacts), Autopilot performs structured self-review instead of pausing for human review:
 
-- The generated artifact against the SOW (traceability)
-- The artifact against predecessor artifacts (consistency)
-- The artifact against validation results (quality)
+- Generated artifact cross-referenced against the SOW (traceability)
+- Artifact cross-referenced against predecessor artifacts (consistency)
+- Artifact cross-referenced against validation results (quality)
 
-Self-reviewed artifacts are marked as `review: approved` with `reviewed_by: "Wire Autopilot (self-review)"` in status.md.
+Self-reviewed artifacts are marked `review: approved` with `reviewed_by: "Wire Autopilot (self-review)"` in status.md.
 
 ### Context window management
 
-Large projects may exceed the AI's context window. Autopilot writes a checkpoint file (`.wire/<project>/autopilot_checkpoint.md`) after each phase, containing a condensed summary of all completed work. If the context window compresses, Autopilot reads the checkpoint to resume.
+Autopilot writes a single checkpoint file (`.wire/autopilot_checkpoint.md`) after each phase, containing a condensed summary of all completed work. Each delivery release also has its own `execution_log.md`. If the context window compresses, Autopilot reads the checkpoint to resume.
 
 ### Resuming from partial completion
 
-If an Autopilot session is interrupted (context exhaustion, terminal closed, etc.), simply re-run the same command:
+If an Autopilot session is interrupted, re-run the same command:
 
 ```
 /wire:autopilot path/to/SOW.pdf
 ```
 
-Autopilot reads `status.md` and `autopilot_checkpoint.md`, identifies the first incomplete artifact, and continues from that point. It does not re-generate already-completed artifacts.
+Autopilot checks `.wire/autopilot_checkpoint.md` and `.wire/releases/*/status.md` to identify what is already complete and resumes from the first incomplete artifact in the first incomplete release. It does not re-generate already-approved artifacts.
 
 ### Switching between Autopilot and manual commands
 
 Autopilot and the individual `/wire:*` commands share the same state files. You can:
 
-- Start with Autopilot, then switch to manual commands for a specific phase
-- Fix a blocked artifact manually, then re-run Autopilot to continue
-- Use Autopilot for the bulk of the work, then run manual reviews for key phases
+- Start with Autopilot for the discovery sprint, then switch to manual commands for delivery
+- Fix a blocked artifact manually using `/wire:session:start`, then re-run Autopilot to continue
+- Use Autopilot for the bulk of the work, then run manual reviews for client-facing phases
 
 ### Error handling
 
@@ -1421,22 +1928,22 @@ Autopilot and the individual `/wire:*` commands share the same state files. You 
 | Validation fails | Re-generates with specific fixes (up to 3 retries) |
 | Self-review rejects | Re-generates with feedback (up to 2 retries) |
 | Jira API unavailable | Skips Jira sync, continues |
-| Prerequisite blocked | Skips downstream artifacts, reports in final summary |
-| All retries exhausted | Marks artifact as blocked, continues to next |
+| Prerequisite blocked | Skips downstream artifacts in the same release, reports in final summary |
+| All retries exhausted | Marks artifact as blocked, continues to next artifact |
 
 ### Final summary
 
-When complete, Autopilot outputs a results table showing each phase's status, file counts, blocked phases (if any), and concrete deliverables ready for demo. It also suggests next steps including creating a pull request.
+When complete, Autopilot outputs a results table showing the discovery sprint status and each delivery release's artifact statuses, file counts, blocked phases (if any), and deliverables ready for demo. A pull request is created automatically.
 
 **Tips**:
-- Always review the final output before presenting to clients — Autopilot is fast but not infallible
-- Check the `execution_log.md` for a full audit trail of what Autopilot did
-- Use `/wire:status <project>` to see the detailed artifact status after Autopilot completes
-- For dashboard-first projects, wireframe mode produces adequate mockups for driving the data model; use Lovable mode if high-fidelity visuals are needed
+- Always review discovery artifacts (problem definition and pitch) with the client before they are used to drive delivery — they are generated from the SOW and may need refinement
+- Check `.wire/autopilot_checkpoint.md` for the full execution summary and `.wire/releases/*/execution_log.md` for per-release audit trails
+- Use `/wire:status` to see the detailed artifact status across all releases after Autopilot completes
+- If you want to run just a single release without discovery, use `/wire:new` + `/wire:session:start` instead
 
 ### Walkthrough: Autopilot in use
 
-This walkthrough shows a realistic Autopilot session for a `dbt_development` project. The project type has 6 artifacts: requirements → data_model → dbt → semantic_layer → data_quality → deployment — with safety gates at `data_quality` and `deployment`.
+This walkthrough shows a realistic Autopilot session for an Acme Corporation engagement. The SOW covers data foundation (pipeline + dbt) and a reporting layer (dashboards).
 
 #### 1. Invoking Autopilot
 
@@ -1446,208 +1953,183 @@ This walkthrough shows a realistic Autopilot session for a `dbt_development` pro
 
 #### 2. Clarifying questions
 
-Autopilot reads the SOW and begins asking questions:
-
 ```
-Based on the SOW, this appears to be a dbt development project — the scope covers
-dbt transformations, a LookML semantic layer, and data quality testing on an
-existing BigQuery warehouse. Is that correct?
-
-  ○ dbt development (Recommended)
-  ○ Full platform
-  ○ Pipeline only
-  ○ Dashboard extension
-```
-
-You select **dbt development**. Autopilot then asks for client name, project name, and Jira preferences:
-
-```
-What is the client name for this project?
+What is the client name for this engagement?
 > Acme Corporation
 
-What is the project name?
-> acme_marketing_analytics
+What is the engagement name?
+> acme_data_platform
 
-Would you like to track this project in Jira?
+What is your name (engagement lead)?
+> Sarah Chen
 
+Is this repo the client's code repo, or a dedicated delivery repo? (A/B)
+> A
+
+Do you have any other supporting documents? (org charts, transcripts, etc.)
+> no
+
+Additional context? (technologies, naming conventions, preferences)
+> BigQuery + dbt Cloud + Looker. Target dataset: analytics_prod.
+
+Would you like to track this engagement in Jira?
   ○ Create new Jira issues
   ○ Link to existing issues
-  ○ Skip Jira integration (Recommended)
+  ○ No, skip Jira
+> Skip Jira
 ```
 
-You select **Skip Jira**. Autopilot asks for any additional context:
+Autopilot presents the execution plan and asks for confirmation.
+
+#### 3. Engagement setup
 
 ```
-Any additional technical context? (naming conventions, special requirements, etc.)
-> We use snake_case for all dbt models. Target schema is analytics_prod.
-  Looker instance is at acme.cloud.looker.com.
-```
-
-#### 3. Autonomous execution begins
-
-```
---- Project Setup Complete ---
-Folder: .wire/20260228_acme_marketing_analytics/
-Branch: feature/20260228_acme_marketing_analytics
-Type: dbt_development
-Artifacts: 6 phases to execute
-Beginning autonomous execution...
+--- Engagement Setup Complete ---
+Client: Acme Corporation
+Engagement: acme_data_platform
+Branch: feature/acme_data_platform
+Discovery release: .wire/releases/01-discovery/
+Beginning discovery sprint...
 ---
 ```
 
-Autopilot now runs through each phase without interaction. You see progress reports as each completes:
+#### 4. Discovery sprint (autonomous)
 
 ```
---- Phase Complete: requirements ---
+--- Discovery: Problem Definition ---
+Status: approved (self-reviewed)
+File: .wire/releases/01-discovery/planning/problem_definition.md
+---
+
+--- Discovery: Pitch ---
+Status: approved (self-reviewed)
+Appetite: Big batch (6 weeks)
+Downstream releases identified:
+  02-data-foundation   (pipeline_only)
+  03-reporting         (dashboard_extension)
+File: .wire/releases/01-discovery/planning/pitch.md
+---
+
+--- Discovery: Release Brief ---
+Status: approved (self-reviewed)
+File: .wire/releases/01-discovery/planning/release_brief.md
+---
+
+--- Discovery: Sprint Plan ---
+Status: approved (self-reviewed)
+Total: 42 points across 3 sprints
+File: .wire/releases/01-discovery/planning/sprint_plan.md
+---
+```
+
+#### 5. Confirm delivery releases
+
+```
+Discovery sprint complete. Ready to execute 2 delivery releases:
+  02-data-foundation   (pipeline_only)
+  03-reporting         (dashboard_extension)
+
+Proceed with autonomous execution?
+  ○ Yes, execute all releases
+  ○ Review discovery artifacts first
+  ○ Stop here
+```
+
+You select **Yes, execute all releases**.
+
+#### 6. Release 02-data-foundation (pipeline_only)
+
+```
+--- Starting Release: 02-data-foundation (pipeline_only) ---
+Artifact sequence: requirements → pipeline_design → pipeline → data_quality → deployment
+---
+
+--- Artifact Complete: requirements (02-data-foundation) ---
 Status: approved
-Files: requirements/requirements_specification.md
-Progress: 1/6 phases complete
-Next: data_model
+Progress: 1/5 artifacts, 1/2 releases done
 ---
-```
 
-```
---- Phase Complete: data_model ---
+--- Artifact Complete: pipeline_design (02-data-foundation) ---
 Status: approved
-Files: design/data_model_specification.md, design/physical_erd.md
-Progress: 2/6 phases complete
-Next: dbt
+Progress: 2/5 artifacts, 1/2 releases done
 ---
 ```
 
-The dbt phase takes longer — it generates staging models, warehouse models, tests, and docs, then validates naming conventions and self-reviews against the data model:
+Autopilot hits the `pipeline` safety gate:
 
 ```
---- Phase Complete: dbt ---
-Status: approved
-Files: 24 files in dev/dbt/ (models, tests, sources, docs)
-Progress: 3/6 phases complete
-Next: semantic_layer
----
-```
+⚠ SAFETY GATE — pipeline (02-data-foundation)
 
-```
---- Phase Complete: semantic_layer ---
-Status: approved
-Files: 8 files in dev/lookml/ (views, explores, model)
-Progress: 4/6 phases complete
-Next: data_quality
----
-```
+Completed: requirements ✓ | pipeline_design ✓
 
-#### 4. Safety gate — data_quality
-
-Autopilot reaches the `data_quality` artifact and pauses:
-
-```
-⚠ SAFETY GATE — data_quality
-
-Completed so far: requirements ✓ | data_model ✓ | dbt ✓ | semantic_layer ✓
-
-This phase will run data quality tests that execute SQL queries against your
-database. Please confirm the target database connection is correct.
-
-How would you like to proceed?
+This phase will generate pipeline configuration. When activated, this could start
+replicating data from your production source systems. Please confirm the target
+environment and connector credentials are correct before proceeding.
 
   ○ Proceed — I have verified the target environment
-  ○ Review first — Pause so I can review the artifacts generated so far
-  ○ Stop here — End Autopilot, I will continue manually
+  ○ Review first
+  ○ Stop here
 ```
 
-You select **Proceed**. Autopilot generates the data quality tests:
+You select **Proceed**. Execution continues through `pipeline`, then pauses again at `data_quality` and `deployment`. After both, release 02 is committed:
 
 ```
---- Phase Complete: data_quality ---
-Status: approved
-Files: test/data_quality_tests.md, test/monitoring_config.md
-Progress: 5/6 phases complete
-Next: deployment
+--- Release Complete: 02-data-foundation ---
+Type: pipeline_only
+Committed: a3f8b21
+1/2 releases done. Moving to next release...
 ---
 ```
 
-#### 5. Safety gate — deployment
+#### 7. Release 03-reporting (dashboard_extension)
+
+Autopilot creates the folder, sets artifact scope to `requirements → mockups → dashboards → training`, and runs through all four artifacts autonomously:
 
 ```
-⚠ SAFETY GATE — deployment
-
-Completed so far: requirements ✓ | data_model ✓ | dbt ✓ | semantic_layer ✓ |
-data_quality ✓
-
-This phase will generate deployment runbooks and scripts. Executing these would
-deploy changes to a live environment. Please confirm you are ready to proceed
-with deployment planning.
-
-How would you like to proceed?
-
-  ○ Proceed — I have verified the target environment
-  ○ Review first — Pause so I can review the artifacts generated so far
-  ○ Stop here — End Autopilot, I will continue manually
-```
-
-You select **Review first**. Autopilot lists all generated files:
-
-```
-Files generated so far:
-
-  requirements/requirements_specification.md
-  design/data_model_specification.md
-  design/physical_erd.md
-  dev/dbt/models/staging/stg_acme__campaigns.sql
-  dev/dbt/models/staging/stg_acme__ad_spend.sql
-  ... (24 dbt files)
-  dev/lookml/views/campaigns.view.lkml
-  ... (8 LookML files)
-  test/data_quality_tests.md
-  test/monitoring_config.md
-
-Ready to continue when you are.
-```
-
-After reviewing, you type "continue" and Autopilot generates the deployment runbook:
-
-```
---- Phase Complete: deployment ---
-Status: approved
-Files: deploy/deployment_runbook.md
-Progress: 6/6 phases complete
+--- Release Complete: 03-reporting ---
+Type: dashboard_extension
+Committed: 7c2d904
+2/2 releases done.
 ---
 ```
 
-#### 6. Final summary
+#### 8. Final summary
 
 ```
-═══════════════════════════════════════════════════
-  WIRE AUTOPILOT — COMPLETE
-  Project: acme_marketing_analytics
-  Client: Acme Corporation
-  Type: dbt_development
-═══════════════════════════════════════════════════
+## Wire Autopilot — Engagement Complete
 
-  Phase            Status     Files
-  ─────            ──────     ─────
-  requirements     approved   1
-  data_model       approved   2
-  dbt              approved   24
-  semantic_layer   approved   8
-  data_quality     approved   2
-  deployment       approved   1
+Client: Acme Corporation
+Engagement: acme_data_platform
+Branch: feature/acme_data_platform
+PR: https://github.com/acme/acme-analytics/pull/14
 
-  Total: 38 files across 6 phases
-  Blocked: 0
-  Branch: feature/20260228_acme_marketing_analytics
+### Discovery Sprint
+problem_definition  complete / pass / approved
+pitch               complete / pass / approved
+release_brief       complete / pass / approved
+sprint_plan         complete / pass / approved
 
-  Suggested next steps:
-  • Review generated artifacts
-  • /wire:status 20260228_acme_marketing_analytics
-  • Create a pull request for review
-═══════════════════════════════════════════════════
+### Release: 02-data-foundation (pipeline_only)
+requirements        complete / pass / approved
+pipeline_design     complete / pass / approved
+pipeline            complete / pass / approved
+data_quality        complete / pass / approved
+deployment          complete / pass / approved
+
+### Release: 03-reporting (dashboard_extension)
+requirements        complete / pass / approved
+mockups             complete / N/A / approved
+dashboards          complete / pass / approved
+training            complete / pass / approved
+
+Total files: 47 | Blocked: 0
 ```
 
-The entire session — from SOW to complete deliverables — took about 15 minutes of AI processing time with two brief pauses at safety gates.
+The entire session — from SOW to complete multi-release deliverables — took approximately 25 minutes of AI processing time.
 
 ---
 
-## 14. Wire Studio: Web-Based Interface
+## 16. Wire Studio: Web-Based Interface
 
 > **Status: Active** — Wire Studio v3.4.0 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
@@ -2122,7 +2604,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 15. Extending and Customising the Framework
+## 17. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -2201,6 +2683,56 @@ Common modifications:
 - **Changing a code template**: update the SQL/YAML/LookML template embedded in the generate spec
 - **Adding a new required section to a document**: add it to the generate spec's document structure and the validate spec's completeness checklist
 
+### Proactive development skills
+
+In addition to `/wire:*` commands, the plugin includes **skills** — contextual guides that activate automatically when working outside of Wire commands. Skills do not require a slash command; Claude loads them based on keywords and file types.
+
+| Skill | Activates when | What it provides |
+|---|---|---|
+| **Research Persistence** | Performing technical research (schema lookups, library docs, technology investigations) | Checks `.wire/research/sessions/` for prior findings before researching; saves summaries for future sessions |
+| **dbt Development** | Working with `.sql` model files, `schema.yml`, or asking about dbt conventions | Naming rules, SQL style, testing requirements, multi-source framework |
+| **LookML Content Authoring** | Creating or editing LookML views, explores, or dashboards | LookML patterns, validation against source DDL |
+| **LookML Content Authoring (MCP)** | LookML work with a Looker MCP server connected | Live schema validation via Looker API |
+| **Dagster** | Creating or modifying Dagster assets, schedules, sensors | `@dg.asset` patterns, dagster-dbt integration, CLI reference |
+| **Dignified Python** | Writing or reviewing Python code | LBYL, 3.10+ type syntax, pathlib, Click patterns |
+| **dbt Unit Testing** | Creating dbt unit tests or asking about transformation testing | Model-Inputs-Outputs pattern, format selection, BigQuery caveats |
+| **dbt Troubleshooting** | Diagnosing dbt job failures or test errors | Systematic error classification, investigation steps |
+| **dbt Semantic Layer** | Building MetricFlow semantic models, metrics, or dimensions | Semantic model YAML structure, 5 metric types, validation |
+| **dbt Migration** | Migrating a dbt project between platforms (BigQuery, Snowflake, Databricks) | Dialect differences, pre/post-migration testing, iterative fix workflow |
+| **dbt Fusion Migration** | Upgrading from dbt Core to dbt Fusion runtime | 4-category error triage, dbt-autofix workflow, Fusion-specific errors |
+| **dbt MCP Server** | Setting up the dbt MCP server for Claude Code | Configuration templates, credential security, Wire `.mcp.json` integration |
+| **dbt Analytics Q&A** | Answering business data questions against a dbt project | 4-level escalation: Semantic Layer → compiled SQL → model discovery → manifest |
+| **dbt DAG Visualisation** | Visualising dbt model lineage or dependencies | Mermaid `graph LR` diagrams, Wire colour-coding conventions |
+
+#### Adding a new skill
+
+Create a file at `wire/skills/<skill-name>/SKILL.md` with this frontmatter:
+
+```markdown
+---
+name: skill-name
+description: One-line description of what this skill does and when it activates.
+---
+
+# Skill Name
+
+## Purpose
+[What this skill does]
+
+## When This Skill Activates
+### User-Triggered Activation
+[Keywords and phrases that trigger this skill]
+
+### Self-Triggered Activation (Proactive)
+[Conditions under which you should load this skill without being asked]
+
+---
+## Core Patterns
+[The conventions, rules, and examples the skill provides]
+```
+
+Skills are automatically copied into the plugin build by `build-packages.sh`. No registration step is needed — any `.md` file in `wire/skills/<name>/SKILL.md` is included automatically.
+
 ### Adding support for a new technology stack
 
 The current framework targets BigQuery + dbt + LookML. Adapting for another stack (e.g. Snowflake + dbt + Tableau) involves:
@@ -2211,11 +2743,11 @@ The current framework targets BigQuery + dbt + LookML. Adapting for another stac
 
 The non-technology artifacts (requirements, data_model, training, documentation) require no changes.
 
-### Adding a new project type
+### Adding a new release type
 
-Each project type is a process definition - an ordered set of in-scope artifacts that defines a specific delivery workflow. If you have a recurring engagement type not covered by the six standard types:
+Each release type is a process definition — an ordered set of in-scope artifacts that defines a specific delivery workflow. If you have a recurring engagement pattern not covered by the seven standard types (discovery, full_platform, pipeline_only, dbt_development, dashboard_extension, dashboard_first, enablement):
 
-1. Edit `specs/new.md` to add the new type to the project creation prompts and define which artifacts are in scope (the rest will be set to `not_applicable` when `status.md` is instantiated)
+1. Edit `specs/new.md` to add the new type to the release creation prompts and define which artifacts are in scope (the rest will be set to `not_applicable` when `status.md` is instantiated)
 2. Add a case to the status template in `TEMPLATES/status-template.md` showing the artifact scope for the new type
 3. Document the new type in this handbook
 
@@ -2230,7 +2762,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 16. FAQ
+## 18. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -2259,34 +2791,31 @@ Two options:
 1. **One-off fix**: Edit the generated file directly, then re-run validate and review
 2. **Fix the root cause**: Edit the workflow spec template that produced the incorrect output (`wire/specs/<path>.md`), then re-run generate. This ensures future projects also get the correct output.
 
-If a client has persistent conventions that differ from our standard templates (e.g. a different surrogate key pattern), update the template in the generate spec and note it in the project's `status.md` notes section.
+If a client has persistent conventions that differ from our standard templates (e.g. a different surrogate key pattern), update the template in the generate spec and note it in the release's `status.md` notes section.
 
 ---
 
-**Q: Can I run multiple projects in the same repository?**
+**Q: Can I run multiple releases in the same repository?**
 
-Yes. The `.wire/` directory supports multiple project subdirectories. `/wire:start` and `/wire:status` show all projects. Each project is isolated in its own `<project_id>/` folder and its own `status.md`. The generated code (dbt models, LookML) is shared in the repository root, so use clear naming conventions to avoid collisions between projects.
+Yes. The `.wire/releases/` directory supports as many release folders as needed. `/wire:start` and `/wire:status` show all releases. Each release is isolated in its own folder with its own `status.md`. The generated code (dbt models, LookML) is shared in the repository root, so use clear naming conventions to avoid collisions between releases.
 
 ---
 
-**Q: What do I put in the `artifacts/` folder?**
+**Q: Where do I put source materials like the SOW, SQL examples, and meeting notes?**
 
-Anything the AI should use as source material:
-- The SOW PDF (required)
-- SQL examples showing source system schema (highly recommended — significantly improves data model quality)
-- Meeting notes and transcript snippets
-- Existing data model documentation or ERDs
-- Existing dbt project files if you're extending an existing project
-- Sample data files or column lists
-- Any client-provided technical specifications
+- **SOW**: copy to `engagement/sow.md` (done automatically by `/wire:new`)
+- **Meeting transcripts and call notes**: add to `engagement/calls/` (named by date, e.g. `2026-03-10-kickoff.md`)
+- **SQL examples from the source database**: put in the release's `requirements/` folder — the AI reads this during requirements generation
+- **Existing dbt project files or schema documentation**: put in `requirements/` for the relevant release
+- **Org charts and stakeholder maps**: add to `engagement/org/`
 
-The AI will use Glob to discover everything in `artifacts/` at the start of each generate command.
+The AI reads `engagement/` for background context and the release's `requirements/` folder for source materials at the start of each generate command.
 
 ---
 
 **Q: How do I handle a project where the SOW is not a PDF?**
 
-If the SOW is a Word document, ask the client to export it as PDF, or copy the key sections (deliverables, timeline, technical outcomes, out-of-scope items) into a markdown file in `artifacts/`. The AI can work with `.md` files directly. If it's in a Google Doc, copy the text into a markdown file.
+If the SOW is a Word document, export it as PDF, or copy the key sections (deliverables, timeline, technical outcomes, out-of-scope items) into `engagement/sow.md` as markdown. The AI can work with `.md` files directly. If it's in a Google Doc, copy the text into the file.
 
 ---
 
@@ -2313,15 +2842,15 @@ The `/wire:*` command system requires a CLI-based AI coding agent (Claude Code o
 
 ---
 
-**Q: How do I know when a project is complete?**
+**Q: How do I know when a release is complete?**
 
-Run `/wire:status <project_id>`. When all in-scope artifacts show `review: approved` (or `not_applicable` for out-of-scope artifacts), the project is complete. Run `/wire:archive <project_id>` to close it out.
+Run `/wire:status <release-folder>`. When all in-scope artifacts show `review: approved` (or `not_applicable` for out-of-scope artifacts), the release is complete. Run `/wire:archive <release-folder>` to close it out. For a discovery release, completion means the sprint plan is approved and downstream releases have been spawned via `/wire:release:spawn`.
 
 ---
 
 **Q: Why does `/wire:new` force me to create a branch?**
 
-The framework requires all project work to happen on a feature branch, not directly on `main` or `master`. This is standard git hygiene — generated artifacts, dbt models, and LookML files should be reviewed via pull request before merging. If you're already on a feature branch when you run `/wire:new`, the check passes silently and you won't notice it. The suggested branch name is `feature/{folder_name}` (e.g., `feature/20260210_acme_marketing_analytics`), but you can choose any name.
+The framework requires all release work to happen on a feature branch, not directly on `main` or `master`. This is standard git hygiene — generated artifacts, dbt models, and LookML files should be reviewed via pull request before merging. If you're already on a feature branch when you run `/wire:new`, the check passes silently and you won't notice it. The suggested branch name is `feature/{engagement-name}` (e.g., `feature/acme-analytics`), but you can choose any name.
 
 ---
 
@@ -2339,7 +2868,7 @@ Use Dashboard-First when: (1) the SOW is well-defined enough to mock dashboards 
 
 **Q: Can I switch from Dashboard-First to Full Platform mid-project?**
 
-Not automatically — the project type determines the artifact scope at creation time. However, you can manually edit `status.md` to add artifacts that were marked `not_applicable` (e.g. add `pipeline_design` if you later decide you need it). The workflow specs will work correctly with manually added artifacts.
+Not automatically — the release type determines the artifact scope at creation time. However, you can manually edit `status.md` to add artifacts that were marked `not_applicable` (e.g. add `pipeline_design` if you later decide you need it). The workflow specs will work correctly with manually added artifacts.
 
 ---
 
@@ -2351,7 +2880,7 @@ The `data_refactor:generate` command handles this by comparing the seed schema a
 
 **Q: Do I need a Lovable account for dashboard-first projects?**
 
-Yes. The mockups command for `dashboard_first` projects uses Lovable (via `getmock.rittmananalytics.com`) to create interactive dashboard mocks. You need to be a member of the RA Lovable account. Ask to be invited if you're not already a member. If Lovable is unavailable, you can use the standard mockups workflow (ASCII wireframes) by selecting a different project type.
+Yes. The mockups command for `dashboard_first` releases uses Lovable (via `getmock.rittmananalytics.com`) to create interactive dashboard mocks. You need to be a member of the RA Lovable account. Ask to be invited if you're not already a member. If Lovable is unavailable, you can use the standard mockups workflow (ASCII wireframes) by selecting a different release type.
 
 ---
 
@@ -2416,22 +2945,96 @@ Safety gates are automatic pause points that prevent Autopilot from touching ext
 
 ---
 
-## 17. Troubleshooting
+**Q: Do I need to run a discovery release before every engagement?**
 
-**"Project not found"**
-- Verify the project exists: `/wire:status`
-- Check the folder name matches the project_id
+No. Discovery is optional. Use it when: (1) the client is not sure what they need built, (2) scope needs to be negotiated before a SOW is signed, or (3) you want to formally validate the problem and shape the solution before committing. If you already have a well-scoped, signed SOW, go directly to the appropriate delivery release type.
+
+---
+
+**Q: What is Shape Up and why does the discovery release use it?**
+
+Shape Up is a product development methodology (from Basecamp) that emphasises fixed-time variable-scope delivery: you commit to an *appetite* (how much time this is worth), shape a solution within that appetite, and cut scope to fit the time rather than extending the time to fit the scope. Wire's discovery release implements Shape Up because it prevents the most common planning failure on analytics engagements — committing to a fixed scope in a fixed time without validating the problem or shaping the solution first. The betting table review and appetite-driven sprint plan are both Shape Up concepts.
+
+---
+
+**Q: What is the `.wire/engagement/` folder for, and who populates it?**
+
+`engagement/` holds context that belongs to the whole engagement rather than any specific release: the SOW, call transcripts, org charts, and current-state architecture notes. It is populated by the consultant, not by Wire commands. `/wire:new` creates `engagement/context.md` and copies the SOW to `engagement/sow.md` during setup. After that, transcripts and notes are added manually as the engagement progresses. All Wire commands — discovery and delivery alike — read from `engagement/` for background context.
+
+---
+
+**Q: What is the `research/` folder and should I manage it?**
+
+`.wire/research/sessions/` is managed automatically by the research persistence skill. You do not need to create or edit these files manually. When the AI performs technical research during a session (looking up schemas, reading library docs, investigating a technology), it saves a structured summary there automatically. `session:start` surfaces relevant prior research at the beginning of each session. Think of it as an automatically maintained research log — read it if you want to see what was investigated previously, but do not edit it.
+
+---
+
+**Q: Can I run a discovery release and a delivery release at the same time?**
+
+Not recommended. The discovery release should be completed and delivery releases spawned via `release:spawn` before delivery work begins. Discovery is specifically about determining *what* to build — starting delivery before that is known creates rework risk. If you are joining an engagement mid-stream where discovery has already been done informally, create the delivery release directly without a discovery release.
+
+---
+
+**Q: What is `session:start` and do I need to use it every time?**
+
+`session:start` is recommended but not required. It enters Plan Mode, reads the release's current `status.md`, surfaces prior research, and proposes a focused session plan. Its main value is grounding every session in current state — especially useful after a break, a context switch, or when a different consultant picks up the work. If you're mid-flow and know exactly what you're doing next, you can skip it. `session:end` is similarly optional but useful for capturing what was accomplished and what the next focus should be.
+
+---
+
+**Q: How does session history work?**
+
+`session:end` appends a row to the `Session History` table at the bottom of `status.md`:
+
+```markdown
+| Date | Objective | Accomplished | Next Focus |
+|------|-----------|--------------|------------|
+| 2026-03-10 | Problem definition and pitch draft | Problem definition approved, pitch drafted | Pitch review (betting table) |
+| 2026-03-11 | Pitch review and release brief | Bet approved, brief drafted and signed off | Sprint planning |
+```
+
+This provides a human-readable audit trail of every session without requiring any manual note-taking. When a new consultant picks up the release, reading the session history gives immediate context on what has happened and what comes next.
+
+---
+
+**Q: Can I have multiple engagements in the same repository?**
+
+Yes, but it's unusual. The `.wire/` directory supports only one engagement (one `engagement/` folder). If you have two genuinely separate client engagements, they should be in separate repositories. However, a single engagement can have as many releases as needed — there is no limit on the number of release folders under `.wire/releases/`.
+
+---
+
+**Q: I have an existing project using the old layout (release folders directly under `.wire/`). How do I migrate to v3.4.0?**
+
+Run `/wire:migrate` from the repository root. The command:
+
+1. Detects old-style release folders directly under `.wire/` (any folder containing a `status.md`)
+2. Proposes new names (`20260202_barton_peveril_live_pastoral` → `01-barton-peveril-live-pastoral`) and waits for your confirmation
+3. Creates `.wire/engagement/`, `.wire/releases/`, `.wire/engagement/calls/`, `.wire/engagement/org/`, and `.wire/research/sessions/`
+4. Moves each old folder to `.wire/releases/<new-name>/`
+5. Finds SOW/proposal files and moves them to `.wire/engagement/`
+6. Finds meeting notes and transcripts and moves them to `.wire/engagement/calls/`
+7. Generates `.wire/engagement/context.md` from available metadata in the migrated `status.md` files
+8. Produces a migration report listing every file moved
+
+The command is safe to re-run — it skips anything already migrated. After running it, review `.wire/engagement/context.md` and fill in any missing engagement details.
+
+---
+
+## 19. Troubleshooting
+
+**"Release not found"**
+- Verify the release folder exists under `.wire/releases/`: `/wire:status`
+- Check the folder name matches what you're passing to the command
 - Ensure you're in the correct repository root directory
 
 **"Artifact already exists"**
-- Use `--force` flag to regenerate: `/wire:dbt-generate <project_id> --force`
+- Use `--force` flag to regenerate: `/wire:dbt-generate <release-folder> --force`
 - Or manually review/update the existing artifact
 
 **dbt tests failing**
 - Review test output in the terminal
 - Check data quality in BigQuery/warehouse directly
 - Update dbt models to fix issues
-- Re-run: `/wire:utils-run-dbt <project_id>`
+- Re-run: `/wire:utils-run-dbt <release-folder>`
 
 **Validation failing**
 - Read the validation error messages carefully
@@ -2439,27 +3042,28 @@ Safety gates are automatic pause points that prevent Autopilot from touching ext
 - Fix issues and re-run the validate command
 
 **Missing context / poor generation quality**
-- Add more source materials to `artifacts/` (SQL examples, schema docs, sample data)
-- Reference related documentation in the artifacts folder
-- Provide additional context when running the command
+- Ensure `engagement/sow.md` and `engagement/context.md` are populated
+- Add more source materials (SQL examples, schema docs, sample data) to the release's `requirements/` folder
+- For discovery releases: add call transcripts to `engagement/calls/`
+- Run `session:start` at the beginning of the session — it surfaces prior research that may already have what you need
 
 ---
 
-**Q: Someone left the project midway through. How does a new consultant pick it up?**
+**Q: Someone left the release midway through. How does a new consultant pick it up?**
 
-Run `/wire:start`. The framework reads `status.md` and tells the new consultant exactly where the project is, what was last completed, and what comes next. The audit trail in `status.md` shows who approved what and when. Read the `artifacts/` folder and the generated artifacts in `requirements/` and `design/` to get up to speed on the project context. The framework is designed so that anyone who can read the status file can resume from where it left off.
+Run `/wire:session:start <release-folder>`. The framework reads `status.md`, shows the session history, surfaces prior research, and proposes a session plan. The session history table in `status.md` shows what was accomplished in each previous session and what the suggested next focus is. Read `engagement/context.md` and the generated artifacts in `requirements/` and `design/` to get up to speed on the project context. The framework is designed so that anyone can resume from where it left off.
 
 ---
 
 **Q: Where do I go if something goes wrong or a command doesn't work as expected?**
 
-1. Check `execution_log.md` in the project folder — it shows the timestamped history of every command run and its result, which helps identify when and where things went wrong
-2. Check `status.md` to see the current project state
+1. Check `execution_log.md` in the release folder — it shows the timestamped history of every command run and its result, which helps identify when and where things went wrong
+2. Check `status.md` to see the current release state
 3. Re-read the relevant workflow spec in `wire/specs/<path>.md` — it describes what the command should do in detail
-4. Check the `artifacts/` folder to confirm source materials are present and readable
+4. Check `engagement/sow.md` and the release's `requirements/` folder to confirm source materials are present and readable
 5. If the issue is a bug in a workflow spec, edit the spec and re-run the command
-6. Raise with the team — include the project_id, the command you ran, and what the AI produced
+6. Raise with the team — include the release folder, the command you ran, and what the AI produced
 
 ---
 
-*This handbook is a living document. Update it when the framework changes, when new project types are added, or when new FAQs emerge from delivery experience.*
+*This handbook is a living document. Update it when the framework changes, when new release types are added, or when new FAQs emerge from delivery experience.*

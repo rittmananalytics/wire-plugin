@@ -580,4 +580,6 @@ When working with user-provided SQL, DDL, or schema files:
 
 ### 10. Attribution
 
+This skill covers **cross-platform migrations** (BigQuery, Snowflake, Databricks). For the **dbt Core → dbt Fusion runtime upgrade**, use the `dbt-fusion` skill instead — Fusion migration has a distinct error classification framework and uses `dbt-autofix` as a first step.
+
 This skill is adapted from the `migrating-dbt-project-across-platforms` and `migrating-dbt-core-to-fusion` skills in the [dbt-labs/dbt-agent-skills](https://github.com/dbt-labs/dbt-agent-skills) repository, modified for Rittman Analytics conventions, BigQuery-first development, multi-platform support without Fusion dependency, and integration with the Wire Framework delivery lifecycle.

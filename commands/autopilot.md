@@ -1,9 +1,9 @@
 ---
-description: Autonomous end-to-end project execution from SOW
-argument-hint: <path-to-sow>
+description: Autonomous end-to-end engagement execution from SOW — discovery sprint then all delivery releases
+argument-hint: [path-to-sow]
 ---
 
-# Autonomous end-to-end project execution from SOW
+# Autonomous end-to-end engagement execution from SOW — discovery sprint then all delivery releases
 
 ## User Input
 
@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.3.1\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.4.1\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"autopilot\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.3.1\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"autopilot\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.1\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -76,19 +76,21 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Autonomous end-to-end project execution from SOW
+description: Autonomous end-to-end engagement execution from SOW — discovery sprint + all delivery releases
 argument-hint: <path-to-sow>
 ---
 
-# Wire Autopilot — Autonomous Project Execution
+# Wire Autopilot — Autonomous Engagement Execution
 
 ## Purpose
 
-Wire Autopilot takes a Statement of Work (SOW), asks a small set of clarifying questions, then autonomously executes the entire project lifecycle — generating, validating, and self-reviewing every artifact without further human involvement. It produces a complete, demonstrable set of deliverables.
+Wire Autopilot takes a Statement of Work (SOW) and any supporting materials, asks a small set of clarifying questions, then autonomously executes the entire engagement lifecycle — starting with a discovery sprint (problem definition → pitch → release brief → sprint plan) and then executing each downstream delivery release in sequence.
+
+For each release the autopilot generates, validates, and self-reviews every artifact without further human involvement. It produces a complete, demonstrable set of deliverables across all planned releases.
 
 **Safety gates** automatically pause execution before any phase that could affect external systems — activating data connectors, running SQL against databases, or deploying to live environments. At each safety gate, Autopilot presents what it has done so far and asks for explicit confirmation before proceeding.
 
-Autopilot shares the same state files (`status.md`, `execution_log.md`) as the individual commands. A user can switch between Autopilot and manual commands at any point.
+Autopilot shares the same state files (`status.md`, `autopilot_checkpoint.md`) as the individual commands. A user can switch between Autopilot and manual commands at any point.
 
 ## Inputs
 
@@ -96,7 +98,7 @@ Autopilot shares the same state files (`status.md`, `execution_log.md`) as the i
 - SOW or proposal document path (provided as argument or asked in Phase 1)
 
 **Optional**:
-- All other inputs are gathered via clarifying questions in Phase 1
+- Additional supporting documents (org charts, call transcripts, architecture diagrams) gathered in Phase 1
 
 ---
 
@@ -119,67 +121,96 @@ Wait for user response. Verify the file exists. If not found, inform the user an
 
 Once the SOW is located, read it immediately to extract context for subsequent questions.
 
-## Step 1.2: Infer and Confirm Project Type
+## Step 1.2: Engagement Details
 
-After reading the SOW, infer the project type based on its content:
-- SOW mentions dashboards + data pipelines + dbt + training/enablement → `full_platform`
-- SOW mentions only pipeline/ETL/ingestion work → `pipeline_only`
-- SOW mentions dbt/transformations/semantic layer without pipelines → `dbt_development`
-- SOW mentions dashboards on an existing platform → `dashboard_extension`
-- SOW mentions interactive mockups driving data model, or rapid prototyping → `dashboard_first`
-- SOW mentions only training/documentation/enablement → `enablement`
-
-Use `AskUserQuestion` to confirm:
-
-```json
-{
-  "questions": [{
-    "question": "Based on the SOW, this appears to be a [inferred_type] project. Is that correct?",
-    "header": "Project Type",
-    "options": [
-      {"label": "[Inferred type]", "description": "[Description matching inferred type] (Recommended)"},
-      {"label": "Full platform", "description": "Complete implementation (pipelines, dbt, BI, enablement)"},
-      {"label": "Pipeline only", "description": "Data pipeline development"},
-      {"label": "dbt development", "description": "dbt models and semantic layer"},
-      {"label": "Dashboard extension", "description": "New dashboards on existing platform"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-Include all 6 project types as options. Place the inferred type first with "(Recommended)". Map selection to `project_type`.
-
-## Step 1.3: Client Name and Project Name
-
-Ask directly in chat:
+Ask directly in chat (one question at a time):
 
 ```
-What is the client name for this project? (e.g., "Acme Corporation")
+What is the client name for this engagement?
+(e.g., "Acme Corporation", "Power Digital")
 ```
 
-Wait for response. Then ask:
+Wait for response. Then:
 
 ```
-What is the project name? (e.g., "acme_marketing_analytics")
+What is the engagement name? (used for folder names)
+(e.g., "acme_data_platform", "power_digital_analytics")
+```
+
+Wait for response. Then:
+
+```
+What is your name (engagement lead)?
 ```
 
 Wait for response. Derive:
 - `client_name`: Display name as provided
-- `project_name`: Lowercase, underscores for spaces, no special chars
-- `project_id`: Today's date as YYYYMMDD
-- `folder_name`: `{project_id}_{project_name}`
+- `engagement_name`: Lowercase, underscores for spaces, no special chars
+- `engagement_lead`: As provided
+- `engagement_id`: Today's date as YYYYMMDD
 
-Check if a folder with this date prefix already exists using Glob: `.wire/[0-9]*_*/`. If duplicate, append a letter suffix.
+## Step 1.3: Repo Mode
 
-## Step 1.4: Jira Integration
+Ask directly in chat:
+
+```
+Is this repo the client's code repo, or a dedicated delivery repo?
+
+Option A — Combined: The .wire/ folder lives directly in the client's code repo.
+           Simple setup. Default for most engagements.
+
+Option B — Dedicated delivery repo: This repo is exclusively for Wire delivery
+           artifacts. The client's code repo is separate.
+
+Which applies? (A/B)
+```
+
+Wait for response. If Option B, ask:
+
+```
+Please provide the client code repo details:
+1. GitHub URL
+2. Local path on your machine
+3. Default branch (default: main)
+```
+
+Store `client_repo_url`, `client_repo_local_path`, `client_repo_branch`.
+
+## Step 1.4: Additional Context
+
+Ask directly in chat:
+
+```
+Do you have any other supporting documents I should read? (org charts, call
+transcripts, architecture diagrams, existing data model docs)
+
+Provide file paths, or type "no" to skip.
+```
+
+Store paths as `supporting_docs`. Read each file that exists.
+
+Also ask:
+
+```
+Is there anything else I should know about this engagement? For example:
+- Specific technologies or platforms (BigQuery, Snowflake, Looker)
+- Naming conventions or standards
+- Stakeholder preferences
+- Existing codebase or infrastructure
+
+Type "no" to skip.
+```
+
+Store as `additional_context`.
+
+## Step 1.5: Jira Integration
 
 Use `AskUserQuestion`:
 
 ```json
 {
   "questions": [{
-    "question": "Would you like to track this project in Jira?",
+    "question": "Would you like to track this engagement in Jira?",
     "header": "Jira Tracking",
     "options": [
       {"label": "Create new Jira issues", "description": "Create Epic, Tasks, and Sub-tasks in Jira"},
@@ -191,7 +222,7 @@ Use `AskUserQuestion`:
 }
 ```
 
-If Jira selected, ask in chat:
+If Jira selected, ask:
 
 ```
 What is the Jira project key? (e.g., DP, ACME, PROJ)
@@ -199,72 +230,47 @@ What is the Jira project key? (e.g., DP, ACME, PROJ)
 
 Store `jira_project_key` and `jira_mode` ("create" or "link").
 
-## Step 1.5: Dashboard-First Mockup Mode (Conditional)
+## Step 1.6: Confirm, Launch, and Request Permissions
 
-Only ask if `project_type` is `dashboard_first`:
-
-Use `AskUserQuestion`:
-
-```json
-{
-  "questions": [{
-    "question": "Dashboard-first projects typically use Lovable for interactive mockups. For fully autonomous execution, I can generate wireframe mockups instead. Which approach?",
-    "header": "Mockup Mode",
-    "options": [
-      {"label": "Wireframes (autonomous)", "description": "Generate ASCII wireframe mockups — fully autonomous execution (Recommended)"},
-      {"label": "Pause for Lovable", "description": "I'll pause at the mockup stage for you to do the Lovable session, then resume"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-Store as `mockup_mode` ("wireframe" or "pause_for_lovable").
-
-## Step 1.6: Additional Context (Optional)
-
-Ask directly in chat:
-
-```
-Is there anything else I should know about this project? For example:
-- Specific technologies or platforms (e.g., BigQuery, Snowflake, Looker)
-- Naming conventions or coding standards
-- Stakeholder preferences
-- Existing codebase or infrastructure
-
-Type "no" to skip.
-```
-
-Store any additional context as `additional_context`.
-
-## Step 1.7: Confirm, Launch, and Request Permissions
-
-After gathering all inputs, use plan mode to present the execution plan and pre-authorize the bash operations needed for autonomous execution. This prevents Claude Code from prompting for permission at every shell command during Phases 2 and 3.
+After gathering all inputs, enter plan mode to present the execution plan and pre-authorize shell operations.
 
 1. Call `EnterPlanMode`
-2. Write a plan file with the following content (replacing placeholders with actual values):
+2. Write a plan file with the following content:
 
 ```markdown
 # Wire Autopilot Execution Plan
 
 ## Configuration
 - **Client**: [client_name]
-- **Project**: [project_name]
-- **Type**: [project_type]
+- **Engagement**: [engagement_name]
+- **Lead**: [engagement_lead]
 - **SOW**: [sow_path]
+- **Supporting docs**: [list or "none"]
 - **Jira**: [project_key or "None"]
-- **Mockups**: [wireframe/pause_for_lovable or "N/A"]
-- **Additional Context**: [summary or "None"]
+- **Additional context**: [summary or "none"]
 
-## Execution Sequence ([count] phases)
-[List the numbered artifact sequence for the selected project_type]
+## Execution Sequence
 
-## What Autopilot Will Do
-For each phase, Autopilot will:
+### Phase 2: Engagement Setup
+- Create two-tier .wire/ folder structure
+- Set up engagement context and copy SOW
+- Create 01-discovery release
+
+### Phase 3: Discovery Sprint (autonomous)
+1. Problem Definition — generate → validate → self-approve
+2. Pitch — generate → validate → self-approve
+3. Release Brief — generate → validate → self-approve
+4. Sprint Plan — generate → validate → self-approve
+
+### Phase 4: Delivery Releases
+(Determined by sprint plan output — typically 2–4 releases)
+Each release: create folder → execute full artifact sequence for its type
+
+## What Autopilot Does For Each Artifact
 1. **Generate** the artifact from upstream outputs
 2. **Validate** against quality criteria (up to 3 retry cycles)
-3. **Self-review** for completeness and accuracy (up to 2 review cycles)
-4. Update status tracking and execution log
+3. **Self-review** for completeness (up to 2 review cycles)
+4. Update status tracking
 
 ## Safety Gates
 These phases will **pause for explicit confirmation** before proceeding:
@@ -274,22 +280,20 @@ These phases will **pause for explicit confirmation** before proceeding:
 - **deployment** — Deploys to live environments
 
 ## Shell Operations Required
-Autopilot needs to run shell commands for:
-- Git operations (branch creation, status checks, commits, push)
+- Git (branch creation, commits, push)
 - Directory and file management (mkdir, cp)
 - dbt commands (compile, run, test, seed, deps)
-- Data quality validation scripts
 - File listing and existence checks
 - GitHub CLI (create pull request)
 ```
 
-3. Call `ExitPlanMode` with the following `allowedPrompts` to pre-authorize shell operations:
+3. Call `ExitPlanMode` with `allowedPrompts`:
 
 ```json
 {
   "allowedPrompts": [
     {"tool": "Bash", "prompt": "git operations (checkout, branch, status, add, commit, push, rev-parse, diff)"},
-    {"tool": "Bash", "prompt": "create project directories and copy files (mkdir, cp, mv)"},
+    {"tool": "Bash", "prompt": "create engagement and release directories and copy files (mkdir, cp, mv)"},
     {"tool": "Bash", "prompt": "run dbt commands (compile, run, test, seed, deps, debug, ls)"},
     {"tool": "Bash", "prompt": "run data quality checks and validation scripts"},
     {"tool": "Bash", "prompt": "list files and check file existence (ls, find, wc, cat, head, tail)"},
@@ -301,307 +305,708 @@ Autopilot needs to run shell commands for:
 4. If the user approves the plan, proceed to Phase 2.
 5. If the user rejects or requests changes, return to Step 1.2 to reconfigure.
 
-**Important**: Safety gates (`pipeline`, `data_refactor`, `data_quality`, `deployment`) still pause for explicit confirmation via `AskUserQuestion` regardless of pre-authorized permissions. The permissions only cover mechanical shell operations within each phase, not the decision to proceed with externally-impacting phases.
-
-**Runtime note**: This step uses Claude Code's plan mode (`EnterPlanMode`/`ExitPlanMode`). In Gemini CLI or other runtimes that do not support these tools, skip this step and proceed directly to Phase 2. Gemini CLI users should launch with appropriate permission flags (e.g., `--yolo`) for autonomous execution.
+**Runtime note**: In Gemini CLI, skip this step and proceed directly to Phase 2. Use appropriate permission flags (e.g., `--yolo`) for autonomous execution.
 
 ---
 
-# Phase 2: Project Setup
-
-Execute the project setup logic (equivalent to `/wire:new`) non-interactively using the values gathered in Phase 1.
+# Phase 2: Engagement Setup
 
 ## Step 2.1: Git Branch
 
 1. Run `git rev-parse --abbrev-ref HEAD` to check the current branch
-2. If on `main` or `master`, create and switch to `feature/{folder_name}`:
+2. If on `main` or `master`, create and switch to `feature/{engagement_name}`:
    ```bash
-   git checkout -b feature/{folder_name}
+   git checkout -b feature/{engagement_name}
    ```
-3. If branch already exists, switch to it: `git checkout feature/{folder_name}`
+3. If branch already exists, switch to it
 4. Store `branch_name` for the final summary
 
-## Step 2.2: Create Folder Structure
+## Step 2.2: Create Two-Tier Folder Structure
 
 ```bash
-mkdir -p .wire/{folder_name}/{artifacts,requirements,design,dev,test,deploy,enablement}
+mkdir -p .wire/engagement/calls
+mkdir -p .wire/engagement/org
+mkdir -p .wire/research/sessions
+mkdir -p .wire/releases/01-discovery/planning
+mkdir -p .wire/releases/01-discovery/artifacts
+touch .wire/engagement/calls/.gitkeep
+touch .wire/engagement/org/.gitkeep
+touch .wire/research/sessions/.gitkeep
+touch .wire/releases/01-discovery/artifacts/.gitkeep
 ```
 
-## Step 2.3: Copy SOW
+## Step 2.3: Copy SOW and Supporting Docs
 
 ```bash
-cp {sow_path} .wire/{folder_name}/artifacts/
+cp {sow_path} .wire/engagement/sow.md   # or sow.pdf if PDF
 ```
 
-## Step 2.4: Create Status File
+If `supporting_docs` were provided, copy each to `engagement/`:
+```bash
+cp {doc_path} .wire/engagement/
+```
 
-Read the template from `TEMPLATES/status-template.md` and replace placeholders:
-- `{{PROJECT_ID}}` → project_id
-- `{{PROJECT_NAME}}` → project_name
-- `{{PROJECT_TYPE}}` → project_type
+## Step 2.4: Create Engagement Context File
+
+Read `TEMPLATES/engagement-context-template.md` and populate:
+- `{{ENGAGEMENT_NAME}}` → engagement_name
 - `{{CLIENT_NAME}}` → client_name
 - `{{CREATED_DATE}}` → today's date (YYYY-MM-DD)
-- `{{LAST_UPDATED}}` → today's date (YYYY-MM-DD)
+- `{{ENGAGEMENT_LEAD}}` → engagement_lead
+- `{{REPO_MODE}}` → `combined` or `dedicated_delivery`
 
-Set artifact scope based on project_type (see Artifact Scope Reference below).
-Write to `.wire/{folder_name}/status.md`.
+If dedicated_delivery, populate the client_repo section. Write to `.wire/engagement/context.md`.
 
-## Step 2.5: Jira Setup (if opted in)
+## Step 2.5: Create Discovery Release Status File
 
-Follow the Jira workflow in `specs/utils/jira_create.md`:
-- If `jira_mode` is "create": Create Epic → Task → Sub-task hierarchy
-- If `jira_mode` is "link": Search existing issues, link them
-- Assign all Task-level issues to a sprint (active, future, or newly created) — see Step 4.5 in jira_create.md
-- Start the sprint if it is not already active
-- Update status.md with issue keys
-- If Jira fails, note the failure and continue
+Read `TEMPLATES/discovery-status-template.md` and populate:
+- `{{RELEASE_ID}}` → engagement_id (YYYYMMDD)
+- `{{RELEASE_NAME}}` → `01-discovery`
+- `{{CLIENT_NAME}}` → client_name
+- `{{ENGAGEMENT_NAME}}` → engagement_name
+- `{{CREATED_DATE}}` → today's date
 
-## Step 2.6: Initialize Autopilot Checkpoint
+Write to `.wire/releases/01-discovery/status.md`.
 
-Create `.wire/{folder_name}/autopilot_checkpoint.md`:
+## Step 2.6: Jira Setup (if opted in)
+
+Follow the Jira workflow in `specs/utils/jira_create.md`. Pass `release_type: discovery` and artifact scope (problem_definition, pitch, release_brief, sprint_plan). If Jira fails, note the failure and continue.
+
+## Step 2.7: Initialize Autopilot Checkpoint
+
+Create `.wire/autopilot_checkpoint.md`:
 
 ```markdown
 # Autopilot Checkpoint
 
 ## Configuration
-- Project: [project_name]
+- Engagement: [engagement_name]
 - Client: [client_name]
-- Type: [project_type]
+- Lead: [engagement_lead]
 - SOW: [sow_filename]
-- Mockup Mode: [wireframe/pause_for_lovable/N/A]
 - Jira: [project_key or "None"]
+- Branch: [branch_name]
 
 ## SOW Summary
-[Write a condensed 500-word summary of the SOW covering: business context, deliverables, data sources, key stakeholders, timeline, and technology preferences]
+[Condensed 500-word summary covering: business context, deliverables, data sources, key stakeholders, timeline, and technology preferences]
+
+## Engagement Structure
+- Discovery release: .wire/releases/01-discovery/
+- Delivery releases: (to be determined by sprint plan)
 
 ## Completed Phases
 (none yet)
 
 ## Current Phase
-project_setup: complete
+engagement_setup: complete
 
 ## Key Context
 - Data sources: [list from SOW]
 - Key entities: [list from SOW]
 - Deliverables: [list from SOW]
 - Technologies: [from SOW + additional_context]
+- SOW timeline: [duration from SOW]
 
 ## Decisions Made
-- Project type: [project_type]
-- Mockup mode: [if applicable]
-- Data mode: [real/mock if applicable]
+(none yet)
 
 ## Blocked Artifacts
 (none)
 ```
 
-## Step 2.7: Log Project Creation
-
-Append to `.wire/{folder_name}/execution_log.md`:
-
-```markdown
-# Execution Log
-
-| Timestamp | Command | Result | Detail |
-|-----------|---------|--------|--------|
-| [timestamp] | /wire:autopilot | created | Project created (type: [project_type], client: [client_name]) |
-```
-
 Output:
 ```
---- Project Setup Complete ---
-Folder: .wire/{folder_name}/
+--- Engagement Setup Complete ---
+Client: {client_name}
+Engagement: {engagement_name}
 Branch: {branch_name}
-Type: {project_type}
-Artifacts: {count} phases to execute
-Beginning autonomous execution...
+Discovery release: .wire/releases/01-discovery/
+Beginning discovery sprint...
 ---
 ```
 
 ---
 
-# Phase 3: Autonomous Execution Loop
+# Phase 3: Discovery Sprint (Autonomous)
 
-## Artifact Sequence Reference
+The discovery sprint runs the full Shape Up planning cycle autonomously. All four artifacts are generated, validated, and self-approved without human intervention. Autopilot makes all planning decisions from the SOW and supporting material.
 
-Process artifacts in the order specified by the project type:
+## Step 3.1: Problem Definition
 
-**full_platform:**
-1. requirements
-2. workshops
-3. conceptual_model
-4. pipeline_design
-5. data_model
-6. mockups
-7. pipeline
-8. dbt
-9. semantic_layer
-10. dashboards
-11. data_quality
-12. uat
-13. deployment
-14. training
-15. documentation
+**Inputs**: `.wire/engagement/sow.md`, `.wire/engagement/context.md`, supporting docs
+**Output**: `.wire/releases/01-discovery/planning/problem_definition.md`
 
-**pipeline_only:**
-1. requirements
-2. pipeline_design
-3. pipeline
-4. data_quality
-5. deployment
+**Autonomous generation process**:
 
-**dbt_development:**
-1. requirements
-2. data_model
-3. dbt
-4. semantic_layer
-5. data_quality
-6. deployment
+1. Read all engagement context (SOW, context.md, supporting docs, additional_context)
+2. Extract answers to the seven problem-framing questions directly from the source material:
+   - **Who has the problem**: Identify the primary stakeholder role(s) from the SOW
+   - **What they're trying to do**: Extract the job-to-be-done (not the solution)
+   - **What's in the way**: Extract the friction, gap, or current-state pain points
+   - **Current workarounds**: Infer from SOW's "as-is" description or context
+   - **What "solved" looks like**: Extract desired outcomes and success criteria
+   - **Constraints**: Extract budget ceiling, timeline, technology constraints, compliance
+   - **Previously ruled out**: Extract any exclusions, assumptions, or "out of scope" clauses
+3. Generate the full 10-section problem_definition document following the structure in `specs/discovery/problem_definition/generate.md`
+4. Where information is genuinely absent from source material, write "[To confirm with client]" — do not fabricate
 
-**dashboard_extension:**
-1. requirements
-2. mockups
-3. dashboards
-4. training
+**Validate**:
+- [ ] All 10 sections populated (sections with no source data marked "[To confirm]")
+- [ ] Constraints section has budget/timeline/technology entries
+- [ ] "What solved looks like" is outcome-oriented (not solution-prescribing)
+- [ ] Impact table completed with current vs desired state
 
-**dashboard_first:**
-1. requirements
-2. mockups
-3. viz_catalog
-4. data_model
-5. seed_data
-6. dbt
-7. semantic_layer
-8. dashboards
-9. data_refactor
-10. data_quality
-11. uat
-12. deployment
-13. training
-14. documentation
+**Self-approve** if all validate checks pass. Update status.md:
+```yaml
+problem_definition:
+  generate: "complete"
+  validate: "pass"
+  review: "approved"
+  reviewed_by: "Wire Autopilot (self-review)"
+  reviewed_date: [today]
+  file: "planning/problem_definition.md"
+```
 
-**enablement:**
-1. training
-2. documentation
+**Self-review criteria**:
+1. Problem is framed without prescribing a solution
+2. Stakeholders are specific (not "the business" or "users")
+3. SOW deliverables trace to the problem statement
+4. Constraints are concrete, not abstract
 
-## Safety Gates
+Report:
+```
+--- Discovery: Problem Definition ---
+Status: approved (self-reviewed)
+File: .wire/releases/01-discovery/planning/problem_definition.md
+---
+```
 
-Certain artifacts, when executed for real, can touch external systems — activating data connectors, running SQL against production databases, or deploying to live environments. Before processing any of these artifacts, Autopilot **must pause** and request explicit user confirmation.
+## Step 3.2: Pitch
 
-**Safety-gated artifacts:**
+**Input**: `planning/problem_definition.md`
+**Output**: `planning/pitch.md`
 
-| Artifact | Risk | Warning |
-|----------|------|---------|
-| `pipeline` | Activates real data connectors (Fivetran, Airbyte) that begin replicating from production sources | "This phase will generate pipeline configuration. When activated, this could start replicating data from your production source systems. Please confirm the target environment and connector credentials are correct before proceeding." |
-| `data_refactor` | Modifies dbt source definitions to point to real client data; validate step runs dbt against a real database | "This phase will switch dbt models from seed data to real client data sources. The validate step will run `dbt compile` and potentially `dbt run` against your database. Please confirm the database connection is pointing to the correct (non-production) environment." |
-| `data_quality` | Runs SQL-based data quality tests against the database | "This phase will run data quality tests that execute SQL queries against your database. Please confirm the target database connection is correct." |
-| `deployment` | Creates and potentially executes deployment scripts against live environments | "This phase will generate deployment runbooks and scripts. Executing these would deploy changes to a live environment. Please confirm you are ready to proceed with deployment planning." |
+**Autonomous generation process**:
 
-**Safety gate behavior:**
+Generate the 10-section Shape Up pitch. Make all shaping decisions autonomously from the source material:
 
-When the execution loop reaches a safety-gated artifact, it MUST:
+1. **Appetite**: Infer from SOW timeline —
+   - 6+ weeks stated duration → Big batch (6 weeks)
+   - 2–3 weeks → Small batch (1–2 weeks)
+   - Ambiguous → Default to Big batch
+2. **Problem statement**: Condense from problem_definition Section 3
+3. **Appetite statement**: State the time budget and what that means for scope
+4. **Solution**: Shape the core solution element — the one thing that, if done, solves the problem. Base on SOW deliverables. Use fat-marker description (rough but solved). Document trade-offs and autonomous decisions.
+5. **Rabbit holes**: Identify 3–5 specific things to avoid based on SOW scope boundaries and constraints
+6. **No-gos**: Extract explicitly out-of-scope items from SOW
+7. **Open questions**: List 3–5 questions that need client confirmation before delivery starts
+8. **Downstream releases**: Based on SOW deliverables and appetite, propose delivery release types:
+   - Map each SOW deliverable category to the appropriate release type
+   - Order releases logically (data-first before dashboards, etc.)
+   - Assign a name and type to each (e.g., `02-data-foundation: pipeline_only`, `03-reporting: dashboard_extension`)
+9. **Betting table case**: 2–3 bullet points making the case for proceeding
+10. **Metrics for success**: Extract from SOW acceptance criteria or success criteria
 
-1. Pause execution
-2. Present a summary of all completed phases so far (from the checkpoint)
-3. Display the risk-specific warning message from the table above
-4. Use `AskUserQuestion` to get explicit confirmation:
+Generate the pitch document following the full structure in `specs/discovery/pitch/generate.md`.
+
+**Validate**:
+- [ ] All 10 pitch sections populated
+- [ ] Appetite defined (small/big batch)
+- [ ] At least one downstream release identified in Section 8
+- [ ] Rabbit holes list has at least 3 items
+- [ ] No-gos list populated from SOW out-of-scope
+
+**Self-approve** if validate passes. Update status.md:
+```yaml
+pitch:
+  generate: "complete"
+  validate: "pass"
+  review: "approved"
+  reviewed_by: "Wire Autopilot (self-review)"
+  reviewed_date: [today]
+  file: "planning/pitch.md"
+```
+
+**Self-review criteria**:
+1. Solution is shaped — rough but solved, not open-ended
+2. Appetite is fixed — not adjusted to fit the solution
+3. Downstream releases are typed and named
+4. Rabbit holes are concrete things (not abstract risks)
+
+Report:
+```
+--- Discovery: Pitch ---
+Status: approved (self-reviewed)
+Downstream releases identified: [list]
+File: .wire/releases/01-discovery/planning/pitch.md
+---
+```
+
+## Step 3.3: Release Brief
+
+**Input**: `planning/pitch.md`, `engagement/context.md`, `engagement/sow.md`
+**Output**: `planning/release_brief.md`
+
+**Autonomous generation process**:
+
+Generate the formal 12-section release brief following the structure in `specs/discovery/release_brief/generate.md`. Make all content decisions from the pitch and SOW:
+
+1. Extract deliverables from pitch Sections 3 (solution) and 8 (downstream releases)
+2. Define acceptance criteria from SOW success criteria and pitch metrics
+3. Extract budget from SOW contract terms
+4. Populate downstream releases table from pitch Section 8 — this is the authoritative list of delivery releases to spawn
+5. Mark sign-off block as "[Signature required before sprint plan]"
+
+**Validate**:
+- [ ] Deliverables table has at least one row with acceptance criteria
+- [ ] Downstream releases table populated from pitch Section 8
+- [ ] Timeline section populated (even if "TBD — to confirm with client")
+- [ ] Out-of-scope section matches pitch no-gos
+
+**Self-approve** if validate passes. Update status.md:
+```yaml
+release_brief:
+  generate: "complete"
+  validate: "pass"
+  review: "approved"
+  reviewed_by: "Wire Autopilot (self-review)"
+  reviewed_date: [today]
+  file: "planning/release_brief.md"
+```
+
+Report:
+```
+--- Discovery: Release Brief ---
+Status: approved (self-reviewed)
+Delivery releases planned: [list from Section 4]
+File: .wire/releases/01-discovery/planning/release_brief.md
+---
+```
+
+## Step 3.4: Sprint Plan
+
+**Input**: `planning/release_brief.md`, `planning/pitch.md`
+**Output**: `planning/sprint_plan.md`
+
+**Autonomous generation process**:
+
+Generate the sprint plan following `specs/discovery/sprint_plan/generate.md`. Make all planning decisions autonomously:
+
+1. Determine sprint length from appetite (small batch → 1 sprint, big batch → 3–5 sprints of ~1 week)
+2. For each deliverable in the release brief, generate epics
+3. For each epic, generate stories with Fibonacci point estimates (1/2/3/5/8 — no 13-point stories)
+4. Assign each story to a sprint
+5. Include a "Downstream Releases" table at the end — this is the canonical list of delivery releases that Phase 4 will execute:
+
+   | Release Name | Type | Scope Summary | Priority |
+   |---|---|---|---|
+   | [e.g. 02-data-foundation] | [e.g. pipeline_only] | [1-line scope] | 1 |
+
+**Velocity assumption**: 5 points per consultant day. Include buffer of 20%.
+
+**Validate**:
+- [ ] All release_brief deliverables have epics
+- [ ] No story exceeds 8 points
+- [ ] Point totals add up correctly
+- [ ] Downstream Releases table has at least one row with name and type
+- [ ] Every release type in the table is a valid Wire release type: full_platform, pipeline_only, dbt_development, dashboard_extension, dashboard_first, enablement
+
+**Self-approve** if validate passes. Update status.md:
+```yaml
+sprint_plan:
+  generate: "complete"
+  validate: "pass"
+  review: "approved"
+  reviewed_by: "Wire Autopilot (self-review)"
+  reviewed_date: [today]
+  file: "planning/sprint_plan.md"
+```
+
+Report:
+```
+--- Discovery: Sprint Plan ---
+Status: approved (self-reviewed)
+Total: [X] points across [N] sprints
+Downstream releases to execute:
+  [list with name and type]
+File: .wire/releases/01-discovery/planning/sprint_plan.md
+---
+```
+
+## Step 3.5: Parse Downstream Releases
+
+Read the "Downstream Releases" table from `.wire/releases/01-discovery/planning/sprint_plan.md`.
+
+For each row, extract:
+- `release_name`: the folder name (e.g., `02-data-foundation`)
+- `release_type`: the Wire release type (e.g., `pipeline_only`)
+- `scope_summary`: the one-line scope description
+
+Store as an ordered list: `planned_releases = [{"name": ..., "type": ..., "scope": ...}, ...]`
+
+Update autopilot_checkpoint.md:
+```markdown
+## Delivery Releases to Execute
+| Release | Type | Scope |
+|---------|------|-------|
+| [name] | [type] | [scope] |
+```
+
+---
+
+# Phase 4: Delivery Release Execution
+
+For each release in `planned_releases`, in order:
+
+## Step 4.0: Confirm Release Plan with User
+
+Before spawning and executing releases, present the plan and confirm:
+
+Use `AskUserQuestion`:
 
 ```json
 {
   "questions": [{
-    "question": "[Warning message for this artifact]. How would you like to proceed?",
-    "header": "Safety Gate",
+    "question": "Discovery sprint complete. Ready to execute [N] delivery releases:\n[list each release with name and type]\n\nProceed with autonomous execution?",
+    "header": "Discovery Complete — Proceed to Delivery?",
     "options": [
-      {"label": "Proceed", "description": "Continue with this phase — I have verified the target environment"},
-      {"label": "Review first", "description": "Pause here so I can review the artifacts generated so far before continuing"},
-      {"label": "Stop here", "description": "End Autopilot execution — I will continue manually from this point"}
+      {"label": "Yes, execute all releases", "description": "Proceed autonomously through all planned delivery releases"},
+      {"label": "Review discovery artifacts first", "description": "Pause here — I'll review the discovery output before proceeding"},
+      {"label": "Stop here", "description": "End Autopilot — I will run delivery releases manually using /wire:session:start"}
     ],
     "multiSelect": false
   }]
 }
 ```
 
-**Handling responses:**
-- **Proceed**: Continue with the artifact's generate/validate/review cycle
-- **Review first**: Output a summary of all files generated so far with their paths, then wait for the user to say "continue" before proceeding
-- **Stop here**: Output the final summary (Phase 4) with current progress and exit. The user can resume later with manual commands or re-invoke Autopilot.
+- **Yes, execute all**: Proceed to Step 4.1
+- **Review first**: Output paths to all discovery artifacts and wait for user to say "continue"
+- **Stop here**: Jump to Phase 5 (commit + push) and Phase 6 (final summary)
 
-## Execution Loop
+## Step 4.1: For Each Delivery Release
 
-For each artifact in the sequence:
+Repeat steps 4.2–4.6 for each release in `planned_releases`.
 
-1. **Check status**: Read `.wire/{folder_name}/status.md`. If this artifact's generate state is already `complete` and review state is `approved`, skip it.
+Set `current_release` = the current release name (e.g., `02-data-foundation`).
+Set `current_type` = the current release type (e.g., `pipeline_only`).
 
-2. **Safety gate check**: If this artifact is in the safety-gated list (`pipeline`, `data_refactor`, `data_quality`, `deployment`), execute the Safety Gate protocol above before proceeding. If the user chooses "Stop here", jump to Phase 4 (Final Summary).
+### Step 4.2: Create Release Folder (Spawn)
+
+```bash
+mkdir -p .wire/releases/{current_release}/{artifacts,requirements,design,dev,test,deploy,enablement}
+touch .wire/releases/{current_release}/requirements/.gitkeep
+touch .wire/releases/{current_release}/design/.gitkeep
+touch .wire/releases/{current_release}/dev/.gitkeep
+touch .wire/releases/{current_release}/test/.gitkeep
+touch .wire/releases/{current_release}/deploy/.gitkeep
+touch .wire/releases/{current_release}/enablement/.gitkeep
+```
+
+Create the status file by reading `TEMPLATES/status-template.md` and populating:
+- `{{PROJECT_ID}}` → engagement_id
+- `{{PROJECT_NAME}}` → engagement_name
+- `{{PROJECT_TYPE}}` → current_type
+- `{{CLIENT_NAME}}` → client_name
+- `{{CREATED_DATE}}` → today's date
+
+Set artifact scope based on `current_type` (see Artifact Scope Reference at the end of this spec).
+
+Write to `.wire/releases/{current_release}/status.md`.
+
+Initialize release checkpoint block in autopilot_checkpoint.md:
+```markdown
+## Release: {current_release} ({current_type})
+Status: in_progress
+Started: [timestamp]
+```
+
+Output:
+```
+--- Starting Release: {current_release} ({current_type}) ---
+Artifact sequence: [ordered list for this type]
+---
+```
+
+### Step 4.3: Run the Artifact Execution Loop
+
+Execute the artifact sequence for `current_type`. All artifact paths use `.wire/releases/{current_release}/` as the release root. In the Per-Artifact Execution Blocks below, `{folder_name}` means `releases/{current_release}`.
+
+**Artifact sequences by release type**:
+
+**full_platform**: requirements → workshops → conceptual_model → pipeline_design → data_model → mockups → pipeline → dbt → semantic_layer → dashboards → data_quality → uat → deployment → training → documentation
+
+**pipeline_only**: requirements → pipeline_design → pipeline → data_quality → deployment
+
+**dbt_development**: requirements → data_model → dbt → semantic_layer → data_quality → deployment
+
+**dashboard_extension**: requirements → mockups → dashboards → training
+
+**dashboard_first**: requirements → mockups → viz_catalog → data_model → seed_data → dbt → semantic_layer → dashboards → data_refactor → data_quality → uat → deployment → training → documentation
+
+**enablement**: training → documentation
+
+For each artifact in the sequence, execute the Execution Loop (see Execution Loop section):
+
+1. **Check status**: Read `.wire/releases/{current_release}/status.md`. If this artifact's generate state is already `complete` and review state is `approved`, skip it.
+
+2. **Safety gate check**: If this artifact is in the safety-gated list (`pipeline`, `data_refactor`, `data_quality`, `deployment`), execute the Safety Gate protocol before proceeding.
 
 3. **Generate**: Execute the generate logic for this artifact (see Per-Artifact Blocks below).
    - Update status.md: set `generate: complete`, `generated_date: [today]`
+   - Log to `.wire/releases/{current_release}/execution_log.md`
+   - **Jira sync**: If Jira is configured, sync — artifact=[artifact_name], action=generate, status=complete
+
+4. **Validate**: Execute validation checks.
+   - Pass → Update status.md: `validate: pass`
+   - Fail → Re-generate (max 3 cycles); if still failing after 3 cycles, set `validate: fail`, log as blocked
    - Log to execution_log.md
-   - **Jira sync**: If Jira is configured, sync now — artifact=[artifact_name], action=generate, status=complete
+   - **Jira sync**: sync validate result
 
-4. **Validate** (if the artifact has a validate step): Execute validation checks.
-   - If validation **passes**: Update status.md: `validate: pass`
-   - If validation **fails**:
-     - Re-generate the artifact incorporating the specific validation failures
-     - Re-validate
-     - Maximum 3 generate-validate cycles
-     - If still failing after 3 cycles, set `validate: fail`, log as blocked, continue to next artifact
-   - Log to execution_log.md
-   - **Jira sync**: If Jira is configured, sync now — artifact=[artifact_name], action=validate, status=[pass/fail]
+5. **Self-Review**: Execute self-review criteria.
+   - Approved → Update status.md: `review: approved`, `reviewed_by: "Wire Autopilot (self-review)"`
+   - Issues found → Re-generate and re-validate (max 2 review cycles)
+   - Still failing → set `review: changes_requested`, log as blocked
+   - **Jira sync**: sync review result
 
-5. **Self-Review**: Execute the self-review for this artifact (see Self-Review Criteria below).
-   - If self-review **approves**: Update status.md: `review: approved`, `reviewed_by: "Wire Autopilot (self-review)"`, `reviewed_date: [today]`
-   - If self-review **finds issues**:
-     - Re-generate incorporating review feedback
-     - Re-validate
-     - Re-review
-     - Maximum 2 review cycles
-     - If still failing, set `review: changes_requested`, add feedback to status.md, log as blocked
-   - Log to execution_log.md
-   - **Jira sync**: If Jira is configured, sync now — artifact=[artifact_name], action=review, status=[approved/changes_requested]
+6. **Update checkpoint**: Move artifact to "Completed Phases" in autopilot_checkpoint.md with brief summary and any key context discovered.
 
-6. **Jira sync** (mandatory if configured): If `jira_project_key` is set in status.md's YAML frontmatter, you MUST have called the Jira sync workflow (`specs/utils/jira_sync.md`) after each lifecycle step above (generate, validate, review). This step is a checkpoint — verify all three syncs happened. If any were missed, sync them now. If the Jira API call fails, log the failure and continue — but you must always attempt the sync.
-
-7. **Update checkpoint**: Update `.wire/{folder_name}/autopilot_checkpoint.md` with:
-   - Move this artifact to "Completed Phases" with a brief summary
-   - Update "Current Phase" to the next artifact
-   - Add any key context discovered during this phase to "Key Context"
-   - Add any decisions made to "Decisions Made"
-
-8. **Report progress**:
+7. **Report progress**:
    ```
-   --- Phase Complete: [artifact_name] ---
+   --- Artifact Complete: [artifact_name] ([current_release]) ---
    Status: [approved/blocked]
-   Files: [list of created/updated files]
-   Jira: [synced/skipped/failed] (3 transitions: generate, validate, review)
-   Progress: [N/total] phases complete
-   Next: [next_artifact_name]
+   Files: [list]
+   Progress: [N/total] artifacts in this release, [R/total_releases] releases done
    ---
    ```
 
-9. **Telemetry**: Send a usage event for this artifact phase. Check opt-out first, then fire-and-forget:
-
+8. **Telemetry**: Fire-and-forget:
    ```bash
-   if [ "${WIRE_TELEMETRY:-true}" != "false" ]; then WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"ARTIFACT_NAME-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"2.1.0\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"true\",\"autopilot_phase\":\"ARTIFACT_NAME\"}}" > /dev/null 2>&1 & fi
+   if [ "${WIRE_TELEMETRY:-true}" != "false" ]; then WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"ARTIFACT_NAME-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.0\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"true\",\"autopilot_release\":\"{current_release}\",\"autopilot_artifact\":\"ARTIFACT_NAME\"}}" > /dev/null 2>&1 & fi
    ```
+   Replace `ARTIFACT_NAME` with the actual artifact name. Do not wait for the result.
 
-   Replace `ARTIFACT_NAME` with the actual artifact name being executed (e.g., `requirements`, `conceptual_model`, `dbt`). Execute this as a single Bash command — do not wait for the result, proceed immediately to the next artifact.
+### Step 4.4: Release Resumption Protocol
 
-## Resumption Protocol
+If Autopilot is invoked and a release in progress already has artifacts completed:
 
-If this command is invoked on a project that already has artifacts in progress or complete:
+1. Read `.wire/releases/{current_release}/status.md` to identify completed phases
+2. Identify the first incomplete artifact in the sequence
+3. Resume from that point — do NOT re-generate already-approved artifacts
 
-1. Read `.wire/{folder_name}/status.md` to identify completed phases
-2. Read `.wire/{folder_name}/autopilot_checkpoint.md` for compressed context from prior phases
-3. Identify the first incomplete artifact in the project-type sequence
-4. Resume execution from that point
-5. Do NOT re-generate already-completed and approved artifacts
+### Step 4.5: Commit After Each Release
+
+After all artifacts in a release are processed:
+
+```bash
+git add .wire/releases/{current_release}/ dbt/ 2>/dev/null; git add -u; true
+```
+
+Check for staged changes. If changes exist:
+
+```bash
+git commit -m "Wire Autopilot: {engagement_name} — {current_release} ({current_type}) complete
+
+Client: {client_name}
+Release: {current_release}
+Type: {current_type}
+Artifacts: {comma-separated list of completed artifacts}"
+```
+
+Update autopilot_checkpoint.md:
+```markdown
+## Release: {current_release} ({current_type})
+Status: complete
+Committed: [commit hash]
+```
+
+Output:
+```
+--- Release Complete: {current_release} ---
+Type: {current_type}
+Committed: [hash]
+[R/total_releases] releases done. Moving to next release...
+---
+```
+
+---
+
+## Safety Gates
+
+Certain artifacts can touch external systems. Before processing any of these, Autopilot **must pause** and request explicit user confirmation.
+
+**Safety-gated artifacts:**
+
+| Artifact | Risk | Warning |
+|----------|------|---------|
+| `pipeline` | Activates real data connectors (Fivetran, Airbyte) that begin replicating from production sources | "This phase will generate pipeline configuration. When activated, this could start replicating data from your production source systems. Please confirm the target environment and connector credentials are correct before proceeding." |
+| `data_refactor` | Modifies dbt source definitions to point to real client data | "This phase will switch dbt models from seed data to real client data sources. The validate step will run `dbt compile` and potentially `dbt run` against your database. Please confirm the database connection is pointing to the correct (non-production) environment." |
+| `data_quality` | Runs SQL-based tests against the database | "This phase will run data quality tests that execute SQL queries against your database. Please confirm the target database connection is correct." |
+| `deployment` | Creates and potentially executes deployment scripts against live environments | "This phase will generate deployment runbooks and scripts. Executing these would deploy changes to a live environment. Please confirm you are ready to proceed with deployment planning." |
+
+**Safety gate behavior** — when the execution loop reaches a safety-gated artifact, it MUST:
+
+1. Pause execution
+2. Present a summary of all completed work so far (from the checkpoint)
+3. Display the risk-specific warning message
+4. Use `AskUserQuestion`:
+
+```json
+{
+  "questions": [{
+    "question": "[Warning message for this artifact]. How would you like to proceed?",
+    "header": "Safety Gate — [artifact_name] in [current_release]",
+    "options": [
+      {"label": "Proceed", "description": "Continue — I have verified the target environment"},
+      {"label": "Review first", "description": "Show me all generated artifacts so far, then I'll decide"},
+      {"label": "Stop here", "description": "End Autopilot — I will continue manually from this point"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+- **Proceed**: Continue with the artifact's generate/validate/review cycle
+- **Review first**: Output a summary of all files generated so far with their paths, then wait for the user to say "continue"
+- **Stop here**: Commit progress, output final summary (Phase 6), and exit
+
+---
+
+# Phase 5: Final Commit, Push, and Pull Request
+
+After all releases are processed (or when Autopilot stops):
+
+## Step 5.1: Final Commit
+
+Stage any uncommitted changes:
+```bash
+git add .wire/ dbt/ 2>/dev/null; git add -u; true
+```
+
+Check for staged changes. If any:
+```bash
+git commit -m "Wire Autopilot: {engagement_name} — engagement complete
+
+Client: {client_name}
+Releases: {comma-separated list of release names}
+Branch: {branch_name}"
+```
+
+## Step 5.2: Git Push
+
+```bash
+git push -u origin {branch_name}
+```
+
+If push fails (no remote configured), log: "Note: Could not push to remote. Commits are saved locally." and skip PR creation.
+
+## Step 5.3: Create Pull Request
+
+Check `gh` CLI is available:
+```bash
+which gh
+```
+
+If not available, log: "Note: GitHub CLI (gh) not found. Please create a PR manually for branch {branch_name}." and skip to Phase 6.
+
+Create the PR:
+```bash
+gh pr create \
+  --title "Wire: {client_name} — {engagement_name}" \
+  --body "## Summary
+
+Wire Autopilot generated artifacts for the **{engagement_name}** engagement.
+
+**Client**: {client_name}
+**Engagement Lead**: {engagement_lead}
+
+## Releases
+
+| Release | Type | Artifacts | Status |
+|---------|------|-----------|--------|
+| 01-discovery | discovery | problem_definition, pitch, release_brief, sprint_plan | complete |
+[for each delivery release: name, type, artifact count, complete/partial]
+
+---
+Generated by Wire Autopilot v3.4.0"
+```
+
+Capture the PR URL as `pr_url`.
+
+---
+
+# Phase 6: Final Summary
+
+Output a comprehensive summary:
+
+```
+## Wire Autopilot — Engagement Complete
+
+**Client**: [client_name]
+**Engagement**: [engagement_name]
+**Lead**: [engagement_lead]
+**Branch**: [branch_name]
+**Pull Request**: [pr_url or "Not created — see notes above"]
+
+### Discovery Sprint
+| Artifact | Generate | Validate | Review |
+|----------|----------|----------|--------|
+| problem_definition | complete | pass | approved |
+| pitch | complete | pass | approved |
+| release_brief | complete | pass | approved |
+| sprint_plan | complete | pass | approved |
+
+### Delivery Releases
+
+[For each delivery release:]
+#### [release_name] ([release_type])
+| Artifact | Generate | Validate | Review | Files |
+|----------|----------|----------|--------|-------|
+| [artifact] | [complete] | [pass/N/A] | [approved/N/A] | [count] |
+
+### Overall Statistics
+- Total releases: [discovery + delivery count]
+- Total artifacts: [count across all releases]
+- Files generated: [count]
+- dbt models: [count] (if applicable)
+- LookML views: [count] (if applicable)
+- Dashboard specs: [count] (if applicable)
+- Training sessions: [count] (if applicable)
+- Documentation guides: [count] (if applicable)
+
+### Blocked Phases (if any)
+[List with reasons and manual resolution steps]
+
+### What's Ready for Demo
+[List of concrete deliverables with file paths]
+
+### Next Steps
+1. Review the pull request: [pr_url]
+2. Share discovery artifacts with the client for sign-off:
+   - Problem definition: .wire/releases/01-discovery/planning/problem_definition.md
+   - Pitch: .wire/releases/01-discovery/planning/pitch.md
+   - Release brief: .wire/releases/01-discovery/planning/release_brief.md
+3. [If blocked phases] Address them manually, then resume:
+   /wire:session:start releases/[release_name]
+4. [If dbt generated] Run against real data:
+   cd dbt && dbt deps && dbt run
+5. [If applicable] Schedule stakeholder demos using generated training materials
+```
+
+Log final entry to `.wire/autopilot_checkpoint.md`:
+```markdown
+## Autopilot Complete
+Finished: [timestamp]
+Releases: [count] ([list])
+PR: [pr_url]
+```
 
 ---
 
 # Per-Artifact Execution Blocks
 
-Each block describes the condensed generate, validate, and self-review logic for one artifact type.
+Each block describes the generate, validate, and self-review logic for one artifact type.
+
+In all path references below, `{folder_name}` means `releases/{current_release}` — the currently executing delivery release folder.
 
 ---
 
@@ -609,25 +1014,26 @@ Each block describes the condensed generate, validate, and self-review logic for
 
 ### Generate
 
-**Input**: SOW/documents in `.wire/{folder_name}/artifacts/`
+**Input**: SOW/documents in `.wire/{folder_name}/artifacts/`, `engagement/sow.md`, `engagement/context.md`
 **Output**: `.wire/{folder_name}/requirements/requirements_specification.md`
 
 **Process**:
-1. Read all documents in `artifacts/` (PDFs, markdown, etc.)
-2. Extract and structure into a requirements specification with these sections:
-   - **Executive Summary**: 2-3 paragraph overview
-   - **Business Context**: Client background, problem statement, strategic goals, success criteria
+1. Read all documents in `engagement/` and the release's `artifacts/` folder
+2. Read the approved discovery artifacts: `releases/01-discovery/planning/release_brief.md`, `releases/01-discovery/planning/sprint_plan.md`
+3. Extract and structure into a requirements specification with these sections:
+   - **Executive Summary**: 2–3 paragraph overview
+   - **Business Context**: Client background, problem statement, strategic goals, success criteria (from problem_definition)
    - **Stakeholders**: Table with name, role, department, involvement level
    - **Functional Requirements**: Numbered list (FR-001, FR-002, etc.) with description and acceptance criteria
    - **Non-Functional Requirements**: Performance, security, availability, scalability
    - **Data Requirements**: Source systems table (name, type, owner, volume, refresh frequency)
    - **Technical Requirements**: Platform, tools, environments, constraints
    - **Deliverables**: Table mapping SOW deliverables to Wire artifacts with acceptance criteria
-   - **Timeline**: Milestones with dates
+   - **Timeline**: Milestones with dates (from sprint plan where available)
    - **Assumptions and Dependencies**
    - **Risks and Mitigations**: Table with risk, impact, likelihood, mitigation
-   - **Scope Management**: In-scope, out-of-scope, change process
-3. Write to `requirements/requirements_specification.md`
+   - **Scope Management**: In-scope, out-of-scope, change process (from discovery no-gos)
+4. Write to `.wire/{folder_name}/requirements/requirements_specification.md`
 
 ### Validate
 
@@ -647,8 +1053,8 @@ Each block describes the condensed generate, validate, and self-review logic for
 
 **Criteria**:
 1. **SOW Traceability**: Every deliverable in the SOW maps to at least one requirement
-2. **Completeness**: No SOW sections were overlooked or skipped
-3. **No Fabrication**: All requirements are traceable to the SOW — nothing invented
+2. **Discovery Alignment**: Requirements are consistent with the problem_definition and pitch
+3. **No Fabrication**: All requirements are traceable to the SOW or discovery artifacts — nothing invented
 4. **Clarity**: Each functional requirement has testable acceptance criteria
 5. **Consistency**: Requirements do not contradict each other
 
@@ -658,8 +1064,8 @@ Each block describes the condensed generate, validate, and self-review logic for
 
 ### Generate
 
-**Input**: `requirements/requirements_specification.md`
-**Output**: `design/workshop_agenda.md`, `design/workshop_decision_matrix.md`
+**Input**: `.wire/{folder_name}/requirements/requirements_specification.md`
+**Output**: `.wire/{folder_name}/design/workshop_agenda.md`, `.wire/{folder_name}/design/workshop_decision_matrix.md`
 
 **Process**:
 1. Parse requirements for `[NEEDS CLARIFICATION]` markers, TBD items, ambiguities
@@ -669,7 +1075,7 @@ Each block describes the condensed generate, validate, and self-review logic for
 
 ### Validate
 
-No specific validation checks — workshops have no validate step.
+No specific validation checks.
 
 ### Self-Review
 
@@ -677,7 +1083,7 @@ No specific validation checks — workshops have no validate step.
 1. All ambiguities from requirements are addressed in workshop topics
 2. Workshop agenda covers all TBD items
 3. Decision matrix includes all open questions
-4. **Autopilot Decision**: Since no actual workshop is conducted, auto-approve the workshop materials as reference documentation. Mark as `review: approved`, `reviewed_by: "Wire Autopilot (self-review)"`, with note: "Workshop materials generated as reference — no workshop conducted in Autopilot mode"
+4. **Autopilot Decision**: Since no actual workshop is conducted, auto-approve the workshop materials as reference documentation. Mark as `review: approved` with note: "Workshop materials generated as reference — no workshop conducted in Autopilot mode"
 
 ---
 
@@ -685,14 +1091,14 @@ No specific validation checks — workshops have no validate step.
 
 ### Generate
 
-**Input**: `requirements/requirements_specification.md`, `artifacts/` for source schemas
-**Output**: `design/conceptual_model.md`
+**Input**: `.wire/{folder_name}/requirements/requirements_specification.md`, engagement artifacts for source schemas
+**Output**: `.wire/{folder_name}/design/conceptual_model.md`
 
 **Process**:
 1. Extract business entities from requirements: nouns, deliverables, reporting subjects
-2. For each entity: name (PascalCase), description, key attributes (3-6), approximate volume
+2. For each entity: name (PascalCase), description, key attributes (3–6), approximate volume
 3. Define relationships with verb phrases and cardinality
-4. Generate Mermaid erDiagram (entity-only, no column definitions in the diagram)
+4. Generate Mermaid erDiagram (entity-only, no column definitions)
 5. Include relationship narratives explaining business meaning
 6. Section for entities out of scope
 7. Section for open questions
@@ -704,19 +1110,18 @@ No specific validation checks — workshops have no validate step.
 - [ ] Every relationship has valid cardinality markers at both ends
 - [ ] Every relationship has a quoted label
 - [ ] No `{}` column definitions in erDiagram (entity-only format)
-- [ ] Mermaid syntax valid (no unclosed quotes, no duplicate definitions)
+- [ ] Mermaid syntax valid
 - [ ] All entity names are singular PascalCase
 - [ ] Each entity has description and at least 2 key business attributes
 - [ ] At least one sentence per relationship narrative
-- [ ] Out-of-scope section populated if entities excluded
 
 ### Self-Review
 
 **Criteria**:
 1. **Requirements Coverage**: All business entities from functional requirements are present
-2. **Relationship Accuracy**: Cardinalities reflect real business rules (e.g., a Customer has many Orders, not vice versa)
+2. **Relationship Accuracy**: Cardinalities reflect real business rules
 3. **No Orphans**: Every entity participates in at least one relationship
-4. **SOW Alignment**: Model scope matches SOW scope — no entities beyond what the SOW describes
+4. **SOW Alignment**: Model scope matches SOW scope
 5. **Domain Language**: Entity names use client terminology from the SOW
 
 ---
@@ -725,8 +1130,8 @@ No specific validation checks — workshops have no validate step.
 
 ### Generate
 
-**Input**: `requirements/requirements_specification.md`, `design/conceptual_model.md`, `artifacts/` for schemas
-**Output**: `design/pipeline_architecture.md`
+**Input**: `.wire/{folder_name}/requirements/requirements_specification.md`, `design/conceptual_model.md`, engagement artifacts for schemas
+**Output**: `.wire/{folder_name}/design/pipeline_architecture.md`
 
 **Process**:
 1. Analyze each source system: technology, schema, volume, availability, sensitivity
@@ -734,9 +1139,9 @@ No specific validation checks — workshops have no validate step.
 3. Define replication strategy per source (full refresh, incremental, CDC, API, batch)
 4. Specify pipeline architecture: landing/raw naming, staging layer (`stg_<source>__<entity>`), warehouse layer, error handling, scheduling
 5. Generate Mermaid Data Flow Diagram: sources → ingestion → staging → warehouse → BI
-6. Document design decisions with context and rationale
+6. Document design decisions with rationale
 7. Include technology stack table and security/governance section
-8. **Autonomous Decision**: Where multiple scenarios exist (e.g., replication strategy), choose the most practical option based on SOW constraints and document the rationale
+8. **Autonomous Decision**: Choose the most practical replication strategy based on SOW constraints and document the rationale
 
 ### Validate
 
@@ -770,8 +1175,8 @@ No specific validation checks — workshops have no validate step.
 
 **Input**:
 - Default: `requirements/requirements_specification.md`, `design/conceptual_model.md`, `design/pipeline_architecture.md`
-- Dashboard-first: `requirements/requirements_specification.md`, `design/visualization_catalog.md`
-**Output**: `design/data_model_specification.md`, (dashboard_first also: `design/source_tables_ddl.sql`, `design/target_warehouse_ddl.sql`)
+- dashboard_first: `requirements/requirements_specification.md`, `design/visualization_catalog.md`
+**Output**: `.wire/{folder_name}/design/data_model_specification.md`, (dashboard_first also: `design/source_tables_ddl.sql`, `design/target_warehouse_ddl.sql`)
 
 **Process**:
 1. Define source definitions with freshness thresholds
@@ -785,7 +1190,7 @@ No specific validation checks — workshops have no validate step.
 6. Generate physical ERD as Mermaid erDiagram with all warehouse models, columns, PKs, FKs
 7. Document cross-system join keys
 8. Define dbt test coverage plan
-9. **For dashboard_first**: Additionally generate `source_tables_ddl.sql` (expected source schema) and `target_warehouse_ddl.sql` (dimensional model DDL)
+9. **For dashboard_first**: Additionally generate `source_tables_ddl.sql` and `target_warehouse_ddl.sql`
 
 ### Validate
 
@@ -801,16 +1206,15 @@ No specific validation checks — workshops have no validate step.
 - [ ] Minimum tests: `not_null(pk)` and `unique(pk)` on all models
 - [ ] FK columns have `relationships` tests
 - [ ] ERD present with valid Mermaid erDiagram syntax
-- [ ] Column names in ERD match model specs
 - [ ] PKs marked `PK`, FKs marked `FK` in ERD
 
 ### Self-Review
 
 **Criteria**:
-1. **Entity Coverage**: All conceptual model entities are represented in the physical model
+1. **Entity Coverage**: All conceptual model entities are represented
 2. **Grain Correctness**: Each fact table has a clearly defined, appropriate grain
 3. **FK/PK Consistency**: All foreign key references resolve to valid primary keys
-4. **Naming Conventions**: Consistent naming throughout (no mixed conventions)
+4. **Naming Conventions**: Consistent naming throughout
 5. **Test Coverage**: Adequate tests defined for data integrity
 6. **ERD Accuracy**: ERD matches the written specifications
 
@@ -820,37 +1224,25 @@ No specific validation checks — workshops have no validate step.
 
 ### Generate
 
-**Input**: `requirements/requirements_specification.md`
-**Output**: `design/mockups/` directory with mockup files + `design/mockups/mockups_index.md`
+**Input**: `.wire/{folder_name}/requirements/requirements_specification.md`
+**Output**: `.wire/{folder_name}/design/mockups/` directory + `design/mockups/mockups_index.md`
 
 **Process** (Wireframe Mode — used in Autopilot):
 1. Identify dashboards/screens from requirements
 2. For each dashboard, generate an ASCII wireframe mockup showing layout, chart placeholders, filter bar, data labels
 3. Create `mockup_[dashboard_name].md` for each with: title, purpose, audience, wireframe, data requirements table, filters, interactions
 4. Create `mockups_index.md` linking all mockups
-5. Save all files to `design/mockups/`
-
-**If dashboard_first AND mockup_mode is "pause_for_lovable"**:
-1. Generate a Lovable session brief from requirements: use case, key questions, suggested dashboard pages, data domain context
-2. Construct the getmock.rittmananalytics.com URL with URL-encoded use case
-3. Present the URL and instructions to the user
-4. Output: "Autopilot paused. Please complete the Lovable session and save the following files to `.wire/{folder_name}/design/`:"
-   - `dashboard_visualization_catalog.csv`
-   - `dashboard_spec.md`
-5. Wait for user input to confirm files are ready
-6. Verify both files exist and have expected content
-7. Record Lovable URL in status.md
 
 ### Validate
 
-No specific validation checks for mockups.
+No specific validation checks.
 
 ### Self-Review
 
 **Criteria**:
-1. **Requirements Coverage**: Every functional requirement that implies a visualization is addressed by at least one mockup
+1. **Requirements Coverage**: Every functional requirement that implies a visualization is addressed
 2. **Data Traceability**: Each chart references specific measures and dimensions
-3. **Layout Clarity**: Wireframes are readable and show logical dashboard organization
+3. **Layout Clarity**: Wireframes are readable and show logical organization
 4. **Audience Appropriateness**: Executive dashboards differ from operational dashboards
 
 ---
@@ -860,31 +1252,25 @@ No specific validation checks for mockups.
 ### Generate
 
 **Input**: `design/dashboard_visualization_catalog.csv`, `design/dashboard_spec.md`, `requirements/requirements_specification.md`
-**Output**: `design/visualization_catalog.md`
+**Output**: `.wire/{folder_name}/design/visualization_catalog.md`
 
 **Process**:
 1. Parse CSV: map dashboard page → visualization → chart type → measures/dimensions
 2. Parse dashboard_spec.md: extract purposes, layout, filters, interactions
 3. Cross-reference with requirements for coverage analysis
-4. Generate structured catalog:
-   - Summary: dashboard count, viz count, unique measures, dimensions, coverage %
-   - Per-dashboard: purpose, visualization table (name, type, measures, dimensions, requirement links)
-   - Measures index: measure name, used in (viz list), frequency
-   - Dimensions index: dimension name, used in (viz list), frequency
-   - Requirements coverage: requirement, addressed by (viz list), status
-   - Gaps and suggestions
+4. Generate structured catalog with summary, per-dashboard breakdown, measures/dimensions indices, requirements coverage, gaps
 
 ### Validate
 
-No specific validate step for viz_catalog.
+No specific validate step.
 
 ### Self-Review
 
 **Criteria**:
-1. **CSV Fidelity**: All rows from the CSV are represented in the catalog
-2. **Requirements Coverage**: Coverage percentage is reasonable (>80% of relevant requirements addressed)
-3. **Measure/Dimension Consistency**: Names are consistent across visualizations
-4. **Gaps Identified**: Any uncovered requirements are called out
+1. **CSV Fidelity**: All rows from the CSV are represented
+2. **Requirements Coverage**: >80% of relevant requirements addressed
+3. **Measure/Dimension Consistency**: Names consistent across visualizations
+4. **Gaps Identified**: Uncovered requirements called out
 
 ---
 
@@ -892,22 +1278,15 @@ No specific validate step for viz_catalog.
 
 ### Generate
 
-**Input**: `design/source_tables_ddl.sql`, `design/target_warehouse_ddl.sql`, `design/visualization_catalog.md` (if exists)
-**Output**: `dev/seed_data/*.csv` files + `dev/seed_data/README.md`
+**Input**: `design/source_tables_ddl.sql`, `design/target_warehouse_ddl.sql`, `design/visualization_catalog.md`
+**Output**: `.wire/{folder_name}/dev/seed_data/*.csv` files + `dev/seed_data/README.md`
 
 **Process**:
 1. Parse both DDL files: extract table names, columns, types, PKs, FKs
 2. Read visualization catalog to identify which measures need non-zero values
 3. Build dependency graph: dimensions before facts
-4. For each source table in dependency order, generate CSV:
-   - Header row = column names from DDL
-   - Dimension tables: 10-50 rows with realistic values
-   - Fact tables: 100-500 rows with varied distributions
-   - Maintain referential integrity: all FK values exist in parent tables
-   - No duplicate PKs, no NULLs in NOT NULL columns
-   - Consistent date format (YYYY-MM-DD)
-   - Domain-appropriate values (not lorem ipsum)
-5. Create README.md: overview, files table, dependency order, FK relationships, dbt seed config snippet
+4. For each source table in dependency order, generate CSV with realistic domain-appropriate data
+5. Create README.md with overview, files table, dependency order, FK relationships, dbt seed config snippet
 
 ### Validate
 
@@ -920,7 +1299,6 @@ No specific validate step for viz_catalog.
 - [ ] Every FK value exists in referenced parent table PK
 - [ ] Date columns contain valid dates (YYYY-MM-DD)
 - [ ] Numeric columns contain valid numbers
-- [ ] No NULL values in NOT NULL columns
 - [ ] Fact tables have variation in measure columns
 
 ### Self-Review
@@ -938,14 +1316,11 @@ No specific validate step for viz_catalog.
 ### Generate
 
 **Input**: `requirements/requirements_specification.md`, `design/pipeline_architecture.md`
-**Output**: Pipeline code and configuration in `dev/pipeline/`
+**Output**: Pipeline code and configuration in `.wire/{folder_name}/dev/pipeline/`
 
 **Process**:
 1. Read pipeline architecture for source definitions and replication strategy
-2. Generate pipeline configuration for the specified technology:
-   - Fivetran: connector configuration files
-   - Airbyte: connection specifications
-   - Custom: Python scripts, scheduling config
+2. Generate pipeline configuration for the specified technology (Fivetran, Airbyte, custom Python)
 3. Generate orchestration config (Airflow DAGs, Cloud Composer, cron)
 4. Generate error handling and monitoring setup
 5. Create pipeline documentation
@@ -972,34 +1347,30 @@ No specific validate step for viz_catalog.
 
 ### Generate
 
-**Input**: `design/data_model_specification.md`, dbt conventions (if found)
-**Output**: dbt models in the repository's `dbt/` directory (NOT in `.wire/{folder_name}/dev/`). The only dbt-related output inside the project folder is `.wire/{folder_name}/dev/dbt_models_summary.md` (documentation only).
+**Input**: `.wire/{folder_name}/design/data_model_specification.md`, dbt conventions (if found)
+**Output**: dbt models in the repository's `dbt/` directory (NOT inside `.wire/`). The only dbt-related output inside the release folder is `.wire/{folder_name}/dev/dbt_models_summary.md`.
 
 **Process**:
 1. Check for project-specific dbt conventions file
-2. Determine dbt project location: check if a `dbt/` directory exists in the repository root. If yes, use it. If not, create `dbt/` with `dbt_project.yml`, `models/`, `macros/` subdirectories.
+2. Determine dbt project location: check if `dbt/` exists in the repository root. If yes, use it. If not, create it.
 3. Generate staging models in `dbt/models/staging/<source_system>/`:
-   - `dbt/models/staging/<source_system>/stg_<source>__<entity>.sql` — source() calls, surrogate keys, renames, filters
-   - `dbt/models/staging/<source_system>/_sources.yml` per source system with freshness
-   - `dbt/models/staging/<source_system>/stg_<source_system>.yml` — model docs and tests
+   - `stg_<source>__<entity>.sql` — source() calls, surrogate keys, renames, filters
+   - `_sources.yml` per source system with freshness
+   - `stg_<source_system>.yml` — model docs and tests
    - Materialized as view
 4. Generate integration models in `dbt/models/integration/`:
-   - `dbt/models/integration/int__<entity>.sql` — one per entity, consolidating staging inputs
-   - `dbt/models/integration/intermediate/int__<entity>__<description>.sql` — optional intermediate models for complex multi-step logic
-   - Ephemeral or view materialization
-   - **Always create integration models, even if they are simple pass-throughs with `select *` from the staging model.** This ensures consistent 3-layer architecture (staging → integration → warehouse) and makes it easy to add business logic later.
+   - `int__<entity>.sql` — one per entity, consolidating staging inputs
+   - `int__<entity>__<description>.sql` — optional intermediate models
+   - **Always create integration models**, even if simple pass-throughs
 5. Generate warehouse models in `dbt/models/warehouse/core/`:
-   - `dbt/models/warehouse/core/<entity>_dim.sql` — dimensions with SCD handling
-   - `dbt/models/warehouse/core/<entity>_fct.sql` — facts with measures, FKs
-   - `dbt/models/warehouse/core/<entity>_agg.sql` — pre-aggregated tables (if needed)
+   - `<entity>_dim.sql` — dimensions with SCD handling
+   - `<entity>_fct.sql` — facts with measures, FKs
+   - `<entity>_agg.sql` — pre-aggregated tables if needed
    - Table materialization
-6. Generate schema.yml files (placed in the same directory as the models they document) with:
-   - Model descriptions
-   - Column descriptions in business terms
-   - Tests: unique/not_null on PKs, relationships on FKs, accepted_values on enums
-7. Generate `dbt/dbt_project.yml` (if new project)
-8. **For dashboard_first with seed data**: Generate seed-based source definitions using `ref('seed_name')` instead of `source()` in staging models. Include seed config in `dbt/dbt_project.yml`. Place seed CSVs in `dbt/seeds/`.
-9. Create `.wire/{folder_name}/dev/dbt_models_summary.md` with model counts, test coverage, and a directory listing of all generated files with their full paths
+6. Generate schema.yml files with model descriptions, column descriptions, and tests
+7. Generate `dbt/dbt_project.yml` if new project
+8. **For dashboard_first with seed data**: Generate seed-based source definitions using `ref('seed_name')` instead of `source()` in staging models
+9. Create `.wire/{folder_name}/dev/dbt_models_summary.md` with model counts, test coverage, and directory listing
 
 **SQL Standards**:
 - 4-space indentation, max 80 char lines
@@ -1038,21 +1409,16 @@ No specific validate step for viz_catalog.
 - [ ] All warehouse models and columns documented
 - [ ] Column descriptions use business terminology
 
-**Checks — Dependencies**:
-- [ ] All ref() references point to existing models
-- [ ] No circular dependencies
-- [ ] Proper layer order (staging → integration → warehouse)
-
 **Checks — Architecture Completeness**:
 - [ ] Integration layer exists: at least one `int__*.sql` file is present
-- [ ] Every warehouse model (`*_dim.sql`, `*_fct.sql`) references an integration model via `ref('int__...')`, not a staging model directly
-- [ ] Every staging entity that feeds a warehouse model has a corresponding integration model (even if it is a pass-through `select *`)
+- [ ] Every warehouse model references an integration model via `ref('int__...')`
+- [ ] Every staging entity that feeds a warehouse model has a corresponding integration model
 
 **Checks — Directory Structure**:
-- [ ] All staging models are in `dbt/models/staging/<source_system>/`
-- [ ] All integration models are in `dbt/models/integration/` (or `dbt/models/integration/intermediate/`)
-- [ ] All warehouse models are in `dbt/models/warehouse/core/`
-- [ ] No `.sql` model files exist inside `.wire/{folder_name}/dev/` (documentation only goes there)
+- [ ] All staging models in `dbt/models/staging/<source_system>/`
+- [ ] All integration models in `dbt/models/integration/`
+- [ ] All warehouse models in `dbt/models/warehouse/core/`
+- [ ] No `.sql` model files inside `.wire/` (documentation only goes there)
 - [ ] `dbt/dbt_project.yml` exists
 
 ### Self-Review
@@ -1062,8 +1428,8 @@ No specific validate step for viz_catalog.
 2. **SQL Quality**: Code follows conventions, CTEs are well-structured
 3. **Test Coverage**: All PKs, FKs, and critical fields have tests
 4. **Documentation**: All models and columns have business-friendly descriptions
-5. **Seed/Source Correctness**: Source definitions match the data sources (or seeds for dashboard_first)
-6. **Architecture**: All three layers present (staging → integration → warehouse), with integration models for every entity
+5. **Seed/Source Correctness**: Source definitions match the data sources
+6. **Architecture**: All three layers present (staging → integration → warehouse)
 
 ---
 
@@ -1082,8 +1448,7 @@ No specific validate step for viz_catalog.
    - Primary key (hidden: yes)
    - Dimensions: string, time (dimension_group), numeric, yesno, derived
    - Measures: count, sum, average, count_distinct with value_format_name
-   - Drill fields for exploration
-   - Groups and labels for organization
+   - Drill fields and groups/labels
 5. Define explores with joins: relationship, join type, sql_on
 6. Validate syntax: balanced braces, `;;` after SQL, type on all dimensions
 7. Update model file with new explores
@@ -1097,9 +1462,8 @@ No specific validate step for viz_catalog.
 - [ ] Every dimension has `type:` specified
 - [ ] All use `${TABLE}.column` syntax
 - [ ] Primary keys defined with `primary_key: yes`
-- [ ] Labels are business-friendly (not raw column names)
+- [ ] Labels are business-friendly
 - [ ] Explores have `relationship:` defined
-- [ ] Join SQL ON conditions reference correct fields
 - [ ] Numeric measures have `value_format_name`
 - [ ] Dates use `dimension_group` with timeframes
 
@@ -1119,16 +1483,12 @@ No specific validate step for viz_catalog.
 ### Generate
 
 **Input**: `requirements/requirements_specification.md`, `design/mockups/` or `design/visualization_catalog.md`, semantic layer definitions
-**Output**: Dashboard specification files in `dev/dashboards/`
+**Output**: Dashboard specification files in `.wire/{folder_name}/dev/dashboards/`
 
 **Process**:
 1. Read mockups/visualization catalog to identify all dashboards and their visualizations
 2. Map each visualization to semantic layer fields (explores, dimensions, measures)
-3. Generate LookML dashboard files (or Looker dashboard specs) for each dashboard:
-   - Dashboard title, description
-   - Tiles/elements with: type, explore, fields, filters, sorts, limits
-   - Dashboard filters with field references
-   - Layout positioning
+3. Generate LookML dashboard files (or Looker dashboard specs) for each dashboard
 4. Generate dashboard documentation: purpose, audience, key metrics, navigation guide
 5. Create dashboard summary with tile counts and field references
 
@@ -1138,7 +1498,7 @@ No specific validate step for viz_catalog.
 - [ ] Every mockup/catalog visualization has a corresponding dashboard element
 - [ ] All field references exist in the semantic layer
 - [ ] Dashboard filters reference valid dimensions
-- [ ] Layout is complete (no overlapping or missing tiles)
+- [ ] Layout is complete
 
 ### Self-Review
 
@@ -1155,33 +1515,15 @@ No specific validate step for viz_catalog.
 ### Generate
 
 **Input**: `design/source_tables_ddl.sql` (seed version), real data access or revised DDL
-**Output**: `design/data_refactor_plan.md`, updated dbt files
+**Output**: `.wire/{folder_name}/design/data_refactor_plan.md`, updated dbt files
 
 **Process**:
-1. **Autonomous Decision**: Since Autopilot may not have real database access, generate the refactoring plan based on the seed DDL and document what changes would be needed when real data is available
+1. **Autonomous Decision**: Generate the refactoring plan based on seed DDL and document what changes are needed when real data is available
 2. Compare seed-based DDL against expected real source schemas (from SOW/requirements)
-3. Generate refactoring plan:
-   - Schema comparison summary
-   - Table-by-table analysis: seed columns vs expected real columns
-   - dbt configuration changes needed
-   - Staging model updates: `ref('seed')` → `source('real')`
-   - Estimated impact
-4. If real data access is available, execute the refactoring:
-   - Update `_sources.yml` to point to real data
-   - Change `ref('seed_name')` to `source('source_name', 'table_name')` in staging models
-   - Update column references where names differ
-   - Update dbt_project.yml (remove seed config)
-   - Keep seed files as reference
-5. If no real data access, note that refactoring plan is ready but execution requires real data
+3. Generate refactoring plan: schema comparison, table-by-table analysis, dbt configuration changes, staging model updates
+4. If real data access is available, execute the refactoring immediately
 
 ### Validate
-
-**Checks** (if refactoring was executed):
-- [ ] All staging models reference `source()` instead of `ref()` for data tables
-- [ ] `_sources.yml` points to correct real data tables
-- [ ] dbt_project.yml updated to remove seed config for source tables
-- [ ] All ref() and source() calls resolve correctly
-- [ ] Seed files are preserved (not deleted)
 
 **Checks** (if plan only):
 - [ ] Refactoring plan covers all seed-to-source mappings
@@ -1203,17 +1545,12 @@ No specific validate step for viz_catalog.
 ### Generate
 
 **Input**: `requirements/requirements_specification.md`, dbt models, data model specification
-**Output**: Data quality test files and monitoring configuration in `test/`
+**Output**: Data quality test files and monitoring configuration in `.wire/{folder_name}/test/`
 
 **Process**:
 1. Read requirements for data quality expectations
 2. Analyze dbt models for testable assertions
-3. Generate data quality tests:
-   - Freshness tests per source
-   - Row count tests (minimum expected rows)
-   - Business rule tests (e.g., revenue > 0, dates in valid range)
-   - Cross-table consistency tests (FK integrity)
-   - Anomaly detection rules (sudden changes in volume or values)
+3. Generate data quality tests: freshness, row count, business rule, cross-table consistency, anomaly detection
 4. Generate monitoring configuration
 5. Create data quality documentation
 
@@ -1240,26 +1577,16 @@ No specific validate step for viz_catalog.
 ### Generate
 
 **Input**: `requirements/requirements_specification.md`, dashboard specs, dbt models
-**Output**: `test/uat_plan.md`
+**Output**: `.wire/{folder_name}/test/uat_plan.md`
 
 **Process**:
 1. Read requirements and deliverables with acceptance criteria
-2. For each deliverable, generate test scenarios:
-   - Test case ID, description
-   - Prerequisites
-   - Test steps (specific, executable)
-   - Expected results
-   - Pass/fail criteria
-3. Create UAT plan document with:
-   - Overview and scope
-   - Test environment setup
-   - Test cases grouped by deliverable
-   - Sign-off template
-   - Issue tracking process
+2. For each deliverable, generate test scenarios with: test case ID, description, prerequisites, test steps, expected results, pass/fail criteria
+3. Create UAT plan with overview, test environment setup, test cases by deliverable, sign-off template, issue tracking process
 
 ### Validate
 
-No specific validate checks for UAT.
+No specific validate checks.
 
 ### Self-Review
 
@@ -1275,7 +1602,7 @@ No specific validate checks for UAT.
 ### Generate
 
 **Input**: All completed development artifacts, requirements
-**Output**: `deploy/deployment_runbook.md`, deployment scripts
+**Output**: `.wire/{folder_name}/deploy/deployment_runbook.md`, deployment scripts
 
 **Process**:
 1. Identify all components to deploy: dbt models, pipelines, dashboards, semantic layer
@@ -1285,24 +1612,26 @@ No specific validate checks for UAT.
    - Post-deployment verification
    - Rollback procedure
    - Communication plan
-   - **dbt deployment section** (if dbt models were generated): The runbook MUST reference the actual file locations of generated dbt models (in `dbt/models/staging/`, `dbt/models/integration/`, `dbt/models/warehouse/core/`) and include instructions for running dbt from the `dbt/` directory:
-     - `cd dbt && dbt deps` (install packages)
-     - `dbt run --select staging` (run staging layer first)
-     - `dbt run --select integration` (then integration)
-     - `dbt run --select warehouse` (then warehouse)
-     - `dbt test` (run all tests)
-3. Generate deployment scripts (if applicable)
+   - **dbt deployment section** (if dbt generated): reference actual file paths in `dbt/models/` and include commands:
+     ```
+     cd dbt && dbt deps
+     dbt run --select staging
+     dbt run --select integration
+     dbt run --select warehouse
+     dbt test
+     ```
+3. Generate deployment scripts if applicable
 4. Create production configuration files
 
 ### Validate
 
 **Checks**:
-- [ ] All project components are covered in deployment plan
+- [ ] All project components are covered
 - [ ] Rollback procedure is defined
 - [ ] Pre/post-deployment verification steps are clear
 - [ ] Deployment order handles dependencies
-- [ ] If dbt models exist: runbook references actual file paths in `dbt/models/` (not `.wire/` paths)
-- [ ] If dbt models exist: runbook includes `dbt run` and `dbt test` commands with correct working directory (`dbt/`)
+- [ ] If dbt models exist: runbook references actual file paths in `dbt/models/`
+- [ ] If dbt models exist: runbook includes `dbt run` and `dbt test` with correct working directory
 
 ### Self-Review
 
@@ -1319,7 +1648,7 @@ No specific validate checks for UAT.
 ### Generate
 
 **Input**: `requirements/requirements_specification.md`, dbt models, dashboards, semantic layer
-**Output**: Training materials in `enablement/`:
+**Output**: Training materials in `.wire/{folder_name}/enablement/`:
 - `training_[type]_session_plan.md`
 - `training_[type]_slides.md` (Marp format)
 - `training_[type]_exercises.md`
@@ -1327,16 +1656,8 @@ No specific validate checks for UAT.
 - `training_delivery_checklist.md`
 
 **Process**:
-1. Determine training types from SOW deliverables:
-   - Data team enablement: dbt structure, adding models, running/testing
-   - BI developer training: semantic layer, dashboard development
-   - End user training: dashboard navigation, interpreting data
-   - Admin training: configuration, monitoring, troubleshooting
-2. For each training type, generate:
-   - **Session plan**: Learning objectives, prerequisites, agenda (4-5 parts), exercises, assessment criteria
-   - **Slides**: Marp markdown format with introduction, core topics, exercises, Q&A
-   - **Exercises**: Hands-on workbook with scenarios, steps, expected outcomes, solutions
-   - **Quick reference**: Common tasks, step-by-step instructions, troubleshooting table
+1. Determine training types from SOW deliverables (data team, BI developer, end user, admin)
+2. For each type, generate session plan, slides, exercises, and quick reference
 3. Create delivery checklist: pre-session, during session, post-session tasks
 
 ### Validate
@@ -1362,11 +1683,11 @@ No specific validate checks for UAT.
 ### Generate
 
 **Input**: All project artifacts (requirements, design, development, deployment)
-**Output**: Documentation in `enablement/`:
-- `documentation/architecture_guide.md`
-- `documentation/operations_guide.md`
-- `documentation/user_guide.md`
-- `documentation/glossary.md`
+**Output**: Documentation in `.wire/{folder_name}/enablement/documentation/`:
+- `architecture_guide.md`
+- `operations_guide.md`
+- `user_guide.md`
+- `glossary.md`
 
 **Process**:
 1. Read all completed project artifacts
@@ -1390,7 +1711,7 @@ No specific validate checks for UAT.
 **Criteria**:
 1. **Completeness**: All aspects of the delivered solution are documented
 2. **Accuracy**: Documentation reflects the actual implementation
-3. **Accessibility**: Written for the target audience (technical vs business)
+3. **Accessibility**: Written for the target audience
 4. **Cross-References**: Documents link to each other appropriately
 
 ---
@@ -1474,130 +1795,16 @@ documentation: {generate: not_started, validate: not_started, review: not_starte
 
 ---
 
-# Phase 3.5: Commit, Push, and Pull Request
+# Engagement-Level Resumption Protocol
 
-After all artifacts have been processed (or when Autopilot stops due to a safety gate or blocked phases), commit the work, push to the remote, and create a pull request.
+If Autopilot is invoked on an engagement that already has work in progress:
 
-## Step 3.5.1: Git Commit
-
-1. Stage all project files and any dbt/model files created:
-   ```bash
-   git add .wire/{folder_name}/ dbt/ 2>/dev/null; git add -u; true
-   ```
-
-2. Check if there are staged changes:
-   ```bash
-   git diff --cached --quiet
-   ```
-   If exit code is 0 (no changes), skip commit/push/PR and proceed to Phase 4 with a note: "No uncommitted changes — skipping PR creation."
-
-3. Commit with a descriptive message:
-   ```bash
-   git commit -m "Wire Autopilot: {project_name} — {project_type} ({completed_count}/{total_count} artifacts generated)
-
-   Client: {client_name}
-   Branch: {branch_name}
-   Project folder: .wire/{folder_name}/
-
-   Artifacts: {comma-separated list of completed artifact names}"
-   ```
-
-## Step 3.5.2: Git Push
-
-1. Push the branch to the remote:
-   ```bash
-   git push -u origin {branch_name}
-   ```
-2. If push fails (e.g., no remote configured), log: `"Note: Could not push to remote. Commit is saved locally."` and skip PR creation.
-
-## Step 3.5.3: Create Pull Request
-
-1. Check that `gh` CLI is available:
-   ```bash
-   which gh
-   ```
-   If not available, log: `"Note: GitHub CLI (gh) not found. Please create a PR manually for branch {branch_name}."` and skip to Phase 4.
-
-2. Create the PR:
-   ```bash
-   gh pr create \
-     --title "Wire: {client_name} — {project_name}" \
-     --body "## Summary
-
-   Wire Autopilot generated {completed_count}/{total_count} artifacts for the **{project_type}** project.
-
-   **Client**: {client_name}
-   **Project**: {project_name}
-   **Type**: {project_type}
-
-   ## Artifacts
-
-   | Artifact | Generate | Validate | Review |
-   |----------|----------|----------|--------|
-   | [for each artifact: name, gen_status, val_status, rev_status] |
-
-   ---
-   Generated by Wire Autopilot"
-   ```
-
-3. Capture the PR URL from the `gh pr create` output. Store as `pr_url` for inclusion in the Phase 4 summary.
-
-4. If PR creation fails, log: `"Note: Could not create PR. Branch has been pushed — create a PR manually."` and continue to Phase 4.
-
----
-
-# Phase 4: Final Summary
-
-After all artifacts have been processed, output a comprehensive summary:
-
-```
-## Wire Autopilot — Execution Complete
-
-**Project:** [client_name] — [project_name]
-**Type:** [project_type]
-**Branch:** [branch_name]
-**Folder:** .wire/[folder_name]/
-**Pull Request:** [pr_url or "Not created — see notes above"]
-
-### Results
-
-| Phase | Generate | Validate | Review | Files |
-|-------|----------|----------|--------|-------|
-| [artifact] | [complete] | [pass/N/A] | [approved/N/A] | [count] |
-| ... | ... | ... | ... | ... |
-
-### Completed Phases: [count]/[total]
-### Blocked Phases: [count] (if any)
-
-[If any blocked phases, list them with reasons]
-
-### Deliverables Summary
-- Total artifact phases: [count]
-- Files generated: [count]
-- dbt models: [count] (if applicable)
-- LookML views: [count] (if applicable)
-- Dashboard specs: [count] (if applicable)
-- Training sessions: [count] (if applicable)
-- Documentation guides: [count] (if applicable)
-
-### Jira Summary (if configured)
-- Epic: [PROJ-123]
-- Tasks completed: [X/Y]
-
-### What's Ready for Demo
-[List of concrete deliverables that can be shown to the client, with file paths]
-
-### Next Steps
-1. Review the pull request: [pr_url]
-2. [If blocked phases] Address blocked phases manually, then re-run: `/wire:autopilot [folder_name]`
-3. [If dbt generated] Run dbt models against real data: `cd dbt && dbt deps && dbt run`
-4. [If applicable] Schedule stakeholder demos using training materials
-```
-
-Log final entry to execution_log.md:
-```
-| [timestamp] | /wire:autopilot | complete | Autopilot finished — [completed]/[total] phases, [blocked] blocked |
-```
+1. Check whether `.wire/engagement/context.md` exists — if not, treat as a fresh engagement
+2. Check `.wire/autopilot_checkpoint.md` for compressed context from prior phases
+3. Check `.wire/releases/01-discovery/status.md` — if all four discovery artifacts are approved, skip Phase 3
+4. Check `planned_releases` from the checkpoint — identify which releases are complete and which are in progress
+5. Resume execution from the first incomplete artifact in the first incomplete release
+6. Do NOT re-generate already-completed and approved artifacts
 
 Execute the complete workflow as specified above.
 

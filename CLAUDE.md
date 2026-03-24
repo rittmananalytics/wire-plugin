@@ -7,30 +7,78 @@ This plugin provides the **Wire Framework**, an AI-accelerated delivery system f
 All commands are available after installing and restarting Claude Code. Commands are namespaced under `/wire:*`:
 
 ```
-/wire:start              — See all projects and available commands
-/wire:new                — Create a new project
-/wire:autopilot <sow>    — Autonomous end-to-end execution from SOW
-/wire:status <project>   — Check project status
+/wire:start              — See all releases and available commands
+/wire:new                — Create a new engagement or add a release
+/wire:session:start      — Start a focused working session on any release
+/wire:session:end        — Close a session and record what was accomplished
+/wire:autopilot [sow]    — Autonomous end-to-end engagement: discovery sprint → all delivery releases
+/wire:status <release>   — Check release status
+```
+
+### Session commands (universal — all release types)
+
+```
+/wire:session:start [release-folder]   — Enter Plan Mode, scan release state and research, propose session plan
+/wire:session:end   [release-folder]   — Summarise session, update status.md, suggest next focus
+```
+
+### Discovery release commands
+
+```
+/wire:problem-definition-generate <release>   — Generate structured problem framing
+/wire:problem-definition-validate <release>   — Validate problem definition completeness
+/wire:problem-definition-review <release>     — Review with stakeholders
+
+/wire:pitch-generate <release>   — Generate 10-section Shape Up pitch
+/wire:pitch-validate <release>   — Validate pitch structure and quality
+/wire:pitch-review <release>     — Review pitch (betting table)
+
+/wire:release-brief-generate <release>   — Formalise approved pitch as release brief
+/wire:release-brief-validate <release>   — Validate brief against pitch
+/wire:release-brief-review <release>     — Client sign-off
+
+/wire:sprint-plan-generate <release>   — Generate sprint plan with point estimates
+/wire:sprint-plan-validate <release>   — Validate points vs appetite budget
+/wire:sprint-plan-review <release>     — Team review and approval
+
+/wire:release:spawn <discovery-release>   — Create downstream delivery release folders
 ```
 
 ### Delivery commands
 
 ```
-/wire:requirements-generate <project>   — Extract requirements from SOW
-/wire:requirements-validate <project>   — Validate requirements
-/wire:requirements-review <project>     — Stakeholder review
+/wire:requirements-generate <release>   — Extract requirements from SOW
+/wire:requirements-validate <release>   — Validate requirements
+/wire:requirements-review <release>     — Stakeholder review
 
-/wire:conceptual_model-generate <project>
-/wire:data_model-generate <project>
-/wire:dbt-generate <project>
-/wire:semantic_layer-generate <project>
-/wire:dashboards-generate <project>
+/wire:conceptual_model-generate <release>
+/wire:data_model-generate <release>
+/wire:dbt-generate <release>
+/wire:semantic_layer-generate <release>
+/wire:dashboards-generate <release>
 ... (and -validate/-review for each)
 ```
 
-### Project data
+### Migration
 
-Project data is stored in `.wire/` in the current repository. This directory is created automatically when you run `/wire:new` or `/wire:autopilot`.
+```
+/wire:migrate   — Migrate a pre-v3.4.0 flat .wire/ layout to the two-tier engagement/releases structure
+```
+
+Detects old-style project folders directly under `.wire/`, renames them to `releases/<name>/`, moves SOW files to `engagement/`, meeting notes to `engagement/calls/`, and generates `engagement/context.md`. Safe to re-run.
+
+### Engagement data
+
+Engagement data is stored in `.wire/` using a two-tier structure:
+
+```
+.wire/
+  engagement/        — Engagement-wide context (SOW, calls, org charts)
+  releases/          — Delivery releases (01-discovery, 02-data-foundation, etc.)
+  research/          — Persisted research findings (auto-populated by research skill)
+```
+
+This directory is created automatically when you run `/wire:new`.
 
 ## MCP Integrations
 
@@ -55,6 +103,35 @@ Wire Studio is a web-based visual interface for the Wire Framework, available as
 
 This command checks prerequisites (Node.js 18+), downloads and builds Wire Studio, and installs a `wire-studio` CLI. After install, run `wire-studio start` to open at http://localhost:3000. No Docker required.
 
+## Two-Tier Engagement Structure
+
+Every Wire engagement uses a two-tier structure:
+
+- **Engagement level** (`engagement/`): SOW, call transcripts, stakeholders, current-state architecture — context that belongs to the whole engagement, not any specific release.
+- **Release level** (`releases/`): Scoped, time-boxed delivery units. Release types: `discovery`, `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `dashboard_first`, `enablement`.
+
+### Repo mode options
+
+- **Combined** (default): `.wire/` lives directly in the client's code repo.
+- **Dedicated delivery repo**: A separate repo for Wire artifacts; client code repo details stored in `engagement/context.md`.
+
+### Discovery release type
+
+The `discovery` release type represents the pre-delivery scoping phase (Shape Up methodology). Its artifact workflow:
+
+```
+Problem Definition → Pitch → Release Brief → Sprint Plan → Spawn delivery releases
+```
+
+A discovery release ends by running `/wire:release:spawn` to create the folder structure and status files for each planned downstream delivery release.
+
+## Research Persistence Skill
+
+The research persistence skill (`skills/research/SKILL.md`) auto-activates during technical research tasks:
+- **Before research**: checks `.wire/research/sessions/` for prior findings on the same topic
+- **After research**: saves structured summaries to `.wire/research/sessions/YYYY-MM-DD-HHMM/summary.md`
+- Session:start automatically surfaces relevant prior research at the start of each working session
+
 ## Ad-hoc Development Skills
 
 This plugin includes contextual skills that activate automatically when working outside of Wire commands:
@@ -65,5 +142,9 @@ This plugin includes contextual skills that activate automatically when working 
 
 - **Dagster** (`skills/dagster/SKILL.md`): Activates when creating or modifying Dagster assets, schedules, sensors, or components. Covers the assets-first pattern, dagster-dbt integration, CLI usage, and Wire-specific group naming conventions.
 - **Dignified Python** (`skills/dignified-python/SKILL.md`): Activates when writing or reviewing Python code. Enforces modern type syntax (3.10+ unions), LBYL exception handling, pathlib for file operations, Click CLI patterns, and clean module design.
+- **dbt Fusion Migration** (`skills/dbt-fusion/SKILL.md`): Activates when migrating a dbt project from dbt Core to the Fusion runtime. Classifies errors into 4 categories (auto-fixable, guided, needs input, blocked), runs dbt-autofix first, and guides progressive resolution.
+- **dbt MCP Server** (`skills/dbt-mcp-server/SKILL.md`): Activates when setting up the dbt MCP server for Claude Code. Covers local vs remote server modes, configuration templates for Wire projects, and credential security.
+- **dbt Analytics Q&A** (`skills/dbt-analytics-qa/SKILL.md`): Activates when answering business data questions against a dbt project. Uses a 4-level escalation: Semantic Layer → modified compiled SQL → model discovery → manifest analysis.
+- **dbt DAG Visualisation** (`skills/dbt-dag/SKILL.md`): Activates when visualising dbt model lineage. Generates Mermaid flowcharts using MCP get_lineage tools, manifest.json parsing, or direct code parsing as fallbacks.
 
 These skills provide coding standards and validation rules as context, even when you are not running `/wire:*` commands.
