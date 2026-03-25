@@ -1,7 +1,7 @@
 {
   "name": "wire",
   "description": "The Wire Framework — AI-accelerated data platform delivery for the full lifecycle: requirements, design, development, testing, deployment, enablement",
-  "version": "3.4.1",
+  "version": "3.4.2",
   "author": {
     "name": "Rittman Analytics",
     "email": "hello@rittmananalytics.com"
