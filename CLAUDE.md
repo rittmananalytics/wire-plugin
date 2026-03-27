@@ -62,10 +62,10 @@ All commands are available after installing and restarting Claude Code. Commands
 ### Migration
 
 ```
-/wire:migrate   — Migrate a pre-v3.4.0 flat .wire/ layout to the two-tier engagement/releases structure
+/wire:migrate   — Migrate any engagement repo to Wire v3.4+ structure (auto-detects source layout)
 ```
 
-Detects old-style project folders directly under `.wire/`, renames them to `releases/<name>/`, moves SOW files to `engagement/`, meeting notes to `engagement/calls/`, and generates `engagement/context.md`. Safe to re-run.
+Handles two cases: **(A)** pre-v3.4.0 flat `.wire/` layout — renames project folders to `releases/<name>/`, moves SOW and meeting files, generates `engagement/context.md`; **(B)** near-wire root-level repos (`releases/`, `context/`, `artifacts/` at root, no `.wire/`) — creates a new git branch, moves all content into `.wire/`, reformats `status.md` files to wire YAML frontmatter, updates `CLAUDE.md`, commits, pushes, and opens a PR. Safe to re-run.
 
 ### Engagement data
 
