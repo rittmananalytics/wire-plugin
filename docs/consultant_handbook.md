@@ -2637,11 +2637,19 @@ When you run `/wire:new`, Step 9 asks which issue tracker to use:
 - Get your API key at linear.app → Settings → API
 - When prompted during `/wire:new`, provide:
   1. Your Linear **team identifier** (e.g. `ENG`, `DATA`, `RIT`) — found in your Linear workspace URL or team settings
-  2. Optionally, an **existing Linear project URL or ID** to assign issues to — paste the project URL (e.g. `https://linear.app/acme/project/my-project-abc123`) or the raw project ID. Leave blank if you want Wire to create a new project automatically.
+  2. Your preferred setup mode (see below)
 
-If you leave the project field blank, Wire will create a new Linear project named `[Client Name] — [Project Name]` and prompt you to confirm or customise the name before creating it.
+### Linear setup modes
 
-If you provide an existing project, Wire will verify it is accessible and assign all artifact issues to it — no new project is created.
+When you select Linear as an issue tracker, Wire asks how to set it up:
+
+| Mode | What happens |
+|------|-------------|
+| **Create new project + new issues** | Wire creates a brand-new Linear project named `[Client Name] — [Project Name]`, then populates it with one Issue per artifact and Sub-issues for each lifecycle step. You can customise the project name before it is created. |
+| **Use existing project + create new issues** | Paste a Linear project URL or ID. Wire verifies the project exists, then creates fresh Issues and Sub-issues inside it — no new project is created. Use this when the client already has a Linear project for the engagement. |
+| **Link to existing project + existing issues** | Wire searches the Linear team for issues that match Wire artifact names and links them. Only unmatched artifacts get new issues created. Use this when the team has pre-existing issues you want to track against. |
+
+**Tip**: "Use existing project + create new issues" is the most common choice for client engagements — it keeps Wire artifacts organised under a project you (or the client) already set up, while Wire handles all the issue and sub-issue creation automatically.
 
 ### How tracking works during delivery
 
