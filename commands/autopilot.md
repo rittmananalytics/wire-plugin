@@ -176,34 +176,7 @@ Please provide the client code repo details:
 
 Store `client_repo_url`, `client_repo_local_path`, `client_repo_branch`.
 
-## Step 1.4: Additional Context
-
-Ask directly in chat:
-
-```
-Do you have any other supporting documents I should read? (org charts, call
-transcripts, architecture diagrams, existing data model docs)
-
-Provide file paths, or type "no" to skip.
-```
-
-Store paths as `supporting_docs`. Read each file that exists.
-
-Also ask:
-
-```
-Is there anything else I should know about this engagement? For example:
-- Specific technologies or platforms (BigQuery, Snowflake, Looker)
-- Naming conventions or standards
-- Stakeholder preferences
-- Existing codebase or infrastructure
-
-Type "no" to skip.
-```
-
-Store as `additional_context`.
-
-## Step 1.5: Issue Tracker Integration
+## Step 1.4: Issue Tracker Integration
 
 Use `AskUserQuestion`:
 
@@ -242,7 +215,9 @@ And how would you like to set it up? (create new issues / link to existing)
 
 Store `linear_team_id`, `linear_project_id` (if provided), and `linear_mode` ("create" or "link").
 
-**Document store**: Ask:
+## Step 1.4.5: Document Store Integration
+
+Use `AskUserQuestion`:
 
 ```json
 {
@@ -261,6 +236,33 @@ Store `linear_team_id`, `linear_project_id` (if provided), and `linear_mode` ("c
 ```
 
 Store `docstore_provider` ("confluence", "notion", "both", or null).
+
+## Step 1.5: Additional Context
+
+Ask directly in chat:
+
+```
+Do you have any other supporting documents I should read? (org charts, call
+transcripts, architecture diagrams, existing data model docs)
+
+Provide file paths, or type "no" to skip.
+```
+
+Store paths as `supporting_docs`. Read each file that exists.
+
+Also ask:
+
+```
+Is there anything else I should know about this engagement? For example:
+- Specific technologies or platforms (BigQuery, Snowflake, Looker)
+- Naming conventions or standards
+- Stakeholder preferences
+- Existing codebase or infrastructure
+
+Type "no" to skip.
+```
+
+Store as `additional_context`.
 
 ## Step 1.6: Confirm, Launch, and Request Permissions
 
