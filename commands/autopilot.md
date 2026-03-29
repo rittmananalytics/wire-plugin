@@ -242,6 +242,26 @@ And how would you like to set it up? (create new issues / link to existing)
 
 Store `linear_team_id`, `linear_project_id` (if provided), and `linear_mode` ("create" or "link").
 
+**Document store**: Ask:
+
+```json
+{
+  "questions": [{
+    "question": "Would you like to replicate generated documents to a client-accessible document store for review and annotation?",
+    "header": "Document Store",
+    "options": [
+      {"label": "Confluence", "description": "Publish documents to a Confluence space — reviewers can comment and annotate inline"},
+      {"label": "Notion", "description": "Publish documents to a Notion workspace — reviewers can comment and edit pages"},
+      {"label": "Both Confluence and Notion", "description": "Publish to both simultaneously"},
+      {"label": "No, skip document store", "description": "Documents stay in GitHub only"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+Store `docstore_provider` ("confluence", "notion", "both", or null).
+
 ## Step 1.6: Confirm, Launch, and Request Permissions
 
 After gathering all inputs, enter plan mode to present the execution plan and pre-authorize shell operations.
@@ -260,6 +280,7 @@ After gathering all inputs, enter plan mode to present the execution plan and pr
 - **Supporting docs**: [list or "none"]
 - **Jira**: [project_key or "None"]
 - **Linear**: [team_id or "None"]
+- **Document store**: [provider or "None"]
 - **Additional context**: [summary or "none"]
 
 ## Execution Sequence
@@ -389,6 +410,10 @@ Write to `.wire/releases/01-discovery/status.md`.
 
 When Both is selected, run both workflows independently — one failure does not block the other.
 
+## Step 2.6.5: Document Store Setup (if opted in)
+
+If `docstore_provider` is set, follow the workflow in `specs/utils/docstore_setup.md`. Pass the engagement name, `releases/01-discovery` as the release folder, and `docstore_provider`. If setup fails, note the failure and continue — document store is optional and additive.
+
 ## Step 2.7: Initialize Autopilot Checkpoint
 
 Create `.wire/autopilot_checkpoint.md`:
@@ -403,6 +428,7 @@ Create `.wire/autopilot_checkpoint.md`:
 - SOW: [sow_filename]
 - Jira: [project_key or "None"]
 - Linear: [team_id or "None"]
+- Document store: [provider or "None"]
 - Branch: [branch_name]
 
 ## SOW Summary
