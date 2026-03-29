@@ -202,7 +202,9 @@ Store `cloud_id` for use in subsequent steps.
 
 #### Step 3.2: Get Confluence Space Key
 
-Ask the user for the Confluence space where engagement documents should live:
+If a `confluence_space_key` was passed in by the calling command (e.g. from `/wire:new` or `/wire:autopilot`), use it directly — do not ask again.
+
+Otherwise, ask the user for the Confluence space where engagement documents should live:
 
 ```
 What is the Confluence space key for this engagement?
@@ -314,7 +316,9 @@ Treat Confluence as unconfigured and continue.
 
 #### Step 4.1: Get Notion Parent Page
 
-Ask the user for the Notion page under which all engagement documents should be created:
+If a `notion_parent_page_id` was passed in by the calling command (e.g. from `/wire:new` or `/wire:autopilot`), use it directly — do not ask again.
+
+Otherwise, ask the user for the Notion page under which all engagement documents should be created:
 
 ```
 What is the Notion parent page for this engagement?

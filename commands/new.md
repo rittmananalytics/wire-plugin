@@ -357,7 +357,7 @@ Store `linear_team_id`, `linear_project_id` (if provided, extract from URL or us
 
 ### Step 9.5: Document Store Integration (Optional)
 
-Use `AskUserQuestion`:
+**Question 1** — Use `AskUserQuestion`:
 
 ```json
 {
@@ -375,7 +375,22 @@ Use `AskUserQuestion`:
 }
 ```
 
-If any document store is selected, follow the workflow in `specs/utils/docstore_setup.md`. Pass the engagement name, release folder, and provider choice.
+**Question 2** — If "Confluence" or "Both Confluence and Notion" was selected, ask directly in chat:
+```
+What is the Confluence space key where Wire documents should be published?
+(e.g. PROJ, ACME, DATA — found in the space URL: /wiki/spaces/PROJ/...)
+```
+Store `confluence_space_key`.
+
+**Question 3** — If "Notion" or "Both Confluence and Notion" was selected, ask directly in chat:
+```
+What is the Notion parent page for Wire documents?
+Paste the page URL or ID (e.g. https://www.notion.so/My-Projects-abc123 or just the ID).
+This page must already exist and be accessible via the Notion MCP.
+```
+Store `notion_parent_page_id` (extract ID from URL if a full URL was given).
+
+If any document store is selected, follow the workflow in `specs/utils/docstore_setup.md`. Pass the engagement name, release folder, provider choice, `confluence_space_key` (if set), and `notion_parent_page_id` (if set) — the utility should skip re-asking for these when they are already supplied.
 
 If skipped, continue to Step 10.
 
