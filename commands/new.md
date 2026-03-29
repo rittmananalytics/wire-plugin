@@ -325,7 +325,14 @@ Use `AskUserQuestion`:
 ```
 Store `jira_project_key` and `jira_mode` for use in Step 15.
 
-**If Linear or Both selected**: Ask for the Linear team identifier and preferred mode:
+**If Linear or Both selected**: Ask the following as three separate questions in sequence:
+
+**Question 1** — Ask directly in chat:
+```
+What is the Linear team identifier? (e.g., ENG, DATA, ACME)
+```
+
+**Question 2** — Use `AskUserQuestion`:
 ```json
 {
   "questions": [{
@@ -333,21 +340,19 @@ Store `jira_project_key` and `jira_mode` for use in Step 15.
     "header": "Linear Setup",
     "options": [
       {"label": "Create new project + new issues", "description": "Wire will create a new Linear project with issues and sub-issues from scratch"},
-      {"label": "Use existing project + create new issues", "description": "Paste an existing Linear project URL or ID — Wire will create fresh issues inside it"},
-      {"label": "Link to existing project + existing issues", "description": "Wire will search the team for matching issues and link them to Wire artifacts"}
+      {"label": "Use existing project + create new issues", "description": "Wire will create fresh issues inside an existing project — you'll provide the project URL or ID next"},
+      {"label": "Link to existing project + existing issues", "description": "Wire will search the team for matching issues and link them to Wire artifacts — you'll provide the project URL or ID next"}
     ],
     "multiSelect": false
   }]
 }
 ```
-Ask:
-```
-What is the Linear team identifier? (e.g., ENG, DATA, ACME)
-```
-If "Use existing project + create new issues" or "Link to existing project + existing issues" was selected, also ask:
+
+**Question 3** — Only if "Use existing project + create new issues" or "Link to existing project + existing issues" was selected, ask directly in chat:
 ```
 Paste the Linear project URL or ID (e.g. https://linear.app/acme/project/my-project-abc123):
 ```
+
 Store `linear_team_id`, `linear_project_id` (if provided, extract from URL or use as-is), and `linear_mode` ("create", "create_in_existing", or "link") for use in Step 15.
 
 ### Step 9.5: Document Store Integration (Optional)

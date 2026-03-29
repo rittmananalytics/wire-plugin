@@ -205,14 +205,24 @@ And how would you like to set it up? (create new issues / link to existing)
 
 Store `jira_project_key` and `jira_mode` ("create" or "link").
 
-**If Linear or Both selected**, ask:
+**If Linear or Both selected**, ask (as two separate questions):
 
+First:
 ```
 What is the Linear team identifier? (e.g., ENG, DATA, ACME)
-And how would you like to set it up?
+```
+
+Then:
+```
+How would you like to set up Linear?
   1. Create a new Linear project and new issues — Wire will create a project, issues, and sub-issues from scratch
-  2. Use an existing Linear project and create new issues in it — paste the project URL or ID, and Wire will create fresh issues inside it
+  2. Use an existing Linear project and create new issues in it — Wire will create fresh issues inside an existing project
   3. Link to existing issues in an existing project — Wire will search the team for matching issues and link them
+```
+
+If option 2 or 3 is chosen, ask:
+```
+Paste the Linear project URL or ID (e.g. https://linear.app/acme/project/my-project-abc123):
 ```
 
 Store `linear_team_id`, `linear_project_id` (if option 2 or 3 — extract from URL or use as-is), and `linear_mode` ("create", "create_in_existing", or "link").
