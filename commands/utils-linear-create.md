@@ -151,7 +151,7 @@ Three modes are supported:
 - Proceed to **Step 2A** (Search for Existing Issues)
 
 **If invoked from `/wire:new` with `linear_mode: "create_in_existing"`**:
-- Skip project creation; use the `linear_project_id` already provided. Proceed to **Step 3** (Create Issues).
+- Proceed to **Step 2** (Resolve Linear Project) — the `create_in_existing` path verifies the supplied `linear_project_id` and sets `resolved_project_id`.
 
 **If invoked from `/wire:new` with `linear_mode: "create"` (or no mode specified)**:
 - Proceed to **Step 2** (Create Linear Project)
@@ -169,17 +169,18 @@ How would you like to set up Linear tracking?
 
 ## Workflow Path A: Create New Issues
 
-### Step 2: Create Linear Project
+### Step 2: Resolve Linear Project
 
-**Only reached when `linear_mode` is `"create"`** (new project needed).
+The goal of this step is to populate `resolved_project_id` and `resolved_project_url` — the canonical project reference used by all subsequent steps.
+
+**When `linear_mode` is `"create"`**:
 
 Optionally offer to customise the name:
 ```
 Project name (press Enter to accept default: "[client_name] — [project_name]"):
 ```
 
-Then create the project using the Linear MCP:
-
+Create the project:
 ```
 save_project:
   teamId: "[linear_team_id]"
@@ -192,13 +193,29 @@ save_project:
   state: "started"
 ```
 
-Record the returned `projectId` and `projectUrl`.
+Store the returned `id` as `resolved_project_id` and the project URL as `resolved_project_url`.
 
-**When `linear_mode` is `"create_in_existing"`**: skip this step entirely — the `linear_project_id` was already provided. Call `get_project` to verify it exists and is accessible, then record the `projectId` and `projectUrl` from the response. Proceed directly to Step 3.
+**When `linear_mode` is `"create_in_existing"` or `"link"`**:
+
+The user has already provided a `linear_project_id` (URL or raw ID). Verify it:
+```
+get_project:
+  id: "[linear_project_id]"
+```
+
+If the project is found: store the returned `id` as `resolved_project_id` and the project URL as `resolved_project_url`.
+
+If not found or inaccessible:
+```
+Error: Linear project "[linear_project_id]" could not be found or is not accessible.
+Please check the project ID/URL and your permissions, then re-run:
+/wire:utils-linear-create [folder]
+```
+Exit — do not proceed without a valid project.
 
 ### Step 3: Create Issues for Each In-Scope Artifact
 
-For each artifact where the state is NOT `not_applicable`, create a top-level Issue under the Project.
+For each artifact where the state is NOT `not_applicable`, create a top-level Issue under the project. Use `resolved_project_id` from Step 2 for all issue creation calls.
 
 **Artifact display names:**
 
@@ -225,7 +242,7 @@ For each in-scope artifact:
 ```
 linear_createIssue:
   teamId: "[linear_team_id]"
-  projectId: "[project_id]"
+  projectId: "[resolved_project_id]"
   title: "[Artifact Display Name]: [project_name]"
   description: "[Description from table above]"
 ```
@@ -375,8 +392,8 @@ Update the project's `status.md` YAML frontmatter with all created/linked issue 
 ```yaml
 linear:
   team_id: "ENG"
-  project_id: "PROJECT_UUID"
-  project_url: "https://linear.app/team/project/..."
+  project_id: "[resolved_project_id]"
+  project_url: "[resolved_project_url]"
   artifacts:
     requirements:
       issue_id: "ISSUE_UUID"
