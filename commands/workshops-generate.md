@@ -355,6 +355,22 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Action: `generate`
 - Status: the generate state just written to status.md
 
+### Step 7.5: Sync to Linear (Optional)
+
+Follow the Linear sync workflow in `specs/utils/linear_sync.md`:
+- Artifact: `workshops`
+- Action: `generate`
+- Status: the generate state just written to status.md
+
+### Step 7.6: Sync to Document Store (Optional)
+
+If a document store is configured for this engagement, follow the workflow in `specs/utils/docstore_sync.md`:
+- Artifact: `workshops`
+- Primary file: `.wire/[release_folder]/requirements/workshop_agenda.md`
+- Also sync: `workshop_decision_matrix.md` and `workshop_technical_options.md` (if generated)
+
+Fail gracefully if the document store is unavailable — this step is optional and additive.
+
 ### Step 8: Confirm and Suggest Next Steps
 
 **Output**:

@@ -221,6 +221,27 @@ If yes:
    ```
 4. Write updated status.md
 
+### Step 7.5: Sync to Jira (Optional)
+
+Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
+- Artifact: `workshops`
+- Action: `review`
+- Status: `approved`
+- Include workshop date and decisions count in Jira comment
+
+### Step 7.6: Sync to Linear (Optional)
+
+Follow the Linear sync workflow in `specs/utils/linear_sync.md`:
+- Artifact: `workshops`
+- Action: `review`
+- Status: `approved`
+
+### Step 7.7: Sync to Document Store (Optional)
+
+If a document store is configured, follow the workflow in `specs/utils/docstore_sync.md` to re-sync the final workshop materials (agenda, decision matrix) to the configured store. This ensures any updates captured during the workshop are reflected in the client-accessible version.
+
+Fail gracefully if the document store is unavailable.
+
 ### Step 8: Confirm and Suggest Next Steps
 
 **Output**:

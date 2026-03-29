@@ -227,6 +227,19 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - If approved, include reviewer name in Jira comment
 - If changes_requested, include feedback text in Jira comment
 
+### Step 5.5: Sync to Linear (Optional)
+
+Follow the Linear sync workflow in `specs/utils/linear_sync.md`:
+- Artifact: `training`
+- Action: `review`
+- Status: the review state just written to status.md
+
+### Step 5.6: Sync to Document Store (Optional)
+
+If a document store is configured for this engagement and the review was approved, follow the workflow in `specs/utils/docstore_sync.md` to re-sync the final training materials to the configured store. This ensures reviewers see the approved, final version.
+
+Fail gracefully if the document store is unavailable — this step is optional and additive.
+
 ## Output
 
 This command:

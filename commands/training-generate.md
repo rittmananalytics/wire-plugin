@@ -708,6 +708,22 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Action: `generate`
 - Status: the generate state just written to status.md
 
+### Step 10.5: Sync to Linear (Optional)
+
+Follow the Linear sync workflow in `specs/utils/linear_sync.md`:
+- Artifact: `training`
+- Action: `generate`
+- Status: the generate state just written to status.md
+
+### Step 10.6: Sync to Document Store (Optional)
+
+If a document store is configured for this engagement, follow the workflow in `specs/utils/docstore_sync.md`:
+- Artifact: `training`
+- Primary file: `.wire/[project_id]/enablement/training_delivery_checklist.md`
+- Also sync: all session plan, slides, exercises, and quick reference files generated in Steps 3–6
+
+Fail gracefully if the document store is unavailable — this step is optional and additive.
+
 ### Step 11: Confirm and Suggest Next Steps
 
 **Output**:
