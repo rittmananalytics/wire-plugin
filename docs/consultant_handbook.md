@@ -2635,7 +2635,13 @@ When you run `/wire:new`, Step 9 asks which issue tracker to use:
     -H "Authorization: Bearer <your-api-key>"
   ```
 - Get your API key at linear.app → Settings → API
-- Provide your Linear team identifier (e.g. `ENG`, `DATA`, `RIT`) when prompted during `/wire:new`
+- When prompted during `/wire:new`, provide:
+  1. Your Linear **team identifier** (e.g. `ENG`, `DATA`, `RIT`) — found in your Linear workspace URL or team settings
+  2. Optionally, an **existing Linear project URL or ID** to assign issues to — paste the project URL (e.g. `https://linear.app/acme/project/my-project-abc123`) or the raw project ID. Leave blank if you want Wire to create a new project automatically.
+
+If you leave the project field blank, Wire will create a new Linear project named `[Client Name] — [Project Name]` and prompt you to confirm or customise the name before creating it.
+
+If you provide an existing project, Wire will verify it is accessible and assign all artifact issues to it — no new project is created.
 
 ### How tracking works during delivery
 
