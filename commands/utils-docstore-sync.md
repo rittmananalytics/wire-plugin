@@ -274,6 +274,8 @@ On success: record `last_synced` timestamp (current ISO datetime) in `status.md`
 
 On failure: log and continue (see Step 5 for error handling).
 
+Proceed to **Step 3.5** to update the index page.
+
 #### Step 3.4: Create New Confluence Page
 
 Create a new page as a child of the engagement's parent page:
@@ -301,6 +303,67 @@ docstore:
 ```
 
 On failure: log and continue.
+
+Proceed to **Step 3.5** to update the index page.
+
+#### Step 3.5: Update Confluence Index Page
+
+After every successful create or update, rebuild the "Wire Documents" index page so that its artifact table reflects the current state of all synced artifacts.
+
+**Process**:
+
+1. Read all `docstore.confluence.artifacts` entries from `status.md` to get the current `page_id`, `page_url`, and `last_synced` for every artifact that has been synced so far.
+
+2. Fetch the current version of the parent index page (needed for the update call):
+   ```
+   getConfluencePage:
+     cloudId: "[cloud_id]"
+     pageId: "[docstore.confluence.parent_page_id]"
+   ```
+   Extract `version.number`.
+
+3. Rebuild the index table body. For each artifact in the standard artifact order (requirements, workshops, conceptual_model, pipeline_design, data_model, mockups, pipeline, dbt, semantic_layer, dashboards, data_quality, uat, deployment, training, documentation — plus discovery artifacts: problem_definition, pitch, release_brief, sprint_plan):
+   - If the artifact has a `page_url` in `docstore.confluence.artifacts`: render as a linked row with last_synced date
+   - If not yet synced: render as "Pending generation"
+   - Only include rows for artifacts that are in-scope for this release (i.e. present in `status.md`)
+
+   Table structure:
+   ```xml
+   <table>
+     <thead>
+       <tr>
+         <th><p>Artifact</p></th>
+         <th><p>Status</p></th>
+         <th><p>Last Synced</p></th>
+       </tr>
+     </thead>
+     <tbody>
+       <tr>
+         <td><p><a href="[page_url]">[artifact display name]</a></p></td>
+         <td><p>Published</p></td>
+         <td><p>[last_synced date]</p></td>
+       </tr>
+       <tr>
+         <td><p>[artifact display name]</p></td>
+         <td><p>Pending generation</p></td>
+         <td><p>—</p></td>
+       </tr>
+     </tbody>
+   </table>
+   ```
+
+4. Update the parent index page with the rebuilt table:
+   ```
+   updateConfluencePage:
+     cloudId: "[cloud_id]"
+     pageId: "[docstore.confluence.parent_page_id]"
+     title: "[existing title — do not change]"
+     version: [current_version + 1]
+     body: "[introductory paragraph] + [rebuilt table]"
+     representation: "storage"
+   ```
+
+On failure: log `Note: Could not update Confluence index page. Child page was still created/updated successfully.` and continue — do not block.
 
 ---
 
@@ -403,6 +466,8 @@ On success: record `last_synced` timestamp in `status.md` under `docstore.notion
 
 On failure: log and continue.
 
+Proceed to **Step 4.5** to update the index page.
+
 #### Step 4.4: Create New Notion Page
 
 Create a new page as a child of the engagement parent page:
@@ -434,6 +499,71 @@ docstore:
 ```
 
 On failure: log and continue.
+
+Proceed to **Step 4.5** to update the index page.
+
+#### Step 4.5: Update Notion Index Page
+
+After every successful create or update, rebuild the "Wire Documents" index page so its artifact list reflects the current state of all synced artifacts.
+
+**Process**:
+
+1. Read all `docstore.notion.artifacts` entries from `status.md` to get the current `page_id`, `page_url`, and `last_synced` for every artifact synced so far.
+
+2. Retrieve the existing blocks of the parent index page:
+   ```
+   notion_get_block_children:
+     block_id: "[docstore.notion.parent_page_id]"
+   ```
+
+3. Delete all existing blocks (the introductory paragraph and the artifacts section will be rebuilt in full):
+   ```
+   notion_delete_block:
+     block_id: "[block_id]"
+   ```
+   Repeat for each block. Delete in batches of 10 to avoid rate limits.
+
+4. Rebuild and append the full index content. For each in-scope artifact (only those present in `status.md`), in the standard artifact order:
+   - If the artifact has a `page_url`: include as a linked mention with last_synced date
+   - If not yet synced: list as plain text with "Pending generation"
+
+   Block structure to append:
+   ```json
+   [
+     {
+       "type": "paragraph",
+       "paragraph": {
+         "rich_text": [{"type": "text", "text": {"content": "This page is the central index for all Wire Framework artifacts generated during this engagement. Artifacts are published automatically each time a generate command completes."}}]
+       }
+     },
+     {"type": "heading_2", "heading_2": {"rich_text": [{"type": "text", "text": {"content": "Artifacts"}}]}},
+     // For each synced artifact:
+     {
+       "type": "bulleted_list_item",
+       "bulleted_list_item": {
+         "rich_text": [
+           {"type": "text", "text": {"content": "[Artifact Display Name] — "}, "annotations": {"bold": true}},
+           {"type": "text", "text": {"content": "Published", "link": {"url": "[page_url]"}}, "annotations": {"color": "green"}},
+           {"type": "text", "text": {"content": " (last synced: [last_synced date])"}}
+         ]
+       }
+     },
+     // For each not-yet-synced artifact:
+     {
+       "type": "bulleted_list_item",
+       "bulleted_list_item": {
+         "rich_text": [
+           {"type": "text", "text": {"content": "[Artifact Display Name] — "}, "annotations": {"bold": true}},
+           {"type": "text", "text": {"content": "Pending generation"}, "annotations": {"color": "gray"}}
+         ]
+       }
+     }
+   ]
+   ```
+
+   Append in batches of 100 blocks if needed.
+
+On failure: log `Note: Could not update Notion index page. Child page was still created/updated successfully.` and continue — do not block.
 
 ---
 
