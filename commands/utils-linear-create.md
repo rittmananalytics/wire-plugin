@@ -260,17 +260,16 @@ For each artifact Issue, create Sub-issues for the applicable lifecycle steps.
 
 For each applicable step:
 
+**IMPORTANT: Sub-issues must only have `parentId` — never `project`, never `team`. Passing `project` causes Linear to surface the issue as a standalone project issue rather than a sub-issue. The parent relationship is established solely through `parentId`; team and project are inherited automatically.**
+
 ```
 save_issue:
-  team: "[linear_team_id]"
   parentId: "[artifact_issue_id]"
   title: "[Step]: [Artifact Display Name]"
   description: "[Step] the [artifact] for [project_name]"
 ```
 
 Where `[Step]` is `Generate`, `Validate`, or `Review`.
-
-**Important**: `parentId` is what makes these sub-issues — they will appear as children of the artifact issue in Linear. Do not set `project` on sub-issues; inheriting from the parent is sufficient.
 
 Record each returned `id` as `[step]_id` and `identifier` as `[step]_identifier`.
 
