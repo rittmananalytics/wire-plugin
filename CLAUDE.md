@@ -84,10 +84,27 @@ This directory is created automatically when you run `/wire:new`.
 
 This plugin configures optional MCP servers for:
 - **Atlassian** — Jira issue tracking and Confluence document search
+- **Linear** — Linear issue tracking (alternative to Jira)
 - **Fathom** — Meeting transcript context for reviews
 - **Context7** — Library documentation lookups
 
 Authenticate via `/mcp` in Claude Code.
+
+## Issue Tracking
+
+Wire Framework supports **Jira** and **Linear** as issue trackers. Both are optional and additive — the framework works fully without either. When both are configured, they are synced in parallel.
+
+**Jira** (via Atlassian MCP):
+- `/wire:utils-jira-create <release>` — Set up Jira Epic + Tasks + Sub-tasks
+- `/wire:utils-jira-sync <release> <artifact> <action>` — Sync one artifact step (called automatically)
+- `/wire:utils-jira-status-sync <release>` — Full reconciliation (called by `/wire:status`)
+
+**Linear** (via Linear MCP):
+- `/wire:utils-linear-create <release>` — Set up Linear Project + Issues + Sub-issues
+- `/wire:utils-linear-sync <release> <artifact> <action>` — Sync one artifact step (called automatically)
+- `/wire:utils-linear-status-sync <release>` — Full reconciliation (called by `/wire:status`)
+
+Both trackers store their keys in `status.md` under `jira:` and `linear:` frontmatter sections respectively. `/wire:new` will offer to set up either or both during project creation.
 
 ## Consultant Handbook
 

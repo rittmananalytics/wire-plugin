@@ -203,32 +203,43 @@ Type "no" to skip.
 
 Store as `additional_context`.
 
-## Step 1.5: Jira Integration
+## Step 1.5: Issue Tracker Integration
 
 Use `AskUserQuestion`:
 
 ```json
 {
   "questions": [{
-    "question": "Would you like to track this engagement in Jira?",
-    "header": "Jira Tracking",
+    "question": "Would you like to track this engagement in an issue tracker?",
+    "header": "Issue Tracker",
     "options": [
-      {"label": "Create new Jira issues", "description": "Create Epic, Tasks, and Sub-tasks in Jira"},
-      {"label": "Link to existing Jira issues", "description": "Search a Jira project for existing issues"},
-      {"label": "No, skip Jira", "description": "Track progress in status.md only"}
+      {"label": "Jira", "description": "Create or link Jira Epic, Tasks, and Sub-tasks"},
+      {"label": "Linear", "description": "Create or link a Linear Project, Issues, and Sub-issues"},
+      {"label": "Both Jira and Linear", "description": "Track in both Jira and Linear simultaneously"},
+      {"label": "No, skip issue tracking", "description": "Track progress in status.md only"}
     ],
     "multiSelect": false
   }]
 }
 ```
 
-If Jira selected, ask:
+**If Jira or Both selected**, ask:
 
 ```
 What is the Jira project key? (e.g., DP, ACME, PROJ)
+And how would you like to set it up? (create new issues / link to existing)
 ```
 
 Store `jira_project_key` and `jira_mode` ("create" or "link").
+
+**If Linear or Both selected**, ask:
+
+```
+What is the Linear team identifier? (e.g., ENG, DATA, ACME)
+And how would you like to set it up? (create new issues / link to existing)
+```
+
+Store `linear_team_id` and `linear_mode` ("create" or "link").
 
 ## Step 1.6: Confirm, Launch, and Request Permissions
 
@@ -247,6 +258,7 @@ After gathering all inputs, enter plan mode to present the execution plan and pr
 - **SOW**: [sow_path]
 - **Supporting docs**: [list or "none"]
 - **Jira**: [project_key or "None"]
+- **Linear**: [team_id or "None"]
 - **Additional context**: [summary or "none"]
 
 ## Execution Sequence
@@ -368,9 +380,13 @@ Read `TEMPLATES/discovery-status-template.md` and populate:
 
 Write to `.wire/releases/01-discovery/status.md`.
 
-## Step 2.6: Jira Setup (if opted in)
+## Step 2.6: Issue Tracker Setup (if opted in)
 
-Follow the Jira workflow in `specs/utils/jira_create.md`. Pass `release_type: discovery` and artifact scope (problem_definition, pitch, release_brief, sprint_plan). If Jira fails, note the failure and continue.
+**If Jira or Both selected**: Follow the workflow in `specs/utils/jira_create.md`. Pass `release_type: discovery` and artifact scope (problem_definition, pitch, release_brief, sprint_plan). If Jira fails, note the failure and continue.
+
+**If Linear or Both selected**: Follow the workflow in `specs/utils/linear_create.md`. Pass `release_type: discovery` and the same artifact scope. If Linear fails, note the failure and continue.
+
+When Both is selected, run both workflows independently — one failure does not block the other.
 
 ## Step 2.7: Initialize Autopilot Checkpoint
 
@@ -385,6 +401,7 @@ Create `.wire/autopilot_checkpoint.md`:
 - Lead: [engagement_lead]
 - SOW: [sow_filename]
 - Jira: [project_key or "None"]
+- Linear: [team_id or "None"]
 - Branch: [branch_name]
 
 ## SOW Summary
