@@ -2,7 +2,7 @@
 
 **Rittman Analytics — Internal Use**
 
-**Version**: 3.4.0 | **Date**: March 2026
+**Version**: 3.4.4 | **Date**: March 2026
 
 ---
 
@@ -24,9 +24,11 @@
 14. [Worked Example: Barton Peveril Live Pastoral Analytics](#14-worked-example-barton-peveril-live-pastoral-analytics)
 15. [Wire Autopilot: Autonomous Execution](#15-wire-autopilot-autonomous-execution)
 16. [Wire Studio: Web-Based Interface](#16-wire-studio-web-based-interface)
-17. [Extending and Customising the Framework](#17-extending-and-customising-the-framework)
-18. [FAQ](#18-faq)
-19. [Troubleshooting](#19-troubleshooting)
+17. [Issue Tracking: Jira and Linear](#17-issue-tracking-jira-and-linear)
+18. [Document Store: Confluence and Notion](#18-document-store-confluence-and-notion)
+19. [Extending and Customising the Framework](#19-extending-and-customising-the-framework)
+20. [FAQ](#20-faq)
+21. [Troubleshooting](#21-troubleshooting)
 
 ---
 
@@ -2604,7 +2606,153 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 17. Extending and Customising the Framework
+## 17. Issue Tracking: Jira and Linear
+
+Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
+
+### Setting up issue tracking
+
+When you run `/wire:new`, Step 9 asks which issue tracker to use:
+
+| Choice | What happens |
+|--------|-------------|
+| **Jira** | Wire creates a Jira Epic for the engagement, one Task per artifact, and three Sub-tasks (generate, validate, review) per artifact. As lifecycle steps complete, Sub-tasks are transitioned to Done. |
+| **Linear** | Wire creates a Linear Project for the engagement, one Issue per artifact, and three Sub-issues per artifact. As steps complete, Sub-issues transition through In Progress → Done. |
+| **Both** | Both hierarchies are created and synced in parallel. A failure in one does not affect the other. |
+| **None** | Track progress in `status.md` only — no external issue tracker. |
+
+### Jira setup requirements
+
+- Atlassian MCP must be connected and authenticated (it is included in the default MCP config)
+- Provide a Jira project key (e.g. `DP`, `ACME`) when prompted during `/wire:new`
+- Choose create (new Jira hierarchy) or link (map to existing Jira issues)
+
+### Linear setup requirements
+
+- Add the Linear MCP server with your API key:
+  ```bash
+  claude mcp add -s user -t sse linear https://mcp.linear.app/sse \
+    -H "Authorization: Bearer <your-api-key>"
+  ```
+- Get your API key at linear.app → Settings → API
+- Provide your Linear team identifier (e.g. `ENG`, `DATA`, `RIT`) when prompted during `/wire:new`
+
+### How tracking works during delivery
+
+Every generate, validate, and review command automatically calls `utils/jira_sync.md` and/or `utils/linear_sync.md` as its final step. You do not need to do anything manually — the sync happens as a natural part of the lifecycle.
+
+`/wire:status` runs a full reconciliation (`utils/jira_status_sync.md` and/or `utils/linear_status_sync.md`) to bring the issue tracker fully in sync with the current `status.md` state. Run this if you suspect the tracker has drifted.
+
+### Configuration in status.md
+
+```yaml
+jira:
+  project_key: "DP"
+  epic_key: "DP-10"
+  artifacts:
+    requirements:
+      task_key: "DP-11"
+      generate_key: "DP-12"
+      validate_key: "DP-13"
+      review_key: "DP-14"
+
+linear:
+  team_id: "abc-123"
+  project_id: "def-456"
+  artifacts:
+    requirements:
+      issue_id: "ghi-789"
+      generate_id: "jkl-012"
+      validate_id: "mno-345"
+      review_id: "pqr-678"
+```
+
+---
+
+## 18. Document Store: Confluence and Notion
+
+The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
+
+### What it is for
+
+On most engagements, the client does not have access to GitHub. Sending PDF exports or sharing screen is inefficient for document review. The document store integration solves this by:
+
+1. Publishing each generated artifact to a Confluence page or Notion page that the client can access directly
+2. Letting the client add comments and make minor edits in the document store
+3. Surfacing those comments and edits automatically during the Wire review command, so the consultant has a complete picture of client feedback before the review meeting
+
+### Setting up the document store
+
+When you run `/wire:new`, Step 9.5 asks which document store to use:
+
+| Choice | What happens |
+|--------|-------------|
+| **Confluence** | Wire creates a "Wire Documents" parent page in a Confluence space you specify. All artifact pages are created under it. Uses the existing Atlassian MCP. |
+| **Notion** | Wire creates a "Wire Documents" parent page under a Notion page you specify. Uses the Notion MCP (OAuth). |
+| **Both** | Creates parent pages in both stores. Artifacts are synced to both simultaneously. |
+| **None** | No document store. Documents stay in GitHub only. |
+
+You can also run `/wire:utils-docstore-setup <release>` directly to configure a store for an existing release.
+
+### Confluence setup requirements
+
+- Atlassian MCP must be connected (included in default MCP config)
+- Provide your Confluence space key (e.g. `PROJ`, `DP`) when prompted
+- Optionally provide a parent page — the "Wire Documents" folder will be created there
+
+### Notion setup requirements
+
+- Add the Notion MCP server:
+  ```bash
+  claude mcp add -s user -t http notion https://mcp.notion.com/mcp
+  ```
+- Complete the OAuth flow when prompted (first use only)
+- Provide the URL or ID of the Notion page where Wire Documents should be created
+
+### How it works during delivery
+
+**On every generate command:**
+- Wire generates the `.md` file to the repo as normal
+- Then calls `utils/docstore_sync.md` to create or overwrite the document store page
+- The page ID and URL are stored in `status.md` under the `docstore:` block
+- If sync fails, the generate command continues — the failure is logged but does not block the workflow
+
+**On every review command:**
+- Wire calls `utils/docstore_fetch.md` to retrieve:
+  - All comments on the document store page (inline and footer)
+  - Any differences between the document store version and the canonical `.md` file
+- This is surfaced as a "Document Store Context" block before the review:
+
+```
+## Document Store Context — Requirements Specification
+
+### Reviewer Comments (2 total)
+- Jane Smith (2026-03-28): "Section 3.2 — please add more detail on the CRM data source"
+- Jane Smith (2026-03-28): "Timeline in Section 5 needs to move by 2 weeks"
+
+### Document Edits Since Generation
+Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
+
+### Links
+- Confluence: https://acme.atlassian.net/wiki/spaces/DP/pages/12345
+```
+
+**On review approval:**
+- Wire re-syncs the canonical `.md` file to the document store, overwriting the page with the approved version
+
+**On re-generate:**
+- The existing page is overwritten in place (same page ID) — not duplicated
+
+### Tips for working with clients
+
+- Share the Confluence space or Notion parent page with the client during project kickoff
+- Ask them to add comments rather than editing the document directly — this preserves the audit trail
+- If they do edit the document directly, the Wire review command will flag the diff — you can decide whether to accept the change
+- The document store is not the source of truth — the canonical `.md` file in GitHub is. The store is a collaboration layer.
+
+---
+
+## 19. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -2762,7 +2910,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 18. FAQ
+## 20. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -3019,7 +3167,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 19. Troubleshooting
+## 21. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
