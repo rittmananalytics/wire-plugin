@@ -136,7 +136,7 @@ For each sub-task that needs transitioning:
 2. If current Jira state differs from expected, transition: `transitionJiraIssue`
 3. Track changes made vs already-in-sync
 
-Do NOT add comments during bulk sync (too noisy). Only transition.
+**IMPORTANT: Do NOT call `editJiraIssue` to modify issue descriptions. Descriptions are set at creation time and must never be modified during sync. Do NOT add comments during bulk sync (too noisy). Only transition.**
 
 ### Step 4: Sync Parent Tasks
 

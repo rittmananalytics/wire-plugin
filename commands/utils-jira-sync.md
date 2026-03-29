@@ -143,6 +143,8 @@ Find the transition ID that matches the target status name. Jira transition name
 
 ### Step 5: Transition the Sub-task
 
+**IMPORTANT: Only transition — do NOT call `editJiraIssue` to update the description. Issue descriptions are set at creation time and must never be modified by sync operations. All lifecycle progress is recorded as comments (Step 6), never by editing the description.**
+
 ```
 transitionJiraIssue:
   issueKey: "[sub_task_key]"

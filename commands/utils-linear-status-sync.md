@@ -144,6 +144,8 @@ Use the same state mapping as `linear_sync.md`:
 
 For each Sub-issue that needs updating:
 
+**IMPORTANT: Only pass `id` and `state`. Do NOT include a `description` field. Issue descriptions are set at creation time and must never be modified during sync. All lifecycle progress belongs in comments, not the description.**
+
 ```
 save_issue:
   id: "[sub_issue_id]"
@@ -166,6 +168,8 @@ save_issue:
   id: "[artifact_issue_id]"
   state: "[done_or_todo_state_name]"
 ```
+
+Only `id` and `state` — do NOT include `description`.
 
 ### Step 6: Sync Project Completion
 

@@ -143,6 +143,8 @@ Find the state name matching the target. Match flexibly:
 
 ### Step 5: Update Sub-issue State
 
+**IMPORTANT: Only pass `id` and `state`. Do NOT include a `description` field. Issue descriptions are set at creation time and must never be modified by sync operations. All lifecycle progress is recorded as comments (Step 6), never by editing the description.**
+
 ```
 save_issue:
   id: "[sub_issue_id]"
@@ -199,7 +201,7 @@ After updating the Sub-issue, check if all Sub-issues under the parent artifact 
 
 1. Look up `linear.artifacts.[artifact].issue_id`
 2. Check all sub-issue states for this artifact (generate, validate, review) from local status.md
-3. If all applicable steps are done, update parent Issue to `Done`:
+3. If all applicable steps are done, update parent Issue to `Done` (state only — do NOT modify the description):
 
 ```
 save_issue:
