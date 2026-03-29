@@ -332,8 +332,9 @@ Store `jira_project_key` and `jira_mode` for use in Step 15.
     "question": "How would you like to set up Linear?",
     "header": "Linear Setup",
     "options": [
-      {"label": "Create new Linear issues", "description": "Create a Project, Issues, and Sub-issues in Linear"},
-      {"label": "Link to existing Linear issues", "description": "Search a Linear team for existing issues and link them"}
+      {"label": "Create new project + new issues", "description": "Wire will create a new Linear project with issues and sub-issues from scratch"},
+      {"label": "Use existing project + create new issues", "description": "Paste an existing Linear project URL or ID — Wire will create fresh issues inside it"},
+      {"label": "Link to existing project + existing issues", "description": "Wire will search the team for matching issues and link them to Wire artifacts"}
     ],
     "multiSelect": false
   }]
@@ -342,9 +343,12 @@ Store `jira_project_key` and `jira_mode` for use in Step 15.
 Ask:
 ```
 What is the Linear team identifier? (e.g., ENG, DATA, ACME)
-Do you have an existing Linear project to assign issues to? If so, paste its URL or ID — otherwise leave blank and Wire will create a new project.
 ```
-Store `linear_team_id`, `linear_project_id` (if provided, extract from URL or use as-is), and `linear_mode` for use in Step 15.
+If "Use existing project + create new issues" or "Link to existing project + existing issues" was selected, also ask:
+```
+Paste the Linear project URL or ID (e.g. https://linear.app/acme/project/my-project-abc123):
+```
+Store `linear_team_id`, `linear_project_id` (if provided, extract from URL or use as-is), and `linear_mode` ("create", "create_in_existing", or "link") for use in Step 15.
 
 ### Step 9.5: Document Store Integration (Optional)
 

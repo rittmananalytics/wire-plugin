@@ -139,8 +139,19 @@ Linear uses parent–child relationships rather than Epic/Task/Sub-task issue ty
 
 ### Step 1.5: Determine Workflow Mode
 
+Three modes are supported:
+
+| `linear_mode` | Meaning |
+|---|---|
+| `"create"` | Create a new Linear project, then create all issues and sub-issues inside it |
+| `"create_in_existing"` | Use an existing Linear project (provided by URL/ID), but create fresh issues and sub-issues inside it |
+| `"link"` | Use an existing Linear project and link to pre-existing issues within it |
+
 **If invoked from `/wire:new` with `linear_mode: "link"`**:
 - Proceed to **Step 2A** (Search for Existing Issues)
+
+**If invoked from `/wire:new` with `linear_mode: "create_in_existing"`**:
+- Skip project creation; use the `linear_project_id` already provided. Proceed to **Step 3** (Create Issues).
 
 **If invoked from `/wire:new` with `linear_mode: "create"` (or no mode specified)**:
 - Proceed to **Step 2** (Create Linear Project)
@@ -149,25 +160,18 @@ Linear uses parent–child relationships rather than Epic/Task/Sub-task issue ty
 Ask the user:
 ```
 How would you like to set up Linear tracking?
-1. Create new issues — Create a Project, Issues, and Sub-issues from scratch
-2. Link to existing issues — Search for and link to existing issues in this Linear team
+1. Create new project + new issues — Create a new project, issues, and sub-issues from scratch
+2. Use existing project + create new issues — Paste an existing project URL or ID; Wire will create fresh issues inside it
+3. Link to existing project + existing issues — Search for and link to issues that already exist in this Linear team
 ```
 
 ---
 
 ## Workflow Path A: Create New Issues
 
-### Step 2: Resolve or Create Linear Project
+### Step 2: Create Linear Project
 
-First, ask the user whether to create a new Linear project or assign issues to an existing one:
-
-```
-Would you like to create a new Linear project for this engagement, or add issues to an existing project?
-1. Create new project — Wire will create a new Linear project named "[client_name] — [project_name]"
-2. Use an existing project — Paste a Linear project URL or ID
-```
-
-**If "Create new project"** (or if invoked from `/wire:new` with `linear_mode: "create"`):
+**Only reached when `linear_mode` is `"create"`** (new project needed).
 
 Optionally offer to customise the name:
 ```
@@ -190,9 +194,7 @@ save_project:
 
 Record the returned `projectId` and `projectUrl`.
 
-**If "Use an existing project"**:
-
-Accept a project URL (e.g. `https://linear.app/acme/project/my-project-abc123`) or a raw project ID. Extract the project ID and call `get_project` to verify it exists and is accessible. Record the `projectId` and `projectUrl` from the response. Skip project creation.
+**When `linear_mode` is `"create_in_existing"`**: skip this step entirely — the `linear_project_id` was already provided. Call `get_project` to verify it exists and is accessible, then record the `projectId` and `projectUrl` from the response. Proceed directly to Step 3.
 
 ### Step 3: Create Issues for Each In-Scope Artifact
 
