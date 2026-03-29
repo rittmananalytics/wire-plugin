@@ -157,14 +157,29 @@ How would you like to set up Linear tracking?
 
 ## Workflow Path A: Create New Issues
 
-### Step 2: Create Linear Project
+### Step 2: Resolve or Create Linear Project
 
-Use the Linear MCP to create a Project within the team to represent this Wire engagement:
+First, ask the user whether to create a new Linear project or assign issues to an existing one:
 
 ```
-linear_createProject:
+Would you like to create a new Linear project for this engagement, or add issues to an existing project?
+1. Create new project — Wire will create a new Linear project named "[client_name] — [project_name]"
+2. Use an existing project — Paste a Linear project URL or ID
+```
+
+**If "Create new project"** (or if invoked from `/wire:new` with `linear_mode: "create"`):
+
+Optionally offer to customise the name:
+```
+Project name (press Enter to accept default: "[client_name] — [project_name]"):
+```
+
+Then create the project using the Linear MCP:
+
+```
+save_project:
   teamId: "[linear_team_id]"
-  name: "[client_name] — [project_name]"
+  name: "[confirmed_project_name]"
   description: |
     Data platform project for [client_name].
     Project type: [project_type]
@@ -174,6 +189,10 @@ linear_createProject:
 ```
 
 Record the returned `projectId` and `projectUrl`.
+
+**If "Use an existing project"**:
+
+Accept a project URL (e.g. `https://linear.app/acme/project/my-project-abc123`) or a raw project ID. Extract the project ID and call `get_project` to verify it exists and is accessible. Record the `projectId` and `projectUrl` from the response. Skip project creation.
 
 ### Step 3: Create Issues for Each In-Scope Artifact
 

@@ -236,10 +236,11 @@ Store `jira_project_key` and `jira_mode` ("create" or "link").
 
 ```
 What is the Linear team identifier? (e.g., ENG, DATA, ACME)
+Do you have an existing Linear project to assign issues to? If so, paste its URL or ID — otherwise leave blank and Wire will create a new project.
 And how would you like to set it up? (create new issues / link to existing)
 ```
 
-Store `linear_team_id` and `linear_mode` ("create" or "link").
+Store `linear_team_id`, `linear_project_id` (if provided), and `linear_mode` ("create" or "link").
 
 ## Step 1.6: Confirm, Launch, and Request Permissions
 

@@ -339,8 +339,12 @@ Store `jira_project_key` and `jira_mode` for use in Step 15.
   }]
 }
 ```
-Ask: "What is the Linear team identifier? (e.g., ENG, DATA, ACME)"
-Store `linear_team_id` and `linear_mode` for use in Step 15.
+Ask:
+```
+What is the Linear team identifier? (e.g., ENG, DATA, ACME)
+Do you have an existing Linear project to assign issues to? If so, paste its URL or ID — otherwise leave blank and Wire will create a new project.
+```
+Store `linear_team_id`, `linear_project_id` (if provided, extract from URL or use as-is), and `linear_mode` for use in Step 15.
 
 ### Step 9.5: Document Store Integration (Optional)
 
