@@ -220,7 +220,17 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Action: `generate`
 - Status: the generate state just written to status.md
 
-### Step 7: Confirm and Suggest Next Steps
+### Step 7: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `conceptual_model`
+- `artifact_name`: `Conceptual Model`
+- `file_path`: `.wire/releases/[release_folder]/design/conceptual_model.md`
+- `project_id`: the release folder path (e.g. `releases/01-discovery`)
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 8: Confirm and Suggest Next Steps
 
 ```
 ## Conceptual Model Generated

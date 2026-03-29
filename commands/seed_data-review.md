@@ -116,7 +116,11 @@ Run: /wire:seed_data-validate <project>
 **Process**:
 1. Read `.wire/<project-folder>/dev/seed_data/README.md`
 2. Read a sample of the seed CSV files (first 5-10 rows of each)
-3. Present a summary:
+3. If a document store is configured, follow `specs/utils/docstore_fetch.md`:
+   - Pass `artifact_id`, `artifact_name`, `file_path`, and `project_id` for this artifact
+   - This retrieves any reviewer comments added to the document store page since generation, and flags any edits made directly to the document store version vs the canonical GitHub version
+   - Surface the returned "Document Store Context" block to the reviewer alongside any other context
+4. Present a summary:
 
 ```
 ## Seed Data Review
@@ -196,7 +200,13 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Action: `review`
 - Status: the review state just written to status.md
 
-### Step 6: Confirm and Suggest Next Steps
+### Step 6: Sync to Document Store (Optional)
+
+If a document store is configured and the review outcome is **Approved**, follow `specs/utils/docstore_sync.md` to overwrite the document store page with the canonical file. This ensures the document store reflects the approved version.
+
+- If the outcome is Changes Requested or Needs Discussion, do not overwrite — the document store retains the reviewed version for reference until the next generate run.
+
+### Step 7: Confirm and Suggest Next Steps
 
 **If approved**:
 ```

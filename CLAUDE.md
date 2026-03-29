@@ -84,27 +84,26 @@ This directory is created automatically when you run `/wire:new`.
 
 This plugin configures optional MCP servers for:
 - **Atlassian** — Jira issue tracking and Confluence document search
-- **Linear** — Linear issue tracking (alternative to Jira)
 - **Fathom** — Meeting transcript context for reviews
 - **Context7** — Library documentation lookups
+- **Notion** — Document store for client artifact review (`https://mcp.notion.com/mcp`, HTTP, OAuth)
 
 Authenticate via `/mcp` in Claude Code.
 
-## Issue Tracking
+## Document Store
 
-Wire Framework supports **Jira** and **Linear** as issue trackers. Both are optional and additive — the framework works fully without either. When both are configured, they are synced in parallel.
+The Wire Framework optionally replicates generated artifacts to Confluence or Notion for client review:
 
-**Jira** (via Atlassian MCP):
-- `/wire:utils-jira-create <release>` — Set up Jira Epic + Tasks + Sub-tasks
-- `/wire:utils-jira-sync <release> <artifact> <action>` — Sync one artifact step (called automatically)
-- `/wire:utils-jira-status-sync <release>` — Full reconciliation (called by `/wire:status`)
+- **Setup**: Configured during `/wire:new` (Step 9.5) — choose Confluence or Notion as the document store for the engagement.
+- **On generate commands**: The generated artifact is automatically published or updated in the configured document store.
+- **On review commands**: Reviewer comments and any edits made directly in the document store are surfaced as review context before feedback is gathered.
+- **Confluence**: Uses the existing Atlassian MCP server (`https://mcp.atlassian.com/v1/sse`).
+- **Notion**: Uses the Notion MCP server (`https://mcp.notion.com/mcp`).
 
-**Linear** (via Linear MCP):
-- `/wire:utils-linear-create <release>` — Set up Linear Project + Issues + Sub-issues
-- `/wire:utils-linear-sync <release> <artifact> <action>` — Sync one artifact step (called automatically)
-- `/wire:utils-linear-status-sync <release>` — Full reconciliation (called by `/wire:status`)
-
-Both trackers store their keys in `status.md` under `jira:` and `linear:` frontmatter sections respectively. `/wire:new` will offer to set up either or both during project creation.
+Three utility commands support document store operations:
+- `utils/docstore-setup` — Set up document store (Confluence/Notion) for a project
+- `utils/docstore-sync` — Sync a generated artifact to the document store
+- `utils/docstore-fetch` — Fetch document store content and comments for review
 
 ## Consultant Handbook
 

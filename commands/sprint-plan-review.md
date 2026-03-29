@@ -100,6 +100,11 @@ Resolve release folder. Read `planning/sprint_plan.md`. Confirm validation has b
 
 Follow `specs/utils/meeting_context.md` — search for transcripts mentioning sprint planning, capacity, timeline, or team availability.
 
+If a document store is configured, follow `specs/utils/docstore_fetch.md`:
+- Pass `artifact_id`, `artifact_name`, `file_path`, and `project_id` for this artifact
+- This retrieves any reviewer comments added to the document store page since generation, and flags any edits made directly to the document store version vs the canonical GitHub version
+- Surface the returned "Document Store Context" block to the reviewer alongside Fathom and Confluence context
+
 ### Step 3: Present for Review
 
 Output the sprint plan summary (epics, total points, velocity assumption, timeline), prefaced with any meeting context.
@@ -178,6 +183,12 @@ Run the following command to create the delivery release folder structure:
 This will create:
 [list of downstream releases from sprint plan]
 ```
+
+### Step 8: Sync to Document Store (Optional)
+
+If a document store is configured and the review outcome is **Approved**, follow `specs/utils/docstore_sync.md` to overwrite the document store page with the canonical file. This ensures the document store reflects the approved version.
+
+- If the outcome is Changes Requested or Needs Discussion, do not overwrite — the document store retains the reviewed version for reference until the next generate run.
 
 ## Output Files
 

@@ -433,7 +433,17 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Action: `generate`
 - Status: `complete`
 
-### Step 6: Confirm and Suggest Next Steps
+### Step 6: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `orchestration`
+- `artifact_name`: `Orchestration Layer`
+- `file_path`: `.wire/releases/[release_folder]/dev/orchestration.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 7: Confirm and Suggest Next Steps
 
 ```
 ## Orchestration Generated Successfully

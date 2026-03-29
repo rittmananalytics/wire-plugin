@@ -136,7 +136,17 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Action: `generate`
 - Status: the generate state just written to status.md
 
-### Step 5: Confirm and Suggest Next Steps
+### Step 5: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `uat`
+- `artifact_name`: `UAT Plan`
+- `file_path`: `.wire/releases/[release_folder]/test/uat_plan.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 6: Confirm and Suggest Next Steps
 
 **Output**:
 ```

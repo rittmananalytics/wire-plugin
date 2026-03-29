@@ -317,7 +317,17 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Action: `generate`
 - Status: the generate state just written to status.md
 
-### Step 10: Confirm and Suggest Next Steps
+### Step 10: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `pipeline_design`
+- `artifact_name`: `Pipeline Design`
+- `file_path`: `.wire/releases/[release_folder]/design/pipeline_design.md`
+- `project_id`: the release folder path (e.g. `releases/01-discovery`)
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 11: Confirm and Suggest Next Steps
 
 ```
 ## Pipeline Design Generated

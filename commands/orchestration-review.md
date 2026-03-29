@@ -105,6 +105,24 @@ Search for relevant meeting context using the Fathom MCP server (`specs/utils/me
 - Search terms: "orchestration", "dagster", "dbt cloud", "scheduling", "pipeline execution", "job scheduling", "data freshness"
 - Note any prior decisions or concerns about orchestration tool choice
 
+### Step 2.5: Retrieve External Context (Optional)
+
+**Process**:
+1. Follow the meeting context retrieval workflow defined in `specs/utils/meeting_context.md`
+   - Pass the project folder and artifact name `orchestration`
+   - If Fathom MCP is available and relevant meetings found, present the meeting context summary
+2. Follow the Atlassian search workflow defined in `specs/utils/atlassian_search.md`
+   - Pass the project folder and artifact name `orchestration`
+   - If Atlassian MCP is available, search Confluence for design docs and Jira for issue comments
+   - Present any relevant findings
+3. If a document store is configured, follow `specs/utils/docstore_fetch.md`:
+   - Pass `artifact_id`, `artifact_name`, `file_path`, and `project_id` for this artifact
+   - This retrieves any reviewer comments added to the document store page since generation, and flags any edits made directly to the document store version vs the canonical GitHub version
+   - Surface the returned "Document Store Context" block to the reviewer alongside Fathom and Confluence context
+4. If neither service is available, proceed directly to Step 3
+
+This step enriches the review with context from meeting recordings, Confluence documents, and Jira issue comments.
+
 ### Step 3: Present Review Summary
 
 Present a structured summary for the reviewer:
@@ -201,6 +219,12 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Artifact: `orchestration`
 - Action: `review`
 - Status: `approved` / `changes_requested` / `discussion`
+
+### Step 7: Sync to Document Store (Optional)
+
+If a document store is configured and the review outcome is **Approved**, follow `specs/utils/docstore_sync.md` to overwrite the document store page with the canonical file. This ensures the document store reflects the approved version.
+
+- If the outcome is Changes Requested or Needs Discussion, do not overwrite — the document store retains the reviewed version for reference until the next generate run.
 
 Execute the complete workflow as specified above.
 

@@ -343,7 +343,17 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Action: `generate`
 - Status: the generate state just written to status.md
 
-### Step 8: Confirm and Suggest Next Steps
+### Step 8: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `requirements`
+- `artifact_name`: `Requirements Specification`
+- `file_path`: `.wire/releases/[release_folder]/requirements/requirements_specification.md`
+- `project_id`: the release folder path (e.g. `releases/01-discovery`)
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 9: Confirm and Suggest Next Steps
 
 **Output**:
 

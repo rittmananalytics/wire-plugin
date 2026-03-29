@@ -223,7 +223,17 @@ sprint_plan:
   generated_date: [today's date]
 ```
 
-### Step 6: Confirm and Suggest Next Steps
+### Step 6: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `sprint_plan`
+- `artifact_name`: `Sprint Plan`
+- `file_path`: `.wire/releases/[release_folder]/artifacts/sprint_plan.md`
+- `project_id`: the release folder path (e.g. `releases/01-discovery`)
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 7: Confirm and Suggest Next Steps
 
 ```
 ## Sprint Plan Generated
