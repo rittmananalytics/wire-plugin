@@ -1754,7 +1754,7 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 
 ## 15. Wire Autopilot: Autonomous Execution
 
-Wire Autopilot v3.4.0 takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
+Wire Autopilot takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
 
 Safety gates automatically pause execution before any phase that could affect external systems (activating pipelines, running dbt against databases, deploying to environments), requiring explicit confirmation before proceeding.
 
@@ -1776,9 +1776,9 @@ Safety gates automatically pause execution before any phase that could affect ex
 
 ```mermaid
 flowchart TB
-    A["Invoke /wire:autopilot"] --> B["Clarifying Questions\n(SOW, client, Jira)"]
-    B --> C["Engagement Setup\n(.wire/engagement/ + 01-discovery/)"]
-    C --> D["Discovery Sprint\nproblem_definition → pitch → release_brief → sprint_plan"]
+    A["Invoke /wire:autopilot"] --> B["Clarifying Questions\n(SOW, client, issue tracker, doc store)"]
+    B --> C["Engagement Setup\n(.wire/engagement/ + 01-discovery/)\nIssue tracker + doc store configured"]
+    C --> D["Discovery Sprint\nproblem_definition → pitch → release_brief → sprint_plan\n+ sync to doc store after each artifact"]
     D --> E{"Discovery complete\n— confirm releases?"}
     E -->|"Yes, proceed"| F["For each planned release"]
     E -->|"Review first"| G["Show discovery artifacts\nwait for 'continue'"]
@@ -1787,7 +1787,7 @@ flowchart TB
     F --> H["Create release folder\n(spawn)"]
     H --> I{"For each artifact\nin release sequence"}
     I --> SG{"Safety-gated?"}
-    SG -->|No| J["Generate → Validate → Self-review"]
+    SG -->|No| J["Generate → Validate → Self-review\n+ sync Jira, Linear, doc store"]
     SG -->|Yes| SGP["⚠ Safety Gate\nProceed / Review / Stop"]
     SGP -->|Proceed| J
     SGP -->|Stop| Z
@@ -1816,17 +1816,43 @@ Or without a path argument (Autopilot will ask for it):
 
 ### Clarifying questions
 
-Autopilot asks a small number of questions before going autonomous — notably, it does **not** ask for a project type upfront. The delivery release types are determined by the discovery sprint:
+Autopilot asks a small set of questions before going autonomous — notably, it does **not** ask for a project type upfront. The delivery release types are determined by the discovery sprint.
+
+The questions are asked in this order:
 
 1. **SOW file path** (if not provided as argument)
-2. **Client name and engagement name**
-3. **Engagement lead name**
-4. **Repo mode** — combined (default) or dedicated delivery repo
-5. **Supporting documents** — org charts, call transcripts, architecture diagrams (optional)
-6. **Additional context** — technologies, naming conventions, preferences (optional)
-7. **Jira tracking** — create new issues, link existing, or skip
+2. **Supporting documents** — org charts, call transcripts, architecture diagrams (optional)
+3. **Client name and engagement name**
+4. **Engagement lead name**
+5. **Repo mode** — combined (default) or dedicated delivery repo
+6. **Issue tracker** — Jira, Linear, both, or none (see below)
+7. **Document store** — Confluence, Notion, both, or none (see below)
+8. **Additional context** — technologies, naming conventions, preferences (optional)
 
-After confirmation of the execution plan, Autopilot runs autonomously.
+#### Issue tracker setup
+
+When you select Jira or Linear, Autopilot asks follow-up questions immediately:
+
+**Jira**: asks for the project key and whether to create new issues or link to existing ones.
+
+**Linear**: asks three separate questions in sequence:
+1. Linear team identifier (e.g. `ENG`, `DATA`, `ACME`)
+2. Setup mode:
+   - *Create new project + new issues* — Wire creates a project and populates it
+   - *Use existing project + create new issues* — paste a project URL or ID; Wire creates fresh issues inside it
+   - *Link to existing project + existing issues* — Wire searches for matching issues and links them
+3. Project URL or ID (only asked if mode 2 or 3 was chosen)
+
+#### Document store setup
+
+When you select Confluence, Notion, or both, Autopilot asks follow-up questions immediately:
+
+- **Confluence**: asks for the space key (e.g. `PROJ`, `ACME`) where Wire documents should be published
+- **Notion**: asks for the parent page URL or ID where Wire documents should be created as sub-pages
+
+The document store is configured during engagement setup. Once set, every generated artifact is automatically published to the store — no manual action required.
+
+After all questions are answered, Autopilot presents a confirmation of the execution plan before going autonomous.
 
 ### Phase 1: Discovery Sprint
 
@@ -1838,6 +1864,8 @@ Before any delivery work begins, Autopilot runs a complete discovery sprint to p
 | **Pitch** | Generated from problem definition. Autopilot decides appetite from SOW timeline (6+ weeks → big batch, 2–3 weeks → small batch). Shapes the solution from SOW deliverables. Identifies downstream release types from SOW scope. Auto-approved if all 10 sections complete and at least one release identified. |
 | **Release Brief** | Formalised from the approved pitch. Downstream releases table is the canonical list of delivery releases. Auto-approved if deliverables table and releases are populated. |
 | **Sprint Plan** | Generated from release brief. Sprint length and story estimates set autonomously. Includes a Downstream Releases table used by Phase 2. Auto-approved if all deliverables have epics with point estimates. |
+
+After each discovery artifact is approved, Autopilot syncs it to the configured document store (if any). This means all four discovery documents are available for client review in Confluence or Notion by the time the discovery sprint is complete.
 
 After the discovery sprint, Autopilot presents the planned releases and asks for your confirmation before proceeding with delivery:
 
@@ -1859,7 +1887,7 @@ For each planned delivery release, Autopilot:
 
 1. Creates the release folder structure (equivalent to `/wire:release:spawn`)
 2. Creates the release `status.md` with the correct artifact scope for the release type
-3. Runs the full artifact sequence for that release type (same as the old single-release autopilot)
+3. Runs the full artifact sequence for that release type
 4. Commits all artifacts after the release is complete before moving to the next
 
 **Artifact sequences by release type:**
@@ -1873,7 +1901,7 @@ For each planned delivery release, Autopilot:
 | `dashboard_first` | requirements → mockups → viz_catalog → data_model → seed_data → dbt → semantic_layer → dashboards → data_refactor → data_quality → uat → deployment → training → documentation |
 | `enablement` | training → documentation |
 
-Each artifact follows the same generate → validate (up to 3 retries) → self-review (up to 2 retries) cycle.
+Each artifact follows the same generate → validate (up to 3 retries) → self-review (up to 2 retries) cycle. After each artifact is generated and again after it is approved, Autopilot syncs to Jira, Linear, and the document store (whichever are configured).
 
 ### Safety gates
 
@@ -1900,6 +1928,18 @@ For each artifact (including discovery artifacts), Autopilot performs structured
 - Artifact cross-referenced against validation results (quality)
 
 Self-reviewed artifacts are marked `review: approved` with `reviewed_by: "Wire Autopilot (self-review)"` in status.md.
+
+### Integration syncs
+
+At each step of the execution loop, Autopilot syncs to all configured integrations:
+
+| Integration | When synced |
+|-------------|-------------|
+| **Jira** | After generate, validate, and self-review for every artifact |
+| **Linear** | After generate, validate, and self-review for every artifact |
+| **Document store** (Confluence/Notion) | After generate for every artifact; re-synced after self-review approval to capture any revision-cycle changes |
+
+All syncs are fail-graceful — if an integration is unavailable, Autopilot logs the failure and continues. No integration failure will block or stop execution.
 
 ### Context window management
 
@@ -1930,6 +1970,8 @@ Autopilot and the individual `/wire:*` commands share the same state files. You 
 | Validation fails | Re-generates with specific fixes (up to 3 retries) |
 | Self-review rejects | Re-generates with feedback (up to 2 retries) |
 | Jira API unavailable | Skips Jira sync, continues |
+| Linear API unavailable | Skips Linear sync, continues |
+| Document store unavailable | Skips sync, continues |
 | Prerequisite blocked | Skips downstream artifacts in the same release, reports in final summary |
 | All retries exhausted | Marks artifact as blocked, continues to next artifact |
 
@@ -1939,13 +1981,14 @@ When complete, Autopilot outputs a results table showing the discovery sprint st
 
 **Tips**:
 - Always review discovery artifacts (problem definition and pitch) with the client before they are used to drive delivery — they are generated from the SOW and may need refinement
+- If you configured a document store, all four discovery documents are already published and ready for client review by the time the discovery sprint ends
 - Check `.wire/autopilot_checkpoint.md` for the full execution summary and `.wire/releases/*/execution_log.md` for per-release audit trails
 - Use `/wire:status` to see the detailed artifact status across all releases after Autopilot completes
 - If you want to run just a single release without discovery, use `/wire:new` + `/wire:session:start` instead
 
 ### Walkthrough: Autopilot in use
 
-This walkthrough shows a realistic Autopilot session for an Acme Corporation engagement. The SOW covers data foundation (pipeline + dbt) and a reporting layer (dashboards).
+This walkthrough shows a realistic Autopilot session for an Acme Corporation engagement. The SOW covers data foundation (pipeline + dbt) and a reporting layer (dashboards). The team uses Linear for issue tracking and Confluence for client document review.
 
 #### 1. Invoking Autopilot
 
@@ -1971,14 +2014,37 @@ Is this repo the client's code repo, or a dedicated delivery repo? (A/B)
 Do you have any other supporting documents? (org charts, transcripts, etc.)
 > no
 
+Would you like to track this engagement in an issue tracker?
+  ○ Jira
+  ○ Linear
+  ○ Both Jira and Linear
+  ○ No, skip issue tracking
+> Linear
+
+What is the Linear team identifier? (e.g., ENG, DATA, ACME)
+> DATA
+
+How would you like to set up Linear?
+  ○ Create new project + new issues
+  ○ Use existing project + create new issues
+  ○ Link to existing project + existing issues
+> Use existing project + create new issues
+
+Paste the Linear project URL or ID:
+> https://linear.app/acme/project/data-platform-abc123
+
+Would you like to replicate documents to a document store?
+  ○ Confluence
+  ○ Notion
+  ○ Both Confluence and Notion
+  ○ No, skip document store
+> Confluence
+
+What is the Confluence space key where Wire documents should be published?
+> ACME
+
 Additional context? (technologies, naming conventions, preferences)
 > BigQuery + dbt Cloud + Looker. Target dataset: analytics_prod.
-
-Would you like to track this engagement in Jira?
-  ○ Create new Jira issues
-  ○ Link to existing issues
-  ○ No, skip Jira
-> Skip Jira
 ```
 
 Autopilot presents the execution plan and asks for confirmation.
@@ -1990,6 +2056,8 @@ Autopilot presents the execution plan and asks for confirmation.
 Client: Acme Corporation
 Engagement: acme_data_platform
 Branch: feature/acme_data_platform
+Linear: DATA / existing project assigned / new issues will be created
+Document store: Confluence / space ACME / Wire Documents page created
 Discovery release: .wire/releases/01-discovery/
 Beginning discovery sprint...
 ---
@@ -1997,9 +2065,13 @@ Beginning discovery sprint...
 
 #### 4. Discovery sprint (autonomous)
 
+Each artifact is generated, validated, self-approved, and then synced to Confluence and Linear automatically:
+
 ```
 --- Discovery: Problem Definition ---
 Status: approved (self-reviewed)
+Synced to Confluence: ACME / Acme Corporation acme_data_platform — Wire Documents / Problem Definition
+Linear: DATA-42 (Generate → Done, Review → Done)
 File: .wire/releases/01-discovery/planning/problem_definition.md
 ---
 
@@ -2009,17 +2081,21 @@ Appetite: Big batch (6 weeks)
 Downstream releases identified:
   02-data-foundation   (pipeline_only)
   03-reporting         (dashboard_extension)
+Synced to Confluence: ACME / ... / Pitch
+Linear: DATA-43 (Generate → Done, Review → Done)
 File: .wire/releases/01-discovery/planning/pitch.md
 ---
 
 --- Discovery: Release Brief ---
 Status: approved (self-reviewed)
+Synced to Confluence: ACME / ... / Release Brief
 File: .wire/releases/01-discovery/planning/release_brief.md
 ---
 
 --- Discovery: Sprint Plan ---
 Status: approved (self-reviewed)
 Total: 42 points across 3 sprints
+Synced to Confluence: ACME / ... / Sprint Plan
 File: .wire/releases/01-discovery/planning/sprint_plan.md
 ---
 ```
@@ -2048,11 +2124,13 @@ Artifact sequence: requirements → pipeline_design → pipeline → data_qualit
 
 --- Artifact Complete: requirements (02-data-foundation) ---
 Status: approved
+Synced to Confluence + Linear (DATA-48 generate → Done, review → Done)
 Progress: 1/5 artifacts, 1/2 releases done
 ---
 
 --- Artifact Complete: pipeline_design (02-data-foundation) ---
 Status: approved
+Synced to Confluence + Linear
 Progress: 2/5 artifacts, 1/2 releases done
 ---
 ```
@@ -2085,7 +2163,7 @@ Committed: a3f8b21
 
 #### 7. Release 03-reporting (dashboard_extension)
 
-Autopilot creates the folder, sets artifact scope to `requirements → mockups → dashboards → training`, and runs through all four artifacts autonomously:
+Autopilot creates the folder, sets artifact scope to `requirements → mockups → dashboards → training`, and runs through all four artifacts autonomously, syncing each to Confluence and Linear:
 
 ```
 --- Release Complete: 03-reporting ---
@@ -2104,6 +2182,8 @@ Client: Acme Corporation
 Engagement: acme_data_platform
 Branch: feature/acme_data_platform
 PR: https://github.com/acme/acme-analytics/pull/14
+Linear: DATA project — 18 issues updated
+Confluence: ACME space — 9 pages published
 
 ### Discovery Sprint
 problem_definition  complete / pass / approved
@@ -2127,7 +2207,7 @@ training            complete / pass / approved
 Total files: 47 | Blocked: 0
 ```
 
-The entire session — from SOW to complete multi-release deliverables — took approximately 25 minutes of AI processing time.
+The entire session — from SOW to complete multi-release deliverables with all discovery documents published to Confluence — took approximately 25 minutes of AI processing time.
 
 ---
 
