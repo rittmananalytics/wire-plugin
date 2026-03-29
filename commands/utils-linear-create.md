@@ -183,8 +183,8 @@ Project name (press Enter to accept default: "[client_name] — [project_name]")
 Create the project:
 ```
 save_project:
-  teamId: "[linear_team_id]"
   name: "[confirmed_project_name]"
+  addTeams: ["[linear_team_id]"]
   description: |
     Data platform project for [client_name].
     Project type: [project_type]
@@ -199,11 +199,12 @@ Store the returned `id` as `resolved_project_id` and the project URL as `resolve
 
 The user has already provided a `linear_project_id` (URL or raw ID). Verify it:
 ```
-get_project:
-  id: "[linear_project_id]"
+list_projects:
+  team: "[linear_team_id]"
+  query: "[linear_project_id]"
 ```
 
-If the project is found: store the returned `id` as `resolved_project_id` and the project URL as `resolved_project_url`.
+If the project is found: store the matching project's `id` as `resolved_project_id` and its URL as `resolved_project_url`.
 
 If not found or inaccessible:
 ```
@@ -240,14 +241,14 @@ For each artifact where the state is NOT `not_applicable`, create a top-level Is
 For each in-scope artifact:
 
 ```
-linear_createIssue:
-  teamId: "[linear_team_id]"
-  projectId: "[resolved_project_id]"
+save_issue:
+  team: "[linear_team_id]"
+  project: "[resolved_project_id]"
   title: "[Artifact Display Name]: [project_name]"
   description: "[Description from table above]"
 ```
 
-Record each returned `issueId` and `issueIdentifier` (e.g., `ENG-42`).
+Record each returned `id` as the artifact's `issue_id` and `identifier` as `issue_identifier` (e.g., `ENG-42`).
 
 ### Step 4: Create Sub-issues for Lifecycle Steps
 
@@ -260,8 +261,8 @@ For each artifact Issue, create Sub-issues for the applicable lifecycle steps.
 For each applicable step:
 
 ```
-linear_createIssue:
-  teamId: "[linear_team_id]"
+save_issue:
+  team: "[linear_team_id]"
   parentId: "[artifact_issue_id]"
   title: "[Step]: [Artifact Display Name]"
   description: "[Step] the [artifact] for [project_name]"
@@ -269,7 +270,9 @@ linear_createIssue:
 
 Where `[Step]` is `Generate`, `Validate`, or `Review`.
 
-Record each returned Sub-issue `issueId` and `issueIdentifier`.
+**Important**: `parentId` is what makes these sub-issues — they will appear as children of the artifact issue in Linear. Do not set `project` on sub-issues; inheriting from the parent is sufficient.
+
+Record each returned `id` as `[step]_id` and `identifier` as `[step]_identifier`.
 
 ### Step 4.5: Assign to Cycle (optional)
 
@@ -280,12 +283,12 @@ linear_getCycles:
   teamId: "[linear_team_id]"
 ```
 
-If an active Cycle exists, add all artifact Issues to it:
+If an active Cycle exists, assign all artifact Issues to it:
 
 ```
-linear_addIssueToCycle:
-  issueId: "[artifact_issue_id]"
-  cycleId: "[active_cycle_id]"
+save_issue:
+  id: "[artifact_issue_id]"
+  cycle: "[active_cycle_id]"
 ```
 
 If no active Cycle exists, note this to the user — issues will appear in the backlog.
@@ -299,8 +302,8 @@ If no active Cycle exists, note this to the user — issues will appear in the b
 Search the Linear team for issues that could map to framework artifacts:
 
 ```
-linear_getIssues:
-  teamId: "[linear_team_id]"
+list_issues:
+  team: "[linear_team_id]"
   filter:
     state: { type: { nin: ["completed", "cancelled"] } }
 ```
@@ -308,8 +311,8 @@ linear_getIssues:
 Also search for existing Projects:
 
 ```
-linear_getProjects:
-  teamId: "[linear_team_id]"
+list_projects:
+  team: "[linear_team_id]"
 ```
 
 ### Step 2B: Match Issues to Framework Artifacts
@@ -341,7 +344,7 @@ For each in-scope artifact, score existing issues using the same algorithm as `j
 **Sub-issue matching**: For each matched Issue, retrieve its children:
 
 ```
-linear_getIssues:
+list_issues:
   filter:
     parent: { id: { eq: "[issue_id]" } }
 ```
@@ -370,7 +373,7 @@ Same logic as `jira_create.md` Step 2D: create new issues for unmatched artifact
 For each linked Issue, add a comment:
 
 ```
-linear_addComment:
+save_comment:
   issueId: "[issue_id]"
   body: |
     Linked to Wire Framework project: [project_name]

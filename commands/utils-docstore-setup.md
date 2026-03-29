@@ -269,36 +269,40 @@ createConfluencePage:
   spaceKey: "[space_key]"
   parentId: "[confluence_parent_ancestor_id]"  # omit if space root
   title: "[client_name] [project_name] — Wire Documents"
-  body: |
-    <p>This page is the central index for all Wire Framework artifacts generated during the
-    <strong>[client_name] — [project_name]</strong> engagement.</p>
-
-    <p>Artifacts are published automatically each time a generate command completes.
-    Do not rename or move this page — the Wire Framework uses its page ID to locate and
-    update child pages.</p>
-
-    <table>
-      <thead>
-        <tr><th>Artifact</th><th>Status</th><th>Last Synced</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Requirements Specification</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Conceptual Model</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Pipeline Design</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Data Model Design</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Data Pipeline</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>dbt Models</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Semantic Layer</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Dashboards</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Data Quality Tests</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>UAT Plan</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Deployment</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Training Materials</td><td>Pending generation</td><td>—</td></tr>
-        <tr><td>Documentation</td><td>Pending generation</td><td>—</td></tr>
-      </tbody>
-    </table>
+  body: "[build the body as described below]"
   representation: "storage"
 ```
+
+Build the page body dynamically from `status.md` so the table only includes artifacts that are in-scope for this engagement:
+
+```xml
+<p>This page is the central index for all Wire Framework artifacts generated during the
+<strong>[client_name] — [project_name]</strong> engagement.</p>
+
+<p>Artifacts are published automatically each time a generate command completes.
+Do not rename or move this page — the Wire Framework uses its page ID to locate and
+update child pages.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th><p>Artifact</p></th>
+      <th><p>Status</p></th>
+      <th><p>Last Synced</p></th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- One row per in-scope artifact from status.md (state != not_applicable): -->
+    <tr>
+      <td><p>[Artifact Display Name]</p></td>
+      <td><p>Pending generation</p></td>
+      <td><p>—</p></td>
+    </tr>
+  </tbody>
+</table>
+```
+
+All rows start as "Pending generation" — they will be updated with live links by `docstore_sync.md` Step 3.5 each time an artifact is generated.
 
 Record the returned `id` as `confluence_parent_page_id` and the `_links.webui` value as `confluence_parent_page_url`.
 

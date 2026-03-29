@@ -112,11 +112,11 @@ Typically invoked automatically by `/wire:status` when Linear is configured.
 ### Step 2: Get Available Workflow States
 
 ```
-linear_getWorkflowStates:
-  teamId: "[linear_team_id]"
+list_issue_statuses:
+  team: "[linear_team_id]"
 ```
 
-Build a map of state name → state ID for use throughout the sync. Match flexibly:
+Build a map of state names for use throughout the sync. Match flexibly:
 - Done: "Done", "Completed", "Resolved", "Closed"
 - Todo: "Todo", "Backlog", "To Do", "Open"
 - In Progress: "In Progress", "In Review", "Active", "Started"
@@ -145,9 +145,9 @@ Use the same state mapping as `linear_sync.md`:
 For each Sub-issue that needs updating:
 
 ```
-linear_updateIssue:
-  issueId: "[sub_issue_id]"
-  stateId: "[target_state_id]"
+save_issue:
+  id: "[sub_issue_id]"
+  state: "[target_state_name]"
 ```
 
 Do NOT add comments during bulk sync (too noisy). Only update state.
@@ -162,9 +162,9 @@ For each artifact Issue:
 3. If not all done, ensure parent Issue is NOT `Done` (reopen if needed)
 
 ```
-linear_updateIssue:
-  issueId: "[artifact_issue_id]"
-  stateId: "[done_or_todo_state_id]"
+save_issue:
+  id: "[artifact_issue_id]"
+  state: "[done_or_todo_state_name]"
 ```
 
 ### Step 6: Sync Project Completion
@@ -173,8 +173,8 @@ linear_updateIssue:
 2. If all complete, mark Linear Project as `completed`:
 
 ```
-linear_updateProject:
-  projectId: "[linear_project_id]"
+save_project:
+  id: "[linear_project_id]"
   state: "completed"
 ```
 

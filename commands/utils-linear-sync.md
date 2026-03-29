@@ -132,11 +132,11 @@ Map the local status to a Linear workflow state:
 ### Step 4: Get Available States
 
 ```
-linear_getWorkflowStates:
-  teamId: "[linear_team_id]"
+list_issue_statuses:
+  team: "[linear_team_id]"
 ```
 
-Find the state ID matching the target state name. Match flexibly:
+Find the state name matching the target. Match flexibly:
 - `Done` matches: "Done", "Completed", "Resolved", "Closed"
 - `Todo` matches: "Todo", "Backlog", "To Do", "Open"
 - `In Progress` matches: "In Progress", "In Review", "Active", "Started"
@@ -144,9 +144,9 @@ Find the state ID matching the target state name. Match flexibly:
 ### Step 5: Update Sub-issue State
 
 ```
-linear_updateIssue:
-  issueId: "[sub_issue_id]"
-  stateId: "[matched_state_id]"
+save_issue:
+  id: "[sub_issue_id]"
+  state: "[matched_state_name]"
 ```
 
 ### Step 5.5: Discover Generated Files
@@ -162,7 +162,7 @@ Read `artifacts.[artifact].revision_history` from status.md and count prior gene
 ### Step 6: Add Comment with Details
 
 ```
-linear_addComment:
+save_comment:
   issueId: "[sub_issue_id]"
   body: "[comment_text]"
 ```
@@ -202,11 +202,11 @@ After updating the Sub-issue, check if all Sub-issues under the parent artifact 
 3. If all applicable steps are done, update parent Issue to `Done`:
 
 ```
-linear_updateIssue:
-  issueId: "[artifact_issue_id]"
-  stateId: "[done_state_id]"
+save_issue:
+  id: "[artifact_issue_id]"
+  state: "Done"
 
-linear_addComment:
+save_comment:
   issueId: "[artifact_issue_id]"
   body: "All lifecycle steps complete. Artifact is ready."
 ```
@@ -216,8 +216,8 @@ linear_addComment:
 After completing a parent Issue, check if all artifact Issues under the Project are done. If all complete, mark the Linear Project as completed:
 
 ```
-linear_updateProject:
-  projectId: "[linear_project_id]"
+save_project:
+  id: "[linear_project_id]"
   state: "completed"
 ```
 

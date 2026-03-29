@@ -312,7 +312,9 @@ After every successful create or update, rebuild the "Wire Documents" index page
 
 **Process**:
 
-1. Read all `docstore.confluence.artifacts` entries from `status.md` to get the current `page_id`, `page_url`, and `last_synced` for every artifact that has been synced so far.
+1. Build the artifact map from two sources merged together:
+   - Read `docstore.confluence.artifacts` from `status.md` (previously persisted entries)
+   - Overlay any `page_id`, `page_url`, and `last_synced` values produced **in the current run** (Steps 3.3/3.4) — these may not yet be written to disk, but must be included so the newly synced artifact appears as a live link rather than "Pending generation"
 
 2. Fetch the current version of the parent index page (needed for the update call):
    ```
@@ -323,11 +325,11 @@ After every successful create or update, rebuild the "Wire Documents" index page
    Extract `version.number`.
 
 3. Rebuild the index table body. For each artifact in the standard artifact order (requirements, workshops, conceptual_model, pipeline_design, data_model, mockups, pipeline, dbt, semantic_layer, dashboards, data_quality, uat, deployment, training, documentation — plus discovery artifacts: problem_definition, pitch, release_brief, sprint_plan):
-   - If the artifact has a `page_url` in `docstore.confluence.artifacts`: render as a linked row with last_synced date
-   - If not yet synced: render as "Pending generation"
+   - If the artifact has a `page_id` in the merged artifact map: render as a linked row using the Confluence internal page link macro (do NOT use `<a href>` — the `page_url` field from the API is a relative path that will not render as a clickable link)
+   - If not yet synced: render the artifact name as plain text with "Pending generation"
    - Only include rows for artifacts that are in-scope for this release (i.e. present in `status.md`)
 
-   Table structure:
+   Table structure (use `<ac:link>` with `ri:page-id` for internal Confluence links):
    ```xml
    <table>
      <thead>
@@ -338,11 +340,18 @@ After every successful create or update, rebuild the "Wire Documents" index page
        </tr>
      </thead>
      <tbody>
+       <!-- Row for a synced artifact — note: ac:link not href -->
        <tr>
-         <td><p><a href="[page_url]">[artifact display name]</a></p></td>
+         <td><p>
+           <ac:link>
+             <ri:page ri:page-id="[page_id]"/>
+             <ac:plain-text-link-body><![CDATA[[artifact display name]]]></ac:plain-text-link-body>
+           </ac:link>
+         </p></td>
          <td><p>Published</p></td>
          <td><p>[last_synced date]</p></td>
        </tr>
+       <!-- Row for an artifact not yet synced -->
        <tr>
          <td><p>[artifact display name]</p></td>
          <td><p>Pending generation</p></td>
@@ -508,7 +517,9 @@ After every successful create or update, rebuild the "Wire Documents" index page
 
 **Process**:
 
-1. Read all `docstore.notion.artifacts` entries from `status.md` to get the current `page_id`, `page_url`, and `last_synced` for every artifact synced so far.
+1. Build the artifact map from two sources merged together:
+   - Read `docstore.notion.artifacts` from `status.md` (previously persisted entries)
+   - Overlay any `page_id`, `page_url`, and `last_synced` values produced **in the current run** (Steps 4.3/4.4) — these may not yet be written to disk, but must be included so the newly synced artifact appears as a live link rather than "Pending generation"
 
 2. Retrieve the existing blocks of the parent index page:
    ```
