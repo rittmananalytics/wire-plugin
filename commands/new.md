@@ -289,26 +289,58 @@ If "Change settings", return to Step 2.
    - Create and switch: `git checkout -b [branch_name]`
 5. Store `branch_name` for display in the confirmation step
 
-### Step 9: Jira Integration (Optional)
+### Step 9: Issue Tracker Integration (Optional)
 
 Use `AskUserQuestion`:
 
 ```json
 {
   "questions": [{
-    "question": "Would you like to track this engagement in Jira?",
-    "header": "Jira Tracking",
+    "question": "Would you like to track this engagement in an issue tracker?",
+    "header": "Issue Tracker",
     "options": [
-      {"label": "Create new Jira issues", "description": "Create Epic, Tasks, and Sub-tasks in Jira"},
-      {"label": "Link to existing Jira issues", "description": "Search a Jira project for existing issues and link them"},
-      {"label": "No, skip Jira", "description": "Track progress in status.md only"}
+      {"label": "Jira", "description": "Create or link Jira Epic, Tasks, and Sub-tasks"},
+      {"label": "Linear", "description": "Create or link a Linear Project, Issues, and Sub-issues"},
+      {"label": "Both Jira and Linear", "description": "Track in both Jira and Linear simultaneously"},
+      {"label": "No, skip issue tracking", "description": "Track progress in status.md only"}
     ],
     "multiSelect": false
   }]
 }
 ```
 
-If Jira selected, ask for project key and store `jira_project_key` and `jira_mode` for use in Step 14.
+**If Jira or Both selected**: Ask for the Jira project key and preferred mode:
+```json
+{
+  "questions": [{
+    "question": "How would you like to set up Jira?",
+    "header": "Jira Setup",
+    "options": [
+      {"label": "Create new Jira issues", "description": "Create Epic, Tasks, and Sub-tasks in Jira"},
+      {"label": "Link to existing Jira issues", "description": "Search a Jira project for existing issues and link them"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+Store `jira_project_key` and `jira_mode` for use in Step 15.
+
+**If Linear or Both selected**: Ask for the Linear team identifier and preferred mode:
+```json
+{
+  "questions": [{
+    "question": "How would you like to set up Linear?",
+    "header": "Linear Setup",
+    "options": [
+      {"label": "Create new Linear issues", "description": "Create a Project, Issues, and Sub-issues in Linear"},
+      {"label": "Link to existing Linear issues", "description": "Search a Linear team for existing issues and link them"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+Ask: "What is the Linear team identifier? (e.g., ENG, DATA, ACME)"
+Store `linear_team_id` and `linear_mode` for use in Step 15.
 
 ### Step 9.5: Document Store Integration (Optional)
 
@@ -402,9 +434,13 @@ touch .wire/releases/[release_folder]/enablement/.gitkeep
 3. Set artifact scope based on release type (same logic as prior `new.md` Step 8)
 4. Write to `.wire/releases/[release_folder]/status.md`
 
-### Step 15: Set Up Jira Tracking (if opted in)
+### Step 15: Set Up Issue Tracker(s) (if opted in)
 
-Follow the workflow in `specs/utils/jira_create.md`. Pass release type and artifact scope.
+**If Jira or Both selected**: Follow the workflow in `specs/utils/jira_create.md`. Pass `jira_project_key`, `jira_mode`, release type, and artifact scope.
+
+**If Linear or Both selected**: Follow the workflow in `specs/utils/linear_create.md`. Pass `linear_team_id`, `linear_mode`, release type, and artifact scope.
+
+When **Both** is selected, run both workflows. They operate independently — failures in one do not block the other.
 
 ### Step 16: Confirm Creation and Guide Next Steps
 
