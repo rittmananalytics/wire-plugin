@@ -544,6 +544,8 @@ problem_definition:
 3. SOW deliverables trace to the problem statement
 4. Constraints are concrete, not abstract
 
+**Document store sync**: If `docstore_provider` is set, follow `specs/utils/docstore_sync.md` to publish `planning/problem_definition.md` to the configured store. Fail gracefully — do not block if the sync fails.
+
 Report:
 ```
 --- Discovery: Problem Definition ---
@@ -604,6 +606,8 @@ pitch:
 3. Downstream releases are typed and named
 4. Rabbit holes are concrete things (not abstract risks)
 
+**Document store sync**: If `docstore_provider` is set, follow `specs/utils/docstore_sync.md` to publish `planning/pitch.md` to the configured store. Fail gracefully — do not block if the sync fails.
+
 Report:
 ```
 --- Discovery: Pitch ---
@@ -644,6 +648,8 @@ release_brief:
   reviewed_date: [today]
   file: "planning/release_brief.md"
 ```
+
+**Document store sync**: If `docstore_provider` is set, follow `specs/utils/docstore_sync.md` to publish `planning/release_brief.md` to the configured store. Fail gracefully — do not block if the sync fails.
 
 Report:
 ```
@@ -692,6 +698,8 @@ sprint_plan:
   reviewed_date: [today]
   file: "planning/sprint_plan.md"
 ```
+
+**Document store sync**: If `docstore_provider` is set, follow `specs/utils/docstore_sync.md` to publish `planning/sprint_plan.md` to the configured store. Fail gracefully — do not block if the sync fails.
 
 Report:
 ```
@@ -826,18 +834,23 @@ For each artifact in the sequence, execute the Execution Loop (see Execution Loo
    - Update status.md: set `generate: complete`, `generated_date: [today]`
    - Log to `.wire/releases/{current_release}/execution_log.md`
    - **Jira sync**: If Jira is configured, sync — artifact=[artifact_name], action=generate, status=complete
+   - **Linear sync**: If Linear is configured, sync — same artifact and action
+   - **Document store sync**: If `docstore_provider` is set, follow `specs/utils/docstore_sync.md` to publish the generated artifact file. Fail gracefully — do not block.
 
 4. **Validate**: Execute validation checks.
    - Pass → Update status.md: `validate: pass`
    - Fail → Re-generate (max 3 cycles); if still failing after 3 cycles, set `validate: fail`, log as blocked
    - Log to execution_log.md
    - **Jira sync**: sync validate result
+   - **Linear sync**: If Linear is configured, sync validate result
 
 5. **Self-Review**: Execute self-review criteria.
    - Approved → Update status.md: `review: approved`, `reviewed_by: "Wire Autopilot (self-review)"`
    - Issues found → Re-generate and re-validate (max 2 review cycles)
    - Still failing → set `review: changes_requested`, log as blocked
    - **Jira sync**: sync review result
+   - **Linear sync**: If Linear is configured, sync review result
+   - **Document store sync**: If approved and `docstore_provider` is set, re-sync the artifact to the store to reflect any revisions made during review cycles. Fail gracefully.
 
 6. **Update checkpoint**: Move artifact to "Completed Phases" in autopilot_checkpoint.md with brief summary and any key context discovered.
 
