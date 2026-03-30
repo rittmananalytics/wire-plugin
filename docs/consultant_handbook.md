@@ -2,7 +2,7 @@
 
 **Rittman Analytics — Internal Use**
 
-**Version**: 3.4.4 | **Date**: March 2026
+**Version**: 3.4.6 | **Date**: March 2026
 
 ---
 
@@ -29,6 +29,7 @@
 19. [Extending and Customising the Framework](#19-extending-and-customising-the-framework)
 20. [FAQ](#20-faq)
 21. [Troubleshooting](#21-troubleshooting)
+22. [Framework Management Commands](#22-framework-management-commands)
 
 ---
 
@@ -3305,6 +3306,39 @@ Run `/wire:session:start <release-folder>`. The framework reads `status.md`, sho
 4. Check `engagement/sow.md` and the release's `requirements/` folder to confirm source materials are present and readable
 5. If the issue is a bug in a workflow spec, edit the spec and re-run the command
 6. Raise with the team — include the release folder, the command you ran, and what the AI produced
+
+---
+
+## 22. Framework Management Commands
+
+v3.4.6 adds two commands for managing the Wire Framework itself, rather than delivery work.
+
+### `/wire:mcp` — MCP Server Management
+
+The Wire Framework connects to five MCP servers. `/wire:mcp` lets you inspect and manage these connections without editing JSON files:
+
+```
+/wire:mcp                        — Interactive menu
+/wire:mcp list                   — Table of all servers: configured/not, URL, Wire purpose
+/wire:mcp view <server>          — Full detail: transport type, auth method, which commands use it
+/wire:mcp update <server>        — Change the server URL (e.g. point Atlassian at on-prem)
+/wire:mcp auth <server>          — Guided re-authentication walkthrough
+```
+
+**Server keys**: `atlassian`, `linear`, `fathom`, `context7`, `notion`
+
+All servers use OAuth2 managed by Claude Code. The `update` sub-command edits `.claude/settings.json` directly and shows a before/after diff. The `auth` sub-command prints the exact terminal commands (`claude mcp remove` + `claude mcp add`) to force a fresh OAuth2 flow.
+
+### `/wire:help` — Command Reference
+
+Man-page style documentation for any Wire command:
+
+```
+/wire:help                  — List all 89 commands grouped by phase
+/wire:help <command>        — NAME, SYNOPSIS, DESCRIPTION, PREREQUISITES, STEPS, SEE ALSO
+```
+
+Supports alias forms (`/wire:help new`, `/wire:help wire:new`, `/wire:help /wire:new`), partial matching, and ambiguous-prefix disambiguation. The full command catalog is auto-generated from the build script on every release, so it is always current.
 
 ---
 

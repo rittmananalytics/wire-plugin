@@ -9,6 +9,8 @@ All commands are available after installing and restarting Claude Code. Commands
 ```
 /wire:start              — See all releases and available commands
 /wire:new                — Create a new engagement or add a release
+/wire:help [<command>]   — List all commands, or man-page help for one command
+/wire:mcp [list|view|update|auth] [server]  — Manage MCP server connections
 /wire:session:start      — Start a focused working session on any release
 /wire:session:end        — Close a session and record what was accomplished
 /wire:autopilot [sow]    — Autonomous end-to-end engagement: discovery sprint → all delivery releases
@@ -90,6 +92,20 @@ This plugin configures optional MCP servers for:
 - **Notion** — Document store for client artifact review (`https://mcp.notion.com/mcp`, HTTP, OAuth)
 
 Authenticate via `/mcp` in Claude Code.
+
+### MCP Management Command
+
+`/wire:mcp` provides an interactive interface for managing MCP server connections without editing JSON manually:
+
+```
+/wire:mcp                  — Interactive menu
+/wire:mcp list             — Table of all configured servers + Wire purpose
+/wire:mcp view <server>    — Full details: URL, transport, which Wire commands use it
+/wire:mcp update <server>  — Change the server URL (e.g. point Atlassian at a custom on-prem endpoint)
+/wire:mcp auth <server>    — Guided re-authentication walkthrough with exact CLI commands
+```
+
+Server keys: `atlassian`, `linear`, `fathom`, `context7`, `notion`.
 
 ## Issue Tracking
 
