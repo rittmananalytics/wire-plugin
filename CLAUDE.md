@@ -14,7 +14,6 @@ All commands are available after installing and restarting Claude Code. Commands
 /wire:session:start      — Start a focused working session on any release
 /wire:session:end        — Close a session and record what was accomplished
 /wire:autopilot [sow]    — Autonomous end-to-end engagement: discovery sprint → all delivery releases
-/wire:autopilot-orchestrated [sow] — Agent-based autopilot: worker agents per artifact with parallelism and recovery
 /wire:status <release>   — Check release status
 ```
 
