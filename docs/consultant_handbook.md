@@ -2,7 +2,7 @@
 
 **Rittman Analytics — Internal Use**
 
-**Version**: 3.4.6 | **Date**: March 2026
+**Version**: 3.4.8 | **Date**: April 2026
 
 ---
 
@@ -468,7 +468,7 @@ The `dashboard_first` project type follows an alternative chain where interactiv
 graph LR
     SOW["SOW PDF"]
     REQ["Requirements"]
-    MOCK["Dashboard Mocks<br/><i>Lovable interactive</i>"]
+    MOCK["Dashboard Mocks<br/><i>HTML interactive</i>"]
     VIZ["Viz Catalog<br/><i>Measures + dimensions</i>"]
     DM["Data Model"]
     SEED["Seed Data<br/><i>CSV files</i>"]
@@ -1251,7 +1251,7 @@ Use this when you want early stakeholder feedback via interactive dashboard mock
 flowchart TB
     subgraph s1["Design"]
         REQ["requirements<br/>generate / validate / review"]
-        MK["mockups - Lovable-guided<br/>generate / review"]
+        MK["mockups - HTML interactive<br/>generate / review"]
         VIZ["viz_catalog - generate only"]
         DM["data_model<br/>generate / validate / review"]
     end
@@ -1289,7 +1289,7 @@ flowchart TB
 /wire:requirements-review <release-folder>
 
 # Phase 2: Interactive Dashboard Mocks (Day 1–2)
-/wire:mockups-generate <release-folder>                 # Lovable-guided workflow
+/wire:mockups-generate <release-folder>                 # HTML interactive mockups
 /wire:mockups-review <release-folder>
 
 # Phase 3: Visualization Catalog (Day 2)
@@ -1354,33 +1354,31 @@ flowchart TB
 
 Same as Full Platform — ensure `engagement/sow.md` is present, run requirements generate/validate/review. The key difference is that requirements approval unblocks **mockups** (not conceptual model).
 
-### Phase 2: Interactive Dashboard Mocks (Day 1–2)
+### Phase 2: Interactive Dashboard Mockups (Day 1–2)
 
-This is the key differentiator. Instead of generating ASCII wireframes, the mockups command for `dashboard_first` projects guides you through creating interactive dashboard mocks using [Lovable](https://lovable.dev).
+This is the key differentiator. Instead of generating ASCII wireframes, the mockups command for `dashboard_first` projects generates **pixel-accurate, interactive HTML Looker mockups** directly inside Claude Code — no external tools required.
 
 ```
 /wire:mockups-generate <release-folder>
 ```
 
 The framework:
-1. Reads the approved requirements and generates a **session brief** — a summary of the use case, key questions, and suggested dashboard pages
-2. URL-encodes the use case and presents a ready-to-click `getmock.rittmananalytics.com` URL
-3. You open the URL in your browser and Lovable creates an interactive dashboard mock
-4. Iterate with stakeholders until they're happy with the layout and content
-5. Run the Lovable prompt (provided by the framework) to generate two files:
-   - A **CSV visualization catalog** (one row per chart: dashboard page, visualization name, chart type, measures, dimensions)
-   - A **markdown dashboard specification**
-6. Save both files into the release's `design/` folder
+1. Reads the approved requirements and plans the dashboard structure — pages, KPI tiles, charts, tables, and filters
+2. Reads the Looker design system reference (teal sidebar, Google Sans, Chart.js charts) from the bundled skill
+3. Generates one or more **self-contained HTML files** that faithfully reproduce the Looker UI, with interactive Chart.js charts and filter controls
+4. Simultaneously produces `design/dashboard_visualization_catalog.csv` and `design/dashboard_spec.md` — the downstream inputs for the visualization catalog command
+5. All files are saved to `design/mockups/` and ready immediately
 
 ```
 /wire:mockups-review <release-folder>
 ```
 
-Review the Lovable mocks with end users and stakeholders. Share the published Lovable URL (e.g. `https://project-demo.lovable.app/`) for async feedback.
+Review the HTML mockups with end users and stakeholders. Open the HTML files in a browser — they are fully interactive. Attach them to emails or share via a file share for async feedback.
 
 **Tips**:
-- Share the Lovable mock URL with stakeholders as early as possible — even before requirements are formally approved if the SOW is clear enough. Early visual feedback is the whole point.
-- Iterate on the mocks in Lovable before running `viz_catalog:generate`. Changes after the catalog is generated require regenerating downstream artifacts.
+- Open the HTML file in a browser to experience the full interactive dashboard before sharing with stakeholders — the charts respond to hover and the tabs switch.
+- Iterate on the mockups by asking Claude to modify specific tiles, charts, or data before running `viz_catalog:generate`. Changes after the catalog is generated require regenerating downstream artifacts.
+- For dashboard-first engagements where the data domain is complex, share the mockup with the client early — even before requirements are fully approved — to validate the direction.
 
 ### Phase 3: Visualization Catalog (Day 2)
 
@@ -1388,7 +1386,7 @@ Review the Lovable mocks with end users and stakeholders. Share the published Lo
 /wire:viz_catalog-generate <release-folder>
 ```
 
-This is a **generate-only** artifact (no separate validate or review gates). The command parses the CSV and markdown from Lovable into a structured catalog: a dashboard inventory, measures index, dimensions index, and requirements coverage analysis. This answers the question: exactly which measures and dimensions must the data model provide?
+This is a **generate-only** artifact (no separate validate or review gates). The command parses the CSV and markdown generated by `/wire:mockups-generate` into a structured catalog: a dashboard inventory, measures index, dimensions index, and requirements coverage analysis. This answers the question: exactly which measures and dimensions must the data model provide?
 
 ### Phase 4: Data Model (Day 2–3)
 
@@ -1440,7 +1438,7 @@ The transition from `ref('customers_seed')` to `source('salesforce', 'accounts')
 
 ### Tips for dashboard-first engagements
 
-- **Start mocking early**: You can begin Lovable mocks during the SOW preparation phase or even before project kick-off. The earlier stakeholders see something visual, the better the feedback.
+- **Start mocking early**: You can run `/wire:mockups-generate` during the SOW preparation phase or even before project kick-off. The earlier stakeholders see something visual, the better the feedback.
 - **Seed data quality matters**: Realistic seed data makes the prototype convincing. The framework generates domain-appropriate values, but review the seeds for realism before showing to stakeholders.
 - **Don't delay the refactor**: Once client data is available, run the data refactor promptly. The longer you wait, the more the seed-based version diverges from what the client expects.
 - **The prototype is disposable**: The seed-based dbt project exists to validate the design. The real value is the iteration it enables, not the seed data itself.
@@ -3121,9 +3119,9 @@ The `data_refactor:generate` command handles this by comparing the seed schema a
 
 ---
 
-**Q: Do I need a Lovable account for dashboard-first projects?**
+**Q: Do I need any external tools for dashboard-first projects?**
 
-Yes. The mockups command for `dashboard_first` releases uses Lovable (via `getmock.rittmananalytics.com`) to create interactive dashboard mocks. You need to be a member of the RA Lovable account. Ask to be invited if you're not already a member. If Lovable is unavailable, you can use the standard mockups workflow (ASCII wireframes) by selecting a different release type.
+No. The mockups command for `dashboard_first` releases generates interactive HTML Looker mockups directly inside Claude Code — no external accounts, browser extensions, or subscriptions required. The HTML files are self-contained and can be opened in any browser or attached to emails.
 
 ---
 
@@ -3178,7 +3176,7 @@ Public repos can be cloned without a token.
 
 **Q: How does Autopilot handle dashboard-first mockups?**
 
-For dashboard-first projects, Autopilot offers two modes during its clarifying questions: (1) wireframe mode (default), which generates ASCII wireframes autonomously, or (2) pause mode, which pauses at the mockup stage for you to complete a Lovable session manually, then resumes. Wireframe mode is adequate for driving the downstream data model and dbt generation.
+For dashboard-first projects, Autopilot generates interactive HTML Looker mockups autonomously as part of its standard execution — no manual intervention required. The mockup generation step is fully automated and produces both the HTML files and the visualization catalog inputs in one pass.
 
 ---
 
