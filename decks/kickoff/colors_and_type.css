@@ -6,16 +6,69 @@
    ============================================================ */
 
 /* --- Webfonts ------------------------------------------------ */
-/* PRIMARY DISPLAY + BODY: Google Sans served from Google Fonts CDN.
-   The deck HTML must include the matching <link> tag in <head>.
-   System sans-serif is declared as fallback for offline/PDF use. */
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,700&display=swap');
+/* PRIMARY DISPLAY + BODY: Google Sans — confirmed brand face for
+   slides, website and app. Local files in /fonts/.
+   Lato + Roboto + Inter retained as fallbacks (theme.xml of decks
+   references them). IBM Plex Mono for code. */
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('fonts/GoogleSans-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('fonts/GoogleSans-Italic.ttf') format('truetype');
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('fonts/GoogleSans-Medium.ttf') format('truetype');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('fonts/GoogleSans-MediumItalic.ttf') format('truetype');
+  font-weight: 500; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('fonts/GoogleSans-SemiBold.ttf') format('truetype');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('fonts/GoogleSans-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('fonts/GoogleSans-BoldItalic.ttf') format('truetype');
+  font-weight: 700; font-style: italic; font-display: swap;
+}
 
 /* Lato + Roboto + Inter (UI fallback) + IBM Plex Mono (code) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@300;400;700;900&family=Roboto:wght@300;400;500;700;900&display=swap');
 
-/* Beatrice font-face declarations removed — no local font files bundled with Wire.
-   Falls back to Inter (CDN above) or system-ui sans-serif. */
+/* Beatrice retained as legacy/web-only face */
+@font-face {
+  font-family: 'Beatrice';
+  src: url('fonts/Beatrice-Light.woff2') format('woff2'),
+       url('fonts/Beatrice-Light.woff') format('woff'),
+       url('fonts/Beatrice-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Beatrice';
+  src: url('fonts/Beatrice-Regular.woff2') format('woff2'),
+       url('fonts/Beatrice-Regular.woff') format('woff'),
+       url('fonts/Beatrice-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   /* ---------- BRAND CORE ----------
