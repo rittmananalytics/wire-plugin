@@ -109,6 +109,9 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:status` | `[project-folder] or --archived` | Report on all project statuses or specific project |
 | `/wire:archive` | `<project-folder>` | Archive a completed project |
 | `/wire:remove` | `<project-folder>` | Remove a project with confirmation |
+| `/wire:kickoff-generate` | `[release-folder]` | Generate client kick-off presentation deck from SoW and engagement context |
+| `/wire:kickoff-validate` | `[release-folder]` | Validate kick-off deck JSON structure and content completeness |
+| `/wire:kickoff-review` | `[release-folder]` | Review kick-off deck internally and export to PDF on approval |
 | `/wire:migrate` | `(no arguments — auto-detects the .wire/ layout)` | Migrate pre-v3.4.0 flat .wire/ layout to two-tier engagement/releases structure |
 | `/wire:help` | `[<command>]` | Show help for Wire Framework commands |
 

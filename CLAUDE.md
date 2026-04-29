@@ -24,6 +24,20 @@ All commands are available after installing and restarting Claude Code. Commands
 /wire:session:end   [release-folder]   — Summarise session, update status.md, suggest next focus
 ```
 
+### Kickoff deck commands
+
+Run immediately after `/wire:new`. Primary source is the Statement of Work. Pass a release-folder argument to enrich with approved discovery artifacts.
+
+```
+/wire:kickoff-generate [release-folder]   — Build kick-off deck from SoW; enrich with discovery artifacts if available
+/wire:kickoff-validate [release-folder]   — Check JSON structure and content completeness
+/wire:kickoff-review   [release-folder]   — Internal review; on approval, instructs PDF export via headless Chrome
+```
+
+Set `engagementType: "Discovery"` automatically when engagement type is discovery — the deck frames the kickoff as a discovery sprint opening. Re-run with a release folder after discovery artifacts are approved to enrich the content.
+
+Deck template: `wire/decks/kickoff/Project Kickoff.html`
+
 ### Discovery release commands
 
 ```
