@@ -2,7 +2,7 @@
 
 **Rittman Analytics — Internal Use**
 
-**Version**: 3.4.9 | **Date**: April 2026
+**Version**: 3.4.10 | **Date**: April 2026
 
 ---
 
@@ -15,22 +15,23 @@
 5. [Installation and Setup](#5-installation-and-setup)
 6. [Core Concepts You Need to Know](#6-core-concepts-you-need-to-know)
 7. [Running a Discovery Release (Shape Up Planning)](#7-running-a-discovery-release-shape-up-planning)
-8. [Running a Full Platform Release (End-to-End)](#8-running-a-full-platform-release-end-to-end)
-9. [Running a Pipeline + dbt Release](#9-running-a-pipeline--dbt-release)
-10. [Running a dbt Development Release](#10-running-a-dbt-development-release)
-11. [Running a Dashboard Extension Release](#11-running-a-dashboard-extension-release)
-12. [Running a Dashboard-First Rapid Development Release](#12-running-a-dashboard-first-rapid-development-release)
-13. [Running an Enablement Release](#13-running-an-enablement-release)
-14. [Running an Agentic Commerce Release](#14-running-an-agentic-commerce-release)
-15. [Worked Example: Barton Peveril Live Pastoral Analytics](#15-worked-example-barton-peveril-live-pastoral-analytics)
-16. [Wire Autopilot: Autonomous Execution](#16-wire-autopilot-autonomous-execution)
-17. [Wire Studio: Web-Based Interface](#17-wire-studio-web-based-interface)
-18. [Issue Tracking: Jira and Linear](#18-issue-tracking-jira-and-linear)
-19. [Document Store: Confluence and Notion](#19-document-store-confluence-and-notion)
-20. [Extending and Customising the Framework](#20-extending-and-customising-the-framework)
-21. [FAQ](#21-faq)
-22. [Troubleshooting](#22-troubleshooting)
-23. [Framework Management Commands](#23-framework-management-commands)
+8. [Generating a Client Kick-off Deck](#8-generating-a-client-kick-off-deck)
+9. [Running a Full Platform Release (End-to-End)](#9-running-a-full-platform-release-end-to-end)
+10. [Running a Pipeline + dbt Release](#10-running-a-pipeline--dbt-release)
+11. [Running a dbt Development Release](#11-running-a-dbt-development-release)
+12. [Running a Dashboard Extension Release](#12-running-a-dashboard-extension-release)
+13. [Running a Dashboard-First Rapid Development Release](#13-running-a-dashboard-first-rapid-development-release)
+14. [Running an Enablement Release](#14-running-an-enablement-release)
+15. [Running an Agentic Commerce Release](#15-running-an-agentic-commerce-release)
+16. [Worked Example: Barton Peveril Live Pastoral Analytics](#16-worked-example-barton-peveril-live-pastoral-analytics)
+17. [Wire Autopilot: Autonomous Execution](#17-wire-autopilot-autonomous-execution)
+18. [Wire Studio: Web-Based Interface](#18-wire-studio-web-based-interface)
+19. [Issue Tracking: Jira and Linear](#19-issue-tracking-jira-and-linear)
+20. [Document Store: Confluence and Notion](#20-document-store-confluence-and-notion)
+21. [Extending and Customising the Framework](#21-extending-and-customising-the-framework)
+22. [FAQ](#22-faq)
+23. [Troubleshooting](#23-troubleshooting)
+24. [Framework Management Commands](#24-framework-management-commands)
 
 ---
 
@@ -770,7 +771,83 @@ A new engagement with an uncertain scope:
 
 ---
 
-## 8. Running a Full Platform Release (End-to-End)
+## 8. Generating a Client Kick-off Deck
+
+The Wire Framework can generate a branded, client-specific kick-off presentation deck in HTML (exportable to PDF via headless Chrome). This works immediately after `/wire:new` — the primary source is the Statement of Work. If you run a discovery release first, you can re-run the generate command to enrich the deck with approved discovery artifacts.
+
+### When to use it
+
+Use the kickoff deck for:
+- **Delivery kickoff** — opening the delivery phase with shared problem framing, sprint plan, and access requirements
+- **Discovery sprint kickoff** — opening a discovery engagement; the deck automatically adjusts its wording when `engagementType` is `"Discovery"`
+
+### Workflow
+
+```
+# Right after /wire:new (just SoW):
+/wire:kickoff-generate
+
+# Or after discovery artifacts are approved (enriched deck):
+/wire:kickoff-generate 01-discovery
+
+# Validate structure and content:
+/wire:kickoff-validate
+
+# Internal review, then PDF export instructions on approval:
+/wire:kickoff-review
+```
+
+### What the generate command does
+
+1. Reads `engagement/context.md` (client name, engagement type, team, SoW reference)
+2. Reads the SoW — extracts objectives, approach, key metrics, data sources, and timeline
+3. If a release folder is specified and discovery artifacts are approved, enriches the deck: problem framing from `problem_definition.md`, outcomes from `pitch.md`, sprint plan from `sprint_plan.md`, access requirements from `requirements_specification.md`
+4. Populates the EDITMODE JSON block inside the deck HTML template
+5. Writes output to `.wire/kickoff-deck.html` (engagement-level) or `.wire/releases/<release>/artifacts/kickoff-deck.html` (release-enriched)
+
+### Discovery sprint mode
+
+When the engagement type is `discovery`, the deck automatically sets `engagementType: "Discovery"`, which switches the deck's slide wording to frame the kickoff as a discovery sprint opening rather than a delivery build. No extra flags needed.
+
+### Slide-by-slide content sources
+
+| Slide | Content | Source |
+|-------|---------|--------|
+| 01 — Title | Client name, date, engagement type, presenters | `context.md` |
+| 04 — Diagnosis | Current state / desired state narrative | SoW objectives, or `problem_definition.md` |
+| 05 — Big number | Headline metric | SoW impact figures, or `problem_definition.md` Section 4 |
+| 07 — Problems grid | Up to 8 root causes | SoW, or `problem_definition.md` Sections 3 & 7 |
+| 09 — Outcomes | Up to 5 success criteria | SoW approach, or `pitch.md` Section 7 |
+| 11 — Architecture | Mermaid diagram | `pipeline_design.md` (if present) |
+| 13 — Two-week timeline | Sprint goals and stories | SoW timeline, or `sprint_plan.md` |
+| 15 — Access requirements | Up to 4 data systems | SoW data sources, or `requirements_specification.md` |
+| 16 — Team | Presenter names and roles | `context.md` / SoW |
+
+### Re-running and manual edits
+
+The generate command is safe to re-run. On re-run it merges generated values with any manual edits you have made directly to the EDITMODE block — fields like `titlePhoto`, `accentColor`, and `showPartnerBadge` are preserved unless a new generated value is available. You can always open the deck in a browser and use the built-in tweaks panel to make manual adjustments.
+
+### PDF export
+
+After the deck is reviewed and approved, the review command provides the exact headless Chrome command:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless \
+  --print-to-pdf="kickoff.pdf" \
+  --print-to-pdf-no-header \
+  "file://$PWD/.wire/kickoff-deck.html"
+```
+
+If the Mermaid architecture diagram appears blank in the PDF, add `--virtual-time-budget=5000`.
+
+### Template location
+
+The blank deck template is at `wire/decks/kickoff/Project Kickoff.html` in the Wire repo. Never edit this file directly — the generate command reads it and writes a populated copy to the engagement directory.
+
+---
+
+## 9. Running a Full Platform Release (End-to-End)
 
 Use this for releases that go from SOW to production dashboards and trained users. All 15 artifact types are in scope. If you are starting from a discovery release, the release brief and sprint plan from discovery serve as additional inputs alongside the SOW.
 
@@ -1113,7 +1190,7 @@ In addition to the phase-specific commands above, the framework provides utility
 
 ---
 
-## 9. Running a Pipeline + dbt Release
+## 10. Running a Pipeline + dbt Release
 
 Use this when a new data source needs connecting through to the dbt layer, but a BI tool / semantic layer is already in place or out of scope.
 
@@ -1163,7 +1240,7 @@ Use this when a new data source needs connecting through to the dbt layer, but a
 
 ---
 
-## 10. Running a dbt Development Release
+## 11. Running a dbt Development Release
 
 Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or manual loads) and you need to build or extend the dbt transformation layer.
 
@@ -1206,7 +1283,7 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 
 ---
 
-## 11. Running a Dashboard Extension Release
+## 12. Running a Dashboard Extension Release
 
 Use this when the semantic layer already has the data, and you're adding new dashboards on top.
 
@@ -1242,7 +1319,7 @@ Use this when the semantic layer already has the data, and you're adding new das
 
 ---
 
-## 12. Running a Dashboard-First Rapid Development Release
+## 13. Running a Dashboard-First Rapid Development Release
 
 Use this when you want early stakeholder feedback via interactive dashboard mocks before building the data layer. This approach is especially effective when the SOW is well-defined but client data access may be delayed — you can have a working prototype with seed data before the client provides database credentials.
 
@@ -1448,7 +1525,7 @@ The transition from `ref('customers_seed')` to `source('salesforce', 'accounts')
 
 ---
 
-## 13. Running an Enablement Release
+## 14. Running an Enablement Release
 
 Use this when an existing platform needs training and documentation — either as a standalone release or as the final phase of a delivery that was not originally run through the Wire Framework.
 
@@ -1480,7 +1557,7 @@ Use this when an existing platform needs training and documentation — either a
 
 ---
 
-## 14. Running an Agentic Commerce Release
+## 15. Running an Agentic Commerce Release
 
 The Agentic Commerce release type (`project_type: agentic_commerce`) is for engagements where the deliverable is an AI-powered ecommerce storefront — not a data platform. It combines Lovable (rapid frontend scaffolding), Shopify (product catalog and cart), GitHub (code hosting), Supabase (backend state), Google Cloud (AI/search), and optionally Stripe (payments via the UCP merchant server).
 
@@ -1586,7 +1663,7 @@ See `agentic_commerce_release/00a-prerequisites-and-worked-examples.md` for a fu
 
 ---
 
-## 15. Worked Example: Barton Peveril Live Pastoral Analytics
+## 16. Worked Example: Barton Peveril Live Pastoral Analytics
 
 This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step. This engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined), so it starts with the full_platform delivery release.
 
@@ -1860,7 +1937,7 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 
 ---
 
-## 16. Wire Autopilot: Autonomous Execution
+## 17. Wire Autopilot: Autonomous Execution
 
 Wire Autopilot takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
 
@@ -2319,7 +2396,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ---
 
-## 17. Wire Studio: Web-Based Interface
+## 18. Wire Studio: Web-Based Interface
 
 > **Status: Active** — Wire Studio v3.4.0 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
@@ -2794,7 +2871,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 18. Issue Tracking: Jira and Linear
+## 19. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -2871,7 +2948,7 @@ linear:
 
 ---
 
-## 19. Document Store: Confluence and Notion
+## 20. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -2954,7 +3031,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 20. Extending and Customising the Framework
+## 21. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -3112,7 +3189,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 21. FAQ
+## 22. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -3369,7 +3446,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 22. Troubleshooting
+## 23. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -3416,7 +3493,7 @@ Run `/wire:session:start <release-folder>`. The framework reads `status.md`, sho
 
 ---
 
-## 23. Framework Management Commands
+## 24. Framework Management Commands
 
 v3.4.6 adds two commands for managing the Wire Framework itself, rather than delivery work.
 
