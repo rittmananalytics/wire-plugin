@@ -1,0 +1,263 @@
+/* ============================================================
+   Rittman Analytics — Colors & Type
+   Source of truth for color, type, spacing, and motion tokens.
+   Derived from data-clarity-project (src/index.css, tailwind.config.ts)
+   and the RA-style.fig design library.
+   ============================================================ */
+
+/* --- Webfonts ------------------------------------------------ */
+/* PRIMARY DISPLAY + BODY: Google Sans served from Google Fonts CDN.
+   The deck HTML must include the matching <link> tag in <head>.
+   System sans-serif is declared as fallback for offline/PDF use. */
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,700&display=swap');
+
+/* Lato + Roboto + Inter (UI fallback) + IBM Plex Mono (code) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@300;400;700;900&family=Roboto:wght@300;400;500;700;900&display=swap');
+
+/* Beatrice font-face declarations removed — no local font files bundled with Wire.
+   Falls back to Inter (CDN above) or system-ui sans-serif. */
+
+:root {
+  /* ---------- BRAND CORE ----------
+     The five hero hues that anchor every Rittman surface.
+     "Indigo" (#4F60FF) is the primary brand color —
+     CTAs, links, focus rings, the methodology dots. */
+  --ra-indigo:        #4F60FF;   /* primary brand */
+  --ra-indigo-deep:   #4F5FFE;
+  --ra-violet:        #AD86FF;   /* lavender accent */
+  --ra-mint:          #99FF99;   /* secondary accent */
+  --ra-sky:           #87D5FC;   /* tertiary accent */
+  --ra-peach:         #FF8D73;   /* warm accent */
+
+  /* ---------- BRAND SOFTS ----------
+     Tinted backgrounds for cards, callouts and icon halos.
+     Always paired with ink text — never a soft-on-soft combo. */
+  --ra-violet-soft:   #E6DBFF;
+  --ra-indigo-soft:   #E0E0FF;
+  --ra-indigo-haze:   #EFF0FF;
+  --ra-mint-soft:     #EBFFEB;
+  --ra-mint-mid:      #D5FFD5;
+  --ra-sky-soft:      #E7F7FE;
+  --ra-peach-soft:    #FFBBBE;
+
+  /* ---------- INK & NEUTRALS ---------- */
+  --ra-ink:           #181B25;   /* near-black text + ui */
+  --ra-ink-90:        #191B28;
+  --ra-ink-80:        #1F2433;
+  --ra-ink-70:        #2B3041;
+  --ra-ink-60:        #383C48;
+  --ra-ink-40:        #4F5564;
+
+  --ra-paper:         #FFFFFF;
+  --ra-paper-2:       #F7F7FA;   /* section bg, hover surfaces */
+  --ra-paper-3:       #EFF0F4;
+  --ra-line:          #E1E1E9;   /* default border */
+  --ra-line-soft:     #E6E6E6;
+  --ra-mute:          #9BA1A6;   /* placeholder, disabled */
+  --ra-mute-strong:   #6B7280;
+
+  /* ---------- SEMANTIC TOKENS ---------- */
+  --ra-bg:            var(--ra-paper);
+  --ra-bg-alt:        var(--ra-paper-2);
+  --ra-fg:            var(--ra-ink);
+  --ra-fg-muted:      var(--ra-mute-strong);
+  --ra-fg-faint:      var(--ra-mute);
+  --ra-link:          var(--ra-indigo);
+  --ra-link-hover:    var(--ra-indigo-deep);
+  --ra-focus-ring:    var(--ra-indigo);
+  --ra-border:        var(--ra-line);
+  --ra-border-strong: var(--ra-ink);
+
+  --ra-success:       #2BB673;
+  --ra-warning:       #F2B33D;
+  --ra-danger:        #E5484D;
+  --ra-info:          var(--ra-indigo);
+
+  /* ---------- TYPOGRAPHY ----------
+     Two distinct type systems coexist:
+
+     · DECKS / SLIDES → Google Sans (display + body) — confirmed brand
+       face for all internal & client-facing slide decks. Use the
+       --ra-font-deck-* tokens.
+     · WEB / MARKETING → Beatrice — the brand face for rittmananalytics.com,
+       proposals, marketing PDFs and the app UI. Use the default
+       --ra-font-display / --ra-font-body / --ra-font-ui tokens.
+     · CODE → IBM Plex Mono. */
+
+  /* Web / marketing / app — Beatrice (the original brand face) */
+  --ra-font-display:  'Beatrice', 'Inter', system-ui, sans-serif;
+  --ra-font-body:     'Beatrice', 'Inter', system-ui, sans-serif;
+  --ra-font-ui:       'Beatrice', 'Inter', system-ui, sans-serif;
+  --ra-font-web:      'Beatrice', 'Inter', system-ui, sans-serif;
+
+  /* Decks / slides — Google Sans */
+  --ra-font-deck-display: 'Google Sans', 'Product Sans', 'Inter', system-ui, sans-serif;
+  --ra-font-deck-body:    'Google Sans', 'Lato', 'Roboto', 'Inter', system-ui, sans-serif;
+  --ra-font-deck-ui:      'Google Sans', 'Roboto', 'Lato', 'Inter', system-ui, sans-serif;
+  --ra-font-mono:     'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Type scale — generous, marketing-deck friendly.
+     The site uses 4xl–6xl for hero h1, 3xl–4xl for h2, xl–2xl for lede. */
+  --ra-fs-display:    clamp(2.75rem, 4.5vw + 1rem, 4.5rem); /* hero */
+  --ra-fs-h1:         clamp(2rem, 2.5vw + 1rem, 3rem);
+  --ra-fs-h2:         clamp(1.625rem, 1.4vw + 1rem, 2.25rem);
+  --ra-fs-h3:         1.5rem;     /* 24 */
+  --ra-fs-h4:         1.25rem;    /* 20 */
+  --ra-fs-lede:       1.25rem;    /* 20 */
+  --ra-fs-body:       1rem;       /* 16 */
+  --ra-fs-sm:         0.875rem;   /* 14 — Beatrice 14 is the workhorse */
+  --ra-fs-xs:         0.75rem;    /* 12 */
+
+  --ra-lh-tight:      1.1;
+  --ra-lh-snug:       1.25;
+  --ra-lh-body:       1.55;
+  --ra-lh-relaxed:    1.7;
+
+  --ra-fw-light:      300;
+  --ra-fw-regular:    400;
+  --ra-fw-medium:     500;
+  --ra-fw-semibold:   600;
+  --ra-fw-bold:       700;
+
+  --ra-tracking-tight: -0.02em;
+  --ra-tracking-snug:  -0.01em;
+  --ra-tracking-flat:   0;
+  --ra-tracking-wide:   0.04em;
+  --ra-tracking-eyebrow: 0.12em;
+
+  /* ---------- SPACING ---------- */
+  --ra-s-1:  4px;
+  --ra-s-2:  8px;
+  --ra-s-3:  12px;
+  --ra-s-4:  16px;
+  --ra-s-5:  24px;
+  --ra-s-6:  32px;
+  --ra-s-7:  48px;
+  --ra-s-8:  64px;
+  --ra-s-9:  96px;
+  --ra-s-10: 128px;
+
+  /* ---------- RADII ---------- */
+  --ra-r-xs: 4px;
+  --ra-r-sm: 6px;
+  --ra-r-md: 8px;     /* default --radius */
+  --ra-r-lg: 12px;
+  --ra-r-xl: 16px;
+  --ra-r-2xl: 24px;
+  --ra-r-pill: 999px;
+
+  /* ---------- SHADOWS ----------
+     Two systems coexist in the file: a neutral "lift" shadow used
+     by cards, and a tinted indigo-tinged shadow used on dark surfaces
+     and highlighted CTAs (rgba(205,205,255,…)). */
+  --ra-shadow-xs: 0 1px 2px rgba(24,27,37,0.06);
+  --ra-shadow-sm: 0 2px 6px rgba(24,27,37,0.06), 0 1px 2px rgba(24,27,37,0.04);
+  --ra-shadow-md: 0 8px 20px rgba(50,50,93,0.08), 0 2px 6px rgba(0,0,0,0.04);
+  --ra-shadow-lg: 0 18px 40px rgba(50,50,93,0.18), 0 6px 14px rgba(0,0,0,0.06);
+  --ra-shadow-tinted-sm: 0 2px 8px rgba(205,205,255,0.25);
+  --ra-shadow-tinted-lg: 0 18px 40px rgba(205,205,255,0.25), 0 4px 10px rgba(205,205,255,0.15);
+  --ra-shadow-focus:  0 0 0 3px rgba(79,96,255,0.35);
+
+  /* ---------- MOTION ----------
+     Subtle, deliberate. Nothing bouncy. */
+  --ra-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ra-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ra-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ra-dur-1: 120ms;
+  --ra-dur-2: 200ms;
+  --ra-dur-3: 320ms;
+  --ra-dur-4: 600ms;
+
+  /* ---------- LAYOUT ---------- */
+  --ra-container: 1280px;
+  --ra-container-wide: 1400px;
+  --ra-gutter: 32px;
+}
+
+/* ============================================================
+   Element defaults — opt-in by adding `class="ra"` to <body>
+   or scope this stylesheet under a wrapper.
+   ============================================================ */
+.ra, .ra * { box-sizing: border-box; }
+
+.ra {
+  font-family: var(--ra-font-body);
+  font-size: var(--ra-fs-body);
+  line-height: var(--ra-lh-body);
+  color: var(--ra-fg);
+  background: var(--ra-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.ra h1, .ra .h1, .ra .display {
+  font-family: var(--ra-font-display);
+  font-weight: var(--ra-fw-bold);
+  font-size: var(--ra-fs-display);
+  line-height: var(--ra-lh-tight);
+  letter-spacing: var(--ra-tracking-tight);
+  color: var(--ra-ink);
+  margin: 0 0 var(--ra-s-5);
+  text-wrap: pretty;
+}
+.ra h2, .ra .h2 {
+  font-family: var(--ra-font-display);
+  font-weight: var(--ra-fw-bold);
+  font-size: var(--ra-fs-h2);
+  line-height: var(--ra-lh-snug);
+  letter-spacing: var(--ra-tracking-snug);
+  color: var(--ra-ink);
+  margin: 0 0 var(--ra-s-4);
+  text-wrap: balance;
+}
+.ra h3, .ra .h3 {
+  font-family: var(--ra-font-display);
+  font-weight: var(--ra-fw-semibold);
+  font-size: var(--ra-fs-h3);
+  line-height: var(--ra-lh-snug);
+  color: var(--ra-ink);
+  margin: 0 0 var(--ra-s-3);
+}
+.ra h4, .ra .h4 {
+  font-family: var(--ra-font-display);
+  font-weight: var(--ra-fw-semibold);
+  font-size: var(--ra-fs-h4);
+  line-height: var(--ra-lh-snug);
+  color: var(--ra-ink);
+  margin: 0 0 var(--ra-s-2);
+}
+.ra .eyebrow {
+  font-family: var(--ra-font-ui);
+  font-size: var(--ra-fs-xs);
+  font-weight: var(--ra-fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--ra-tracking-eyebrow);
+  color: var(--ra-indigo);
+}
+.ra .lede {
+  font-size: var(--ra-fs-lede);
+  line-height: var(--ra-lh-relaxed);
+  color: var(--ra-fg-muted);
+  font-weight: var(--ra-fw-regular);
+}
+.ra p { margin: 0 0 var(--ra-s-4); color: var(--ra-fg); }
+.ra .muted { color: var(--ra-fg-muted); }
+.ra small { font-size: var(--ra-fs-sm); color: var(--ra-fg-muted); }
+.ra code, .ra .mono {
+  font-family: var(--ra-font-mono);
+  font-size: 0.92em;
+  background: var(--ra-paper-2);
+  border: 1px solid var(--ra-line);
+  border-radius: var(--ra-r-xs);
+  padding: 2px 6px;
+}
+.ra a {
+  color: var(--ra-link);
+  text-decoration: none;
+  font-weight: var(--ra-fw-semibold);
+  transition: color var(--ra-dur-1) var(--ra-ease);
+}
+.ra a:hover { color: var(--ra-link-hover); text-decoration: underline; }
+.ra hr { border: 0; border-top: 1px solid var(--ra-line); margin: var(--ra-s-7) 0; }
+.ra ::selection { background: var(--ra-indigo-soft); color: var(--ra-ink); }
+.ra :focus-visible { outline: 2px solid var(--ra-focus-ring); outline-offset: 2px; }

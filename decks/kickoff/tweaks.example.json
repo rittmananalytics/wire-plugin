@@ -1,0 +1,127 @@
+{
+  "_comment": "WORKED EXAMPLE — fictional client 'Northwind Logistics'. This is reference material for Claude Code; it is NOT loaded by the deck. To apply, copy these values (minus the _comment fields) into the EDITMODE block in Project Kickoff.html.",
+
+  "titleVariant": "pitch",
+  "clientName": "Northwind Logistics",
+  "engagementType": "Discovery",
+  "engagementDate": "2026-06-03",
+  "titlePhoto": "assets/title.jpg",
+  "showPartnerBadge": true,
+  "vignetteStrength": 68,
+  "accentColor": "#2F7A55",
+
+  "_comment_slide4": "Diagnosis section opener. Two short headline lines, then 1–2 paragraphs per column. Right column empty = single-column layout.",
+  "slide4Headline": "Five ERPs.\nOne business trying to plan with them.",
+  "slide4LeftPrompt": "two short paragraphs explaining that Northwind has grown by acquisition and now runs five regional ERPs that don't reconcile, making warehouse-level planning slow and error-prone",
+  "slide4RightPrompt": "two short paragraphs explaining the cost: month-end takes nine days, demand forecasts run on stale data, and ops leaders make calls from spreadsheets exported by hand",
+  "slide4LeftCache": "Northwind has grown quickly through acquisition, and each region brought its own ERP. Five systems now run in parallel, none of them speaking the same language about SKUs, locations, or movements.\n\nThe result is a planning function that spends most of its time \u003cstrong style=\"color:#2B3041; font-weight:600;\">reconciling instead of deciding\u003c\/strong>. Warehouse-level forecasting is slow, manual, and brittle.",
+  "slide4RightCache": "Month-end close runs to nine days. Demand forecasts are built on data that is already a week stale by the time anyone sees it.\n\nOps leaders increasingly fall back to \u003cstrong style=\"color:#2B3041; font-weight:600;\">hand-exported spreadsheets\u003c\/strong> — a workaround that is now load-bearing for the business.",
+
+  "_comment_slide5": "Big-number callout. Number is a string. Bold sentence is the punchline; tail adds context.",
+  "slide5Number": "9",
+  "slide5Suffix": " days",
+  "slide5Bold": "to close the books each month.",
+  "slide5Tail": "Most of it spent reconciling SKU and location codes across five ERPs by hand.",
+
+  "_comment_slide6": "Problems grid — array length must stay at 8. Set slide6Count to the number actually shown; pad remaining slots with empty strings.",
+  "slide6Count": 4,
+  "slide6Problems": [
+    {
+      "headline": "Five ERPs, no shared spine.",
+      "detail": "Each region's system uses its own SKU and location codes. There is no canonical map, so every cross-region question becomes a manual reconciliation job."
+    },
+    {
+      "headline": "A nine-day close.",
+      "detail": "Month-end is dominated by data wrangling rather than analysis. Finance and ops both wait on the same fragile pipeline of exports and macros."
+    },
+    {
+      "headline": "Forecasts built on stale data.",
+      "detail": "By the time demand signals reach the planning team, they are a week old. Stockouts and over-orders are absorbed as a cost of doing business."
+    },
+    {
+      "headline": "Spreadsheets as load-bearing infrastructure.",
+      "detail": "Critical operational decisions run through hand-maintained workbooks. When the analyst who owns one is on leave, the decision waits."
+    },
+    { "headline": "", "detail": "" },
+    { "headline": "", "detail": "" },
+    { "headline": "", "detail": "" },
+    { "headline": "", "detail": "" }
+  ],
+
+  "_comment_slide8": "Outcomes — array length must stay at 5. Set slide8Count to actual; pad the rest.",
+  "slide8Count": 4,
+  "slide8Outcomes": [
+    {
+      "headline": "A canonical SKU and location model",
+      "detail": "One mapping across all five ERPs, owned and versioned, so every report and forecast speaks the same language."
+    },
+    {
+      "headline": "A three-day close",
+      "detail": "Automate the reconciliation that currently runs by hand. Finance reviews numbers, not pivots."
+    },
+    {
+      "headline": "Daily-fresh demand forecasts",
+      "detail": "A pipeline that lands sales and movement data within 24 hours, ready for the planning team to act on."
+    },
+    {
+      "headline": "Spreadsheets retired, not replaced",
+      "detail": "Move the decisions currently held in workbooks into governed dashboards with clear ownership."
+    },
+    { "headline": "", "detail": "" }
+  ],
+
+  "_comment_slide10": "Architecture diagram. Update prompt and regenerate MermaidCache together. Annot describes a key transition.",
+  "slide10Headline": "Five sources, one operating picture.",
+  "slide10Prompt": "Show five regional ERPs feeding a Fivetran ingestion layer into a BigQuery medallion warehouse, with dbt transforming bronze to silver to gold, then a Looker semantic layer feeding both planning dashboards and a forecasting service",
+  "slide10Direction": "LR",
+  "slide10MermaidCache": "flowchart LR\n    E1[ERP · UK] --> F[Fivetran]\n    E2[ERP · DE] --> F\n    E3[ERP · NL] --> F\n    E4[ERP · ES] --> F\n    E5[ERP · PL] --> F\n    F --> B[Bronze]\n    B -->|dbt| S[Silver]\n    S -->|dbt| G[Gold]\n    G --> L[Looker semantic layer]\n    L --> D[Planning dashboards]\n    L --> X[Forecasting service]",
+  "slide10AnnotLabel": "Canonical layer",
+  "slide10AnnotText": "The Silver layer is where SKU and location codes are mapped to a single canonical model. Everything downstream depends on it being correct.",
+
+  "_comment_slide12": "Two-week timeline. Each week's array must stay at length 6; pad with empty strings.",
+  "slide12W1Focus": "Source discovery & canonical model draft",
+  "slide12W2Focus": "Ingestion plan & forecasting requirements",
+  "slide12W1Count": 5,
+  "slide12W2Count": 5,
+  "slide12W1Items": [
+    "ERP audit across five regions",
+    "SKU & location code inventory",
+    "Canonical model — first draft",
+    "Close-process walkthrough with finance",
+    "Existing spreadsheet inventory",
+    ""
+  ],
+  "slide12W2Items": [
+    "Fivetran connector plan & sizing",
+    "Forecasting team requirements review",
+    "Looker semantic layer scoping",
+    "Access & permissions setup",
+    "Discovery doc & sprint roadmap — sign-off",
+    ""
+  ],
+
+  "_comment_slide14": "Access requirements — array length must stay at 4. needs is one comma-separated string per category.",
+  "slide14Count": 3,
+  "slide14Categories": [
+    {
+      "name": "Source systems",
+      "needs": "Read-only access to all five regional ERPs, Sample exports for SKU and location tables, Documentation for any custom fields, Contacts for each regional IT owner"
+    },
+    {
+      "name": "Target environment",
+      "needs": "BigQuery and Looker dev projects, Fivetran workspace, Service accounts aligned to your IAM standards, Cost monitoring access"
+    },
+    {
+      "name": "Existing reporting",
+      "needs": "Inventory of current planning spreadsheets, Read access to existing BI tools, Working group for rationalisation, PII and supplier-data handling sign-off"
+    },
+    { "name": "", "needs": "" }
+  ],
+
+  "_comment_presenters": "Order is presentation order. Also rendered on the title slide.",
+  "presenters": [
+    { "name": "Mark Rittman", "role": "CEO, Rittman Analytics" },
+    { "name": "Olivier Dupuis", "role": "Principal Consultant, Rittman Analytics" },
+    { "name": "Lewis Baker", "role": "COO, Rittman Analytics" }
+  ]
+}

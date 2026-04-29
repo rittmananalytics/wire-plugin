@@ -109,7 +109,25 @@ Run immediately after `/wire:new` — no discovery or delivery artifacts are req
 ### Step 1: Check prerequisites
 
 1. Confirm `.wire/engagement/context.md` exists. If not: stop — "Run `/wire:new` first to initialise the engagement."
-2. Confirm `wire/decks/kickoff/Project Kickoff.html` exists in the Wire installation. If not: stop — "Kickoff deck template not found. Check your Wire installation."
+
+2. Locate the deck template. Check the following paths in order:
+   a. `wire/decks/kickoff/Project Kickoff.html` — Wire source repo layout
+   b. `decks/kickoff/Project Kickoff.html` — plugin installation layout (when installed via `/plugin install wire`)
+   c. Run `find . -name "Project Kickoff.html" -path "*/kickoff/*" 2>/dev/null | head -1` to discover any other location
+
+   If found at (b) or (c) but not (a), note the actual path and use it throughout the rest of the command in place of `wire/decks/kickoff/Project Kickoff.html`.
+
+   If not found at any location: attempt to bootstrap by running:
+   ```bash
+   mkdir -p wire/decks/kickoff/assets
+   ```
+   Then instruct the user:
+   > "The kickoff deck template could not be found. To install it, run:
+   > `find ~/.claude -name 'Project Kickoff.html' 2>/dev/null`
+   > If found, copy the `decks/kickoff/` folder from your Wire plugin installation to `wire/decks/kickoff/` in this directory.
+   > If not found, pull the latest Wire plugin to get the template bundled with the plugin."
+   Stop here.
+
 3. If `<release-folder>` was supplied, confirm the folder exists at `.wire/releases/<release-folder>/`. If not: warn and continue without release enrichment.
 
 ### Step 2: Read engagement context

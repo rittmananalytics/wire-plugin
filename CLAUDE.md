@@ -36,7 +36,7 @@ Run immediately after `/wire:new`. Primary source is the Statement of Work. Pass
 
 Set `engagementType: "Discovery"` automatically when engagement type is discovery — the deck frames the kickoff as a discovery sprint opening. Re-run with a release folder after discovery artifacts are approved to enrich the content.
 
-Deck template: `wire/decks/kickoff/Project Kickoff.html`
+Deck template: bundled with the plugin at `decks/kickoff/Project Kickoff.html` (also at `wire/decks/kickoff/Project Kickoff.html` in the Wire source repo). The generate command searches both locations automatically.
 
 ### Discovery release commands
 

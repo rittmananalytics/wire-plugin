@@ -1,0 +1,160 @@
+/* Booksy × Rittman Analytics — Kickoff deck
+   Built on RA brand tokens. 1920×1080 stage. */
+
+@import url('colors_and_type.css');
+
+/* deck-stage host */
+deck-stage { background: #0F1117; }
+
+/* Every slide is a positioning context, full-bleed of the 1920x1080 stage */
+section.slide {
+  position: absolute;
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  font-family: var(--ra-font-deck-body);
+  color: var(--ra-ink);
+  background: #FFFFFF;
+}
+
+section.slide.dark   { background: #0F1117; color: #FFFFFF; }
+section.slide.indigo { background: var(--ra-indigo); color: #FFFFFF; }
+section.slide.paper  { background: var(--ra-paper-2); color: var(--ra-ink); }
+
+/* ---------- Furniture ---------- */
+.logo {
+  position: absolute;
+  top: 60px;
+  left: 84px;
+  height: 38px;
+  z-index: 5;
+}
+.logo img { height: 100%; display: block; }
+
+.foot {
+  position: absolute;
+  left: 84px; right: 84px; bottom: 44px;
+  display: flex; justify-content: space-between;
+  font: 400 18px/1 var(--ra-font-deck-ui);
+  color: #8A8F9C;
+  z-index: 5;
+}
+.foot.on-dark   { color: rgba(255,255,255,.55); }
+.foot.on-indigo { color: rgba(255,255,255,.7); }
+.foot .pageno { font-variant-numeric: tabular-nums; }
+
+/* ---------- Body grid ---------- */
+.body {
+  position: absolute;
+  left: 84px; right: 84px;
+  top: 168px;        /* clears 60+38 logo + 70 breathing */
+  bottom: 110px;     /* clears 44 foot + 66 breathing */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Type ---------- */
+.eyebrow {
+  font: 600 22px/1.2 var(--ra-font-deck-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ra-indigo);
+  margin: 0 0 32px;
+}
+.eyebrow.on-dark   { color: #87A0FF; }
+.eyebrow.on-indigo { color: #D5DDFF; }
+
+.title {
+  font-family: var(--ra-font-deck-display);
+  font-weight: 700;
+  font-size: 84px;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: inherit;
+  text-wrap: pretty;
+}
+.title.md { font-size: 64px; line-height: 1.08; letter-spacing: -0.02em; }
+.title.sm { font-size: 52px; line-height: 1.12; letter-spacing: -0.015em; }
+.title.xl { font-size: 112px; line-height: 1.0; letter-spacing: -0.03em; }
+.title.xxl { font-size: 168px; line-height: 0.96; letter-spacing: -0.035em; font-weight: 700; }
+
+.lede {
+  font: 400 32px/1.45 var(--ra-font-deck-body);
+  color: #4F5564;
+  margin: 28px 0 0;
+  text-wrap: pretty;
+  max-width: 1300px;
+}
+.lede.on-dark { color: rgba(255,255,255,.78); }
+.lede.on-indigo { color: rgba(255,255,255,.88); }
+
+.body-text {
+  font: 400 26px/1.55 var(--ra-font-deck-body);
+  color: var(--ra-ink);
+}
+
+.kicker {
+  font: 600 24px/1.3 var(--ra-font-deck-ui);
+  color: var(--ra-ink);
+  letter-spacing: -0.005em;
+  margin: 0 0 12px;
+}
+
+/* ---------- Centered section divider ---------- */
+.center {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  padding: 0 160px;
+  text-align: center;
+}
+.center .eyebrow { margin-bottom: 36px; }
+
+/* ---------- Cards ---------- */
+.card {
+  background: #FFFFFF;
+  border: 1px solid var(--ra-line);
+  border-radius: 12px;
+  padding: 36px 36px 32px;
+  box-shadow: var(--ra-shadow-sm);
+}
+.card.tinted-violet { background: var(--ra-violet-soft); border-color: transparent; }
+.card.tinted-mint   { background: var(--ra-mint-soft);   border-color: transparent; }
+.card.tinted-sky    { background: var(--ra-sky-soft);    border-color: transparent; }
+.card.tinted-indigo { background: var(--ra-indigo-haze); border-color: transparent; }
+.card.tinted-peach  { background: #FFE3DD; border-color: transparent; }
+
+/* numbered eyebrow chip */
+.num-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  font: 600 22px/1 var(--ra-font-deck-ui);
+  color: var(--ra-indigo);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Bullets ---------- */
+ul.bullets { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+ul.bullets > li {
+  font: 400 24px/1.45 var(--ra-font-deck-body);
+  color: var(--ra-ink);
+  padding-left: 28px;
+  position: relative;
+}
+ul.bullets > li::before {
+  content: ""; position: absolute; left: 4px; top: 14px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ra-indigo);
+}
+ul.bullets > li strong { font-weight: 600; color: var(--ra-ink); }
+
+/* ---------- Tables ---------- */
+.tbl { width: 100%; border-collapse: collapse; font: 400 22px/1.45 var(--ra-font-deck-body); }
+.tbl th { font: 600 22px/1.2 var(--ra-font-deck-ui); text-align: left; color: var(--ra-indigo);
+  text-transform: uppercase; letter-spacing: 0.12em; font-size: 18px; padding: 0 0 18px; border-bottom: 1px solid var(--ra-line); }
+.tbl td { padding: 24px 0; border-bottom: 1px solid var(--ra-line); vertical-align: top; }
+.tbl tr:last-child td { border-bottom: none; }
+
+/* ---------- Misc ---------- */
+.rule { height: 1px; background: var(--ra-line); border: 0; margin: 0; }
+.rule.on-dark { background: rgba(255,255,255,.12); }
