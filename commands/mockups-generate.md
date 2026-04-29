@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.4.8\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.4.7\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"mockups-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.8\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"mockups-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.7\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -85,7 +85,7 @@ argument-hint: <project-folder>
 ## Purpose
 
 Generate dashboard mockups based on requirements. Supports two modes:
-- **Dashboard-first mode** (`dashboard_first` projects): Generates pixel-accurate interactive Looker HTML mockups directly using the `looker-dashboard-mockup` skill, along with a visualization catalog CSV and dashboard specification markdown for downstream use
+- **Dashboard-first mode** (`dashboard_first` projects): Guides consultant through creating interactive Lovable mocks via `getmock.rittmananalytics.com`
 - **Standard mode** (all other project types): Generates ASCII wireframe mockups directly from requirements
 
 ## Usage
@@ -116,129 +116,119 @@ Also verify prerequisites:
 
 ## Dashboard-First Mode (for `dashboard_first` projects)
 
-### Step 1A: Read Requirements and Plan Dashboards
+### Step 1A: Read Requirements and Generate Lovable Brief
 
 **Process**:
 1. Read `.wire/<project-folder>/requirements/requirements_specification.md`
-2. Read any files in `.wire/<project-folder>/artifacts/` (SOW, supplementary materials)
+2. Read `.wire/<project-folder>/artifacts/` for any SOW or supplementary materials
 3. From the requirements, extract:
    - The primary use case or domain (e.g., "student retention analytics", "retail sales dashboard")
    - Key questions to be answered / jobs-to-be-done
    - Known data sources and their general nature
    - Target audience and their roles
-   - Suggested dashboard pages / tabs (group related questions)
 
-4. Plan the dashboard structure:
-   - Determine the number of dashboard pages/tabs (typically 2–5)
-   - For each page, identify: KPI tiles (up to 6), charts (type, axes, series), data table columns
-   - Identify filter dimensions that should appear as filter pills
-   - Invent realistic but anonymised sample data consistent with the domain
-
-### Step 2A: Read the Design System Reference
-
-**Before writing any HTML**, read the Looker design system reference:
-
-```
-wire/skills/looker-dashboard-mockup/references/design-system.md
-```
-
-This file contains all CSS custom properties, component class definitions, Chart.js configuration
-patterns, table markup patterns, and the full sidebar/header HTML structure.
-Do not guess at colours or class names — use the reference verbatim.
-
-### Step 3A: Generate HTML Mockup(s)
-
-For each dashboard page (or for a single tabbed dashboard), generate a **complete, self-contained HTML file**:
-
-**File output path**: `.wire/<project-folder>/design/mockups/<dashboard-slug>.html`
-
-The HTML must include:
-- Full Looker UI chrome: header with logo mark SVG, teal sidebar with nav sections, title bar with breadcrumb and action icons, filter pills bar, tab bar
-- KPI stat cards with coloured top bars (`--card-accent` cycling through `--chart-1` to `--chart-6`)
-- Chart.js-powered interactive charts (line, bar, doughnut, horizontal bar, area — as appropriate)
-- A data table with bottom Data/Results/SQL tabs and row-count indicator
-- Footer with dashboard name, disclaimer, "Prepared by Rittman Analytics · [date]"
-
-**HTML structure**:
-```html
-<head>
-  Google Sans font import
-  Chart.js CDN (4.4.1 from cdnjs)
-  <style> — full CSS from design-system.md
-</style>
-<body>
-  <header>
-  <div class="body">
-    <aside class="sidebar">
-    <main class="main">
-      <div class="titlebar">
-      <div class="filter-bar">
-      <div class="tab-bar">
-      <div class="content">
-        <!-- KPI grid, chart rows, table, bottom chart row -->
-  <footer>
-  <script>
-    Chart.defaults setup + one new Chart() per canvas
-    toggleSidebar(), setActive(), switchTab() helpers
-  </script>
-```
-
-**Layout rules**:
-- KPI grid: `grid-template-columns: repeat(N, 1fr)` where N = number of KPIs (max 5)
-- Two charts side by side: `grid-template-columns: 3fr 2fr`; three charts: `grid-template-columns: 2fr 1fr 1fr`
-- Canvas heights: line/area `200px`, doughnut `200px` (cutout `62%`, legend right/bottom), horizontal bar `180px`, vertical bar `200px`
-- Data realism: realistic domain values with K/M suffixes, trend arrows (↑↓→), RAG badge colours
-
-If the project has multiple distinct dashboard areas, generate one HTML file per dashboard, saving each as `<dashboard-slug>.html` in the mockups folder. For a single multi-tab dashboard, use one file with tab switching.
-
-Save each generated file to `.wire/<project-folder>/design/mockups/`.
-Create a brief `mockups_index.md` in the same folder listing each file with one-line descriptions.
-
-### Step 4A: Generate Visualization Catalog and Dashboard Spec
-
-Immediately after generating the HTML mockup(s), produce the two downstream artifact files that the visualization catalog command needs. Since you have complete knowledge of what you just generated, produce these without further input:
-
-**File 1**: `.wire/<project-folder>/design/dashboard_visualization_catalog.csv`
-
-```csv
-dashboard_page,visualization_name,chart_type,measures,dimensions
-[page],[viz name],[bar/line/doughnut/table/KPI/etc.],[measure1; measure2],[dim1; dim2]
-```
-
-One row per chart, KPI tile, and table in the mockup. For KPI tiles use `chart_type = KPI tile`.
-
-**File 2**: `.wire/<project-folder>/design/dashboard_spec.md`
+4. Generate a **Lovable session brief** summarizing what the mock dashboards should demonstrate. Save this to `.wire/<project-folder>/design/lovable_session_brief.md` with this structure:
 
 ```markdown
-# Dashboard Specification: [Dashboard Title]
+# Lovable Dashboard Mock Brief
 
-## Purpose
-[One paragraph describing what this dashboard is for and who uses it]
+## Use Case
+[One-line description of the use case]
 
-## Dashboard Pages
+## Key Questions to Answer
+- [Question 1 from requirements]
+- [Question 2]
+- ...
 
-### [Page / Tab Name]
-**Purpose**: [what this page shows]
+## Suggested Dashboard Pages
+Based on the requirements, the mock should include these dashboard pages:
+1. [Page name] — [what it shows]
+2. [Page name] — [what it shows]
+...
 
-#### Visualizations
-1. **[Visualization Name]** — [chart type]
-   - Measures: [list]
-   - Dimensions: [list]
-   - Description: [what it shows]
+## Data Domain Context
+[Brief description of the domain, data sources, and typical metrics for this vertical]
 
-[Repeat for each visualization on this page]
-
-## Filter Dimensions
-[List of filter pills and their dimensions]
-
-## Interaction Notes
-[Drill-downs, cross-filtering, tab switching behaviour]
+## Target Users
+- [Role 1]: needs [what]
+- [Role 2]: needs [what]
 ```
 
-This spec is intentionally free of colour, font, and Looker chrome details — it captures only the
-data visualization contents in enough detail for downstream LookML generation.
+### Step 2A: Present Lovable URL and Instructions
 
-### Step 5A: Update Status
+**Process**:
+1. URL-encode the use case description (spaces → `%20`, special chars encoded)
+2. Construct the URL: `https://getmock.rittmananalytics.com/?usecase=<url_encoded_use_case>`
+
+3. Present to the consultant:
+
+```
+## Dashboard Mock Creation — Lovable
+
+### Session Brief
+I've generated a session brief at:
+**File:** `design/lovable_session_brief.md`
+
+### Create the Mock Dashboard
+
+1. Open this URL in your browser:
+   **[getmock URL]**
+
+2. Select the **Rittman Analytics** workspace when prompted
+
+3. Lovable will create an interactive dashboard mock. Once it's ready:
+   - Review the dashboard and iterate with Lovable if needed
+   - **Publish** the dashboard using the Publish button (give it a descriptive subdomain)
+
+4. Once you're happy with the mock, run this prompt in the Lovable session:
+
+   ```
+   create two text files that you should link-to from the help (question-mark icon)
+   button in the top-right-hand side of the dashboard app:
+   - a csv file-format document called "dashboard_visualization_catalog.csv" that
+     details, one-row per dashboard data visualization, the dashboard page name,
+     data visualisation name, data visualization chart or table type and the measures
+     and dimensions that data visualization would require in-order to produce
+   - a specification document in markdown (.md) format called "dashboard_spec.md"
+     that details the purpose, design and contents of this dashboard in enough-detail
+     that an LLM agent separate to loveable.dev could use this spec to produce a
+     Looker LookML dashboard matching its design. The document should exclude any
+     details about colours, fonts, headers etc as these will automatically be added
+     by Looker, or data model details etc. Just focus on the dashboard data viz
+     contents, and make it so that the user doesn't have to login to loveable.dev
+     to see these docs
+   ```
+
+5. Download both files from Lovable and save them into the project:
+   - `design/dashboard_visualization_catalog.csv`
+   - `design/dashboard_spec.md`
+
+### When you're done, tell me:
+- The published Lovable URL (e.g., https://myproject-demo.lovable.app/)
+- Confirm the CSV and MD files are saved in the design/ folder
+```
+
+### Step 3A: Validate Files and Record URL
+
+**Process**:
+Wait for the consultant to respond. Then:
+
+1. Verify the files exist:
+   - Check `.wire/<project-folder>/design/dashboard_visualization_catalog.csv` exists and has content
+   - Check `.wire/<project-folder>/design/dashboard_spec.md` exists and has content
+
+2. If either file is missing, inform the consultant and re-prompt them to save the files
+
+3. Once both files are confirmed:
+   - Read the CSV to verify it has the expected columns (dashboard page, visualization name, chart type, measures, dimensions)
+   - Read the MD to verify it contains dashboard specification content
+
+4. Record the Lovable URL in status.md frontmatter:
+   ```yaml
+   lovable_url: https://[subdomain].lovable.app/
+   ```
+
+### Step 4A: Update Status
 
 **Process**:
 1. Read `status.md`
@@ -248,46 +238,43 @@ data visualization contents in enough detail for downstream LookML generation.
      generate: complete
      review: not_started
      generated_date: [today's date]
+     lovable_url: [the published URL]
    ```
 3. Write updated status.md
 
-### Step 6A: Sync to Jira (Optional)
+### Step 5A: Sync to Jira (Optional)
 
 Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Artifact: `mockups`
 - Action: `generate`
 - Status: the generate state just written to status.md
 
-### Step 7A: Sync to Document Store (Optional)
+### Step 6A: Sync to Document Store (Optional)
 
 If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
 - `artifact_id`: `mockups`
 - `artifact_name`: `Dashboard Mockups`
-- `file_path`: `.wire/releases/[release_folder]/design/mockups/mockups_index.md`
+- `file_path`: `.wire/releases/[release_folder]/design/mockups.md`
 - `project_id`: the release folder path (e.g. `releases/01-discovery`)
 
 If docstore sync fails, log the error and continue — do not block the generate command.
 
-### Step 8A: Confirm and Suggest Next Steps
+### Step 7A: Confirm and Suggest Next Steps
 
 **Output**:
 ```
-## Dashboard Mockups Generated Successfully
+## Dashboard Mocks Generated Successfully
 
-**Mockup file(s):** `design/mockups/<dashboard-slug>.html` (open in any browser)
-**Index:** `design/mockups/mockups_index.md`
+**Lovable URL:** [published URL]
+**Session Brief:** `design/lovable_session_brief.md`
 **Visualization Catalog:** `design/dashboard_visualization_catalog.csv`
 **Dashboard Spec:** `design/dashboard_spec.md`
 
-### Mockups Summary
-[3–5 bullet points: tile names, chart types, table columns per page]
-
 ### Next Steps
 
-1. **Open the HTML file(s)** in a browser to review — they are fully interactive
-2. **Share with stakeholders** for visual feedback (attach the HTML or open in a browser together)
-3. **Review mockups**: `/wire:mockups-review <project>`
-4. After review approval, **generate visualization catalog**: `/wire:viz_catalog-generate <project>`
+1. **Share the published mock** with stakeholders for feedback
+2. **Review mockups**: `/wire:mockups-review <project>`
+3. After review approval, **generate visualization catalog**: `/wire:viz_catalog-generate <project>`
 ```
 
 ---
@@ -384,25 +371,24 @@ Current status: [status]
 Complete requirements approval: /wire:requirements-review <project>
 ```
 
-### Design System Reference Not Found
+### Lovable Files Not Found (Dashboard-First Mode)
 
-If `wire/skills/looker-dashboard-mockup/references/design-system.md` cannot be read:
-- Proceed using built-in Looker design knowledge: teal sidebar (`hsl(195,55%,20%)`), white cards,
-  Google Sans font, Chart.js 4.4.1 from cdnjs
-- Note in output that the design system reference was unavailable
+If the consultant says they've saved the files but they can't be found:
+1. Check common alternative locations (project root, `design/` subdirectories)
+2. Ask the consultant to confirm the exact file paths
+3. Offer to help move files to the correct location
 
-### Large Number of Dashboard Pages
+### CSV Format Issues (Dashboard-First Mode)
 
-If requirements indicate more than 5 dashboard pages:
-- Consolidate related pages where possible
-- Generate the most important 3–4 pages in full
-- List the remaining pages in `mockups_index.md` as planned but not yet generated
-- Recommend iterating with `/wire:mockups-review` to decide which to prioritise
+If the CSV doesn't have expected columns:
+- Inform the consultant
+- Suggest re-running the Lovable prompt with the exact template
+- Offer to proceed anyway if the data is usable in a different format
 
 ## Output
 
 This command creates:
-- **Dashboard-first mode**: `design/mockups/<dashboard-slug>.html` (one or more interactive HTML files), `design/mockups/mockups_index.md`, `design/dashboard_visualization_catalog.csv`, `design/dashboard_spec.md`
+- **Dashboard-first mode**: `design/lovable_session_brief.md`, `design/dashboard_visualization_catalog.csv`, `design/dashboard_spec.md`
 - **Standard mode**: `design/mockups/mockup_*.md`, `design/mockups/mockups_index.md`
 - Updates `status.md`
 

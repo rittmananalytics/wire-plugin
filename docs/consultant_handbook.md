@@ -2,7 +2,7 @@
 
 **Rittman Analytics — Internal Use**
 
-**Version**: 3.4.8 | **Date**: April 2026
+**Version**: 3.4.7 | **Date**: April 2026
 
 ---
 
@@ -21,15 +21,16 @@
 11. [Running a Dashboard Extension Release](#11-running-a-dashboard-extension-release)
 12. [Running a Dashboard-First Rapid Development Release](#12-running-a-dashboard-first-rapid-development-release)
 13. [Running an Enablement Release](#13-running-an-enablement-release)
-14. [Worked Example: Barton Peveril Live Pastoral Analytics](#14-worked-example-barton-peveril-live-pastoral-analytics)
-15. [Wire Autopilot: Autonomous Execution](#15-wire-autopilot-autonomous-execution)
-16. [Wire Studio: Web-Based Interface](#16-wire-studio-web-based-interface)
-17. [Issue Tracking: Jira and Linear](#17-issue-tracking-jira-and-linear)
-18. [Document Store: Confluence and Notion](#18-document-store-confluence-and-notion)
-19. [Extending and Customising the Framework](#19-extending-and-customising-the-framework)
-20. [FAQ](#20-faq)
-21. [Troubleshooting](#21-troubleshooting)
-22. [Framework Management Commands](#22-framework-management-commands)
+14. [Running an Agentic Commerce Release](#14-running-an-agentic-commerce-release)
+15. [Worked Example: Barton Peveril Live Pastoral Analytics](#15-worked-example-barton-peveril-live-pastoral-analytics)
+16. [Wire Autopilot: Autonomous Execution](#16-wire-autopilot-autonomous-execution)
+17. [Wire Studio: Web-Based Interface](#17-wire-studio-web-based-interface)
+18. [Issue Tracking: Jira and Linear](#18-issue-tracking-jira-and-linear)
+19. [Document Store: Confluence and Notion](#19-document-store-confluence-and-notion)
+20. [Extending and Customising the Framework](#20-extending-and-customising-the-framework)
+21. [FAQ](#21-faq)
+22. [Troubleshooting](#22-troubleshooting)
+23. [Framework Management Commands](#23-framework-management-commands)
 
 ---
 
@@ -235,6 +236,7 @@ The framework encodes delivery methodology as seven release types, each defining
 | **dbt Development** | Analytics engineering on existing infrastructure | 1 week | requirements, data_model, dbt, data_quality |
 | **Dashboard Extension** | New dashboards on an existing semantic layer | 3–5 days | requirements, mockups, dashboards, uat |
 | **Enablement** | Training and documentation for an existing platform | 2–3 days | training, documentation |
+| **Agentic Commerce** | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
 
 ### Choosing the right release type
 
@@ -245,6 +247,7 @@ The framework encodes delivery methodology as seven release types, each defining
 - **Data is already in the warehouse; need to build the transformation layer**: **dbt Development**
 - **Semantic layer already has the data; adding new dashboards**: **Dashboard Extension**
 - **Platform exists; engaged to train and document it**: **Enablement**
+- **Building an AI-powered ecommerce storefront**: **Agentic Commerce**
 
 **When to start with Discovery**: Any engagement where the scope is not already well-defined in a signed SOW, where the client isn't sure what they need built, or where the team wants to formally validate the problem and shape the solution before committing to a delivery estimate. Discovery produces a release brief and sprint plan — the formal inputs to a delivery release.
 
@@ -468,7 +471,7 @@ The `dashboard_first` project type follows an alternative chain where interactiv
 graph LR
     SOW["SOW PDF"]
     REQ["Requirements"]
-    MOCK["Dashboard Mocks<br/><i>HTML interactive</i>"]
+    MOCK["Dashboard Mocks<br/><i>Lovable interactive</i>"]
     VIZ["Viz Catalog<br/><i>Measures + dimensions</i>"]
     DM["Data Model"]
     SEED["Seed Data<br/><i>CSV files</i>"]
@@ -1251,7 +1254,7 @@ Use this when you want early stakeholder feedback via interactive dashboard mock
 flowchart TB
     subgraph s1["Design"]
         REQ["requirements<br/>generate / validate / review"]
-        MK["mockups - HTML interactive<br/>generate / review"]
+        MK["mockups - Lovable-guided<br/>generate / review"]
         VIZ["viz_catalog - generate only"]
         DM["data_model<br/>generate / validate / review"]
     end
@@ -1289,7 +1292,7 @@ flowchart TB
 /wire:requirements-review <release-folder>
 
 # Phase 2: Interactive Dashboard Mocks (Day 1–2)
-/wire:mockups-generate <release-folder>                 # HTML interactive mockups
+/wire:mockups-generate <release-folder>                 # Lovable-guided workflow
 /wire:mockups-review <release-folder>
 
 # Phase 3: Visualization Catalog (Day 2)
@@ -1354,31 +1357,33 @@ flowchart TB
 
 Same as Full Platform — ensure `engagement/sow.md` is present, run requirements generate/validate/review. The key difference is that requirements approval unblocks **mockups** (not conceptual model).
 
-### Phase 2: Interactive Dashboard Mockups (Day 1–2)
+### Phase 2: Interactive Dashboard Mocks (Day 1–2)
 
-This is the key differentiator. Instead of generating ASCII wireframes, the mockups command for `dashboard_first` projects generates **pixel-accurate, interactive HTML Looker mockups** directly inside Claude Code — no external tools required.
+This is the key differentiator. Instead of generating ASCII wireframes, the mockups command for `dashboard_first` projects guides you through creating interactive dashboard mocks using [Lovable](https://lovable.dev).
 
 ```
 /wire:mockups-generate <release-folder>
 ```
 
 The framework:
-1. Reads the approved requirements and plans the dashboard structure — pages, KPI tiles, charts, tables, and filters
-2. Reads the Looker design system reference (teal sidebar, Google Sans, Chart.js charts) from the bundled skill
-3. Generates one or more **self-contained HTML files** that faithfully reproduce the Looker UI, with interactive Chart.js charts and filter controls
-4. Simultaneously produces `design/dashboard_visualization_catalog.csv` and `design/dashboard_spec.md` — the downstream inputs for the visualization catalog command
-5. All files are saved to `design/mockups/` and ready immediately
+1. Reads the approved requirements and generates a **session brief** — a summary of the use case, key questions, and suggested dashboard pages
+2. URL-encodes the use case and presents a ready-to-click `getmock.rittmananalytics.com` URL
+3. You open the URL in your browser and Lovable creates an interactive dashboard mock
+4. Iterate with stakeholders until they're happy with the layout and content
+5. Run the Lovable prompt (provided by the framework) to generate two files:
+   - A **CSV visualization catalog** (one row per chart: dashboard page, visualization name, chart type, measures, dimensions)
+   - A **markdown dashboard specification**
+6. Save both files into the release's `design/` folder
 
 ```
 /wire:mockups-review <release-folder>
 ```
 
-Review the HTML mockups with end users and stakeholders. Open the HTML files in a browser — they are fully interactive. Attach them to emails or share via a file share for async feedback.
+Review the Lovable mocks with end users and stakeholders. Share the published Lovable URL (e.g. `https://project-demo.lovable.app/`) for async feedback.
 
 **Tips**:
-- Open the HTML file in a browser to experience the full interactive dashboard before sharing with stakeholders — the charts respond to hover and the tabs switch.
-- Iterate on the mockups by asking Claude to modify specific tiles, charts, or data before running `viz_catalog:generate`. Changes after the catalog is generated require regenerating downstream artifacts.
-- For dashboard-first engagements where the data domain is complex, share the mockup with the client early — even before requirements are fully approved — to validate the direction.
+- Share the Lovable mock URL with stakeholders as early as possible — even before requirements are formally approved if the SOW is clear enough. Early visual feedback is the whole point.
+- Iterate on the mocks in Lovable before running `viz_catalog:generate`. Changes after the catalog is generated require regenerating downstream artifacts.
 
 ### Phase 3: Visualization Catalog (Day 2)
 
@@ -1386,7 +1391,7 @@ Review the HTML mockups with end users and stakeholders. Open the HTML files in 
 /wire:viz_catalog-generate <release-folder>
 ```
 
-This is a **generate-only** artifact (no separate validate or review gates). The command parses the CSV and markdown generated by `/wire:mockups-generate` into a structured catalog: a dashboard inventory, measures index, dimensions index, and requirements coverage analysis. This answers the question: exactly which measures and dimensions must the data model provide?
+This is a **generate-only** artifact (no separate validate or review gates). The command parses the CSV and markdown from Lovable into a structured catalog: a dashboard inventory, measures index, dimensions index, and requirements coverage analysis. This answers the question: exactly which measures and dimensions must the data model provide?
 
 ### Phase 4: Data Model (Day 2–3)
 
@@ -1438,7 +1443,7 @@ The transition from `ref('customers_seed')` to `source('salesforce', 'accounts')
 
 ### Tips for dashboard-first engagements
 
-- **Start mocking early**: You can run `/wire:mockups-generate` during the SOW preparation phase or even before project kick-off. The earlier stakeholders see something visual, the better the feedback.
+- **Start mocking early**: You can begin Lovable mocks during the SOW preparation phase or even before project kick-off. The earlier stakeholders see something visual, the better the feedback.
 - **Seed data quality matters**: Realistic seed data makes the prototype convincing. The framework generates domain-appropriate values, but review the seeds for realism before showing to stakeholders.
 - **Don't delay the refactor**: Once client data is available, run the data refactor promptly. The longer you wait, the more the seed-based version diverges from what the client expects.
 - **The prototype is disposable**: The seed-based dbt project exists to validate the design. The real value is the iteration it enables, not the seed data itself.
@@ -1477,7 +1482,113 @@ Use this when an existing platform needs training and documentation — either a
 
 ---
 
-## 14. Worked Example: Barton Peveril Live Pastoral Analytics
+## 14. Running an Agentic Commerce Release
+
+The Agentic Commerce release type (`project_type: agentic_commerce`) is for engagements where the deliverable is an AI-powered ecommerce storefront — not a data platform. It combines Lovable (rapid frontend scaffolding), Shopify (product catalog and cart), GitHub (code hosting), Supabase (backend state), Google Cloud (AI/search), and optionally Stripe (payments via the UCP merchant server).
+
+**In-scope features**: `ac_storefront`, `ac_semantic_search`, `ac_conversational_assistant`, `ac_virtual_tryon`, `ac_visual_similarity`, `ac_llm_tools`, `ac_personalisation`, `ac_ucp_server`, `ac_demo_orchestration`
+
+### Prerequisites before starting
+
+Ensure the following accounts and access tokens are ready before running `/wire:new`:
+
+| Service | What you need | Used by |
+|---------|--------------|---------|
+| Lovable | Account + new project | `ac_storefront` and all AI features via AI Gateway |
+| Shopify | Store + Storefront API access token (Headless channel) | `ac_storefront`, `ac_personalisation` |
+| GitHub | Account + Lovable GitHub App authorised | `ac_storefront` (code sync) |
+| Supabase | Project enabled in Lovable Cloud | `ac_storefront`, `ac_personalisation` |
+| GCP | Project with Vertex AI Retail API + BigQuery APIs enabled + service account key | `ac_semantic_search`, `ac_conversational_assistant`, `ac_personalisation` |
+| Stripe | Account + secret key | `ac_ucp_server` |
+
+See `agentic_commerce_release/00a-prerequisites-and-worked-examples.md` for a full step-by-step setup guide.
+
+### Workflow
+
+```
+/wire:new                                          # release_type: agentic_commerce
+/wire:session:start <release-folder>
+
+# Phase 1 — Base storefront (prerequisite for all other features)
+/wire:ac_storefront-generate <release-folder>      # Guided Lovable prompt sequence + GitHub sync
+/wire:ac_storefront-validate <release-folder>      # Shopify products loading, cart working, Supabase connected
+/wire:ac_storefront-review <release-folder>        # Stakeholder sign-off before agentic features begin
+
+# Phase 2 — Agentic features (can be developed in parallel after storefront approved)
+/wire:ac_semantic_search-generate <release-folder>
+/wire:ac_semantic_search-validate <release-folder>
+/wire:ac_semantic_search-review <release-folder>
+
+/wire:ac_conversational_assistant-generate <release-folder>
+/wire:ac_conversational_assistant-validate <release-folder>
+/wire:ac_conversational_assistant-review <release-folder>
+
+/wire:ac_virtual_tryon-generate <release-folder>
+/wire:ac_virtual_tryon-validate <release-folder>
+/wire:ac_virtual_tryon-review <release-folder>
+
+/wire:ac_visual_similarity-generate <release-folder>
+/wire:ac_visual_similarity-validate <release-folder>
+/wire:ac_visual_similarity-review <release-folder>
+
+/wire:ac_llm_tools-generate <release-folder>
+/wire:ac_llm_tools-validate <release-folder>
+/wire:ac_llm_tools-review <release-folder>
+
+/wire:ac_personalisation-generate <release-folder>
+/wire:ac_personalisation-validate <release-folder>
+/wire:ac_personalisation-review <release-folder>
+
+/wire:ac_ucp_server-generate <release-folder>
+/wire:ac_ucp_server-validate <release-folder>
+/wire:ac_ucp_server-review <release-folder>
+
+/wire:ac_demo_orchestration-generate <release-folder>
+/wire:ac_demo_orchestration-validate <release-folder>
+/wire:ac_demo_orchestration-review <release-folder>
+
+/wire:archive <release-folder>
+/wire:session:end <release-folder>
+```
+
+### What each generate command does
+
+**`/wire:ac_storefront-generate`** — walks through a 5-phase Lovable prompt sequence: brand foundation → product grid layout → Shopify Storefront API wiring → cart and checkout flow → GitHub sync. Each phase presents the exact Lovable prompt to paste, then waits for confirmation before proceeding.
+
+**`/wire:ac_semantic_search-generate`** — implements AI-powered product search. By default uses the Google Cloud Retail API (Vertex AI for Retail) for semantic vector search. Presents the implementation prompts for Lovable/Claude Code, sets up the search index sync from Shopify to Vertex AI, and wires the search UI component to the API.
+
+**`/wire:ac_conversational_assistant-generate`** — builds a multi-turn shopping assistant using Google Cloud Retail API Conversational Search. Implements intent detection (browse, filter, compare, checkout), maintains session state, and integrates with the cart.
+
+**`/wire:ac_virtual_tryon-generate`** — adds a "Try it on" button to product pages. Photo upload modal → Lovable AI Gateway (Gemini Flash) → composite image generation → display result. Handles retries, timeouts, and graceful degradation.
+
+**`/wire:ac_visual_similarity-generate`** — adds "Find similar" on product cards. Sends the product image to Gemini multimodal, generates embeddings, and returns visually similar products from the catalog.
+
+**`/wire:ac_llm_tools-generate`** — implements Gemini 2.5 Flash with function calling. Defines tool schemas for `search_products`, `get_product_details`, `add_to_cart`, `get_recommendations`. The assistant decides autonomously when to call tools.
+
+**`/wire:ac_personalisation-generate`** — sets up anonymous user profiles in Supabase (UUID-based, no PII), event tracking (views, searches, purchases), and dynamic UX elements (returning-user greeting, previously-viewed products, personalised search boost).
+
+**`/wire:ac_ucp_server-generate`** — implements a Universal Commerce Protocol merchant server: `/discover` endpoint for capability advertisement, full checkout lifecycle (`/checkout/start` → `/checkout/update` → `/checkout/confirm`), Stripe payment intent integration, idempotency, and CORS configuration.
+
+**`/wire:ac_demo_orchestration-generate`** — adds a floating demo control panel with a 5-phase state machine (Introduction → Product Discovery → AI Shopping → Personalisation → Checkout). Each phase activates the relevant AI feature, displays contextual callouts, and advances on timer or manual trigger.
+
+### Dependency order
+
+`ac_storefront` must reach **Approved** status before any other `ac_*` feature can begin — all features build on the GitHub-synced codebase produced by the storefront command. After that:
+
+- Features can be developed in parallel
+- `ac_personalisation` enriches `ac_conversational_assistant` and `ac_semantic_search` when completed (adds personalised ranking and search boost)
+- `ac_demo_orchestration` should be the final feature — it wraps all others into a cohesive demo flow
+
+### Tips
+
+- Run the full Lovable prompt sequence from `ac_storefront-generate` **before** making any code edits in GitHub — the Lovable sync is one-directional during the initial build phase
+- After GitHub sync is complete, all subsequent development happens in the GitHub repo via Claude Code — do not return to the Lovable UI for feature development
+- Keep the Shopify Storefront API token out of the frontend bundle — it should be passed via Supabase Edge Functions or a server-side proxy
+- Use `VITE_` prefix only for environment variables that are safe to expose to the browser
+
+---
+
+## 15. Worked Example: Barton Peveril Live Pastoral Analytics
 
 This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step. This engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined), so it starts with the full_platform delivery release.
 
@@ -1751,7 +1862,7 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 
 ---
 
-## 15. Wire Autopilot: Autonomous Execution
+## 16. Wire Autopilot: Autonomous Execution
 
 Wire Autopilot takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
 
@@ -2210,7 +2321,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ---
 
-## 16. Wire Studio: Web-Based Interface
+## 17. Wire Studio: Web-Based Interface
 
 > **Status: Active** — Wire Studio v3.4.0 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
@@ -2685,7 +2796,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 17. Issue Tracking: Jira and Linear
+## 18. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -2762,7 +2873,7 @@ linear:
 
 ---
 
-## 18. Document Store: Confluence and Notion
+## 19. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -2845,7 +2956,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 19. Extending and Customising the Framework
+## 20. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -3003,7 +3114,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 20. FAQ
+## 21. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -3119,9 +3230,9 @@ The `data_refactor:generate` command handles this by comparing the seed schema a
 
 ---
 
-**Q: Do I need any external tools for dashboard-first projects?**
+**Q: Do I need a Lovable account for dashboard-first projects?**
 
-No. The mockups command for `dashboard_first` releases generates interactive HTML Looker mockups directly inside Claude Code — no external accounts, browser extensions, or subscriptions required. The HTML files are self-contained and can be opened in any browser or attached to emails.
+Yes. The mockups command for `dashboard_first` releases uses Lovable (via `getmock.rittmananalytics.com`) to create interactive dashboard mocks. You need to be a member of the RA Lovable account. Ask to be invited if you're not already a member. If Lovable is unavailable, you can use the standard mockups workflow (ASCII wireframes) by selecting a different release type.
 
 ---
 
@@ -3176,7 +3287,7 @@ Public repos can be cloned without a token.
 
 **Q: How does Autopilot handle dashboard-first mockups?**
 
-For dashboard-first projects, Autopilot generates interactive HTML Looker mockups autonomously as part of its standard execution — no manual intervention required. The mockup generation step is fully automated and produces both the HTML files and the visualization catalog inputs in one pass.
+For dashboard-first projects, Autopilot offers two modes during its clarifying questions: (1) wireframe mode (default), which generates ASCII wireframes autonomously, or (2) pause mode, which pauses at the mockup stage for you to complete a Lovable session manually, then resumes. Wireframe mode is adequate for driving the downstream data model and dbt generation.
 
 ---
 
@@ -3260,7 +3371,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 21. Troubleshooting
+## 22. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -3307,7 +3418,7 @@ Run `/wire:session:start <release-folder>`. The framework reads `status.md`, sho
 
 ---
 
-## 22. Framework Management Commands
+## 23. Framework Management Commands
 
 v3.4.6 adds two commands for managing the Wire Framework itself, rather than delivery work.
 

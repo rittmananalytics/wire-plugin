@@ -61,6 +61,52 @@ All commands are available after installing and restarting Claude Code. Commands
 ... (and -validate/-review for each)
 ```
 
+### Agentic Commerce commands
+
+Commands for `project_type: agentic_commerce` releases — building AI-powered ecommerce storefronts via Lovable and GitHub.
+
+```
+/wire:ac_storefront-generate <release>              — Build base storefront via Lovable + GitHub sync
+/wire:ac_storefront-validate <release>              — Pre-flight checklist verification (Shopify, cart, Supabase)
+/wire:ac_storefront-review <release>                — Stakeholder sign-off on base storefront
+
+/wire:ac_semantic_search-generate <release>         — Implement AI semantic search (Vertex AI / Algolia / pgvector)
+/wire:ac_semantic_search-validate <release>         — Functional, performance, and resilience tests
+/wire:ac_semantic_search-review <release>           — Demo and stakeholder approval
+
+/wire:ac_conversational_assistant-generate <release>  — Build multi-turn shopping assistant chat interface
+/wire:ac_conversational_assistant-validate <release>  — Conversation flow, intent detection, cart integration tests
+/wire:ac_conversational_assistant-review <release>    — Demo and stakeholder approval
+
+/wire:ac_virtual_tryon-generate <release>           — Add AI virtual try-on with photo upload and image generation
+/wire:ac_virtual_tryon-validate <release>           — Try-on quality, timeout, retry, and error handling tests
+/wire:ac_virtual_tryon-review <release>             — Demo and stakeholder approval
+
+/wire:ac_visual_similarity-generate <release>       — Add "Find similar" product discovery via multimodal AI
+/wire:ac_visual_similarity-validate <release>       — Similarity relevance, performance, and integration tests
+/wire:ac_visual_similarity-review <release>         — Demo and stakeholder approval
+
+/wire:ac_llm_tools-generate <release>               — Implement LLM with autonomous tool calling (function calling)
+/wire:ac_llm_tools-validate <release>               — Tool call accuracy, reasoning quality, and resilience tests
+/wire:ac_llm_tools-review <release>                 — Demo and stakeholder approval
+
+/wire:ac_personalisation-generate <release>         — Build personalisation engine: profiles, event tracking, dynamic UX
+/wire:ac_personalisation-validate <release>         — Profile storage, event logging, greeting, privacy (no PII) tests
+/wire:ac_personalisation-review <release>           — Demo and stakeholder approval
+
+/wire:ac_ucp_server-generate <release>              — Implement Universal Commerce Protocol merchant server
+/wire:ac_ucp_server-validate <release>              — Discovery, checkout lifecycle, Stripe, idempotency, security tests
+/wire:ac_ucp_server-review <release>                — Demo and stakeholder approval
+
+/wire:ac_demo_orchestration-generate <release>      — Add automated demo flows with phase state machine
+/wire:ac_demo_orchestration-validate <release>      — Phase progression, timer guards, and persona tests
+/wire:ac_demo_orchestration-review <release>        — Live demo run-through and stakeholder approval
+```
+
+**Agentic Commerce spec location**: `wire/specs/agentic_commerce/`
+
+**Dependency order**: `ac_storefront` must be approved before all other `ac_*` features. Features can otherwise be developed in parallel, though `ac_personalisation` enriches `ac_conversational_assistant` and `ac_semantic_search` when completed.
+
 ### Migration
 
 ```
@@ -188,7 +234,6 @@ This plugin includes contextual skills that activate automatically when working 
 - **dbt Development** (`skills/dbt-development/SKILL.md`): Activates when working with dbt models. Provides naming conventions, SQL style rules, testing patterns, and multi-source framework support.
 - **LookML Content Authoring** (`skills/lookml-content-authoring/SKILL.md`): Activates when creating or modifying LookML views, explores, and dashboards.
 - **LookML Content Authoring (MCP)** (`skills/lookml-content-authoring (local and mcp-server)/SKILL.md`): LookML authoring with Looker MCP server integration for live schema validation.
-- **Looker Dashboard Mockup** (`skills/looker-dashboard-mockup/SKILL.md`): Activates when the user asks to mock up, prototype, or visualise a Looker dashboard. Generates pixel-accurate, interactive HTML mockups with full Looker UI chrome (teal sidebar, filter pills, KPI tiles), Chart.js charts, and data tables — no external tools required. Used automatically by `/wire:mockups-generate` for dashboard-first projects.
 
 - **Dagster** (`skills/dagster/SKILL.md`): Activates when creating or modifying Dagster assets, schedules, sensors, or components. Covers the assets-first pattern, dagster-dbt integration, CLI usage, and Wire-specific group naming conventions.
 - **Dignified Python** (`skills/dignified-python/SKILL.md`): Activates when writing or reviewing Python code. Enforces modern type syntax (3.10+ unions), LBYL exception handling, pathlib for file operations, Click CLI patterns, and clean module design.
