@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.4.7\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.4.9\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"release-brief-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.7\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"release-brief-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.9\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -111,6 +111,27 @@ Based on the approved pitch, what delivery releases will this discovery release 
 List them as: [name]: [type]
 ```
 
+### Step 2b: Establish Primary Analytical Focus and Goal Hierarchy
+
+Before generating the brief, ask explicitly:
+
+```
+The SOW/pitch lists the following engagement goals:
+[list goals extracted from pitch or SOW]
+
+1. Which of these is the PRIMARY use case — the single analytical domain that all discovery work is in service of?
+   (e.g. "Customer acquisition funnel", "Merchant 360", "Operational productivity reporting")
+
+2. For each remaining goal, assign a priority:
+   - Primary: must achieve in this engagement
+   - Secondary: assess and recommend only — do not design or build
+   - Future: out of scope this engagement, note and defer
+```
+
+Record the answers as:
+- `primary_analytical_focus`: [the ONE named use case]
+- `goal_hierarchy`: a table of goals with assigned priorities
+
 ### Step 3: Generate the Release Brief
 
 **Output location**: `.wire/releases/$ARGUMENTS/planning/release_brief.md`
@@ -125,6 +146,24 @@ List them as: [name]: [type]
 **Status**: Draft
 
 ---
+
+## 0. Primary Analytical Focus
+
+**Priority use case**: [ONE named use case agreed with the client at kick-off]
+
+All discovery work — stakeholder interviews, entity model, data source assessment, solution definition — is conducted in service of this use case. Other analytical domains surfaced during discovery will be noted for future phases but will not be scoped or designed during this release.
+
+**Goal hierarchy**:
+
+| Goal | Priority | What this engagement will do |
+|------|----------|------------------------------|
+| [Goal 1] | Primary | Design and deliver |
+| [Goal 2] | Primary | Design and deliver |
+| [Goal 3] | Secondary | Assess and recommend — do not design solutions |
+| [Goal 4] | Secondary | Assess and recommend — do not design solutions |
+| [Goal 5] | Future | Note and defer to a future release |
+
+**What this discovery will not produce**: A comprehensive data strategy, a full analytics operating model, or remediation plans for organisational or governance issues that fall outside the analytical delivery function. Where root causes are found that go beyond this scope, they will be documented and handed back to the client.
 
 ## 1. Executive Summary
 
@@ -223,6 +262,8 @@ release_brief:
   review: "not_started"
   file: "planning/release_brief.md"
   generated_date: [today's date]
+primary_analytical_focus: "[value captured in Step 2b]"
+goal_hierarchy_captured: true
 ```
 
 ### Step 5: Sync to Document Store (Optional)

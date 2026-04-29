@@ -234,6 +234,7 @@ This plugin includes contextual skills that activate automatically when working 
 - **dbt Development** (`skills/dbt-development/SKILL.md`): Activates when working with dbt models. Provides naming conventions, SQL style rules, testing patterns, and multi-source framework support.
 - **LookML Content Authoring** (`skills/lookml-content-authoring/SKILL.md`): Activates when creating or modifying LookML views, explores, and dashboards.
 - **LookML Content Authoring (MCP)** (`skills/lookml-content-authoring (local and mcp-server)/SKILL.md`): LookML authoring with Looker MCP server integration for live schema validation.
+- **Looker Dashboard Mockup** (`skills/looker-dashboard-mockup/SKILL.md`): Activates when the user asks to mock up, prototype, or visualise a Looker dashboard. Generates pixel-accurate, interactive HTML mockups with full Looker UI chrome (teal sidebar, filter pills, KPI tiles), Chart.js charts, and data tables — no external tools required. Used automatically by `/wire:mockups-generate` for dashboard-first projects.
 
 - **Dagster** (`skills/dagster/SKILL.md`): Activates when creating or modifying Dagster assets, schedules, sensors, or components. Covers the assets-first pattern, dagster-dbt integration, CLI usage, and Wire-specific group naming conventions.
 - **Dignified Python** (`skills/dignified-python/SKILL.md`): Activates when writing or reviewing Python code. Enforces modern type syntax (3.10+ unions), LBYL exception handling, pathlib for file operations, Click CLI patterns, and clean module design.

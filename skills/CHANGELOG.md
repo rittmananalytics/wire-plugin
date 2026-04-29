@@ -4,6 +4,19 @@ All notable changes to the Rittman Analytics Claude Skills repository will be do
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.4.8] — April 2026
+
+### Added
+
+**Looker Dashboard Mockup** (`looker-dashboard-mockup/SKILL.md`)
+- Generates pixel-accurate, interactive Looker dashboard HTML mockups from a plain-language description
+- Activates on any request to mock up, prototype, visualise, or design a Looker dashboard
+- Reads a bundled design system reference (`references/design-system.md`) for exact CSS properties, component classes, and Chart.js patterns
+- Produces a single self-contained HTML file with full Looker UI chrome: teal sidebar, header, filter pills, tab bar, KPI stat cards, Chart.js charts, data tables, and footer
+- Used by `/wire:mockups-generate` for dashboard-first projects; also available standalone for ad-hoc dashboard prototyping
+
+---
+
 ## [3.4.0] — March 2026
 
 ### Added (Wire Framework v3.4.0)
