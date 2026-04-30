@@ -199,6 +199,7 @@ Build the complete JSON object. Validate before writing:
 - `slide14Categories` is exactly 4 entries
 - Count fields do not exceed array length
 - `accentColor` matches `#RRGGBB`
+- `titleVariant` is always `"pitch"` — this is the value that enables the full-bleed photo backdrop on the title slide. Do not use `"photo"` or any other value; the deck JS only recognises `"pitch"` as the photo variant.
 - `slide10Direction` is `"LR"` or `"TB"` (or `""` if slide10 is empty)
 - The full object parses as valid JSON (no trailing commas, no comments)
 - **String values must not contain literal newlines** — multi-line bullet lists (e.g. `slide4LeftCache`, `slide4RightCache`) must have newlines escaped as `\n`. Literal newlines inside double-quoted JS strings cause a syntax error that silently prevents the entire deck from rendering. Serialise using `json.dumps()` or equivalent, never by hand-writing multi-line strings.
