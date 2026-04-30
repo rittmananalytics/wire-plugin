@@ -223,14 +223,14 @@ Replace the content between (and including) the delimiters with the new JSON. Wr
 
 Do not modify the template file at `wire/decks/kickoff/Project Kickoff.html`.
 
-**Copy support files into a `kickoff/` subdirectory** — the deck HTML references CSS, JS, fonts, and assets using relative paths. Copy all support files into a `kickoff/` subdirectory next to the output HTML, then rewrite the four external references in the output HTML to point into that subdirectory. This keeps the artifacts directory clean.
+**MANDATORY: Copy support files into a `kickoff/` subdirectory.** The deck HTML references CSS, JS, fonts, and assets using relative paths. Without these files next to the HTML, the deck will render with no styling, no fonts, and no images. **You must run the following bash commands immediately after writing the HTML file — do not skip this step, do not ask the user to do it.**
 
+Substitute the actual paths for `TEMPLATE_DIR` and `OUTPUT_DIR`:
+- `TEMPLATE_DIR` = the directory where the template was found (Step 1): `wire/decks/kickoff/` (Wire source repo) or `decks/kickoff/` (plugin install)
+- `OUTPUT_DIR` = the directory containing `kickoff-deck.html`
+
+**Run these bash commands now:**
 ```bash
-# TEMPLATE_DIR is wherever the template was found (step 1):
-#   wire/decks/kickoff/   (Wire source repo)
-#   decks/kickoff/         (plugin install)
-# OUTPUT_DIR is the directory containing kickoff-deck.html
-
 mkdir -p "$OUTPUT_DIR/kickoff"
 cp "$TEMPLATE_DIR/colors_and_type.css"  "$OUTPUT_DIR/kickoff/"
 cp "$TEMPLATE_DIR/deck.css"             "$OUTPUT_DIR/kickoff/"
@@ -240,7 +240,7 @@ cp -r "$TEMPLATE_DIR/fonts"             "$OUTPUT_DIR/kickoff/"
 cp -r "$TEMPLATE_DIR/assets"            "$OUTPUT_DIR/kickoff/"
 ```
 
-After copying, rewrite all external file references in the output HTML. There are two patterns to replace — do both as simple string substitutions across the entire file:
+After running those commands, rewrite all external file references in the output HTML. These substitutions are also mandatory — the HTML file still has the original relative paths from the template. Do all as simple string substitutions across the entire file:
 
 | Find | Replace | Covers |
 |------|---------|--------|
@@ -267,7 +267,11 @@ artifacts/
         └── ...
 ```
 
-After copying, confirm `artifacts/kickoff/colors_and_type.css`, `artifacts/kickoff/deck-stage.js`, and `artifacts/kickoff/fonts/` all exist before reporting success. If any file is missing, warn the consultant and list what needs to be copied manually.
+**Verify the copy succeeded** by running:
+```bash
+ls "$OUTPUT_DIR/kickoff/colors_and_type.css" "$OUTPUT_DIR/kickoff/deck-stage.js" "$OUTPUT_DIR/kickoff/fonts/" "$OUTPUT_DIR/kickoff/assets/"
+```
+If any path is missing, copy it now before proceeding. Do not report success until all four exist.
 
 ### Step 7: Update status
 
