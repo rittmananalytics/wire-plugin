@@ -201,6 +201,7 @@ Build the complete JSON object. Validate before writing:
 - `accentColor` matches `#RRGGBB`
 - `slide10Direction` is `"LR"` or `"TB"` (or `""` if slide10 is empty)
 - The full object parses as valid JSON (no trailing commas, no comments)
+- **String values must not contain literal newlines** — multi-line bullet lists (e.g. `slide4LeftCache`, `slide4RightCache`) must have newlines escaped as `\n`. Literal newlines inside double-quoted JS strings cause a syntax error that silently prevents the entire deck from rendering. Serialise using `json.dumps()` or equivalent, never by hand-writing multi-line strings.
 
 ### Step 6: Write the output file
 
