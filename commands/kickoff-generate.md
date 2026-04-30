@@ -140,7 +140,7 @@ Read `.wire/engagement/context.md`. Extract:
   - any delivery type (`full_platform`, `pipeline_only`, `dbt_development`, `dashboard_first`, `dashboard_extension`, `agentic_commerce`) → `engagementType: "Project"`
 - `team` or `presenters` — list of RA team members and roles presenting
 - `start_date` or `engagement_date` — used as `engagementDate` (ISO format)
-- `accent_color` — if present, use it; otherwise default to `#4F60FF` (RA indigo)
+- `accent_color` — **ignore this field**. Always set `accentColor` to `#4F60FF` (RA indigo). The deck's `accentColor` overrides `--ra-indigo` across the entire design system (eyebrows, bullet dots, table headers, cards). Using a client's brand colour here replaces the RA design system; the RA indigo must be preserved.
 - Any SoW file path referenced under `sow:` or `references:`
 
 ### Step 3: Read the Statement of Work
@@ -198,7 +198,7 @@ Build the complete JSON object. Validate before writing:
 - `slide12W1Items` and `slide12W2Items` are exactly 6 entries each
 - `slide14Categories` is exactly 4 entries
 - Count fields do not exceed array length
-- `accentColor` matches `#RRGGBB`
+- `accentColor` is always `"#4F60FF"` (RA indigo). Never substitute a client brand colour here.
 - `vignetteStrength` is an **integer 0–100** (the range slider unit). Default to `74`. Do not write a float like `0.5` — the JS divides by 100 at render time, so `0.5` renders as 0.5% opacity (invisible vignette).
 - `titleVariant` is always `"pitch"` — this is the value that enables the full-bleed photo backdrop on the title slide. Do not use `"photo"` or any other value; the deck JS only recognises `"pitch"` as the photo variant.
 - `slide10Direction` is `"LR"` or `"TB"` (or `""` if slide10 is empty)
