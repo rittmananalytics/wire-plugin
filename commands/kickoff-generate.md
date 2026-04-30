@@ -130,6 +130,17 @@ Run immediately after `/wire:new` — no discovery or delivery artifacts are req
 
 3. If `<release-folder>` was supplied, confirm the folder exists at `.wire/releases/<release-folder>/`. If not: warn and continue without release enrichment.
 
+4. **Ask the user about a title page image** — before reading any content, ask:
+   > "Do you have an image you'd like to use as the title slide background? If so, please provide the file path (e.g. `/Users/you/photos/client-office.jpg`). Press Enter to skip and use the default RA background."
+
+   If the user provides a path:
+   - Verify the file exists.
+   - Determine the output directory for the kickoff deck (see Step 6 for paths).
+   - Copy the image into `$OUTPUT_DIR/kickoff/assets/` with a normalised filename: `title-photo.<original-extension>`.
+   - Set `"titlePhoto": "kickoff/assets/title-photo.<ext>"` in the EDITMODE JSON.
+
+   If the user skips: leave `"titlePhoto": ""` (the deck will use its built-in default background).
+
 ### Step 2: Read engagement context
 
 Read `.wire/engagement/context.md`. Extract:
@@ -155,7 +166,13 @@ If found, extract:
 - **Engagement objectives** — the headline goals the client wants to achieve. Synthesise as 3–5 bullet points describing current state and desired state. Use these for `slide4LeftCache` (current state) and `slide4RightCache` (desired state).
 - **Headline metric** — any quantified business impact mentioned (cost saving, time reduction, risk reduction). Use for `slide5*` fields.
 - **Proposed approach** — summarise as 3–5 outcome statements for `slide8Outcomes`.
-- **Data sources / systems in scope** — list up to 4 distinct systems for `slide14Categories`.
+- **Data sources / systems in scope** — list up to 4 distinct systems for `slide14Categories`. For each system, write a specific, actionable `needs` string describing exactly what access is required. Use the patterns below as a guide — match the type of system:
+  - Database / data warehouse (Postgres, BigQuery, Snowflake, Redshift, SQL Server, etc.): "Login credentials and connection details — host, port, database name, and a read-only user account"
+  - ETL / pipeline tool (Fivetran, Airbyte, Stitch, etc.): "Admin login and permission to view/edit connectors and destination configuration"
+  - CRM / SaaS app (Salesforce, HubSpot, etc.): "Connected App or OAuth credentials with read-only API access to the relevant objects"
+  - BI / reporting tool (Looker, Tableau, Power BI, etc.): "Viewer or developer login with access to the relevant content and underlying data source connections"
+  - File storage / spreadsheets (Google Sheets, SharePoint, S3, etc.): "Service account or shared link with read access; bucket/folder path and any access keys if S3"
+  - Adapt the pattern to the actual system — be specific about what the RA team will need on day one to begin the data audit.
 - **Timeline / phases** — use to populate `slide12W1Focus` and `slide12W2Focus` if no sprint plan exists.
 - **Team members named in the SoW** — supplement or replace the presenters list.
 
@@ -178,14 +195,15 @@ If a release folder was specified and the artifacts exist:
 **From `sprint_plan.md`** (if `sprint_plan.review: complete`):
 - `slide12W1Focus`: sprint goal for Sprint 1.
 - `slide12W2Focus`: sprint goal for Sprint 2 (or "Continuous delivery and review" if single-sprint plan).
-- `slide12W1Items` (exactly 6 strings): first 6 stories/epics from Sprint 1. Pad to 6 with `""`. Set `slide12W1Count`.
-- `slide12W2Items` (exactly 6 strings): same from Sprint 2. Pad to 6. Set `slide12W2Count`.
+- `slide12W1Items` (exactly 6 strings): first 5 stories/epics from Sprint 1 — **cap at 5, never fill slot 6 with real content**. Pad slots 5 and 6 with `""`. Set `slide12W1Count` to the number of non-empty entries (max 5).
+- `slide12W2Items` (exactly 6 strings): same from Sprint 2 — cap at 5. Pad slots 5 and 6 with `""`. Set `slide12W2Count` (max 5). The 6th slot exists to satisfy the fixed array length but must always be empty.
 
 **From `requirements_specification.md`** (if present):
-- `slide14Categories` (exactly 4 entries): data access requirements — system name + access needed. Pad to 4. Set `slide14Count`.
+- `slide14Categories` (exactly 4 entries): data access requirements. For each system, write the `needs` field as a specific, actionable string (see the access patterns in Step 3 above — database, ETL tool, CRM, BI tool, file storage). Pad unused slots to 4 with `{"name":"","needs":""}`. Set `slide14Count`.
 
 **From `pipeline_design.md`** (if present):
 - `slide10MermaidCache`: raw Mermaid source (no fences). Set `slide10Direction` to `"TB"` if > 8 nodes, otherwise `"LR"`. Set `slide10Headline` and `slide10Prompt` from the document's purpose.
+  **Mermaid label rules** — node labels must not contain `\n` escape sequences (they render as literal backslash-n in the diagram). Keep labels short (≤ 25 characters) and single-line. If a label needs a line break, use `<br/>` inside a quoted HTML label: `A["Line one<br/>Line two"]`. Never use `\n` in any Mermaid string.
 
 Discovery artifact content overrides SoW-derived content for the same fields.
 
@@ -198,6 +216,7 @@ Build the complete JSON object. Validate before writing:
 - `slide12W1Items` and `slide12W2Items` are exactly 6 entries each
 - `slide14Categories` is exactly 4 entries
 - Count fields do not exceed array length
+- `slide12W1Count` and `slide12W2Count` are ≤ 5 (the 6th slot is always empty — the slide layout fits 5 items per column readably)
 - `accentColor` is always `"#4F60FF"` (RA indigo). Never substitute a client brand colour here.
 - `vignetteStrength` is an **integer 0–100** (the range slider unit). Default to `74`. Do not write a float like `0.5` — the JS divides by 100 at render time, so `0.5` renders as 0.5% opacity (invisible vignette).
 - `titleVariant` is always `"pitch"` — this is the value that enables the full-bleed photo backdrop on the title slide. Do not use `"photo"` or any other value; the deck JS only recognises `"pitch"` as the photo variant.
