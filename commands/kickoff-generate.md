@@ -199,6 +199,7 @@ Build the complete JSON object. Validate before writing:
 - `slide14Categories` is exactly 4 entries
 - Count fields do not exceed array length
 - `accentColor` matches `#RRGGBB`
+- `vignetteStrength` is an **integer 0–100** (the range slider unit). Default to `74`. Do not write a float like `0.5` — the JS divides by 100 at render time, so `0.5` renders as 0.5% opacity (invisible vignette).
 - `titleVariant` is always `"pitch"` — this is the value that enables the full-bleed photo backdrop on the title slide. Do not use `"photo"` or any other value; the deck JS only recognises `"pitch"` as the photo variant.
 - `slide10Direction` is `"LR"` or `"TB"` (or `""` if slide10 is empty)
 - The full object parses as valid JSON (no trailing commas, no comments)
