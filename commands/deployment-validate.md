@@ -111,19 +111,31 @@ Error: deployment not generated yet.
 Run `/wire:deployment-generate <project>` first.
 ```
 
-### Step 2: Run Validation Checks
+### Step 2: Pipeline Connection Pre-flight Check
+
+If `artifacts.pipeline.generate == complete` in status.md, follow `wire/specs/utils/pipeline_tool_status.md` to check pipeline connection health before proceeding.
+
+| Health result | Action |
+|--------------|--------|
+| `healthy` | Proceed to Step 3 |
+| `degraded` | Warn the user, list stale/warning connections, proceed |
+| `unhealthy` | **FAIL** deployment validation — broken pipeline connections must be fixed before the platform can go live |
+
+If `pipeline.generate != complete`, skip this check (pipeline may not be in scope for this project).
+
+### Step 3: Run Validation Checks
 
 **Validation Checklist**:
 
 | Check | Rule | Severity |
 |-------|------|----------|
-| [Check 1] | [Description] | Critical |
+| Pipeline connections healthy | All connections `setup_state == connected` and last sync succeeded (via pipeline_tool_status) | Critical |
 | [Check 2] | [Description] | Major |
 | [Check 3] | [Description] | Info |
 
-[Specific validation checks for this artifact type]
+[Add project-specific validation checks here]
 
-### Step 3: Generate Validation Report
+### Step 4: Generate Validation Report
 
 **Output Format**:
 
@@ -145,7 +157,7 @@ Run `/wire:deployment-generate <project>` first.
 1. **Review with stakeholders**: `/wire:deployment-review <project>`
 ```
 
-### Step 4: Update Status
+### Step 5: Update Status
 
 **Process**:
 1. Read `status.md`
@@ -159,7 +171,7 @@ Run `/wire:deployment-generate <project>` first.
    ```
 3. Write updated status.md
 
-### Step 5: Sync to Jira (Optional)
+### Step 6: Sync to Jira (Optional)
 
 Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Artifact: `deployment`

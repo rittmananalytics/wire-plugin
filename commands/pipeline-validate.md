@@ -76,15 +76,15 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Validate pipeline against standards and best practices
+description: Validate pipeline connections and configuration against the pipeline design
 argument-hint: <project-folder>
 ---
 
-# pipeline Validation Command
+# Pipeline Validate Command
 
 ## Purpose
 
-Validate generated pipeline against quality standards, naming conventions, and best practices.
+Validate that pipeline connections are correctly configured, healthy, and match the approved pipeline architecture. Routes to the appropriate tool-specific validation spec based on `pipeline_tool` in `status.md`.
 
 ## Usage
 
@@ -94,94 +94,41 @@ Validate generated pipeline against quality standards, naming conventions, and b
 
 ## Prerequisites
 
-- pipeline must be generated (`/wire:pipeline-generate` complete)
+- `pipeline.generate == complete` in status.md
 
 ## Workflow
 
-### Step 1: Verify pipeline Exists
+### Step 1: Read Status and Route
 
-**Process**:
-1. Check that `pipeline.generate == complete` in status.md
-2. Verify generated files exist
-
-**If not generated**:
-```
-Error: pipeline not generated yet.
-
-Run `/wire:pipeline-generate <project>` first.
-```
-
-### Step 2: Run Validation Checks
-
-**Validation Checklist**:
-
-| Check | Rule | Severity |
-|-------|------|----------|
-| [Check 1] | [Description] | Critical |
-| [Check 2] | [Description] | Major |
-| [Check 3] | [Description] | Info |
-
-[Specific validation checks for this artifact type]
-
-### Step 3: Generate Validation Report
-
-**Output Format**:
-
-```
-## pipeline Validation: [PROJECT_NAME]
-
-**Status:** PASS | FAIL
-
-### Validation Results
-
-| Check | Status | Notes |
-|-------|--------|-------|
-| [Check 1] | ✅ | |
-| [Check 2] | ✅ | |
-| [Check 3] | ⚠️ | [Warning details] |
-
-### Next Steps
-
-1. **Review with stakeholders**: `/wire:pipeline-review <project>`
-```
-
-### Step 4: Update Status
-
-**Process**:
-1. Read `status.md`
-2. Update artifacts.pipeline section:
-   ```yaml
-   pipeline:
-     generate: complete
-     validate: pass | fail
-     review: not_started
-     validated_date: 2026-02-13
+1. Read `.wire/<project_id>/status.md`
+2. Verify `artifacts.pipeline.generate == complete`. If not:
    ```
-3. Write updated status.md
+   Error: Pipeline not generated yet.
+   Run: /wire:pipeline-generate <project_id>
+   ```
+3. Read `artifacts.pipeline.pipeline_tool`.
 
-### Step 5: Sync to Jira (Optional)
+### Step 2: Delegate to Tool-Specific Spec
+
+Based on `pipeline_tool`, load and execute the corresponding validation spec in full:
+
+| `pipeline_tool` | Spec |
+|----------------|------|
+| `fivetran` | `wire/specs/development/pipeline/fivetran/validate.md` |
+| `dlt` | `wire/specs/development/pipeline/dlt/validate.md` |
+| `airbyte` | `wire/specs/development/pipeline/airbyte/validate.md` |
+| `custom` | Apply the validation checklist from the pipeline design document |
+
+### Step 3: Verify Status Updated
+
+After the tool-specific spec completes, confirm `artifacts.pipeline.validate` is set to `pass` or `fail` in status.md.
+
+### Step 4: Sync to Jira (Optional)
 
 Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Artifact: `pipeline`
 - Action: `validate`
 - Status: the validate state just written to status.md (pass/fail)
-
-## Edge Cases
-
-### Validation Failures
-
-If checks fail:
-- Set validate status to `fail`
-- List all issues
-- Suggest fixes
-- User must fix and re-validate
-
-## Output
-
-This command:
-- Validates pipeline completeness and quality
-- Updates `status.md` with validation results
-- Provides actionable feedback if issues found
 
 Execute the complete workflow as specified above.
 

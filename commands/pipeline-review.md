@@ -76,15 +76,15 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Record stakeholder review feedback on pipeline
+description: Present pipeline connections for stakeholder review and approval
 argument-hint: <project-folder>
 ---
 
-# pipeline Review Command
+# Pipeline Review Command
 
 ## Purpose
 
-Record stakeholder feedback on the pipeline. Captures approval or change requests.
+Present the configured pipeline connections for stakeholder review and approval. Routes to the tool-specific review spec for a connection-level summary, then gathers sign-off using the standard review pattern.
 
 ## Usage
 
@@ -94,155 +94,118 @@ Record stakeholder feedback on the pipeline. Captures approval or change request
 
 ## Prerequisites
 
-- pipeline must exist and pass validation
-- `pipeline.validate` should be `pass`
+- `pipeline.validate == pass` in status.md
 
 ## Workflow
 
-### Step 1: Verify Prerequisites
+### Step 1: Read Status and Route
 
-**Process**:
-1. Read `status.md`
-2. Check that `pipeline.validate == pass`
+1. Read `.wire/<project_id>/status.md`
+2. Check `artifacts.pipeline.validate`. If not `pass`:
+   ```
+   Warning: Pipeline has not passed validation yet.
+   Run: /wire:pipeline-validate <project_id>
+   Proceed anyway? (y/n)
+   ```
+3. Read `artifacts.pipeline.pipeline_tool`.
 
-**If validation not pass**:
-```
-Warning: pipeline has not passed validation yet.
+### Step 2: Delegate Summary to Tool-Specific Spec
 
-Run `/wire:pipeline-validate <project>` before review.
+Based on `pipeline_tool`, load and execute the corresponding review spec to build the review summary:
 
-Proceed anyway? (y/n)
-```
+| `pipeline_tool` | Spec |
+|----------------|------|
+| `fivetran` | `wire/specs/development/pipeline/fivetran/review.md` |
+| `dlt` | `wire/specs/development/pipeline/dlt/review.md` |
+| `airbyte` | `wire/specs/development/pipeline/airbyte/review.md` |
+| `custom` | Present the pipeline design document and connection configs directly |
 
-### Step 2: Present for Review
+### Step 3: Retrieve External Context (Optional)
 
-**Output**:
-```
-## pipeline Review Session
+1. Follow `specs/utils/meeting_context.md` — pass artifact name `pipeline`
+2. Follow `specs/utils/atlassian_search.md` — pass artifact name `pipeline`
+3. If a document store is configured, follow `specs/utils/docstore_fetch.md` — pass artifact `pipeline`
 
-**Project:** [PROJECT_NAME]
-**Files:** [List files being reviewed]
+### Step 4: Gather Feedback
 
-Please review the pipeline and provide feedback.
-```
-
-### Step 2.5: Retrieve External Context (Optional)
-
-**Process**:
-1. Follow the meeting context retrieval workflow defined in `specs/utils/meeting_context.md`
-   - Pass the project folder and artifact name `pipeline`
-   - If Fathom MCP is available and relevant meetings found, present the meeting context summary
-2. Follow the Atlassian search workflow defined in `specs/utils/atlassian_search.md`
-   - Pass the project folder and artifact name `pipeline`
-   - If Atlassian MCP is available, search Confluence for design docs and Jira for issue comments
-   - Present any relevant findings
-3. If a document store is configured, follow `specs/utils/docstore_fetch.md`:
-   - Pass `artifact_id`, `artifact_name`, `file_path`, and `project_id` for this artifact
-   - This retrieves any reviewer comments added to the document store page since generation, and flags any edits made directly to the document store version vs the canonical GitHub version
-   - Surface the returned "Document Store Context" block to the reviewer alongside Fathom and Confluence context
-4. If neither service is available, proceed directly to Step 3
-
-This step enriches the review with context from meeting recordings, Confluence documents, and Jira issue comments.
-
-### Step 3: Gather Feedback
-
-**Use AskUserQuestion**:
+Use AskUserQuestion:
 
 ```json
 {
   "questions": [{
     "question": "What is the review outcome?",
-    "header": "Review Status",
+    "header": "Pipeline Review",
     "options": [
-      {"label": "Approved", "description": "pipeline is complete and approved"},
-      {"label": "Changes requested", "description": "pipeline needs revisions"},
-      {"label": "Needs discussion", "description": "Requires clarification"}
+      {"label": "Approved", "description": "Pipeline connections are correctly configured and approved"},
+      {"label": "Changes requested", "description": "Pipeline needs adjustments"},
+      {"label": "Needs discussion", "description": "Requires further clarification"}
     ],
     "multiSelect": false
   }]
 }
 ```
 
-### Step 4a: If Approved
+### Step 5a: If Approved
 
-**Ask for reviewer**:
-```
-Who approved the pipeline? (Name and role)
-```
+Ask: `Who approved the pipeline? (Name and role)`
 
-**Update status**:
+Update status.md:
 ```yaml
 pipeline:
   generate: complete
   validate: pass
   review: approved
   reviewed_by: "[Reviewer]"
-  reviewed_date: 2026-02-13
+  reviewed_date: <today>
 ```
 
-**Suggest next steps**:
+Suggest next steps:
 ```
-## pipeline Approved ✅
+## Pipeline Approved
 
-**Reviewed by:** [Reviewer]
+**Tool**: [pipeline_tool]
+**Reviewed by**: [Reviewer]
 
 ### Next Steps
 
-[Next artifact or phase]
+Generate the orchestration layer:
+  /wire:orchestration-generate <project_id>
 ```
 
-### Step 4b: If Changes Requested
+### Step 5b: If Changes Requested
 
-**Ask for feedback**:
-```
-What changes are needed?
-```
+Ask: `What changes are needed?`
 
-**Update status**:
+Update status.md:
 ```yaml
 pipeline:
-  generate: complete
-  validate: pass
   review: changes_requested
   feedback: "[Feedback]"
-  reviewed_date: 2026-02-13
+  reviewed_date: <today>
 ```
 
-**Suggest iteration**:
 ```
-## pipeline Changes Requested 🔄
+## Pipeline Changes Requested
 
 ### Change Requests:
 [Feedback]
 
 ### Next Steps
-
 1. Address feedback
-2. Re-validate: `/wire:pipeline-validate <project>`
-3. Re-submit for review
+2. Re-validate: /wire:pipeline-validate <project_id>
+3. Re-submit: /wire:pipeline-review <project_id>
 ```
 
-### Step 5: Sync to Jira (Optional)
+### Step 6: Sync to Jira (Optional)
 
-Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
+Follow `specs/utils/jira_sync.md`:
 - Artifact: `pipeline`
 - Action: `review`
-- Status: the review state just written to status.md (approved/changes_requested/pending)
-- If approved, include reviewer name in Jira comment
-- If changes_requested, include feedback text in Jira comment
+- Status: approved / changes_requested
 
-### Step 6: Sync to Document Store (Optional)
+### Step 7: Sync to Document Store (Optional)
 
-If a document store is configured and the review outcome is **Approved**, follow `specs/utils/docstore_sync.md` to overwrite the document store page with the canonical file. This ensures the document store reflects the approved version.
-
-- If the outcome is Changes Requested or Needs Discussion, do not overwrite — the document store retains the reviewed version for reference until the next generate run.
-
-## Output
-
-This command:
-- Records review feedback in `status.md`
-- Updates review status
-- Suggests next steps
+If approved, follow `specs/utils/docstore_sync.md` to overwrite the document store page with the canonical file.
 
 Execute the complete workflow as specified above.
 

@@ -109,8 +109,14 @@ Generate the orchestration layer for the data platform. This step determines how
    - Any stated orchestration preferences or constraints
 2. Read `.wire/<project_id>/status.md`:
    - Check `artifacts.orchestration.orchestration_tool` — if already set (from a previous run or project creation), use it and skip Step 2
+   - Read `artifacts.pipeline.pipeline_tool` and `artifacts.pipeline.generate` — note whether a pipeline has been configured and which tool is in use
    - Note `project_type` to understand scope
 3. Locate the dbt project root (search for `dbt_project.yml` in the repository)
+4. **Check pipeline connection health** (if `pipeline.generate == complete`):
+   Follow `wire/specs/utils/pipeline_tool_status.md` to verify all pipeline connections are healthy.
+   - If result is `unhealthy`: warn the user and ask whether to proceed. Do not halt automatically — orchestration code can still be generated even if connections are temporarily unhealthy, but the warning should be visible.
+   - If result is `degraded` or `healthy`: proceed normally.
+   - If `pipeline.generate != complete`: skip this check and note that pipeline connections have not been set up yet.
 
 ### Step 2: Choose Orchestration Tool
 

@@ -1,8 +1,8 @@
-# Wire Framework User Guide
+# The Wire Framework: User Guide
 
-**Rittman Analytics**
+**Rittman Analytics — Internal Use**
 
-**Version**: 3.4.10 | **Date**: April 2026
+**Version**: 3.4.17 | **Date**: May 2026
 
 ---
 
@@ -39,9 +39,9 @@
 
 The Wire Framework is Rittman Analytics' proprietary AI-accelerated delivery system for data platform engagements. It uses an AI coding agent — either **Claude Code** (Anthropic) or **Gemini CLI** (Google) — as its runtime, and encodes 20+ years of analytics engineering methodology as structured, executable workflow specifications.
 
-In practical terms: instead of a user manually writing dbt models, LookML, pipeline code, training materials, and documentation over several weeks, the framework directs the AI to produce all of these artifacts in a fraction of the time — with embedded quality gates ensuring the output meets our standards.
+In practical terms: instead of a practitioner manually writing dbt models, LookML, pipeline code, training materials, and documentation over several weeks, the framework directs the AI to produce all of these artifacts in a fraction of the time — with embedded quality gates ensuring the output meets our standards.
 
-**The framework does not replace practitioners.** It gives them an AI that works at machine speed and never forgets a naming convention, freeing the user to focus on client relationships, design decisions, and the creative problem-solving that AI cannot do.
+**The framework does not replace practitioners.** It gives them an AI that works at machine speed and never forgets a naming convention, freeing the practitioner to focus on client relationships, design decisions, and the creative problem-solving that AI cannot do.
 
 ### What it looks like in practice
 
@@ -436,7 +436,7 @@ In addition to `status.md`, each project maintains an `execution_log.md` file th
 | 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith |
 ```
 
-The log is useful for handovers (a new user can see the full history of what was done), for auditing (confirming when artifacts were generated and who approved them), and for debugging (identifying when a failure occurred and what preceded it).
+The log is useful for handovers (a new team member can see the full history of what was done), for auditing (confirming when artifacts were generated and who approved them), and for debugging (identifying when a failure occurred and what preceded it).
 
 ### The chain of derivation
 
@@ -1197,6 +1197,21 @@ Use this when a new data source needs connecting through to the dbt layer, but a
 **In-scope artifacts**: `requirements`, `workshops` (if needed), `pipeline_design`, `data_model`, `pipeline`, `dbt`, `data_quality`, `deployment`
 
 **Out of scope**: `mockups`, `semantic_layer`, `dashboards`, `uat`, `training`, `documentation`
+
+### Choosing a pipeline replication tool
+
+`/wire:pipeline_design-generate` now includes a **pipeline tool selection step** (Design Decision PD-1). The framework supports three managed tools plus a custom option:
+
+| Tool | Best for | Cost model | Infrastructure |
+|------|----------|-----------|----------------|
+| **Fivetran** | SaaS sources, managed CDC, minimal engineering | MAR-based | Fully managed |
+| **dlt** | Python-native teams, cost-sensitive, custom APIs | Open-source | Scripts + dlt Cloud |
+| **Airbyte** | Mixed sources, open-source preference | Open-source / Cloud | Self-hosted or Airbyte Cloud |
+| **Custom** | Highly specialised sources, full control | Engineering time | Self-managed |
+
+The chosen tool is recorded as `pipeline_tool` in `status.md`. All downstream `/wire:pipeline-*` commands read this value and route automatically — you never need to specify the tool again after the design step.
+
+**Fivetran**: when selected, the design step calls the Fivetran MCP to verify the connector exists and fetch its required config fields before the design document is finalised. The generate step then uses the MCP to create connections, configure table/column sync, and set sync frequency — with idempotency (won't duplicate existing connections on re-runs).
 
 ### Workflow
 
@@ -2814,7 +2829,7 @@ stateDiagram-v2
 | Total projects | Cloud SQL rows | Effectively unlimited |
 | File storage per workspace | PVC size (configurable, default 10Gi) | Per-workspace limit |
 
-The key to scaling is the suspend/resume cycle. At any given time, only workspaces with active users consume compute resources. Idle workspaces are suspended automatically, freeing GKE capacity. The system can support hundreds of total projects with only a fraction active at any time — which matches real-world usage patterns where users work on 2–3 projects concurrently.
+The key to scaling is the suspend/resume cycle. At any given time, only workspaces with active sessions consume compute resources. Idle workspaces are suspended automatically, freeing GKE capacity. The system can support hundreds of total projects with only a fraction active at any time — which matches real-world usage patterns where users work on 2–3 projects concurrently.
 
 #### Async command dispatch
 
@@ -3404,7 +3419,7 @@ Not recommended. The discovery release should be completed and delivery releases
 
 **Q: What is `session:start` and do I need to use it every time?**
 
-`session:start` is recommended but not required. It enters Plan Mode, reads the release's current `status.md`, surfaces prior research, and proposes a focused session plan. Its main value is grounding every session in current state — especially useful after a break, a context switch, or when a different user picks up the work. If you're mid-flow and know exactly what you're doing next, you can skip it. `session:end` is similarly optional but useful for capturing what was accomplished and what the next focus should be.
+`session:start` is recommended but not required. It enters Plan Mode, reads the release's current `status.md`, surfaces prior research, and proposes a focused session plan. Its main value is grounding every session in current state — especially useful after a break, a context switch, or when a different team member picks up the work. If you're mid-flow and know exactly what you're doing next, you can skip it. `session:end` is similarly optional but useful for capturing what was accomplished and what the next focus should be.
 
 ---
 
@@ -3419,7 +3434,7 @@ Not recommended. The discovery release should be completed and delivery releases
 | 2026-03-11 | Pitch review and release brief | Bet approved, brief drafted and signed off | Sprint planning |
 ```
 
-This provides a human-readable audit trail of every session without requiring any manual note-taking. When a new user picks up the release, reading the session history gives immediate context on what has happened and what comes next.
+This provides a human-readable audit trail of every session without requiring any manual note-taking. When a new team member picks up the release, reading the session history gives immediate context on what has happened and what comes next.
 
 ---
 
@@ -3476,7 +3491,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-**Q: Someone left the release midway through. How does a new user pick it up?**
+**Q: Someone left the release midway through. How does a new team member pick it up?**
 
 Run `/wire:session:start <release-folder>`. The framework reads `status.md`, shows the session history, surfaces prior research, and proposes a session plan. The session history table in `status.md` shows what was accomplished in each previous session and what the suggested next focus is. Read `engagement/context.md` and the generated artifacts in `requirements/` and `design/` to get up to speed on the project context. The framework is designed so that anyone can resume from where it left off.
 
