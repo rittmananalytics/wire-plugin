@@ -198,9 +198,9 @@ Three utility commands support document store operations:
 - `utils/docstore-sync` — Sync a generated artifact to the document store
 - `utils/docstore-fetch` — Fetch document store content and comments for review
 
-## Consultant Handbook
+## User Guide
 
-The full consultant guide is available at `docs/consultant_handbook.md`. It covers all six project types, worked examples, Wire Studio setup, Autopilot, and troubleshooting. Reference it when answering questions about how to run engagements.
+The full user guide is available at `USER_GUIDE.md`. It covers all six project types, worked examples, Wire Studio setup, Autopilot, and troubleshooting. Reference it when answering questions about how to run engagements.
 
 ## Wire Studio
 

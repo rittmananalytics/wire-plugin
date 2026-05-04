@@ -76,15 +76,15 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Create and configure data pipeline connections based on approved pipeline design
+description: Generate pipeline from design and requirements
 argument-hint: <project-folder>
 ---
 
-# Pipeline Generate Command
+# pipeline Generate Command
 
 ## Purpose
 
-Create and configure data pipeline connections based on the approved pipeline architecture. Routes to the appropriate tool-specific spec based on `pipeline_tool` recorded in `status.md` during pipeline design.
+Generate pipeline based on requirements and design specifications.
 
 ## Usage
 
@@ -94,52 +94,40 @@ Create and configure data pipeline connections based on the approved pipeline ar
 
 ## Prerequisites
 
-- `pipeline_design`: `review: approved`
-- `artifacts.pipeline.pipeline_tool` must be set in `status.md` (written by `/wire:pipeline_design-generate`)
+- Requirements must be approved
+- Relevant design artifacts should be complete
 
 ## Workflow
 
-### Step 1: Read Status and Route
+### Step 1: Read Inputs
 
-1. Read `.wire/<project_id>/status.md`
-2. Verify `pipeline_design.review == approved`. If not:
+**Process**:
+1. Read `requirements/requirements_specification.md`
+2. Read relevant design documents
+3. Identify what needs to be generated
+
+### Step 2: Generate pipeline
+
+**Process**:
+1. Apply templates and best practices
+2. Generate structured output
+3. Save to appropriate location
+
+[Detailed generation logic here - specific to artifact type]
+
+### Step 3: Update Status
+
+**Process**:
+1. Read `status.md`
+2. Update artifacts.pipeline section:
+   ```yaml
+   pipeline:
+     generate: complete
+     validate: not_started
+     review: not_started
+     generated_date: 2026-02-13
    ```
-   Error: Pipeline design must be approved before creating pipeline connections.
-   Run: /wire:pipeline_design-review <project_id>
-   ```
-3. Read `artifacts.pipeline.pipeline_tool`. If null or absent:
-   ```
-   Error: No pipeline tool selected. Re-run pipeline design to choose a tool.
-   Run: /wire:pipeline_design-generate <project_id>
-   ```
-
-### Step 2: Delegate to Tool-Specific Spec
-
-Based on `pipeline_tool`, load and execute the corresponding spec in full:
-
-| `pipeline_tool` | Spec |
-|----------------|------|
-| `fivetran` | `wire/specs/development/pipeline/fivetran/generate.md` |
-| `dlt` | `wire/specs/development/pipeline/dlt/generate.md` |
-| `airbyte` | `wire/specs/development/pipeline/airbyte/generate.md` |
-| `custom` | Follow the bespoke approach documented in `.wire/<project_id>/design/pipeline_architecture.md` |
-
-Pass `project_id` as context to the delegated spec.
-
-### Step 3: Verify Output
-
-After the tool-specific spec completes, confirm:
-- A pipeline connections/config artifact exists under `.wire/<project_id>/development/pipeline/`
-- `artifacts.pipeline.generate == complete` in status.md
-
-If the tool-specific spec did not update status.md, update it now:
-```yaml
-pipeline:
-  generate: complete
-  validate: not_started
-  review: not_started
-  generated_date: <today>
-```
+3. Write updated status.md
 
 ### Step 4: Sync to Jira (Optional)
 
@@ -150,25 +138,46 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 
 ### Step 5: Sync to Document Store (Optional)
 
-If a document store is configured, follow `specs/utils/docstore_sync.md`:
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
 - `artifact_id`: `pipeline`
 - `artifact_name`: `Data Pipeline`
-- `file_path`: `.wire/<project_id>/development/pipeline/pipeline_connections.md`
-- `project_id`: the project folder
+- `file_path`: `.wire/releases/[release_folder]/dev/pipeline.md`
+- `project_id`: the release folder path
 
-### Step 6: Suggest Next Steps
+If docstore sync fails, log the error and continue — do not block the generate command.
 
+### Step 6: Confirm and Suggest Next Steps
+
+**Output**:
 ```
-## Pipeline Generated
+## pipeline Generated Successfully
 
-**Tool**: [pipeline_tool]
-**Artifact**: .wire/<project_id>/development/pipeline/pipeline_connections.md
+**File(s):** [list generated files]
 
 ### Next Steps
 
-1. Validate the pipeline:
-   /wire:pipeline-validate <project_id>
+1. **Validate pipeline**: `/wire:pipeline-validate <project>`
+2. After validation, review: `/wire:pipeline-review <project>`
 ```
+
+## Edge Cases
+
+### Prerequisites Not Met
+
+If requirements not approved:
+```
+Error: Requirements must be approved first.
+
+Current status: [status]
+
+Complete requirements approval: /wire:requirements-review <project>
+```
+
+## Output
+
+This command creates:
+- [List of output files specific to artifact]
+- Updates `status.md`
 
 Execute the complete workflow as specified above.
 

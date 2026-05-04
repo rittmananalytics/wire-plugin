@@ -129,69 +129,25 @@ For each source system identified in requirements:
 
 Cross-reference source tables/endpoints against the approved conceptual model entities. Flag any entities in the conceptual model that have no clear source system mapping — these are data gaps.
 
-### Step 3: Choose Pipeline Replication Tool
+### Step 3: Define Replication Strategy
 
-Before defining the per-source replication strategy, the team must align on which tool will manage data replication. Present this as **Design Decision PD-1** (or the next available PD-N if earlier decisions exist):
-
-```
-**PD-1: Pipeline Replication Tool**
-Context: The choice of replication tool affects connector coverage, cost model,
-infrastructure footprint, and ongoing maintenance burden.
-
-Options:
-
-| Option | Best for | Cost model | Connectors | Infrastructure |
-|--------|----------|-----------|------------|----------------|
-| **Fivetran** | SaaS sources, minimal engineering, managed CDC | MAR-based (Monthly Active Rows) | 500+ pre-built | Fully managed, no infra |
-| **dlt (data load tool)** | Python-native teams, custom APIs, cost-sensitive | Open-source / dlt Cloud | Community + custom | Python scripts, self-hosted or dlt Cloud |
-| **Airbyte** | Mixed SaaS + custom sources, open-source preference | Open-source / Airbyte Cloud | 350+ connectors | Self-hosted (Docker/K8s) or Airbyte Cloud |
-| **Custom / bespoke** | Highly specialised sources, full control required | Engineering time | N/A | Self-managed |
-
-Recommendation: [Select based on source systems identified in Step 2 — SaaS-heavy projects
-favour Fivetran; Python-heavy or cost-sensitive projects favour dlt]
-Input required from: Data Team Lead / CTO
-```
-
-If the client has already expressed a tool preference (in requirements or workshops), note it here and skip the decision — but still confirm it is appropriate for all source systems.
-
-**After tool selection: verify connector/source support**
-
-Once the tool is chosen, verify that it can handle each source system identified in Step 2:
-
-- **Fivetran**: Call `mcp__fivetran__list_metadata_connectors` and verify each source system has a matching connector. For any source where a connector is found, call `mcp__fivetran__get_metadata_connector_config` to confirm the required config fields (API keys, OAuth scopes, host/database params) — document these in the design so the implementation step is not blocked by missing credentials.
-- **dlt**: Check `dlthub.com/docs/dlt-ecosystem/verified-sources` for verified sources; note which require custom REST source implementation.
-- **Airbyte**: Check `docs.airbyte.com/integrations/sources` for connector availability and support tier (Generally Available / Beta / Alpha).
-- **Custom**: Document the ingestion approach (Cloud Function, Cloud Run job, direct JDBC) per source.
-
-Record the chosen tool in **Section 6 (Technology Stack)** and as `pipeline_tool` in status.md (Step 8).
-
-### Step 4: Define Replication Strategy
-
-For each source system, assess and recommend a replication approach using the chosen tool:
+For each source system, assess and recommend a replication approach:
 
 **Replication options** (select based on source capabilities and freshness requirements):
-- **Full refresh**: Simple, high-cost at scale, suitable for small/slowly-changing tables
+- **Full refresh**: Simple, high-cost at scale, suitable for small tables
 - **Incremental by timestamp**: Efficient, requires a reliable `updated_at` column
-- **CDC (Change Data Capture)**: Real-time or near-real-time — supported by Fivetran (log-based), Airbyte (Debezium-based), or custom Debezium setup
-- **API polling**: For SaaS sources without database access — all three tools support this
-- **Batch extract**: Scheduled SQL exports or file drops — typically custom or dlt
+- **CDC (Change Data Capture)**: Real-time or near-real-time, requires Fivetran/Airbyte/Debezium
+- **API polling**: For SaaS sources without database access
+- **Batch extract**: Scheduled SQL exports or file drops
 
-For **Fivetran-based** sources, also include:
-- Confirmed connector service slug (from `get_metadata_connector_config`)
+For Fivetran-based pipelines, include:
+- Connector type and configuration
 - MAR (Monthly Active Rows) estimate and cost implication
-- Whether server-side SQL views can reduce MAR by filtering rows at source
-
-For **dlt-based** sources, also include:
-- Whether a verified source exists or custom implementation is needed
-- Incremental loading strategy (`append`, `merge`, or `replace`)
-
-For **Airbyte-based** sources, also include:
-- Connector support tier (GA / Beta / Alpha) and any known limitations
-- Sync mode per stream (full refresh / incremental append / incremental deduped)
+- Whether server-side SQL views can reduce MAR cost
 
 Present options as numbered scenarios (Scenario A, B, C) where trade-offs exist — do not silently choose. Flag decisions requiring client input as **Design Decision PD-N**.
 
-### Step 5: Define Pipeline Architecture
+### Step 4: Define Pipeline Architecture
 
 Specify the end-to-end pipeline:
 
@@ -218,7 +174,7 @@ Specify the end-to-end pipeline:
 - dbt Cloud job schedules
 - Dependencies between pipeline runs and dbt jobs
 
-### Step 6: Document Design Decisions
+### Step 5: Document Design Decisions
 
 For each decision requiring client input, create a numbered entry:
 
@@ -232,7 +188,7 @@ Recommendation: [Preferred option and rationale]
 Input required from: [Who needs to decide — DBA, Data Team Lead, CTO, etc.]
 ```
 
-### Step 7: Generate Data Flow Diagram (DFD)
+### Step 6: Generate Data Flow Diagram (DFD)
 
 Produce a Mermaid `graph LR` flowchart showing the complete data flow from source systems to BI dashboards. Write this as a `## Data Flow Diagram` section within the pipeline architecture document.
 
@@ -283,7 +239,7 @@ graph LR
 
 Replace all `<placeholders>` with project-specific values from the requirements and conceptual model. Staging model names must match the naming convention (`stg_<source>__<entity>`). Warehouse model names must match the agreed naming convention (`<entity>_fct`, `<entity>_dim`).
 
-### Step 8: Write Pipeline Architecture Document
+### Step 7: Write Pipeline Architecture Document
 
 Write to `.wire/<project_id>/design/pipeline_architecture.md`:
 
@@ -343,7 +299,7 @@ Write to `.wire/<project_id>/design/pipeline_architecture.md`:
 [PII handling, column exclusions, access controls, data residency]
 ```
 
-### Step 9: Update Status
+### Step 8: Update Status
 
 ```yaml
 pipeline_design:
@@ -352,20 +308,16 @@ pipeline_design:
   review: not_started
   file: design/pipeline_architecture.md
   generated_date: [today]
-pipeline:
-  pipeline_tool: [fivetran | dlt | airbyte | custom]  # chosen in Step 3
 ```
 
-Write `pipeline_tool` under `artifacts.pipeline` in status.md now, even though the pipeline artifact itself has not been generated yet. This records the design decision so downstream commands can route correctly without re-reading the design document.
-
-### Step 10: Sync to Jira (Optional)
+### Step 9: Sync to Jira (Optional)
 
 Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Artifact: `pipeline_design`
 - Action: `generate`
 - Status: the generate state just written to status.md
 
-### Step 11: Sync to Document Store (Optional)
+### Step 10: Sync to Document Store (Optional)
 
 If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
 - `artifact_id`: `pipeline_design`
@@ -375,17 +327,16 @@ If a document store is configured for this project, follow the workflow in `spec
 
 If docstore sync fails, log the error and continue — do not block the generate command.
 
-### Step 12: Confirm and Suggest Next Steps
+### Step 11: Confirm and Suggest Next Steps
 
 ```
 ## Pipeline Design Generated
 
 **File**: .wire/<project_id>/design/pipeline_architecture.md
 
-**Pipeline tool**: [fivetran | dlt | airbyte | custom]
 **Source systems**: [count]
-**Connectors verified**: [count — connectors confirmed to exist in the chosen tool]
-**Design decisions requiring input**: [count — flag if > 0, include PD-1 tool choice if unresolved]
+**Pipeline scenarios**: [count — flag if > 1, as client decision required]
+**Design decisions requiring input**: [count — flag if > 0]
 **Data flow diagram**: included
 
 ### Next Steps
@@ -396,12 +347,8 @@ If docstore sync fails, log the error and continue — do not block the generate
 2. After validation, technical review:
    /wire:pipeline_design-review <project_id>
 
-3. Once design is approved, create pipeline connections:
-   /wire:pipeline-generate <project_id>
-
-NOTE: If there are open design decisions (PD-N items) — especially PD-1 (tool choice) —
-resolve these before or during the review session. The tool choice gates all
-downstream pipeline commands.
+NOTE: If there are open design decisions (PD-N items), schedule a client
+workshop before or during the review session to resolve them.
 ```
 
 ## Edge Cases
