@@ -2,7 +2,7 @@
 
 **Rittman Analytics — Internal Use**
 
-**Version**: 3.4.10 | **Date**: April 2026
+**Version**: 3.4.17 | **Date**: May 2026
 
 ---
 
@@ -1197,6 +1197,21 @@ Use this when a new data source needs connecting through to the dbt layer, but a
 **In-scope artifacts**: `requirements`, `workshops` (if needed), `pipeline_design`, `data_model`, `pipeline`, `dbt`, `data_quality`, `deployment`
 
 **Out of scope**: `mockups`, `semantic_layer`, `dashboards`, `uat`, `training`, `documentation`
+
+### Choosing a pipeline replication tool
+
+`/wire:pipeline_design-generate` now includes a **pipeline tool selection step** (Design Decision PD-1). The framework supports three managed tools plus a custom option:
+
+| Tool | Best for | Cost model | Infrastructure |
+|------|----------|-----------|----------------|
+| **Fivetran** | SaaS sources, managed CDC, minimal engineering | MAR-based | Fully managed |
+| **dlt** | Python-native teams, cost-sensitive, custom APIs | Open-source | Scripts + dlt Cloud |
+| **Airbyte** | Mixed sources, open-source preference | Open-source / Cloud | Self-hosted or Airbyte Cloud |
+| **Custom** | Highly specialised sources, full control | Engineering time | Self-managed |
+
+The chosen tool is recorded as `pipeline_tool` in `status.md`. All downstream `/wire:pipeline-*` commands read this value and route automatically — you never need to specify the tool again after the design step.
+
+**Fivetran**: when selected, the design step calls the Fivetran MCP to verify the connector exists and fetch its required config fields before the design document is finalised. The generate step then uses the MCP to create connections, configure table/column sync, and set sync frequency — with idempotency (won't duplicate existing connections on re-runs).
 
 ### Workflow
 
