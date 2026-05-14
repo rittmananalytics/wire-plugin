@@ -6,18 +6,21 @@ This is embedded reference documentation used by the dbt development skill to gu
 
 ## Model Naming
 
+Models are organised into **entity groups** (`core`, `entity`, or domain-specific like `finance`, `risk`). The general pattern is `<layer>_<group>__<entity>.sql` with a double underscore separating group from entity.
+
 | Layer | Pattern | Example |
 |-------|---------|---------|
-| Staging | `stg_<source>__<object>.sql` | `stg_salesforce__user.sql` |
-| Integration | `int__<object>.sql` | `int__user.sql` |
-| Intermediate | `int__<object>__<action>.sql` | `int__user__unioned.sql` |
-| Warehouse Dim | `<object>_dim.sql` | `user_dim.sql` |
-| Warehouse Fact | `<object>_fct.sql` | `transaction_fct.sql` |
+| Staging | `stg_<group>__<table>.sql` | `stg_core__users.sql`, `stg_entity__entity_a.sql` |
+| Integration | `int_<group>__<entity>.sql` | `int_core__users.sql`, `int_core__geographies.sql` |
+| Warehouse Dimension | `wh_<group>__<entity>_dim.sql` | `wh_core__user_dim.sql`, `wh_core__country_dim.sql` |
+| Warehouse Fact | `wh_<group>__<entity>_fact.sql` | `wh_entity_group__entity_name_b_fact.sql` |
+| Warehouse Cross-Attribute | `wh_<group>__<entity>_xa.sql` | `wh_entity_group__entity_name_d_xa.sql` |
 
 **Rules:**
-- All objects are SINGULAR
-- Actions are PAST TENSE verbs (unioned, grouped, filtered)
-- Non-core warehouses get prefix: `finance_revenue_fct.sql`
+- All entity names are singular
+- Only **staging** models select from sources (`{{ source(...) }}`)
+- Integration and warehouse models select from lower layers via `{{ ref(...) }}`
+- A warehouse model may select directly from staging if an integration model isn't required
 
 ---
 
@@ -25,71 +28,89 @@ This is embedded reference documentation used by the dbt development skill to gu
 
 ```
 models/
-├── staging/
-│   └── <source>/
-│       ├── stg_<source>.yml
-│       └── stg_<source>__<object>.sql
+│
+├── schema.yml                   # Schema YAML — auto-generated, do not hand-edit
+├── field_descriptions.md         # Centralised dbt doc blocks
+│
+├── warehouse/
+│   ├── wh_core/
+│   │   ├── wh_core__user_dim.sql
+│   │   └── wh_core__country_dim.sql
+│   └── wh_entity_group/
+│       ├── wh_entity_group__entity_name_a_dim.sql
+│       ├── wh_entity_group__entity_name_b_fact.sql
+│       └── wh_entity_group__entity_name_d_xa.sql
+│
 ├── integration/
-│   ├── intermediate/
-│   │   ├── intermediate.yml
-│   │   └── int__<object>__<action>.sql
-│   ├── int__<object>.sql
-│   └── integration.yml
-└── warehouse/
-    └── <warehouse>/
-        ├── <warehouse>.yml
-        ├── <object>_dim.sql
-        └── <object>_fct.sql
+│   ├── int_core/
+│   │   ├── int_core__users.sql
+│   │   └── int_core__geographies.sql
+│   └── int_entity_group/
+│       └── int_entity_group__entity_name.sql
+│
+└── staging/
+    ├── stg_core/
+    │   ├── _sources.yml
+    │   ├── stg_core__users.sql
+    │   └── stg_core__geographies.sql
+    └── stg_entity/
+        ├── _sources.yml
+        ├── stg_entity__entity_a.sql
+        └── stg_entity__entity_b.sql
 ```
 
 ---
 
-## SQL Structure Template
+## SQL Structure Template — canonical staging model
 
 ```sql
 {{
   config(
-    materialized = 'table',  -- warehouse models only
-    sort = 'id',
-    dist = 'id'
-  )
+    description = 'A description of the model to help developers'
+    )
 }}
 
-with
+with s_users as (
 
-s_source_one as (
-    select * from {{ ref('model_one') }}
+    select * from {{ source('back_office', 'user_accounts') }}
+
 ),
 
-s_source_two as (
-    select * from {{ ref('model_two') }}
-),
+rename_and_cast as (
 
--- Comments for complex CTEs
-transformation_logic as (
     select
-        field_one,
-        field_two,
-        case
-            when condition then value
-            else other_value
-        end as calculated_field
-    from s_source_one
+
+        {# keys #}
+        lower(cast(id as {{ dbt.type_string() }} )) as user_natural_key,
+        {# attributes #}
+        lower(cast(name as {{ dbt.type_string() }} )) as user_name,
+        {# metrics #}
+        cast(account_balance as {{ dbt.type_numeric() }} ) as user_account_balance_amount,
+        {# booleans #}
+        cast(status as {{ dbt.type_boolean() }} ) as user_status,
+        {# temporal data types #}
+        cast(created_date as {{ type_date() }} ) as user_created_dt,
+        cast(update_at as {{ dbt.type_timestamp() }} ) as user_update_ts,
+
+    from s_users
+
 ),
 
 final as (
-    select
-        transformation_logic.field_one,
-        transformation_logic.field_two,
-        s_source_two.field_three
-    from transformation_logic
-    left join s_source_two
-        on transformation_logic.id = s_source_two.id
-    where transformation_logic.field_one = 'value'
+
+    select * from rename_and_cast
+
 )
 
 select * from final
 ```
+
+**Pattern notes:**
+- First CTE selects from source / ref, prefixed `s_`
+- Second CTE handles renaming and casting in one place (`rename_and_cast`)
+- `{# keys #}`, `{# attributes #}`, `{# metrics #}`, `{# booleans #}`, `{# temporal data types #}` comments mark the column-ordering groups
+- Final CTE is always called `final` — `select * from final` at the bottom for debuggability
+- Blank lines around CTE bodies improve readability — don't optimise for fewer lines
 
 ---
 
@@ -114,14 +135,22 @@ select * from final
 
 | Type | Pattern | Example |
 |------|---------|---------|
-| Primary Key | `<object>_pk` | `user_pk`, `transaction_pk` |
-| Foreign Key | `<object>_fk` | `user_fk`, `account_fk` |
-| Natural Key | `<description>_natural_key` | `salesforce_user_natural_key` |
-| Timestamp | `<event>_ts` | `created_ts`, `updated_ts` |
-| Timestamp (TZ) | `<event>_ts_<tz>` | `created_ts_ct` |
-| Boolean | `is_<state>` or `has_<thing>` | `is_active`, `has_subscription` |
-| Price/Revenue | Decimal format | `price` (19.99), `price_in_cents` if integer |
+| Primary Key | `<entity>_pk` | `user_pk`, `subscription_pk` |
+| Foreign Key | `<entity>_fk` | `user_fk`, `subscription_fk` |
+| Natural Key | `<entity>_natural_key` | `user_natural_key`, `subscription_natural_key` |
+| Date | `<event>_dt` | `user_created_dt` |
+| Timestamp (UTC) | `<event>_ts` | `created_ts`, `updated_ts` |
+| Timestamp (non-UTC) | `<event>_<tz>_ts` | `created_cet_ts`, `created_pt_ts` |
+| Boolean | `is_<state>`, `has_<thing>`, `was_<event>` | `is_active`, `has_subscription`, `was_refunded` |
+| Revenue / money | `<entity>_<measure>_amount` | `user_account_balance_amount`, `subscription_revenue_amount` |
 | Common fields | `<entity>_<field>` | `customer_name`, `carrier_name` |
+
+**PK / FK generation:**
+- Use `{{ dbt_utils.generate_surrogate_key([...]) }}` for both PKs and FKs
+
+**Type casting — always use dbt macros:**
+- `{{ dbt.type_string() }}` / `{{ dbt.type_numeric() }}` / `{{ dbt.type_boolean() }}` / `{{ dbt.type_timestamp() }}`
+- `{{ type_date() }}` (community macro, no `dbt.` prefix)
 
 **General Rules:**
 - All `snake_case`
@@ -131,13 +160,16 @@ select * from final
 
 ---
 
-## Field Ordering (Staging/Base Models)
+## Field Ordering (in `select` lists)
 
-1. **Keys:** pk, fks, natural keys
-2. **Dates and timestamps:** All _ts fields
-3. **Attributes:** Dimensions/slicing fields (alphabetical)
-4. **Metrics:** Measures/aggregatable values (alphabetical)
-5. **Metadata:** insert_ts, updated_ts, etc.
+1. **Keys** — pk, fks, natural keys
+2. **Attributes** — dimensions, slicing fields, descriptive columns
+3. **Indexes / ranks** — `row_number()`, rank columns, sequence positions
+4. **Metrics** — measures, aggregatable values, `_amount` columns
+5. **Booleans** — `is_*` / `has_*` / `was_*` flags
+6. **Temporal data types** — `_dt`, `_ts` columns last
+
+Use `{# keys #}`, `{# attributes #}`, etc. Jinja comments to visually mark each group.
 
 ---
 
@@ -158,8 +190,13 @@ select * from final
 ## Testing Requirements
 
 **Every Model Must Have:**
-- Entry in `schema.yml` file
+- An entry in the schema file
 - Primary key with `unique` and `not_null` tests
+
+**Schema YAML — auto-generated:**
+- The `schema.yml` at the models root is **auto-generated** from compiled SQL — do not hand-create or hand-edit it.
+- Configure the generator and re-run it instead of editing the produced file.
+- Hand-authored `_sources.yml` files inside `stg_*/` folders are still valid — they define the upstream source mapping, not the model schema, and are not regenerated.
 
 **Additional Tests:**
 - `relationships` for foreign keys
@@ -167,25 +204,21 @@ select * from final
 - `not_null_where` for conditional requirements
 - `dbt_utils.unique_combination_of_columns` for integration models with multiple sources
 
-**Schema.yml Location:**
-- Every subdirectory should have a `.yml` file
-- Named after directory: `stg_<source>.yml`, `integration.yml`, etc.
-
 ---
 
 ## Documentation Requirements
 
-| Layer | Coverage | Details |
-|-------|----------|---------|
-| Staging | 100% | All models and columns |
-| Warehouse | 100% | All models and columns |
-| Integration | As needed | Document complex logic and special cases |
+| Layer | Required | Notes |
+|-------|----------|-------|
+| Warehouse | All columns must be documented | This is the layer end-users and BI consumers touch |
+| Staging | Model `description` in config; column descriptions encouraged | |
+| Integration | Document complex / non-obvious logic | |
 
-**Best Practices:**
-- Use `{% docs %}` blocks for shared documentation
-- Store doc blocks in `models/docs/`
-- Focus on business terminology
-- Explain WHY, not just WHAT
+**Doc blocks — centralised in `field_descriptions.md`:**
+- Field descriptions live in `models/field_descriptions.md` as `{% docs %}` blocks
+- Schema YAML references them: `description: "{{ doc('user_pk') }}"`
+- Avoids duplicate descriptions for the same logical column across models
+- Coverage can be enforced via [dbt-meta-testing](https://github.com/tnightengale/dbt-meta-testing)
 
 ---
 
@@ -205,28 +238,33 @@ select * from final
 ## Common Violations
 
 ❌ **Don't:**
-- Use plural object names (`users` → use `user`)
-- Put `ref()` calls outside top CTEs
+- Use plural entity names (`users` → use `user`)
+- Put `ref()` / `source()` calls outside the top `s_*` CTEs
 - Use implicit joins or just `join` (use `inner join`, `left join`)
 - Use table alias initialisms (`c` → use `customer`)
 - Mix tabs and spaces (use 4 spaces)
 - Skip tests on primary keys
-- Leave staging/warehouse models undocumented
+- Leave warehouse-layer columns undocumented
 - Select from sources in non-staging models
 - Use `union distinct` without good reason
-- Look up PKs in separate queries (generate with `surrogate_key`)
+- Look up PKs in separate queries — generate with `dbt_utils.generate_surrogate_key`
+- Hand-create or hand-edit `schema.yml` files — they are auto-generated from compiled SQL
+- Cast types with raw SQL — use `{{ dbt.type_*() }}` macros
 
 ✅ **Do:**
-- Use singular names
-- All refs in top CTEs
+- Use singular entity names
+- All refs / sources in `s_*` CTEs at the top
+- A `final` CTE in every model; `select * from final` at the bottom
 - Explicit join types
-- Descriptive table aliases
+- Descriptive table aliases (no initialisms)
 - Consistent indentation (4 spaces)
 - Test all primary keys (unique + not_null)
-- Document staging and warehouse 100%
-- Respect layer boundaries
+- Document every warehouse-layer column (centralise via `field_descriptions.md` doc blocks)
+- Respect layer boundaries (staging → integration → warehouse)
 - Prefer `union all`
-- Generate PKs with `dbt_utils.surrogate_key()`
+- Generate PKs/FKs with `dbt_utils.generate_surrogate_key`
+- Use `dbt.type_*()` macros for type casting
+- Group columns in select lists with `{# keys #}`, `{# attributes #}`, `{# metrics #}`, `{# booleans #}`, `{# temporal data types #}` markers
 
 ---
 
@@ -281,16 +319,18 @@ select * from final
 
 ```sql
 -- Generate primary key
-{{ dbt_utils.surrogate_key(['source_system_id', 'source_system']) }}
+{{ dbt_utils.generate_surrogate_key(['source_system_id', 'source_system']) }}
     as user_pk,
 
 -- Generate foreign key (reference to another table's pk)
-{{ dbt_utils.surrogate_key(['account_id', 'source_system']) }}
+{{ dbt_utils.generate_surrogate_key(['account_id', 'source_system']) }}
     as account_fk,
 
--- Natural key from source
-source_system_id as salesforce_user_natural_key
+-- Natural key — preserved from source
+source_system_id as user_natural_key
 ```
+
+Note: macro is `generate_surrogate_key` (the older name `surrogate_key` is deprecated in dbt_utils).
 
 ---
 
@@ -313,21 +353,26 @@ Run: `sqlfluff lint models/ --dialect <bigquery|snowflake|postgres>`
 
 Before committing a dbt model:
 
-- [ ] Filename follows naming convention
-- [ ] File in correct directory
-- [ ] All refs/sources in CTEs at top
-- [ ] Final CTE exists and is selected from
-- [ ] 4-space indentation, < 80 char lines
-- [ ] All fields lowercase
-- [ ] Primary key: `<object>_pk` with surrogate_key
-- [ ] Foreign keys: `<object>_fk` with surrogate_key
-- [ ] Timestamps: `<event>_ts`
-- [ ] Booleans: `is_` or `has_` prefix
-- [ ] Explicit joins (inner/left)
-- [ ] Field ordering correct (keys, dates, attributes, metrics, metadata)
-- [ ] Configuration appropriate for layer
-- [ ] Schema.yml entry exists
-- [ ] Primary key has unique + not_null tests
-- [ ] Model and columns documented (if staging/warehouse)
+- [ ] Filename follows the `<layer>_<group>__<entity>(_dim|_fact|_xa).sql` naming pattern
+- [ ] File in the correct entity-group subfolder (`stg_<group>/`, `int_<group>/`, `warehouse/wh_<group>/`)
+- [ ] All `ref()` / `source()` calls live in `s_*`-prefixed CTEs at the top
+- [ ] Model has a `final` CTE; bottom of file is `select * from final`
+- [ ] 4-space indentation, < 80-char lines
+- [ ] All fields lowercase, `snake_case`
+- [ ] Primary key: `<entity>_pk` generated via `dbt_utils.generate_surrogate_key`
+- [ ] Foreign keys: `<entity>_fk` generated via `dbt_utils.generate_surrogate_key`
+- [ ] Natural keys: `<entity>_natural_key`
+- [ ] Dates: `_dt`. Timestamps: `_ts` (UTC) or `_<tz>_ts` (non-UTC)
+- [ ] Booleans: `is_*` / `has_*` / `was_*`
+- [ ] Revenue / money columns: `_amount` suffix
+- [ ] Type casts use `dbt.type_*()` macros, not raw SQL types
+- [ ] Explicit join types (`inner join`, `left join`)
+- [ ] Field ordering correct: keys → attributes → indexes/ranks → metrics → booleans → temporal data types
+- [ ] Column groups marked with `{# keys #}`, `{# attributes #}` etc. Jinja comments (staging models)
+- [ ] `description` set in the model's `{{ config() }}` block
+- [ ] Materialisation: warehouse = `table`; staging / integration = `view` or ephemeral
+- [ ] Primary key has `unique` + `not_null` tests in the schema YAML
+- [ ] Warehouse-layer columns have descriptions (via `field_descriptions.md` doc blocks)
 - [ ] No SQL reserved words as column names
-- [ ] Singular object names throughout
+- [ ] Singular entity names throughout
+- [ ] If the project's schema YAML is auto-generated, it has been regenerated after the model change

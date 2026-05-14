@@ -5,6 +5,18 @@ description: Proactive skill for building Dagster orchestration layers. Auto-act
 
 # Dagster Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dagster | activated | Dagster orchestration work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 This skill activates when working with Dagster to ensure correct patterns, avoid common anti-patterns, and produce production-quality orchestration code. It is tailored for Wire projects where Dagster orchestrates dbt-based data pipelines.

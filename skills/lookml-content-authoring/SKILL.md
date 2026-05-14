@@ -1,5 +1,17 @@
 # LookML Content Authoring Skill for Claude Code
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | lookml-authoring | activated | LookML view, explore, or model work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Overview
 
 This skill enables Claude Code to create and modify LookML content (views, explores, models) directly in the local filesystem. Claude Code works with LookML projects stored in git repositories, typically in a `/looker` directory structure. The user provides specifications, schema information, and requirements; Claude Code generates properly formatted, validated LookML files.
@@ -25,9 +37,163 @@ Claude Code operates entirely on the local filesystem:
 
 All schema information must be provided by the user via spec files, documentation, or direct instruction.
 
-## Project Structure
+## RA Layered LookML Architecture
 
-LookML projects typically follow this structure within the repository:
+Rittman Analytics' Looker projects use a **layered architecture** built on LookML [refinements](https://cloud.google.com/looker/docs/lookml-refinements) to separate concerns and keep the semantic layer maintainable. Each layer has a specific role in transforming the analytics warehouse into business-ready analytical objects.
+
+```yaml
+analytics_warehouse
+│
+├── manifest.lkml                                       # Project manifest
+└── analytics_warehouse
+    │
+    └── lookml
+        ├── aggregate/
+        │   └── agg_[entity_group].layer.lkml           # Refinements + new aggregate measures
+        │
+        ├── base/
+        │   ├── _aggregate.layer.lkml                   # Generated measures from warehouse
+        │   └── _base.layer.lkml                        # Generated dimensions from warehouse
+        │
+        ├── int/
+        │   ├── int_explore_[entity_group_a].layer.lkml # Explores
+        │   └── int_explore_[entity_group_b].layer.lkml
+        │
+        ├── model/
+        │   └── analytics_warehouse.model.lkml          # Project model + connection
+        │
+        └── staging/
+            └── stg_[entity_group].layer.lkml           # Refinements on dimensions
+```
+
+### Layer roles
+
+**1. Base layer (`base/`) — generated LookML mapping directly to warehouse tables**
+- `_base.layer.lkml`: dimensions and basic field definitions, generated from warehouse schema
+- `_aggregate.layer.lkml`: measures generated from warehouse tables
+- Field names and types match the warehouse exactly
+- **No** business logic that doesn't exist in the warehouse
+- **No** user-facing labelling
+
+**2. Staging layer (`staging/`) — dimension refinements**
+- One file per entity group: `stg_<entity_group>.layer.lkml`
+- Uses LookML refinements (`+` prefix) to override or enhance base dimensions
+- Adds user-friendly `label:` and `group_label:`
+- Organises field-picker ordering using space characters (e.g. `label: "    my field label"`)
+- Hides dimensions that aren't user-facing (typically `_pk`, `_fk`)
+- Adds descriptions to newly derived dimensions
+- Defines parameters, toggles, filtered dimensions
+- **No** calculated or aggregate measures — those live in the aggregate layer
+
+**3. Aggregate layer (`aggregate/`) — measure refinements + new aggregate measures**
+- One file per entity group: `agg_<entity_group>.layer.lkml`
+- Uses LookML refinements (`+` prefix) to override or enhance base aggregate measures
+- Creates new aggregate measures (avg, median, ratios, year-over-year, etc.)
+- Measures that exist **only** in the semantic layer (not in the warehouse) use the `_calculated` suffix
+- All business KPI measures live here — never in the warehouse or base layer
+- Apply `value_format_name` for consistent formatting
+- Apply `sql_distinct_key` for accurate count distinct operations
+- Include `drill_fields` for common exploration paths
+
+**4. Integration layer (`int/`) — Explores and joins**
+- One file per entity group: `int_explore_<entity_group>.layer.lkml`
+- Uses `include:` to pull in base, staging, and aggregate refinement layers (in that order)
+- View names in Explores reference base view names (e.g. `view: wh_core__user_dim`)
+- Defines relationships, default fields, access filters
+- Use [Aggregate Awareness](https://cloud.google.com/looker/docs/aggregate_awareness) where it improves performance
+- Joins should be many-to-one for performance, using `_fk` → `_pk` relationships from the warehouse
+- **Avoid** direct SQL or business logic in this layer (e.g. no joins between columns not already modelled as `_fk` → `_pk` in the warehouse)
+- All Explores must have `label:` and `description:`
+
+**5. Model layer (`model/`) — project connection**
+- Single `analytics_warehouse.model.lkml`
+- `include:` all `int_explore_*.layer.lkml` files
+- One `connection:` defined
+- `case_sensitive: no`
+
+### File-naming conventions
+
+| Folder | Suffix | Example |
+|---|---|---|
+| `base/` | `.layer.lkml` | `_base.layer.lkml`, `_aggregate.layer.lkml` |
+| `staging/` | `.layer.lkml` | `stg_core.layer.lkml`, `stg_finance.layer.lkml` |
+| `aggregate/` | `.layer.lkml` | `agg_core.layer.lkml`, `agg_finance.layer.lkml` |
+| `int/` | `.layer.lkml` | `int_explore_core.layer.lkml` |
+| `model/` | `.model.lkml` | `analytics_warehouse.model.lkml` |
+
+The `.layer.lkml` suffix is a convention adopted across the Looker community for refinement files.
+
+### Refinements — the core pattern
+
+**Always use refinements (`+` prefix)** to modify base views in the staging and aggregate layers. A view should be refined **once** in the staging layer (for dimensions) and **once** in the aggregate layer (for measures) — never more. Multiple refinements of the same view in the same layer create version drift and data-quality risk.
+
+```lkml
+# In base/_base.layer.lkml — generated
+view: wh_core__user_dim {
+  sql_table_name: analytics.wh_core__user_dim ;;
+  dimension: user_pk { ... }
+  dimension: user_name { ... }
+}
+
+# In staging/stg_core.layer.lkml — refinement
+view: +wh_core__user_dim {
+  dimension: user_pk { hidden: yes }
+  dimension: user_name {
+    label: "User name"
+    group_label: "User attributes"
+    description: "Full user name from the back-office source."
+  }
+}
+
+# In aggregate/agg_core.layer.lkml — refinement
+view: +wh_core__user_dim {
+  measure: user_count_calculated {
+    type: count_distinct
+    sql: ${user_pk} ;;
+    description: "Distinct count of users."
+  }
+}
+```
+
+Note the `view: +wh_core__user_dim` syntax — the `+` indicates a refinement, and the view name matches the warehouse table name exactly.
+
+### `include:` order matters
+
+In an integration-layer `.layer.lkml` file, list `include:` directives in this order — base first, then refinements:
+
+```lkml
+include: "/analytics_warehouse/lookml/base/_base.layer.lkml"
+include: "/analytics_warehouse/lookml/base/_aggregate.layer.lkml"
+include: "/analytics_warehouse/lookml/staging/*"
+include: "/analytics_warehouse/lookml/aggregate/*"
+
+explore: user_explore {
+  view_name: wh_core__user_dim
+  label: "User analytics"
+  description: "Explores user attributes and aggregates."
+  # joins...
+}
+```
+
+The base layer must be loaded **before** the refinement layers, otherwise the `+` views have nothing to refine.
+
+### Quick reference — where things live
+
+| Need to ... | Layer | File |
+|---|---|---|
+| Add a user-friendly label to an existing dimension | staging | `stg_<group>.layer.lkml` |
+| Hide a primary or foreign key from the field picker | staging | `stg_<group>.layer.lkml` |
+| Create a new aggregate measure (`count_distinct`, ratio, YoY) | aggregate | `agg_<group>.layer.lkml` |
+| Add `value_format_name` to a base measure | aggregate | `agg_<group>.layer.lkml` |
+| Define an Explore with joins | int | `int_explore_<group>.layer.lkml` |
+| Add or change a database connection | model | `analytics_warehouse.model.lkml` |
+| Modify base/auto-generated LookML | **don't** — regenerate from the warehouse | |
+
+---
+
+## Legacy Project Structure (non-layered)
+
+Some older LookML projects use a flatter structure without the layered refinement pattern. For greenfield work, always prefer the layered architecture above. The structure below is documented only as a reference for working with legacy projects:
 
 ```
 /looker/
@@ -98,10 +264,15 @@ Column names in LookML must exactly match the source table columns (case-sensiti
 ### 3. Follow Project Conventions
 
 Before creating new files, examine existing LookML in the project to understand:
-- Naming conventions (snake_case, prefixes like `dim_`, `fct_`)
-- File organization patterns
-- Label and group_label usage
+- Whether the project uses the RA layered architecture (`base/`, `staging/`, `aggregate/`, `int/`, `model/` folders with `.layer.lkml` and `.explore.lkml` files) or the legacy flat structure
+- Naming conventions (snake_case; warehouse view names like `wh_<group>__<entity>_dim`)
+- Layer placement — never put aggregate measures in the staging layer or business labels in the base layer
+- Refinement usage — `view: +<view_name>` for refinements, `view: <view_name>` only in base layer
+- Label, group_label, and field-picker ordering conventions (space-padded labels)
 - Value format conventions
+- `_calculated` suffix on measures that exist only in the semantic layer
+
+If the project uses the layered architecture (see "RA Layered LookML Architecture" above), place new content in the correct layer. If you are about to add a measure to a staging-layer file, stop — measures belong in the aggregate layer.
 
 ### 4. Validate LookML Syntax
 

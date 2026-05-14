@@ -1,8 +1,10 @@
+<img src="wire/docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
+
 # The Wire Framework: User Guide
 
-**Rittman Analytics — Internal Use**
+**Rittman Analytics**
 
-**Version**: 3.4.17 | **Date**: May 2026
+**Version**: 3.4.22 | **Date**: May 2026
 
 ---
 
@@ -26,18 +28,19 @@
 16. [Worked Example: Barton Peveril Live Pastoral Analytics](#16-worked-example-barton-peveril-live-pastoral-analytics)
 17. [Wire Autopilot: Autonomous Execution](#17-wire-autopilot-autonomous-execution)
 18. [Wire Studio: Web-Based Interface](#18-wire-studio-web-based-interface)
-19. [Issue Tracking: Jira and Linear](#19-issue-tracking-jira-and-linear)
-20. [Document Store: Confluence and Notion](#20-document-store-confluence-and-notion)
-21. [Extending and Customising the Framework](#21-extending-and-customising-the-framework)
-22. [FAQ](#22-faq)
-23. [Troubleshooting](#23-troubleshooting)
-24. [Framework Management Commands](#24-framework-management-commands)
+19. [Wire Framework VS Code Extension](#19-wire-framework-vs-code-extension)
+20. [Issue Tracking: Jira and Linear](#20-issue-tracking-jira-and-linear)
+21. [Document Store: Confluence and Notion](#21-document-store-confluence-and-notion)
+22. [Extending and Customising the Framework](#22-extending-and-customising-the-framework)
+23. [FAQ](#23-faq)
+24. [Troubleshooting](#24-troubleshooting)
+25. [Framework Management Commands](#25-framework-management-commands)
 
 ---
 
 ## 1. What Is the Wire Framework?
 
-The Wire Framework is Rittman Analytics' proprietary AI-accelerated delivery system for data platform engagements. It uses an AI coding agent — either **Claude Code** (Anthropic) or **Gemini CLI** (Google) — as its runtime, and encodes 20+ years of analytics engineering methodology as structured, executable workflow specifications.
+The Wire Framework is Rittman Analytics' AI-accelerated delivery system for data platform engagements. It uses an AI coding agent — either **Claude Code** (Anthropic) or **Gemini CLI** (Google) — as its runtime, and encodes 20+ years of analytics engineering methodology as structured, executable workflow specifications.
 
 In practical terms: instead of a practitioner manually writing dbt models, LookML, pipeline code, training materials, and documentation over several weeks, the framework directs the AI to produce all of these artifacts in a fraction of the time — with embedded quality gates ensuring the output meets our standards.
 
@@ -96,7 +99,7 @@ The AI fills in the blanks within a tightly constrained template rather than inv
 
 ### Key terminology
 
-Wire v3.4.0 introduces a two-tier structure with precise terminology. Understanding these two concepts is essential before using the framework.
+Wire uses a two-tier structure with precise terminology. Understanding these two concepts is essential before using the framework.
 
 **Engagement** — a complete client engagement from start to finish. The engagement holds all context that spans the whole relationship with that client: the Statement of Work, call transcripts and meeting notes, org charts, stakeholder lists, and the current-state architecture of their systems. This context belongs to the engagement, not to any specific unit of delivery.
 
@@ -162,7 +165,7 @@ graph TD
     ENG --> SOW
     ENG --> CALLS
     ENG --> ORG
-    RESEARCH -.->|"surfaced by<br/>session:start"| RELEASES
+    RESEARCH -.->|"surfaced by<br/>engagement-context skill"| RELEASES
     RELEASES --> R1
     RELEASES --> R2
     RELEASES --> R3
@@ -211,37 +214,44 @@ graph LR
 
 ### Session lifecycle
 
-Every working session on any release should begin and end with Wire's session commands:
+As of v3.4.20, session state is managed automatically — no explicit session commands required.
+
+The **engagement-context skill** fires automatically on the first message in any Wire repo. It locates the active release, reads `status.md`, and outputs a 4–6 line context summary before any work begins. You never need to remember to start a session; context loading is invisible and always on.
+
+After each command completes, the framework writes its result to `status.md` and appends a row to `execution_log.md` — so state is captured incrementally rather than at explicit session boundaries.
+
+For an optional structured planning ritual at the start of focused work, use:
 
 ```
-/wire:session:start [release-folder]   ← starts a focused session
-/wire:session:end   [release-folder]   ← closes the session, updates history
+/wire:plan [release-folder]
 ```
 
-`session:start` enters Plan Mode, scans the current release status and prior research, and proposes a focused 3–5 step session plan before any work begins. `session:end` records what was accomplished in the release's `session_history` table and suggests the focus for the next session.
+This enters Plan Mode, reads the current release state, and proposes a 3–5 step session plan before work begins. It is never required — it is there for consultants who want explicit alignment before starting complex multi-step work.
 
-These commands ensure every session is grounded in current state — not re-establishing context from scratch — and that progress is captured automatically.
+> **Note**: `/wire:session:start` and `/wire:session:end` have been deprecated as of v3.4.20. Running them displays a migration notice. No action is required — the equivalent behaviour now happens automatically.
 
 ---
 
 ## 4. Release Types
 
-The framework encodes delivery methodology as seven release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
+The framework encodes delivery methodology as nine release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
 
-| Type | Scope | Typical Duration | Artifacts in Scope |
-|------|-------|------------------|--------------------|
-| **Discovery** | Shape Up planning: problem definition → pitch → release brief → sprint plan | 1–2 weeks | problem_definition, pitch, release_brief, sprint_plan |
-| **Full Platform** | SOW → production dashboards + trained users | 2–3 weeks | All 15 delivery artifact types |
-| **Dashboard-First** | Interactive mocks drive data model; seed data enables immediate dbt | 1–2 weeks | 14 artifacts (omits workshops, conceptual_model, pipeline_design, pipeline; adds viz_catalog, seed_data, data_refactor) |
-| **Pipeline + dbt** | New data pipeline + dbt transformation layer | 1–2 weeks | requirements, pipeline_design, data_model, pipeline, dbt, data_quality, deployment |
-| **dbt Development** | Analytics engineering on existing infrastructure | 1 week | requirements, data_model, dbt, data_quality |
-| **Dashboard Extension** | New dashboards on an existing semantic layer | 3–5 days | requirements, mockups, dashboards, uat |
-| **Enablement** | Training and documentation for an existing platform | 2–3 days | training, documentation |
-| **Agentic Commerce** | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
+| Type | `release_type` | Scope | Typical Duration | Artifacts in Scope |
+|------|----------------|-------|------------------|--------------------|
+| **Discovery (Shape Up)** | `discovery` | Shape Up planning: problem definition → pitch → release brief → sprint plan | 1–2 weeks | problem_definition, pitch, release_brief, sprint_plan |
+| **Discovery (SOP / Canonical)** | `sop_discovery` | Wide-ranging structured discovery leading to a sponsor Findings Playback and go/no-go decision | 3–6 weeks | engagement_brief, stakeholder_map, stakeholder_interview, requirements_matrix, discovery_analyses, findings_playback, delivery_roadmap |
+| **Full Platform** | `full_platform` | SOW → production dashboards + trained users | 2–3 weeks | All 15 delivery artifact types |
+| **Dashboard-First** | `dashboard_first` | Interactive mocks drive data model; seed data enables immediate dbt | 1–2 weeks | 14 artifacts (inc. viz_catalog, seed_data, data_refactor) |
+| **Pipeline + dbt** | `pipeline_only` | New data pipeline + dbt transformation layer | 1–2 weeks | requirements, pipeline_design, data_model, pipeline, dbt, data_quality, deployment |
+| **dbt Development** | `dbt_development` | Analytics engineering on existing infrastructure | 1 week | requirements, data_model, dbt, data_quality |
+| **Dashboard Extension** | `dashboard_extension` | New dashboards on an existing semantic layer | 3–5 days | requirements, mockups, dashboards, uat |
+| **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days | training, documentation |
+| **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
 
 ### Choosing the right release type
 
-- **Starting a new engagement where scope is unclear or needs shaping**: **Discovery** first, then delivery releases
+- **New engagement, scope can be shaped in 1–2 weeks**: **Discovery (Shape Up)** — problem definition → pitch → release brief → sprint plan
+- **New engagement, scope genuinely unknown, requires 3–6 weeks of structured stakeholder discovery**: **Discovery (SOP / Canonical)** — stakeholder interviews → three analyses → Findings Playback sponsor decision
 - **Client needs a new data source connected end-to-end through to a dashboard**: **Full Platform**
 - **Early stakeholder feedback via interactive mocks before building the data layer**: **Dashboard-First**
 - **Client has a BI tool / semantic layer and just needs new data flowing in**: **Pipeline + dbt**
@@ -250,7 +260,9 @@ The framework encodes delivery methodology as seven release types, each defining
 - **Platform exists; engaged to train and document it**: **Enablement**
 - **Building an AI-powered ecommerce storefront**: **Agentic Commerce**
 
-**When to start with Discovery**: Any engagement where the scope is not already well-defined in a signed SOW, where the client isn't sure what they need built, or where the team wants to formally validate the problem and shape the solution before committing to a delivery estimate. Discovery produces a release brief and sprint plan — the formal inputs to a delivery release.
+**Discovery (Shape Up) vs Discovery (SOP / Canonical)**: Use Shape Up when the scope is fuzzy but the problem domain is understood and you can shape a solution in a week or two. Use SOP / Canonical when you genuinely do not yet know what to build, stakeholder alignment is low, or this is the first analytics engagement at the client — it runs a formal structured discovery and culminates in a sponsor-facing Findings Playback slide deck that must be signed off before any delivery work begins.
+
+**Full Platform vs Dashboard-First**: Both produce the same end result (production dashboards with a dbt warehouse). The difference is the *order of operations*. Full Platform follows the traditional flow: requirements → conceptual model → pipeline design → data model → dbt → dashboards. Dashboard-First inverts this: requirements → interactive dashboard mocks → visualization catalog → data model → seed data → dbt → dashboards → data refactor. Choose Dashboard-First when getting visual feedback early is more valuable than following the traditional top-down design sequence — typically when the SOW is well-defined enough to mock dashboards immediately but client data access may take time.
 
 **Full Platform vs Dashboard-First**: Both produce the same end result (production dashboards with a dbt warehouse). The difference is the *order of operations*. Full Platform follows the traditional flow: requirements → conceptual model → pipeline design → data model → dbt → dashboards. Dashboard-First inverts this: requirements → interactive dashboard mocks → visualization catalog → data model → seed data → dbt → dashboards → data refactor. Choose Dashboard-First when getting visual feedback early is more valuable than following the traditional top-down design sequence — typically when the SOW is well-defined enough to mock dashboards immediately but client data access may take time.
 
@@ -279,14 +291,15 @@ The framework encodes delivery methodology as seven release types, each defining
 
 **Claude Code users:**
 
-In any Claude Code session, register the marketplace and install:
+In any Claude Code session, register the marketplace, install the plugin, then activate it:
 ```
 /plugin marketplace add rittmananalytics/wire-plugin
 /plugin install wire@rittman-analytics
+/reload-plugins
 ```
 When prompted for scope, select **"Install for you (user scope)"** to make Wire available across all repositories.
 
-Restart Claude Code. All commands are available as `/wire:*` after restart.
+The `/reload-plugins` step picks up the install in the current session — no Claude Code restart needed. All commands are then available as `/wire:*`.
 
 **Gemini CLI users:**
 ```bash
@@ -359,22 +372,17 @@ Each command file contains the full workflow inline — from 100 lines for a sim
 
 ### Session lifecycle
 
-Every working session should begin and end with Wire's session commands:
+As of v3.4.20, session context loading and state capture are automatic — no session commands needed.
 
-```
-/wire:session:start [release-folder]   ← enter Plan Mode, scan status + research, get a session plan
-/wire:session:end   [release-folder]   ← record accomplishments, surface next focus
-```
+The **engagement-context skill** activates on the first message in any Wire repo. It identifies the active release, reads `status.md`, and outputs a brief context summary before any work begins. Each command that completes writes its result to `status.md` and appends a row to `execution_log.md` automatically.
 
-`session:start` reads the release's `status.md`, surfaces any prior research from `.wire/research/sessions/`, and proposes a focused 3–5 step plan before any work begins. This ensures every session starts from current state rather than reconstructing context from scratch.
-
-`session:end` records what was accomplished in the release's `session_history` table and suggests the focus for the next session. The session history table is appended to `status.md` and builds into a running audit trail over the course of the release.
+Use `/wire:plan [release-folder]` for an optional structured planning ritual — it enters Plan Mode and proposes a 3–5 step session plan. It is never required.
 
 ### Research persistence
 
 When the AI performs technical research during a session (looking up warehouse schemas, reading documentation, investigating a library), it automatically saves structured summaries to `.wire/research/sessions/YYYY-MM-DD-HHMM/summary.md` — one file per research session at the engagement level (not inside any individual release).
 
-At the start of the next session, `session:start` checks these saved summaries before any new research begins. If a relevant finding already exists, it surfaces it rather than re-doing the work. This means:
+The engagement-context skill checks these saved summaries when loading context. If a relevant prior finding exists, it is surfaced rather than re-running the same research. This means:
 - **Cross-release knowledge carries over**: research done during the discovery release is available when working on the delivery release
 - **Re-starting a session doesn't lose context**: prior technical findings are always available
 - **Less AI context consumed**: the AI reads a condensed summary instead of re-running the same web searches
@@ -420,7 +428,7 @@ Each release has a `status.md` file at `.wire/releases/<release-folder>/status.m
 
 The YAML frontmatter lists every in-scope artifact with its generate/validate/review gate states. Out-of-scope artifacts (determined by the release type) are marked `not_applicable`. Each command reads this state before executing — that's how the framework enforces phase discipline and prerequisite ordering. The framework updates `status.md` automatically after each command. You can also edit it manually to add notes or record decisions.
 
-At the bottom of `status.md`, a `Session History` table is maintained by `session:end` — providing a running record of every working session, what was accomplished, and what the next focus should be.
+The framework updates `status.md` automatically after each command — no manual session tracking required. The execution log (`execution_log.md`) provides a complete timestamped audit trail of all commands and skill activations.
 
 When you run `/wire:start`, the framework reads all `status.md` files across all releases and tells you the suggested next action.
 
@@ -535,13 +543,12 @@ graph LR
     style DR fill:#fff3e0,stroke:#f5a623
 ```
 
-### Discovery workflow
+### Discovery workflow (Shape Up)
 
 ```
 /wire:new                                          # release_type: discovery
 
 # Begin each session:
-/wire:session:start 01-discovery
 
 # Step 1: Problem Definition
 /wire:problem-definition-generate 01-discovery
@@ -567,7 +574,6 @@ graph LR
 /wire:release:spawn 01-discovery
 
 # End each session:
-/wire:session:end 01-discovery
 ```
 
 ### Step 1: Problem Definition
@@ -690,7 +696,7 @@ Reads the approved release brief to identify the planned downstream delivery rel
     ...
 ```
 
-The spawned releases are ready to start immediately — their `status.md` files are pre-populated with the correct artifact scope for each release type, and their first session can begin with `/wire:session:start`.
+The spawned releases are ready to start immediately — their `status.md` files are pre-populated with the correct artifact scope for each release type. The engagement-context skill will load the release state automatically on the first message in each release.
 
 ### Engagement artifacts and the discovery release
 
@@ -722,10 +728,10 @@ A new engagement with an uncertain scope:
 # Add meeting transcript from kick-off call
 # Copy transcript to .wire/engagement/calls/2026-03-10-kickoff.md
 
-# Start the first discovery session
-/wire:session:start 01-discovery
-→ [Plan Mode] Scans status.md and research sessions
-→ Proposes 4-step session plan: Problem Definition → Pitch draft → ...
+# The engagement-context skill loads automatically on first message:
+# → Scans status.md: all discovery artifacts at not_started
+# → No prior research found
+# → Outputs context summary and proceeds with your request
 
 /wire:problem-definition-generate 01-discovery
 → Reads engagement/sow.md + engagement/calls/2026-03-10-kickoff.md
@@ -741,14 +747,9 @@ A new engagement with an uncertain scope:
 → Produces 10-section pitch
 → Appetite set: 6 weeks (big batch — full pipeline + dbt + dashboards)
 
-/wire:session:end 01-discovery
-→ Records session in session_history: "Problem Definition complete and approved. Pitch drafted."
-→ Suggests next session focus: Pitch review (betting table)
-
-# Session 2 (next day)
-/wire:session:start 01-discovery
-→ Surfaces prior research saved from session 1
-→ Proposes: pitch review → brief generation
+# Next day — engagement-context skill reloads on first message:
+# → Surfaces prior research saved from previous session
+# → Outputs: "Pitch drafted, not yet validated. Suggested next step: validate + review"
 
 /wire:pitch-validate 01-discovery  → PASS
 /wire:pitch-review 01-discovery    → Bet approved: 6-week full_platform release
@@ -765,9 +766,62 @@ A new engagement with an uncertain scope:
 → Creates .wire/releases/03-acme-enablement/ (enablement)
 → Both releases ready to start
 
-/wire:session:end 01-discovery
 → Discovery release complete.
 ```
+
+### Discovery workflow (SOP / Canonical)
+
+The SOP discovery release is for engagements where you do not yet know enough to shape the bet — you need a structured, wide-ranging discovery that leads to a go/no-go decision on a programme of work. Models the [Canonical Discovery Playbook (RA Standard)](https://rittmananalytics.atlassian.net/wiki/spaces/RA/pages/3436642306/Canonical+Discovery+Playbook+RA+Standard).
+
+The canonical exit deliverable is the **Findings Playback slide deck**, presented to the sponsor. The playback meeting is the Wire review gate — the release is `approved` only when the Sponsor Validation Checklist (Maturity pin, Hierarchy diagnosis, PPT diagnosis, Vision Statement, Solution Initiatives, preferred Delivery Option, conflicts resolved) is all-true.
+
+```
+/wire:new                                          # release_type: sop_discovery
+
+# Phase 0 — Pre-Discovery (1–3 days)
+/wire:engagement-brief-generate 01-discovery       # from SoW + HubSpot deal record
+/wire:engagement-brief-validate 01-discovery
+/wire:engagement-brief-review 01-discovery         # internal RA (Head of Delivery)
+
+/wire:stakeholder-map-generate 01-discovery
+/wire:stakeholder-map-validate 01-discovery
+/wire:stakeholder-map-review 01-discovery          # sponsor confirms list and bookings
+
+# Phase 1 — Kick-off (1 session)
+/wire:kickoff-generate 01-discovery                # release-type-aware; pulls from engagement_brief + stakeholder_map
+/wire:kickoff-review 01-discovery
+
+# Phase 2 — Interviews (1–2 weeks; repeat the per-stakeholder generate per interview)
+/wire:stakeholder-interview-generate 01-discovery --stakeholder maud-bakker
+/wire:stakeholder-interview-validate 01-discovery --stakeholder maud-bakker
+/wire:stakeholder-interview-review 01-discovery --stakeholder maud-bakker
+# ... repeat for each P0/P1 stakeholder
+/wire:stakeholder-interview-validate 01-discovery --all   # tag-completeness coverage
+
+# Phase 3 — Consolidation (3–5 days)
+/wire:requirements-matrix-generate 01-discovery
+/wire:requirements-matrix-validate 01-discovery
+/wire:requirements-matrix-review 01-discovery       # internal RA
+
+/wire:discovery-analyses-generate 01-discovery      # the three analyses
+/wire:discovery-analyses-validate 01-discovery
+/wire:discovery-analyses-review 01-discovery        # HoD + peer; challenges the Maturity pin
+
+# Phase 4 — Findings Playback (3–5 days prep; 1 sponsor session)
+/wire:findings-playback-generate 01-discovery       # populates the deck template
+/wire:findings-playback-validate 01-discovery
+/wire:findings-playback-review 01-discovery         # ⭐ the sponsor playback — Sponsor Validation Checklist captured here
+
+# Phase 5 — Roadmap & Exit
+/wire:delivery-roadmap-generate 01-discovery        # Build / Pair / Coach options
+/wire:delivery-roadmap-validate 01-discovery
+/wire:delivery-roadmap-review 01-discovery          # sponsor sign-off on Release 1 scope
+
+# Spawn Release 1 (or close as no-go):
+/wire:release-spawn 01-discovery
+```
+
+The mandatory **four-tag rule** on every interview theme bullet (`#<domain> #<type> #<hierarchy> #<ppt>`) is enforced mechanically by `/wire:stakeholder-interview-validate`. The three analyses (Hierarchy of Needs / PPT / Maturity Curve) cannot run without it.
 
 ---
 
@@ -871,7 +925,6 @@ graph LR
 
 ```
 /wire:new                                          # release_type: full_platform
-/wire:session:start <release-folder>               # begin each session
 
 # Phase 1: Requirements
 /wire:requirements-generate <release-folder>
@@ -941,18 +994,7 @@ graph LR
 /wire:documentation-review <release-folder>
 
 /wire:archive <release-folder>
-/wire:session:end <release-folder>               # end each session
 ```
-
-### Session start
-
-Begin every session on this release with:
-
-```
-/wire:session:start <release-folder>
-```
-
-The framework scans `status.md`, surfaces relevant research from `.wire/research/sessions/`, and proposes the session plan.
 
 ### Phase 1: Requirements (Day 1)
 
@@ -1173,7 +1215,7 @@ Generates technical architecture documentation and end-user guides. Validate and
 ```
 /wire:archive <release-folder>
 ```
-Archives the completed release and produces a release summary. Run `session:end` to record the final session.
+Archives the completed release and produces a release summary.
 
 ### Utility commands available at any phase
 
@@ -1217,7 +1259,6 @@ The chosen tool is recorded as `pipeline_tool` in `status.md`. All downstream `/
 
 ```
 /wire:new                                   # release_type: pipeline_dbt
-/wire:session:start <release-folder>
 
 /wire:requirements-generate <release-folder>
 /wire:requirements-validate <release-folder>
@@ -1250,7 +1291,6 @@ The chosen tool is recorded as `pipeline_tool` in `status.md`. All downstream `/
 /wire:utils-deploy-to-prod <release-folder>
 
 /wire:archive <release-folder>
-/wire:session:end <release-folder>
 ```
 
 ---
@@ -1265,7 +1305,6 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 
 ```
 /wire:new                                         # release_type: dbt_development
-/wire:session:start <release-folder>
 
 /wire:requirements-generate <release-folder>      # Focus on transformation requirements
 /wire:requirements-validate <release-folder>
@@ -1289,7 +1328,6 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 /wire:data_quality-review <release-folder>
 
 /wire:archive <release-folder>
-/wire:session:end <release-folder>
 ```
 
 **Tips for dbt-only releases**:
@@ -1308,7 +1346,6 @@ Use this when the semantic layer already has the data, and you're adding new das
 
 ```
 /wire:new                                         # release_type: dashboard_extension
-/wire:session:start <release-folder>
 
 /wire:requirements-generate <release-folder>      # Focus on dashboard/user requirements
 /wire:requirements-validate <release-folder>
@@ -1325,7 +1362,6 @@ Use this when the semantic layer already has the data, and you're adding new das
 /wire:uat-review <release-folder>
 
 /wire:archive <release-folder>
-/wire:session:end <release-folder>
 ```
 
 **Tips**:
@@ -1376,7 +1412,6 @@ flowchart TB
 
 ```
 /wire:new                                               # release_type: dashboard_first
-/wire:session:start <release-folder>
 
 # Phase 1: Requirements (Day 1)
 /wire:requirements-generate <release-folder>
@@ -1442,7 +1477,6 @@ flowchart TB
 /wire:documentation-review <release-folder>
 
 /wire:archive <release-folder>
-/wire:session:end <release-folder>
 ```
 
 ### Phase 1: Requirements (Day 1)
@@ -1550,7 +1584,6 @@ Use this when an existing platform needs training and documentation — either a
 
 ```
 /wire:new                                         # release_type: enablement
-/wire:session:start <release-folder>
 
 /wire:requirements-generate <release-folder>      # Capture training audience and learning objectives
 
@@ -1563,7 +1596,6 @@ Use this when an existing platform needs training and documentation — either a
 /wire:documentation-review <release-folder>
 
 /wire:archive <release-folder>
-/wire:session:end <release-folder>
 ```
 
 **Tips**:
@@ -1591,13 +1623,12 @@ Ensure the following accounts and access tokens are ready before running `/wire:
 | GCP | Project with Vertex AI Retail API + BigQuery APIs enabled + service account key | `ac_semantic_search`, `ac_conversational_assistant`, `ac_personalisation` |
 | Stripe | Account + secret key | `ac_ucp_server` |
 
-See `agentic_commerce_release/00a-prerequisites-and-worked-examples.md` for a full step-by-step setup guide.
+See `wire/docs/agentic_commerce/00a-prerequisites-and-worked-examples.md` for a full step-by-step setup guide.
 
 ### Workflow
 
 ```
 /wire:new                                          # release_type: agentic_commerce
-/wire:session:start <release-folder>
 
 # Phase 1 — Base storefront (prerequisite for all other features)
 /wire:ac_storefront-generate <release-folder>      # Guided Lovable prompt sequence + GitHub sync
@@ -1638,7 +1669,6 @@ See `agentic_commerce_release/00a-prerequisites-and-worked-examples.md` for a fu
 /wire:ac_demo_orchestration-review <release-folder>
 
 /wire:archive <release-folder>
-/wire:session:end <release-folder>
 ```
 
 ### What each generate command does
@@ -1767,10 +1797,9 @@ graph LR
 # → .wire/releases/01-barton-peveril-live-pastoral/status.md created
 #   with full delivery process: requirements through enablement
 
-/wire:session:start 01-barton-peveril-live-pastoral
+# → engagement-context skill fires on first message
 # → Scans status.md: all artifacts at not_started
-# → No prior research found
-# → Proposes session plan: requirements → design kick-off
+# → No prior research found; outputs context summary
 ```
 
 Selecting `full_platform` instantiated the complete delivery process into the release's `status.md` — all 15 artifacts across six phases, each with generate/validate/review gates set to `not_started`. This is the process definition that will govern the entire release.
@@ -1970,7 +1999,7 @@ Safety gates automatically pause execution before any phase that could affect ex
 - **Complex, ambiguous SOWs**: When the SOW needs significant interpretation or clarification before planning
 - **Client-facing review gates required**: When the client must approve each phase before moving forward
 - **Novel architectures**: When the project involves unfamiliar technologies or unconventional patterns
-- **Single-release engagements**: If you only need one delivery release without a discovery phase, use `/wire:new` + `/wire:session:start` instead
+- **Single-release engagements**: If you only need one delivery release without a discovery phase, use `/wire:new` and start working — the engagement-context skill loads context automatically
 
 ### How it works
 
@@ -2160,7 +2189,7 @@ Autopilot checks `.wire/autopilot_checkpoint.md` and `.wire/releases/*/status.md
 Autopilot and the individual `/wire:*` commands share the same state files. You can:
 
 - Start with Autopilot for the discovery sprint, then switch to manual commands for delivery
-- Fix a blocked artifact manually using `/wire:session:start`, then re-run Autopilot to continue
+- Fix a blocked artifact manually (the engagement-context skill will reload state automatically), then re-run Autopilot to continue
 - Use Autopilot for the bulk of the work, then run manual reviews for client-facing phases
 
 ### Error handling
@@ -2184,7 +2213,7 @@ When complete, Autopilot outputs a results table showing the discovery sprint st
 - If you configured a document store, all four discovery documents are already published and ready for client review by the time the discovery sprint ends
 - Check `.wire/autopilot_checkpoint.md` for the full execution summary and `.wire/releases/*/execution_log.md` for per-release audit trails
 - Use `/wire:status` to see the detailed artifact status across all releases after Autopilot completes
-- If you want to run just a single release without discovery, use `/wire:new` + `/wire:session:start` instead
+- If you want to run just a single release without discovery, use `/wire:new` and start working — context loads automatically
 
 ### Walkthrough: Autopilot in use
 
@@ -2413,7 +2442,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ## 18. Wire Studio: Web-Based Interface
 
-> **Status: Active** — Wire Studio v3.4.0 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
+> **Status: Active** — Wire Studio v3.4.17 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
 Wire Studio is a web-based visual interface for the Wire Framework. It provides a multi-user, browser-based console as an alternative to the CLI for managing Wire projects, running commands, viewing artifact diagrams, and browsing project files.
 
@@ -2525,11 +2554,11 @@ Click **Create**. Wire Studio creates the environment, provisions a workspace, a
 
 When no project is open, Wire Studio shows the welcome screen with **Open Project** and **New Project** buttons:
 
-![Wire Studio — Open Project screen](../../wire-web-ui/docs/images/wire_studio_open_project.png)
+![Wire Studio — Open Project screen](wire-web-ui/docs/images/wire_studio_open_project.png)
 
 Clicking **Open Project** opens the project selection dialog:
 
-![Wire Studio — Select Project dialog](../../wire-web-ui/docs/images/wire_studio_select_project.png)
+![Wire Studio — Select Project dialog](wire-web-ui/docs/images/wire_studio_select_project.png)
 
 #### 2. Viewing the artifact graph
 
@@ -2551,11 +2580,11 @@ Right-click any artifact node to see the context menu:
 - **Refresh Document** — reloads the content (useful after running a Generate command)
 - **Close Document** — closes the tab
 
-![Wire Studio — Right-click context menu on artifact node](../../wire-web-ui/docs/images/wire_studio_open_diagram.png)
+![Wire Studio — Right-click context menu on artifact node](wire-web-ui/docs/images/wire_studio_open_diagram.png)
 
 For example, right-clicking the **Data Model** node and selecting "View Document" opens a tab showing the ER diagram rendered from the mermaid code in the data model specification:
 
-![Wire Studio — Viewing a rendered pipeline design diagram in a tab](../../wire-web-ui/docs/images/wire_studio_view_diagram.png)
+![Wire Studio — Viewing a rendered pipeline design diagram in a tab](wire-web-ui/docs/images/wire_studio_view_diagram.png)
 
 #### 4. Running commands from the artifact graph
 
@@ -2583,7 +2612,7 @@ This is useful for reading requirements specifications, design documents, traini
 
 When a file in the file explorer corresponds to a Wire artifact (matched by filename keywords and output directory), the right-click context menu also shows **Generate**, **Validate**, and **Review** actions:
 
-![Wire Studio — Right-click context menu on file with Generate/Validate/Review](../../wire-web-ui/docs/images/wire_studio_validate_requirements.png)
+![Wire Studio — Right-click context menu on file with Generate/Validate/Review](wire-web-ui/docs/images/wire_studio_validate_requirements.png)
 
 This provides a second way to trigger Wire commands — directly from the file tree rather than the artifact graph. The same command is executed either way, and output streams to the Execution Log.
 
@@ -2643,9 +2672,9 @@ Wire Studio and the CLI are complementary interfaces to the same framework:
 
 Projects are fully portable between the two interfaces — they share the same `.wire/` structure and Git repository.
 
-### Wire Studio Hosted Architecture (v3.4.0)
+### Wire Studio Hosted Architecture
 
-As of v3.2.1, Wire Studio can be deployed as a fully hosted, multi-tenant service on Google Cloud Platform. This replaces the local Docker Desktop requirement with production-grade cloud infrastructure, enabling teams to share a single Wire Studio instance across multiple users, clients, and projects without any local setup beyond a web browser.
+Wire Studio can be deployed as a fully hosted, multi-tenant service on Google Cloud Platform. This replaces the local Docker Desktop requirement with production-grade cloud infrastructure, enabling teams to share a single Wire Studio instance across multiple users, clients, and projects without any local setup beyond a web browser.
 
 #### Why hosted?
 
@@ -2886,7 +2915,106 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 19. Issue Tracking: Jira and Linear
+## 19. Wire Framework VS Code Extension
+
+The Wire Framework VS Code extension brings the delivery lifecycle directly into your editor. Instead of switching between the terminal, file explorer, and Claude Code to track progress, run commands, and review artifacts, you can do all of it from the VS Code sidebar.
+
+### Installing the Extension
+
+Search for **Wire Framework** in the VS Code Extensions marketplace (`⌘⇧X` / `Ctrl⇧X`), then click **Install**.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_0_install_extension.png" alt="Search for Wire Framework in Extensions marketplace" width="50%">
+
+If this is your first install from Rittman Analytics, VS Code will show a **Trust Publisher & Install** dialog — click through to confirm.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_00_choose_install.png" alt="Trust Publisher & Install dialog" width="50%">
+
+Once installed, click the **W** icon in the activity bar. For a new project with no `.wire/` folder you'll see a prompt to start a new engagement.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_000_new_wire_engagement.png" alt="Wire sidebar open on a new project" width="50%">
+
+Run `/wire:new` in Claude Code to scaffold the engagement, create your first release, and configure MCP servers. Wire asks for the client name, project type, and scope before generating the structure.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_0000_run_wire_new.png" alt="Running /wire:new in Claude Code" width="50%">
+
+### Installing the Wire Plugin
+
+The extension activates automatically in any workspace. Before running Wire commands you need the Wire Claude Code plugin installed. Open the **MCP Servers** panel in the Wire sidebar, click the cloud-download button in the title bar, and choose **Install from marketplace**. The picker sends `/plugin marketplace add rittmananalytics/wire-plugin` to Claude Code and copies the follow-up `/plugin install wire@rittman-analytics` command to your clipboard. After install completes, run `/reload-plugins` in Claude Code to activate the plugin in the current session.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_4_plugin_install.png" alt="Plugin install picker" width="50%">
+
+### The Releases Panel
+
+The Releases panel is the primary navigation surface. Click the **W** icon in the activity bar to open it.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_1_releases_panel.png" alt="Releases panel" width="50%">
+
+The panel reads `.wire/releases/*/status.md` and renders one collapsible section per release, organised by delivery phase. Green filled icons (✅) indicate all steps for that artifact are complete; yellow outlines show work in progress; grey outlines are not started. Clicking a completed artifact opens its generated file. Clicking an un-generated artifact triggers the generate command in Claude Code. Inline ✨ / ✓ / 💬 buttons appear on hover to generate, validate, or review without opening a menu.
+
+### The Status Panel
+
+The Status panel gives a compact at-a-glance view across all releases using a G (Generate) / V (Validate) / R (Review) dot grid.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_2_statuses_panel.png" alt="Status panel" width="50%">
+
+The most recently modified release shows an **ACTIVE** badge and expands by default. A teal progress bar shows overall completion. Teal dots are complete, yellow are in progress, grey are not started, and `–` means that step is not applicable to the artifact.
+
+### The MCP Servers Panel
+
+Wire uses MCP servers to give Claude Code access to Jira, Confluence, Fathom, Linear, and other external services. The MCP Servers panel reads all four config locations (`~/.claude.json`, `~/.claude/settings.json`, `.mcp.json`, `.claude/settings.json`) and shows a live status indicator for each server.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_3_mcp_servers_panel.png" alt="MCP Servers panel" width="50%">
+
+Green dots indicate the server URL is responding; red means unreachable; grey means not yet checked (stdio servers are never pinged). Use the `+` button in the panel title bar to add a new server to the project `.mcp.json`.
+
+### The Workflow Graph
+
+Right-click a release in the Releases tree and select **Show Workflow Graph** (or click the ⎇ icon in the title bar) to open a visual map of every artifact, arranged by phase with connecting arrows.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_5_workflow_panel.png" alt="Workflow graph" width="50%">
+
+Each card shows the artifact name, G/V/R dot status, and the filename of the primary generated file. Drag the canvas to pan; scroll to zoom; click **Reset view** to return to 100%.
+
+### Running Commands from the Graph
+
+Right-click any artifact card to open its action menu.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_6_workflow_generate_menu_item.png" alt="Generate context menu" width="50%">
+
+Choose **Generate**, **Validate**, or **Review** to send the corresponding `/wire:*` command to Claude Code. **Preview file** opens a rendered markdown view beside your editor:
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_7_preview_document_menu_item.png" alt="Preview file menu" width="50%">
+
+### Previewing Generated Artifacts
+
+Selecting **Preview file** from any context menu opens the artifact in VS Code's built-in markdown renderer — formatted headings, tables, and code blocks exactly as a client would read it.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_8_preview_document_panel.png" alt="Document preview" width="50%">
+
+### How Commands Reach Claude Code
+
+When you trigger any Wire action from the sidebar, the extension sends the `/wire:<artifact>-<action> <release>` command to Claude Code's chat panel and Claude Code begins execution immediately.
+
+<img src="wire-vscode/resources/images/wire_plugin_ss_9_generate_command_chat_panel.png" alt="Claude Code receiving a command" width="50%">
+
+### The Command Picker
+
+Press `⌘⇧W` (Mac) or `Ctrl⇧W` (Windows/Linux) to open the command picker from anywhere. A two-level flow lets you choose a release first (with a preview of the recommended next step), then select from scoped artifact commands, release utilities, or global session commands. The recommended next action is always surfaced at the top.
+
+### Typical Workflow
+
+1. Open the Wire sidebar and confirm MCP servers are online
+2. Send any message — the engagement-context skill fires automatically and surfaces current release state
+3. Click the recommended artifact action in the Releases panel or command picker
+4. Monitor progress in the Status panel as dots move from grey → yellow → teal
+5. Right-click completed artifacts to **Preview file** for review
+6. Press `⌘⇧W` → **Global commands → Plan session** for an optional structured planning ritual (`/wire:plan`)
+
+For the full guide including keyboard reference and troubleshooting, see [`wire-vscode/resources/WIRE_VSCODE_GUIDE.md`](wire-vscode/resources/WIRE_VSCODE_GUIDE.md).
+
+---
+
+## 20. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -2963,7 +3091,7 @@ linear:
 
 ---
 
-## 20. Document Store: Confluence and Notion
+## 21. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -3046,7 +3174,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 21. Extending and Customising the Framework
+## 22. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -3204,7 +3332,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 22. FAQ
+## 23. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -3407,7 +3535,7 @@ Shape Up is a product development methodology (from Basecamp) that emphasises fi
 
 **Q: What is the `research/` folder and should I manage it?**
 
-`.wire/research/sessions/` is managed automatically by the research persistence skill. You do not need to create or edit these files manually. When the AI performs technical research during a session (looking up schemas, reading library docs, investigating a technology), it saves a structured summary there automatically. `session:start` surfaces relevant prior research at the beginning of each session. Think of it as an automatically maintained research log — read it if you want to see what was investigated previously, but do not edit it.
+`.wire/research/sessions/` is managed automatically by the research persistence skill. You do not need to create or edit these files manually. When the AI performs technical research during a session (looking up schemas, reading library docs, investigating a technology), it saves a structured summary there automatically. The engagement-context skill surfaces relevant prior research at the start of each conversation. Think of it as an automatically maintained research log — read it if you want to see what was investigated previously, but do not edit it.
 
 ---
 
@@ -3417,24 +3545,17 @@ Not recommended. The discovery release should be completed and delivery releases
 
 ---
 
-**Q: What is `session:start` and do I need to use it every time?**
+**Q: Do I need to run a session:start command before I begin work?**
 
-`session:start` is recommended but not required. It enters Plan Mode, reads the release's current `status.md`, surfaces prior research, and proposes a focused session plan. Its main value is grounding every session in current state — especially useful after a break, a context switch, or when a different team member picks up the work. If you're mid-flow and know exactly what you're doing next, you can skip it. `session:end` is similarly optional but useful for capturing what was accomplished and what the next focus should be.
+No. As of v3.4.20, the engagement-context skill fires automatically on the first message in any Wire repo — it reads `status.md`, checks for prior research, and outputs a brief context summary. You never need to remember to start a session. `/wire:session:start` and `/wire:session:end` are deprecated and show a migration notice if run.
+
+If you want an optional structured planning ritual (entering Plan Mode and agreeing a 3–5 step plan before starting), run `/wire:plan`.
 
 ---
 
-**Q: How does session history work?**
+**Q: How is session progress tracked?**
 
-`session:end` appends a row to the `Session History` table at the bottom of `status.md`:
-
-```markdown
-| Date | Objective | Accomplished | Next Focus |
-|------|-----------|--------------|------------|
-| 2026-03-10 | Problem definition and pitch draft | Problem definition approved, pitch drafted | Pitch review (betting table) |
-| 2026-03-11 | Pitch review and release brief | Bet approved, brief drafted and signed off | Sprint planning |
-```
-
-This provides a human-readable audit trail of every session without requiring any manual note-taking. When a new team member picks up the release, reading the session history gives immediate context on what has happened and what comes next.
+Each Wire command appends a row to `execution_log.md` after it completes, and the engagement-context skill also logs its activation. `status.md` is updated automatically after each command. Together these provide a complete audit trail — no manual session history table required.
 
 ---
 
@@ -3461,7 +3582,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 23. Troubleshooting
+## 24. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -3487,13 +3608,13 @@ The command is safe to re-run — it skips anything already migrated. After runn
 - Ensure `engagement/sow.md` and `engagement/context.md` are populated
 - Add more source materials (SQL examples, schema docs, sample data) to the release's `requirements/` folder
 - For discovery releases: add call transcripts to `engagement/calls/`
-- Run `session:start` at the beginning of the session — it surfaces prior research that may already have what you need
+- The engagement-context skill loads automatically and will surface any prior research findings on the topic
 
 ---
 
 **Q: Someone left the release midway through. How does a new team member pick it up?**
 
-Run `/wire:session:start <release-folder>`. The framework reads `status.md`, shows the session history, surfaces prior research, and proposes a session plan. The session history table in `status.md` shows what was accomplished in each previous session and what the suggested next focus is. Read `engagement/context.md` and the generated artifacts in `requirements/` and `design/` to get up to speed on the project context. The framework is designed so that anyone can resume from where it left off.
+Just send a message in the repo. The engagement-context skill fires automatically, reads `status.md`, surfaces prior research, and outputs a context summary showing the current release state — what's complete, what's in progress, and what comes next. Read `engagement/context.md` and the generated artifacts in `requirements/` and `design/` to get up to speed on the project context. The framework is designed so that anyone can resume from where it left off. For a structured planning session, run `/wire:plan <release-folder>` to enter Plan Mode and agree a focused work plan.
 
 ---
 
@@ -3508,9 +3629,9 @@ Run `/wire:session:start <release-folder>`. The framework reads `status.md`, sho
 
 ---
 
-## 24. Framework Management Commands
+## 25. Framework Management Commands
 
-v3.4.6 adds two commands for managing the Wire Framework itself, rather than delivery work.
+Wire includes two commands for managing the framework itself, rather than delivery work.
 
 ### `/wire:mcp` — MCP Server Management
 

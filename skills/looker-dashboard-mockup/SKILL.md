@@ -14,6 +14,18 @@ description: >
 
 # Looker Dashboard Mockup Generator
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | looker-dashboard-mockup | activated | Looker dashboard mockup work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 Generates a single self-contained HTML file that looks and behaves like a real Looker dashboard.
 The output uses the official Looker design system (Google Sans, teal sidebar, blue filter pills,
 stat cards with coloured top bars, Chart.js charts) and includes all Looker UI chrome.

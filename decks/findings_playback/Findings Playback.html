@@ -1,0 +1,1815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Discovery Findings Playback — Template</title>
+<link rel="stylesheet" href="colors_and_type.css">
+<style>
+  /* =================================================================
+     DECK TOKENS — scale-up of the RA brand slide system
+     Design size: 1920×1080. All sizes in px, all paddings explicit.
+     ================================================================= */
+  :root {
+    /* Type scale (≥24px floor) */
+    --type-title-xl:    132px;  /* cover */
+    --type-title-lg:     88px;  /* h1 standard */
+    --type-title-md:     72px;  /* h1 dense */
+    --type-title-sm:     56px;  /* h1 with chart/diagram */
+    --type-section:     112px;  /* section divider centre */
+    --type-eyebrow:      24px;
+    --type-lede:         34px;
+    --type-body:         28px;
+    --type-bullet:       28px;
+    --type-bullet-sub:   24px;
+    --type-small:        24px;
+    --type-foot:         24px;
+    --type-quote:        30px;
+    --type-quote-author: 24px;
+    --type-stat-xl:     180px;
+
+    /* Spacing */
+    --pad-x:            96px;
+    --pad-top:         150px;
+    --pad-bottom:      120px;
+    --gap-title:        56px;
+    --gap-item:         28px;
+
+    /* RA palette */
+    --navy:        #1B2440;
+    --navy-deep:   #141B33;
+    --indigo:      #4F60FF;
+    --indigo-dim:  #2F3997;
+    --indigo-soft: #87A0FF;
+    --paper:       #FFFFFF;
+    --paper-2:     #F7F7FA;
+    --panel:       #F2F4F8;
+    --line:        #E1E1E9;
+    --ink:         #1B2440;
+    --ink-mute:    #4F5564;
+    --ink-faint:   #8A8F9C;
+    --quote-mark:  #C2C8D6;
+
+    /* Maturity gradient stops */
+    --mat-1: #F26D5B;
+    --mat-2: #F39C4F;
+    --mat-3: #E7C04A;
+    --mat-4: #6FBF73;
+    --mat-5: #2BA56B;
+  }
+
+  html, body { margin: 0; padding: 0; background: #0a0a0e; color: var(--ink); }
+  body { font-family: var(--ra-font-deck-body); font-size: var(--type-body); line-height: 1.45; }
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* deck-stage component letterboxes the 1920×1080 frame */
+  deck-stage { display: block; width: 100vw; height: 100vh; }
+
+  /* =================================================================
+     SLIDE BASE
+     ================================================================= */
+  .slide {
+    position: absolute;
+    inset: 0;
+    background: var(--paper);
+    color: var(--ink);
+    overflow: hidden;
+    font-family: var(--ra-font-deck-body);
+  }
+  .slide.dark   { background: var(--navy);      color: #fff; }
+  .slide.deep   { background: var(--indigo-dim);color: #fff; }
+  .slide.indigo { background: var(--indigo);    color: #fff; }
+  .slide.panel  { background: var(--paper-2);   color: var(--ink); }
+
+  /* Logo top-left (light surfaces) */
+  .logo {
+    position: absolute;
+    top: 56px; left: 96px;
+    height: 42px;
+    z-index: 6;
+  }
+  .logo img { height: 100%; display: block; }
+
+  /* Slide number top-right */
+  .slide-num {
+    position: absolute;
+    top: 56px; right: 96px;
+    font: 500 22px/1 var(--ra-font-deck-ui);
+    color: var(--ink-faint);
+    letter-spacing: 0.06em;
+    z-index: 6;
+  }
+  .dark .slide-num,
+  .deep .slide-num,
+  .indigo .slide-num { color: rgba(255,255,255,.5); }
+
+  /* Footer (every body slide) */
+  .foot {
+    position: absolute;
+    left: 96px; right: 96px;
+    bottom: 48px;
+    display: flex;
+    justify-content: space-between;
+    font: 400 var(--type-foot)/1 var(--ra-font-deck-ui);
+    color: var(--ink-faint);
+    z-index: 6;
+  }
+  .dark .foot, .deep .foot, .indigo .foot { color: rgba(255,255,255,.55); }
+  .foot span { white-space: nowrap; }
+
+  /* Body region */
+  .body {
+    position: absolute;
+    left: var(--pad-x); right: var(--pad-x);
+    top: var(--pad-top); bottom: var(--pad-bottom);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Type primitives */
+  .eyebrow {
+    font: 600 var(--type-eyebrow)/1.2 var(--ra-font-deck-ui);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--indigo);
+    margin: 0 0 22px;
+  }
+  .dark .eyebrow,
+  .deep .eyebrow,
+  .indigo .eyebrow { color: var(--indigo-soft); }
+
+  h1.title {
+    font: 700 var(--type-title-lg)/1.05 var(--ra-font-deck-display);
+    letter-spacing: -0.025em;
+    color: inherit;
+    margin: 0 0 var(--gap-title);
+    text-wrap: pretty;
+  }
+  h1.title.md { font-size: var(--type-title-md); }
+  h1.title.sm { font-size: var(--type-title-sm); letter-spacing: -0.015em; }
+
+  .lede {
+    font: 400 var(--type-lede)/1.4 var(--ra-font-deck-body);
+    color: var(--ink-mute);
+    max-width: 1400px;
+    margin: 0;
+  }
+  .dark .lede, .deep .lede { color: rgba(255,255,255,.85); }
+
+  /* Bullet lists */
+  ul.bullets, ol.bullets { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 22px; }
+  ul.bullets > li, ol.bullets > li {
+    font: 400 var(--type-bullet)/1.45 var(--ra-font-deck-body);
+    color: var(--ink);
+    padding-left: 44px;
+    position: relative;
+    text-wrap: pretty;
+  }
+  ul.bullets > li::before {
+    content: "●";
+    position: absolute;
+    left: 6px; top: 2px;
+    color: var(--indigo);
+    font-size: 16px;
+    line-height: 1.7;
+  }
+  ol.bullets { counter-reset: numlist; }
+  ol.bullets > li { counter-increment: numlist; }
+  ol.bullets > li::before {
+    content: counter(numlist, decimal-leading-zero);
+    position: absolute;
+    left: 0; top: 0;
+    color: var(--indigo);
+    font: 700 26px/1.25 var(--ra-font-deck-display);
+    letter-spacing: -0.01em;
+  }
+  ul.bullets ul { list-style: none; padding: 12px 0 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+  ul.bullets ul li {
+    font: 400 var(--type-bullet-sub)/1.45 var(--ra-font-deck-body);
+    color: var(--ink-mute);
+    padding-left: 32px; position: relative;
+  }
+  ul.bullets ul li::before {
+    content: "○";
+    position: absolute;
+    left: 4px; top: 2px;
+    color: var(--ink-faint);
+    font-size: 14px;
+  }
+
+  strong { font-weight: 700; color: inherit; }
+
+  /* Placeholder convention — anything still-unfilled in template */
+  .ph {
+    background: rgba(79,96,255,.08);
+    border: 1px dashed rgba(79,96,255,.45);
+    color: var(--indigo-dim);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: var(--ra-font-mono);
+    font-size: 0.85em;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .dark .ph, .deep .ph, .indigo .ph {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.35);
+    color: #fff;
+  }
+
+  /* =================================================================
+     COVER
+     ================================================================= */
+  .cover-wrap {
+    position: absolute; inset: 0;
+    padding: 96px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .cover-wrap::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(120% 90% at 0% 0%, rgba(79,96,255,0.18) 0%, rgba(79,96,255,0.05) 35%, transparent 65%);
+    pointer-events: none;
+  }
+  .cover-logo { height: 48px; z-index: 2; position: relative; align-self: flex-start; display: block; }
+  .cover-stack { z-index: 2; position: relative; max-width: 1500px; }
+  .cover-eyebrow {
+    font: 600 26px/1.2 var(--ra-font-deck-ui);
+    color: var(--indigo-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin: 0 0 28px;
+  }
+  .cover-title {
+    font: 700 var(--type-title-xl)/1.02 var(--ra-font-deck-display);
+    letter-spacing: -0.03em;
+    color: #fff;
+    margin: 0 0 36px;
+    text-wrap: balance;
+  }
+  .cover-sub {
+    font: 500 44px/1.25 var(--ra-font-deck-display);
+    color: var(--indigo-soft);
+    margin: 0 0 60px;
+    letter-spacing: -0.01em;
+  }
+  .cover-meta {
+    display: flex; gap: 48px; align-items: baseline;
+    font: 500 28px/1.4 var(--ra-font-deck-body);
+    color: rgba(255,255,255,.85);
+    z-index: 2; position: relative;
+  }
+  .cover-meta .sep { color: rgba(255,255,255,.3); }
+  .cover-partner {
+    position: absolute; right: 96px; bottom: 64px;
+    height: 108px; z-index: 2;
+  }
+  .cover-partner img { height: 100%; display: block; opacity: 0.95; }
+
+  /* =================================================================
+     SECTION DIVIDERS
+     ================================================================= */
+  .section-center {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    padding: 0 120px; text-align: center;
+  }
+  .section-center .sec-eyebrow {
+    font: 600 26px/1.2 var(--ra-font-deck-ui);
+    color: var(--indigo-soft);
+    text-transform: uppercase; letter-spacing: 0.2em;
+    margin: 0 0 32px;
+  }
+  .section-center h2 {
+    font: 700 var(--type-section)/1.02 var(--ra-font-deck-display);
+    letter-spacing: -0.03em;
+    color: inherit;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .section-quotes {
+    position: absolute; left: 96px; right: 96px; bottom: 120px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px;
+  }
+
+  /* =================================================================
+     QUOTE TILES
+     ================================================================= */
+  .qstrip {
+    position: absolute; inset: 0;
+    padding: 120px 96px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .qstrip-title {
+    font: 700 64px/1.05 var(--ra-font-deck-display);
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin: 0 0 72px;
+    text-align: center;
+    text-wrap: balance;
+  }
+  .qstrip-eyebrow {
+    font: 600 22px/1.2 var(--ra-font-deck-ui);
+    color: var(--indigo-soft);
+    text-transform: uppercase; letter-spacing: 0.2em;
+    margin: 0 0 18px;
+    text-align: center;
+  }
+  .qrow {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 48px;
+  }
+  .qrow.four { grid-template-columns: repeat(4, 1fr); gap: 32px; }
+  .qtile {
+    position: relative;
+    padding: 56px 40px 44px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    color: #fff;
+  }
+  .qtile::before {
+    content: "“";
+    position: absolute;
+    top: -32px; left: 28px;
+    font: 700 160px/1 var(--ra-font-deck-display);
+    color: var(--quote-mark);
+    opacity: 0.7;
+  }
+  .qtile p {
+    font: 400 italic var(--type-quote)/1.45 var(--ra-font-deck-body);
+    color: rgba(255,255,255,.92);
+    margin: 0 0 24px;
+    text-wrap: pretty;
+  }
+  .qtile .who {
+    font: 500 var(--type-quote-author)/1.3 var(--ra-font-deck-ui);
+    color: var(--indigo-soft);
+    letter-spacing: 0.02em;
+  }
+
+  /* =================================================================
+     TEAM TILES
+     ================================================================= */
+  .team-intro-grid {
+    flex: 1; display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px;
+    align-items: start; min-height: 0;
+  }
+  .team-copy p {
+    font: 400 var(--type-body)/1.55 var(--ra-font-deck-body);
+    color: var(--ink-mute);
+    margin: 0 0 22px;
+    text-wrap: pretty;
+  }
+  .team-copy strong { color: var(--ink); font-weight: 600; }
+  .team-tiles {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 36px 28px;
+  }
+  .tcard { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .tphoto {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 1px dashed var(--line);
+    display: grid; place-items: center;
+    color: var(--ink-faint);
+    font: 500 14px/1 var(--ra-font-deck-ui);
+    overflow: hidden;
+  }
+  .tcard .tname {
+    font: 600 22px/1.2 var(--ra-font-deck-display);
+    color: var(--ink);
+    margin: 18px 0 4px;
+  }
+  .tcard .trole {
+    font: 500 18px/1.3 var(--ra-font-deck-body);
+    color: var(--indigo);
+  }
+
+  /* =================================================================
+     SCOPE & OBJECTIVES
+     ================================================================= */
+  .scope-cols {
+    flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 80px;
+    min-height: 0;
+  }
+  .scope-cols h3 {
+    font: 600 30px/1.2 var(--ra-font-deck-display);
+    color: var(--ink);
+    margin: 0 0 24px;
+    letter-spacing: -0.01em;
+  }
+
+  /* =================================================================
+     TWO-COLUMN BODY (diagram + bullets, chart + bullets)
+     ================================================================= */
+  .two-col {
+    flex: 1; display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px;
+    align-items: center; min-height: 0;
+  }
+  .two-col.text-right { grid-template-columns: 1.05fr 1fr; }
+  .two-col .col-diag {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 0; height: 100%;
+  }
+  .two-col .col-diag svg { width: 100%; height: 100%; max-height: 640px; }
+
+  /* =================================================================
+     HIERARCHY OF NEEDS LADDER (SVG)
+     ================================================================= */
+  .hier-ladder { width: 100%; max-width: 720px; }
+
+  /* =================================================================
+     PPT VENN
+     ================================================================= */
+  .ppt-venn { width: 100%; max-width: 700px; }
+
+  /* =================================================================
+     MATURITY CURVE
+     ================================================================= */
+  .mat-curve { width: 100%; max-width: 880px; }
+
+  /* =================================================================
+     COLUMN CHARTS
+     ================================================================= */
+  .chart-wrap {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 32px 36px 28px;
+  }
+  .chart-title {
+    font: 600 22px/1.2 var(--ra-font-deck-ui);
+    color: var(--ink);
+    margin: 0 0 20px;
+    letter-spacing: 0.01em;
+  }
+  .chart-svg { flex: 1; width: 100%; }
+  .chart-svg .axis { stroke: var(--line); stroke-width: 1; }
+  .chart-svg .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+  .chart-svg .label { font: 500 18px/1 var(--ra-font-deck-ui); fill: var(--ink-mute); }
+  .chart-svg .label.x { font-size: 17px; }
+  .chart-svg .value { font: 700 22px/1 var(--ra-font-deck-display); fill: var(--ink); }
+  .chart-svg .bar { fill: var(--indigo); }
+
+  /* =================================================================
+     SUMMARY PANEL
+     ================================================================= */
+  .panel-box {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 56px 64px;
+    display: flex; flex-direction: column; gap: 28px;
+    flex: 1;
+    justify-content: center;
+  }
+  .panel-box ul { gap: 26px; }
+  .panel-box ul > li { font-size: 30px; }
+
+  .vision-stack { display: flex; flex-direction: column; gap: 32px; flex: 1; }
+  .vision-panel {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 44px 56px;
+    flex: 1;
+    display: flex; align-items: center;
+  }
+  .vision-panel p {
+    font: 400 30px/1.5 var(--ra-font-deck-body);
+    color: var(--ink);
+    margin: 0;
+    text-wrap: pretty;
+  }
+
+  /* =================================================================
+     WORD CLOUD
+     ================================================================= */
+  .wc-wrap {
+    display: flex; flex-wrap: wrap; align-items: center;
+    justify-content: center; align-content: center;
+    gap: 12px 20px;
+    padding: 24px;
+    height: 100%;
+  }
+  .wc-tag {
+    display: inline-block;
+    font-family: var(--ra-font-deck-display);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .wc-tag.s1 { font-size: 28px; opacity: .55; }
+  .wc-tag.s2 { font-size: 36px; opacity: .7; }
+  .wc-tag.s3 { font-size: 48px; opacity: .85; }
+  .wc-tag.s4 { font-size: 64px; opacity: 1; }
+  .wc-tag.s5 { font-size: 80px; opacity: 1; }
+  .wc-c1 { color: var(--indigo); }
+  .wc-c2 { color: #2F3997; }
+  .wc-c3 { color: #AD86FF; }
+  .wc-c4 { color: #1B2440; }
+
+  /* =================================================================
+     RECOMMENDATION LIST (3-4 col)
+     ================================================================= */
+  .rec-cols {
+    flex: 1; display: grid; gap: 40px 36px;
+    grid-template-columns: repeat(3, 1fr);
+    align-content: start;
+  }
+  .rec-cols.four { grid-template-columns: repeat(4, 1fr); }
+  .rec-card { display: flex; flex-direction: column; gap: 14px; }
+  .rec-card .rec-num {
+    font: 700 26px/1 var(--ra-font-deck-display);
+    color: var(--indigo);
+    letter-spacing: -0.01em;
+  }
+  .rec-card h3 {
+    font: 700 26px/1.25 var(--ra-font-deck-display);
+    color: var(--ink);
+    margin: 0;
+    letter-spacing: -0.005em;
+  }
+  .rec-card p {
+    font: 400 22px/1.5 var(--ra-font-deck-body);
+    color: var(--ink-mute);
+    margin: 0;
+    text-wrap: pretty;
+  }
+
+  /* =================================================================
+     TOOLING SCREENSHOT
+     ================================================================= */
+  .ss-frame {
+    width: 100%; height: 100%;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #1F2433 0%, #141B33 100%);
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 30px 80px rgba(15,18,40,.25);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .ss-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .ss-bar span { width: 12px; height: 12px; border-radius: 50%; }
+  .ss-bar span:nth-child(1) { background: #FF8D73; }
+  .ss-bar span:nth-child(2) { background: #F2B33D; }
+  .ss-bar span:nth-child(3) { background: #7BD389; }
+  .ss-bar .url {
+    margin-left: 16px;
+    font: 500 16px/1 var(--ra-font-mono);
+    color: rgba(255,255,255,.55);
+  }
+  .ss-body {
+    flex: 1;
+    display: grid; place-items: center;
+    color: rgba(255,255,255,.5);
+    font: 500 22px/1.4 var(--ra-font-deck-ui);
+    text-align: center;
+    padding: 32px;
+  }
+
+  /* =================================================================
+     TOOLING COMPARISON TABLE
+     ================================================================= */
+  .cmp-table {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1fr;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    align-content: start;
+  }
+  .cmp-table > div {
+    padding: 24px 28px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    font: 400 24px/1.45 var(--ra-font-deck-body);
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  .cmp-table > div:nth-child(3n) { border-right: none; }
+  .cmp-table .cmp-h {
+    background: var(--ink); color: #fff;
+    font: 700 26px/1.2 var(--ra-font-deck-display);
+    letter-spacing: -0.01em;
+    border-bottom: none;
+  }
+  .cmp-table .cmp-h.repl { background: var(--indigo); }
+  .cmp-table .cmp-axis {
+    background: var(--panel);
+    font-weight: 600;
+    font-family: var(--ra-font-deck-display);
+    color: var(--ink);
+  }
+
+  /* =================================================================
+     AXIS SUMMARY CLOSE — 4 panels
+     ================================================================= */
+  .close-grid {
+    flex: 1;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    min-height: 0;
+  }
+  .close-card {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 36px 40px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .close-card .lab {
+    font: 600 20px/1 var(--ra-font-deck-ui);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--indigo);
+  }
+  .close-card h3 {
+    font: 700 32px/1.2 var(--ra-font-deck-display);
+    color: var(--ink); margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .close-card p {
+    font: 400 24px/1.5 var(--ra-font-deck-body);
+    color: var(--ink-mute);
+    margin: 0;
+  }
+
+  /* =================================================================
+     NEXT STEPS
+     ================================================================= */
+  .ns-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; flex: 1; gap: 4px; }
+  .ns-item {
+    display: grid; grid-template-columns: 80px 1fr auto auto; gap: 36px;
+    align-items: center;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ns-item:last-child { border-bottom: none; }
+  .ns-num { font: 700 40px/1 var(--ra-font-deck-display); color: var(--indigo); letter-spacing: -0.02em; }
+  .ns-title { font: 600 28px/1.3 var(--ra-font-deck-display); color: var(--ink); letter-spacing: -0.005em; }
+  .ns-owner, .ns-date {
+    font: 500 22px/1 var(--ra-font-deck-ui);
+    color: var(--ink-mute);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .ns-date { color: var(--indigo); }
+
+  /* =================================================================
+     PROCESS DIAGRAMS (placeholder shells)
+     ================================================================= */
+  .diag-shell {
+    flex: 1; display: grid; place-items: center;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 48px;
+    text-align: center;
+    color: var(--ink-faint);
+    min-height: 0;
+  }
+  .diag-shell h4 {
+    font: 600 28px/1.3 var(--ra-font-deck-display);
+    color: var(--ink-mute); margin: 0 0 14px;
+  }
+  .diag-shell p {
+    font: 400 22px/1.5 var(--ra-font-deck-body);
+    color: var(--ink-faint); margin: 0;
+    max-width: 700px;
+  }
+
+  /* =================================================================
+     PRINT
+     ================================================================= */
+  @page { size: 1920px 1080px; margin: 0; }
+</style>
+
+<script type="application/json" id="speaker-notes">
+[
+  "Open with the room's attention. State plainly: today is the playback of what we found, the diagnosis we drew from it, and the plan we recommend. The roadmap is a separate session — flag that early so nobody is waiting for delivery dates today.",
+  "One slide per consultant on the engagement. Read the room — sponsors care most about the lead names. Keep it under 90 seconds total. Highlight that the same team that did the discovery will own delivery.",
+  "Brief beat. The next four slides set up scope, the interview process, and the three frameworks we'll lean on for the rest of the deck. No findings yet — we're laying the rails.",
+  "Walk through context first, then the three SoW objectives. Read the objectives verbatim — they are the contract. If the sponsor pushes back on framing here, stop and align before moving on. Findings only land if the objectives are agreed.",
+  "Show the breadth of the input. Name the groups interviewed and the question structure so the sponsor trusts the sample. If anyone they wanted included was missed, surface it now and capture as an action.",
+  "Hierarchy of Needs is the spine of the diagnosis. Make sure the audience understands 'lowest tier whose absence is blocking it' — that's the rule that makes the chart on slide 10 mean something. Pause for questions; don't move on until the framework is grasped.",
+  "Frame Process / Technology / People as a system, not three boxes. The chart on slide 11 will name the binding constraint — preview that the diagnosis usually points at one axis being the bottleneck.",
+  "This is the single most important diagnostic in the deck. Land the pin position clearly and justify it in two sentences. Expect the sponsor to push back — be ready with the specific evidence from interviews that placed the pin where it sits.",
+  "Quotes carry the diagnosis. Read them aloud, slowly, and let them sit. Don't paraphrase. The audience needs to hear their own people before they accept the chart that follows.",
+  "First quantitative diagnostic. Name which tier dominates the bar chart and what that means in plain English. The shape of the chart is the story — Collect-heavy means upstream chaos; Analyse-heavy means the foundation works but the consumption layer is thin.",
+  "Second quantitative diagnostic. Identify the binding-constraint axis explicitly and tie it back to the quotes on slide 9. This is where you say 'the problem is mostly Process' or 'mostly Technology' — be specific.",
+  "Close out the current-state arc. Four bullets, narrative shape: situation → impact → diagnosis → opportunity. Read the panel verbatim if you must — these bullets need to be the sponsor's takeaway, not yours.",
+  "Pivot to future state. The quotes here are aspirational; people described what good looks like. Use them to earn the right to say 'and here is the vision'.",
+  "Read both vision paragraphs slowly. Bold phrases are the load-bearing words — emphasise them. This is the moment where the room either commits to the destination or pushes back. Wait for nodding before moving on.",
+  "Process axis section opens. Quotes set the tone — these are the sharpest grievances on Process. Don't try to soften them; the discomfort is the point.",
+  "Word cloud on the right is the client's own language back at them. Use the bullets on the left to summarise what the cloud is showing. If a sponsor disputes a tag, write it down — that disagreement IS the finding.",
+  "Walk through the recommended process change. The diagram is the artefact — point at it, name the steps, name the owners. Land what's different from how they work today.",
+  "Reference model — show how this maps to a high-performing team archetype. Keep it concrete with one or two examples from the engagement.",
+  "Three concrete recommendations the client can act on. Each card is independently actionable; flag dependencies between them only if real.",
+  "People axis. The quotes here are the rawest in the deck — they're often about reporting lines, accountability, or capacity. Slow down. The room may go quiet; that's fine.",
+  "Word cloud and bullets. Same pattern as the Process summary. Don't read every tag — call out the three biggest ones and leave the rest for the audience to absorb.",
+  "Recommendations on org structure / capacity / capability. Be specific about whether this means hiring, reorganising, or up-skilling — sponsors hate ambiguity here.",
+  "Reference model for high-performing analytics teams. Use it as a benchmark, not a target. Position the client honestly relative to the model.",
+  "Close the People section with the four-panel summary. Read each panel header aloud — Problem, Solution, Benefits, Bottom Line. The Bottom Line panel is what the sponsor will remember.",
+  "Technology axis. Final and usually longest section. The quotes here are about pain with current tooling — broken pipelines, dashboards no-one trusts, manual workarounds.",
+  "Word cloud + bullets. Technology pain has a particular flavour — name it. Common shapes: 'fragmented stack', 'no single source of truth', 'tool sprawl'.",
+  "Walk through the recommended target architecture at high level. Don't get into product names yet — that's the next slides. Stay at the architectural-pattern level.",
+  "BigQuery — capabilities and why it matches the diagnosis. Show the screenshot or a representative UI. Tie capabilities to specific requirements you captured.",
+  "dbt — capabilities and why it matches the diagnosis. Same pattern as the previous product slide.",
+  "Looker — capabilities and why it matches the diagnosis. Tie back to the BI use cases the client surfaced.",
+  "If the engagement involves replacing an incumbent tool, this is where you justify it. Be honest about what the incumbent does well — credibility matters more than advocacy here.",
+  "Close the Technology section with the four-panel summary. Same shape as the People close.",
+  "Land the next steps. Each item has an owner and a date. The roadmap session date is the most important line — say it twice. Confirm the sponsor's pre-work commitments before clicking to Q&A.",
+  "Open the floor. Don't fill silence. The first question often comes 30+ seconds in — wait for it.",
+  "Cover repeat to close cleanly. Thank the sponsor and the interviewees by name if appropriate. Ask for confirmation of the roadmap session date before leaving the room."
+]
+</script>
+</head>
+
+<body>
+<deck-stage width="1920" height="1080">
+
+<!-- =================================================================
+     SLIDE 1 — COVER
+     ================================================================= -->
+<section data-label="01 Cover">
+  <div class="slide dark">
+    <div class="cover-wrap">
+      <img class="cover-logo" src="assets/logo-white-blue.svg" alt="Rittman Analytics">
+
+      <div class="cover-stack">
+        <p class="cover-eyebrow">Discovery exercise</p>
+        <h1 class="cover-title">Findings playback<br>&amp; delivery plan</h1>
+        <p class="cover-sub"><span class="ph">&lt;&lt;engagement_title&gt;&gt;</span></p>
+
+        <div class="cover-meta">
+          <span>Presented by <span class="ph">&lt;&lt;presenter_name&gt;&gt;</span>, <span class="ph">&lt;&lt;presenter_title&gt;&gt;</span></span>
+          <span class="sep">|</span>
+          <span><span class="ph">&lt;&lt;presentation_month&gt;&gt;</span></span>
+        </div>
+      </div>
+
+      <!-- Show only if google_cloud_partner === true -->
+      <div class="cover-partner" data-cond="google_cloud_partner">
+        <img src="assets/google_partner.png" alt="Google Cloud Partner">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 2 — TEAM INTRO
+     ================================================================= -->
+<section data-label="02 Team intro">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">02</div>
+
+    <div class="body">
+      <p class="eyebrow">Introduction</p>
+      <h1 class="title md">Rittman Analytics team on the <span class="ph">&lt;&lt;client_short&gt;&gt;</span> account</h1>
+
+      <div class="team-intro-grid">
+        <div class="team-copy">
+          <p>Rittman Analytics is a UK-based boutique data analytics consultancy. We help ambitious, data-rich businesses scale and modernise their analytics capabilities, combining deep technical expertise with hands-on enablement.</p>
+          <p>The team below is the same team that delivered this Discovery and that will own delivery through the engagement — <strong>no handovers, no juniors parachuted in</strong>.</p>
+        </div>
+
+        <div class="team-tiles">
+          <!-- Repeat one .tcard per consultant in <<ra_team>>. Keep 6 tiles maximum on this layout. -->
+          <div class="tcard">
+            <div class="tphoto">photo</div>
+            <div class="tname"><span class="ph">&lt;&lt;name 1&gt;&gt;</span></div>
+            <div class="trole"><span class="ph">&lt;&lt;role 1&gt;&gt;</span></div>
+          </div>
+          <div class="tcard">
+            <div class="tphoto">photo</div>
+            <div class="tname"><span class="ph">&lt;&lt;name 2&gt;&gt;</span></div>
+            <div class="trole"><span class="ph">&lt;&lt;role 2&gt;&gt;</span></div>
+          </div>
+          <div class="tcard">
+            <div class="tphoto">photo</div>
+            <div class="tname"><span class="ph">&lt;&lt;name 3&gt;&gt;</span></div>
+            <div class="trole"><span class="ph">&lt;&lt;role 3&gt;&gt;</span></div>
+          </div>
+          <div class="tcard">
+            <div class="tphoto">photo</div>
+            <div class="tname"><span class="ph">&lt;&lt;name 4&gt;&gt;</span></div>
+            <div class="trole"><span class="ph">&lt;&lt;role 4&gt;&gt;</span></div>
+          </div>
+          <div class="tcard">
+            <div class="tphoto">photo</div>
+            <div class="tname"><span class="ph">&lt;&lt;name 5&gt;&gt;</span></div>
+            <div class="trole"><span class="ph">&lt;&lt;role 5&gt;&gt;</span></div>
+          </div>
+          <div class="tcard">
+            <div class="tphoto">photo</div>
+            <div class="tname"><span class="ph">&lt;&lt;name 6&gt;&gt;</span></div>
+            <div class="trole"><span class="ph">&lt;&lt;role 6&gt;&gt;</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>© Rittman Analytics 2026</span>
+      <span>T: +44 (0)208 058 5951</span>
+      <span>W: rittmananalytics.com</span>
+      <span>E: info@rittmananalytics.com</span>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 3 — SECTION DIVIDER · Scope & Discovery Process
+     ================================================================= -->
+<section data-label="03 Divider — Scope &amp; Discovery">
+  <div class="slide dark">
+    <img class="logo" src="assets/logo-white-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">03</div>
+    <div class="section-center">
+      <div>
+        <p class="sec-eyebrow">Part one</p>
+        <h2>Scope &amp; Discovery process</h2>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 4 — SCOPE & OBJECTIVES
+     ================================================================= -->
+<section data-label="04 Scope &amp; objectives">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">04</div>
+
+    <div class="body">
+      <p class="eyebrow">Introduction</p>
+      <h1 class="title sm">Discovery engagement: scope &amp; objectives</h1>
+
+      <div class="scope-cols">
+        <div>
+          <h3>Context</h3>
+          <ul class="bullets">
+            <li><span class="ph">&lt;&lt;scope_context_bullet 1&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;scope_context_bullet 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;scope_context_bullet 3&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Objectives</h3>
+          <ol class="bullets">
+            <li><span class="ph">&lt;&lt;scope_objective 1 — verbatim from SoW&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;scope_objective 2 — verbatim from SoW&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;scope_objective 3 — verbatim from SoW&gt;&gt;</span></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>© Rittman Analytics 2026</span>
+      <span>T: +44 (0)208 058 5951</span>
+      <span>W: rittmananalytics.com</span>
+      <span>E: info@rittmananalytics.com</span>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 5 — DISCOVERY PROCESS
+     ================================================================= -->
+<section data-label="05 Discovery process">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">05</div>
+
+    <div class="body">
+      <p class="eyebrow">Introduction</p>
+      <h1 class="title sm">Discovery process</h1>
+
+      <ul class="bullets" style="max-width:1500px; margin-top:24px;">
+        <li>
+          Interviewed <span class="ph">&lt;&lt;client_short&gt;&gt;</span> stakeholders over a two-week period
+          <ul>
+            <li><span class="ph">&lt;&lt;interview_groups — comma-separated departments&gt;&gt;</span></li>
+          </ul>
+        </li>
+        <li>
+          Interviews were structured to uncover needs, objectives and constraints
+          <ul>
+            <li><span class="ph">&lt;&lt;interview_question 1&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;interview_question 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;interview_question 3&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;interview_question 4&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;interview_question 5&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;interview_question 6&gt;&gt;</span></li>
+          </ul>
+        </li>
+        <li>Existing strategy documents and analytics-related artefacts reviewed</li>
+        <li>Needs were then collated, classified and prioritised for subsequent analysis</li>
+      </ul>
+    </div>
+
+    <div class="foot">
+      <span>© Rittman Analytics 2026</span>
+      <span>T: +44 (0)208 058 5951</span>
+      <span>W: rittmananalytics.com</span>
+      <span>E: info@rittmananalytics.com</span>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 6 — HIERARCHY OF NEEDS (diagram_with_bullets)
+     ================================================================= -->
+<section data-label="06 Analytics Hierarchy of Needs">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">06</div>
+    <div class="body">
+      <p class="eyebrow">Introduction</p>
+      <h1 class="title sm">Analytics Hierarchy of Needs</h1>
+      <div class="two-col">
+        <div>
+          <ul class="bullets">
+            <li>Like Maslow's hierarchy of needs, <strong>analytics needs can be organised into a hierarchy</strong></li>
+            <li>Having clean data relies on it being effectively collected</li>
+            <li>Defining and tracking data relies on it being collected and clean</li>
+            <li>Analysing data well relies on it being defined properly, etc.</li>
+            <li>We classify each requirement to <strong>the lowest tier whose absence is blocking it</strong></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <img class="hier-ladder" src="assets/hierarchy-of-needs.png" alt="Analytics Hierarchy of Needs" style="width:88%; max-width:480px; height:auto; max-height:600px; object-fit:contain; display:block; margin:0 auto;">
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 7 — PEOPLE, PROCESS, TECHNOLOGY (Venn)
+     ================================================================= -->
+<section data-label="07 PPT framework">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">07</div>
+    <div class="body">
+      <p class="eyebrow">Introduction</p>
+      <h1 class="title sm">People, Process &amp; Technology (PPT)</h1>
+      <div class="two-col">
+        <div>
+          <ul class="bullets">
+            <li>Established framework recognising that <strong>people, process and technology together drive action</strong></li>
+            <li>Scale, Innovation and Automation each require combinations of two of the three</li>
+            <li>Organisations that win have <strong>all three in harmony</strong></li>
+            <li>We classify each requirement to one axis — the one whose absence is causing it</li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <img class="ppt-venn" src="assets/ppt-venn.svg" alt="People, Process &amp; Technology Venn diagram" style="width:100%; max-width:700px; height:auto; max-height:640px; object-fit:contain;">
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 8 — MATURITY CURVE (with pin)
+     ================================================================= -->
+<section data-label="08 Maturity curve">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">08</div>
+    <div class="body">
+      <p class="eyebrow">Introduction</p>
+      <h1 class="title sm">Data analytics maturity curve</h1>
+      <div class="two-col">
+        <div>
+          <ul class="bullets">
+            <li>Analytic maturity is an organisation's ability to <strong>leverage data and analytics to improve decision-making</strong></li>
+            <li>A continuum from <strong>Data Chaos</strong> to <strong>Return on analytics investment</strong></li>
+            <li>Diagnosis: <span class="ph">&lt;&lt;maturity_pin_justification — 2-3 sentences&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <img class="mat-curve" src="assets/maturity-curve.png" alt="Data analytics maturity curve" style="width:96%; max-width:840px; height:auto; max-height:560px; object-fit:contain; display:block; margin:0 auto;">
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 9 — QUOTE STRIP · Current State
+     ================================================================= -->
+<section data-label="09 Quotes — Current state">
+  <div class="slide dark">
+    <div class="qstrip">
+      <p class="qstrip-eyebrow">Discovery findings</p>
+      <h2 class="qstrip-title">Current state — in their own words</h2>
+      <div class="qrow">
+        <div class="qtile">
+          <p><span class="ph">&lt;&lt;current_state_quote 1&gt;&gt;</span></p>
+          <div class="who">— <span class="ph">&lt;&lt;role / dept&gt;&gt;</span></div>
+        </div>
+        <div class="qtile">
+          <p><span class="ph">&lt;&lt;current_state_quote 2&gt;&gt;</span></p>
+          <div class="who">— <span class="ph">&lt;&lt;role / dept&gt;&gt;</span></div>
+        </div>
+        <div class="qtile">
+          <p><span class="ph">&lt;&lt;current_state_quote 3&gt;&gt;</span></p>
+          <div class="who">— <span class="ph">&lt;&lt;role / dept&gt;&gt;</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">09</div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 10 — REQUIREMENTS BY HIERARCHY (chart + bullets)
+     ================================================================= -->
+<section data-label="10 Hierarchy chart">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">10</div>
+    <div class="body">
+      <p class="eyebrow">Current state</p>
+      <h1 class="title sm">Analytics hierarchy</h1>
+      <div class="two-col text-right">
+        <div>
+          <ul class="bullets">
+            <li><span class="ph">&lt;&lt;hierarchy_diagnosis_bullet 1&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;hierarchy_diagnosis_bullet 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;hierarchy_diagnosis_bullet 3&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;hierarchy_diagnosis_bullet 4&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;hierarchy_diagnosis_bullet 5 (optional)&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <div class="chart-wrap">
+            <p class="chart-title">Requirements by hierarchy <span class="ph" style="margin-left:12px">(n=&lt;&lt;requirements_total&gt;&gt;)</span></p>
+            <svg class="chart-svg" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+              <!-- gridlines -->
+              <g class="grid">
+                <line x1="80" y1="60"  x2="680" y2="60"/>
+                <line x1="80" y1="130" x2="680" y2="130"/>
+                <line x1="80" y1="200" x2="680" y2="200"/>
+                <line x1="80" y1="270" x2="680" y2="270"/>
+              </g>
+              <!-- y-axis labels (lead consultant edits to scale) -->
+              <text class="label" x="70" y="65"  text-anchor="end">40</text>
+              <text class="label" x="70" y="135" text-anchor="end">30</text>
+              <text class="label" x="70" y="205" text-anchor="end">20</text>
+              <text class="label" x="70" y="275" text-anchor="end">10</text>
+              <text class="label" x="70" y="345" text-anchor="end">0</text>
+              <!-- x-axis -->
+              <line class="axis" x1="80" y1="340" x2="680" y2="340"/>
+
+              <!-- Bars: width 80, gap 40, baseline y=340. Heights are placeholders — Lead Consultant edits y/height per requirements_by_hierarchy. -->
+              <g>
+                <rect class="bar" x="120" y="200" width="80" height="140"/>
+                <text class="value" x="160" y="190" text-anchor="middle" data-fill="collect">&lt;&lt;n&gt;&gt;</text>
+                <text class="label x" x="160" y="365" text-anchor="middle">1. Collect</text>
+
+                <rect class="bar" x="240" y="160" width="80" height="180"/>
+                <text class="value" x="280" y="150" text-anchor="middle">&lt;&lt;n&gt;&gt;</text>
+                <text class="label x" x="280" y="365" text-anchor="middle">2. Clean</text>
+
+                <rect class="bar" x="360" y="80" width="80" height="260"/>
+                <text class="value" x="400" y="70" text-anchor="middle">&lt;&lt;n&gt;&gt;</text>
+                <text class="label x" x="400" y="365" text-anchor="middle">3. Define &amp; track</text>
+
+                <rect class="bar" x="480" y="180" width="80" height="160"/>
+                <text class="value" x="520" y="170" text-anchor="middle">&lt;&lt;n&gt;&gt;</text>
+                <text class="label x" x="520" y="365" text-anchor="middle">4. Analyse</text>
+
+                <rect class="bar" x="600" y="280" width="80" height="60"/>
+                <text class="value" x="640" y="270" text-anchor="middle">&lt;&lt;n&gt;&gt;</text>
+                <text class="label x" x="640" y="365" text-anchor="middle">5. Optimise</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 11 — REQUIREMENTS BY DOMAIN (PPT chart)
+     ================================================================= -->
+<section data-label="11 PPT chart">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">11</div>
+    <div class="body">
+      <p class="eyebrow">Current state</p>
+      <h1 class="title sm">Requirements by domain</h1>
+      <div class="two-col text-right">
+        <div>
+          <ul class="bullets">
+            <li><span class="ph">&lt;&lt;ppt_diagnosis_bullet 1 — name the binding constraint axis&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;ppt_diagnosis_bullet 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;ppt_diagnosis_bullet 3&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;ppt_diagnosis_bullet 4&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;ppt_diagnosis_bullet 5 (optional)&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <div class="chart-wrap">
+            <p class="chart-title">Requirements by domain <span class="ph" style="margin-left:12px">(n=&lt;&lt;requirements_total&gt;&gt;)</span></p>
+            <svg class="chart-svg" viewBox="0 0 600 380" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+              <g class="grid">
+                <line x1="80" y1="60"  x2="580" y2="60"/>
+                <line x1="80" y1="130" x2="580" y2="130"/>
+                <line x1="80" y1="200" x2="580" y2="200"/>
+                <line x1="80" y1="270" x2="580" y2="270"/>
+              </g>
+              <text class="label" x="70" y="65"  text-anchor="end">40</text>
+              <text class="label" x="70" y="135" text-anchor="end">30</text>
+              <text class="label" x="70" y="205" text-anchor="end">20</text>
+              <text class="label" x="70" y="275" text-anchor="end">10</text>
+              <text class="label" x="70" y="345" text-anchor="end">0</text>
+              <line class="axis" x1="80" y1="340" x2="580" y2="340"/>
+
+              <g>
+                <rect class="bar" x="160" y="180" width="100" height="160"/>
+                <text class="value" x="210" y="170" text-anchor="middle">&lt;&lt;n&gt;&gt;</text>
+                <text class="label x" x="210" y="365" text-anchor="middle">People</text>
+
+                <rect class="bar" x="290" y="80"  width="100" height="260"/>
+                <text class="value" x="340" y="70" text-anchor="middle">&lt;&lt;n&gt;&gt;</text>
+                <text class="label x" x="340" y="365" text-anchor="middle">Process</text>
+
+                <rect class="bar" x="420" y="140" width="100" height="200"/>
+                <text class="value" x="470" y="130" text-anchor="middle">&lt;&lt;n&gt;&gt;</text>
+                <text class="label x" x="470" y="365" text-anchor="middle">Technology</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 12 — SUMMARY PANEL · Current State
+     ================================================================= -->
+<section data-label="12 Summary — current state">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">12</div>
+    <div class="body">
+      <p class="eyebrow">Current state</p>
+      <h1 class="title sm">Summary</h1>
+      <div class="panel-box">
+        <ul class="bullets">
+          <li><strong>Situation —</strong> <span class="ph">&lt;&lt;current_state_summary_bullet 1&gt;&gt;</span></li>
+          <li><strong>Impact —</strong> <span class="ph">&lt;&lt;current_state_summary_bullet 2&gt;&gt;</span></li>
+          <li><strong>Diagnosis —</strong> <span class="ph">&lt;&lt;current_state_summary_bullet 3&gt;&gt;</span></li>
+          <li><strong>Opportunity —</strong> <span class="ph">&lt;&lt;current_state_summary_bullet 4&gt;&gt;</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 13 — QUOTE STRIP · Future State
+     ================================================================= -->
+<section data-label="13 Quotes — Future state">
+  <div class="slide dark">
+    <div class="qstrip">
+      <p class="qstrip-eyebrow">Discovery findings</p>
+      <h2 class="qstrip-title">Desired future state — in their own words</h2>
+      <div class="qrow">
+        <div class="qtile">
+          <p><span class="ph">&lt;&lt;future_state_quote 1&gt;&gt;</span></p>
+          <div class="who">— <span class="ph">&lt;&lt;role / dept&gt;&gt;</span></div>
+        </div>
+        <div class="qtile">
+          <p><span class="ph">&lt;&lt;future_state_quote 2&gt;&gt;</span></p>
+          <div class="who">— <span class="ph">&lt;&lt;role / dept&gt;&gt;</span></div>
+        </div>
+        <div class="qtile">
+          <p><span class="ph">&lt;&lt;future_state_quote 3&gt;&gt;</span></p>
+          <div class="who">— <span class="ph">&lt;&lt;role / dept&gt;&gt;</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">13</div>
+  </div>
+</section>
+
+<!-- =================================================================
+     SLIDE 14 — VISION STATEMENT
+     ================================================================= -->
+<section data-label="14 Vision statement">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">14</div>
+    <div class="body">
+      <p class="eyebrow">Strategy</p>
+      <h1 class="title sm">Vision statement</h1>
+      <div class="vision-stack">
+        <div class="vision-panel">
+          <p><span class="ph">&lt;&lt;vision_paragraph_1_capability — starts "Our vision is to create…", bold key phrases inline&gt;&gt;</span></p>
+        </div>
+        <div class="vision-panel">
+          <p><span class="ph">&lt;&lt;vision_paragraph_2_tactics — starts "Our operational tactics commit to…", bold key phrases inline&gt;&gt;</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     PER-AXIS BLOCK 1 — PROCESS (largest binding constraint typically)
+     ================================================================= -->
+
+<!-- 15 — Process divider with quotes -->
+<section data-label="15 Divider — Process">
+  <div class="slide deep">
+    <img class="logo" src="assets/logo-white-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">15</div>
+    <div class="section-center" style="align-content:start; padding-top:200px;">
+      <div>
+        <p class="sec-eyebrow">Per-axis findings</p>
+        <h2><span class="ph">&lt;&lt;axis_order[0] — typically Process&gt;&gt;</span></h2>
+      </div>
+    </div>
+    <div class="section-quotes">
+      <div class="qtile">
+        <p><span class="ph">&lt;&lt;process_quote 1&gt;&gt;</span></p>
+        <div class="who">— <span class="ph">&lt;&lt;role&gt;&gt;</span></div>
+      </div>
+      <div class="qtile">
+        <p><span class="ph">&lt;&lt;process_quote 2&gt;&gt;</span></p>
+        <div class="who">— <span class="ph">&lt;&lt;role&gt;&gt;</span></div>
+      </div>
+      <div class="qtile">
+        <p><span class="ph">&lt;&lt;process_quote 3&gt;&gt;</span></p>
+        <div class="who">— <span class="ph">&lt;&lt;role&gt;&gt;</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 — Process summary with word cloud -->
+<section data-label="16 Process — summary">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">16</div>
+    <div class="body">
+      <p class="eyebrow">Process</p>
+      <h1 class="title sm">Summary</h1>
+      <div class="two-col">
+        <div>
+          <ul class="bullets">
+            <li><span class="ph">&lt;&lt;process_summary_bullet 1&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;process_summary_bullet 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;process_summary_bullet 3&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;process_summary_bullet 4 (optional)&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <div class="wc-wrap">
+            <span class="wc-tag s4 wc-c1">#<span class="ph">Theme1</span></span>
+            <span class="wc-tag s3 wc-c2">#<span class="ph">Theme2</span></span>
+            <span class="wc-tag s5 wc-c1">#<span class="ph">Theme3</span></span>
+            <span class="wc-tag s2 wc-c3">#<span class="ph">Theme4</span></span>
+            <span class="wc-tag s4 wc-c4">#<span class="ph">Theme5</span></span>
+            <span class="wc-tag s3 wc-c1">#<span class="ph">Theme6</span></span>
+            <span class="wc-tag s2 wc-c2">#<span class="ph">Theme7</span></span>
+            <span class="wc-tag s5 wc-c2">#<span class="ph">Theme8</span></span>
+            <span class="wc-tag s1 wc-c3">#<span class="ph">Theme9</span></span>
+            <span class="wc-tag s3 wc-c4">#<span class="ph">Theme10</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 17 — Process detail 1 (process_diagram) -->
+<section data-label="17 Process — detail 1 (process diagram)">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">17</div>
+    <div class="body">
+      <p class="eyebrow">Process</p>
+      <h1 class="title sm"><span class="ph">&lt;&lt;process_detail_1.title — e.g. "Recommended dev → prod workflow"&gt;&gt;</span></h1>
+      <div class="diag-shell">
+        <div>
+          <h4>Process diagram</h4>
+          <p><span class="ph">&lt;&lt;process_detail_1.description — flowchart, swim lanes, decision tree, or CI-CD pipeline. Replace this shell with the actual SVG.&gt;&gt;</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 18 — Process detail 2 (recommendation_list) -->
+<section data-label="18 Process — detail 2 (recommendations)">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">18</div>
+    <div class="body">
+      <p class="eyebrow">Process</p>
+      <h1 class="title sm"><span class="ph">&lt;&lt;process_detail_2.title — e.g. "Three changes to make immediately"&gt;&gt;</span></h1>
+      <div class="rec-cols">
+        <div class="rec-card">
+          <div class="rec-num">01</div>
+          <h3><span class="ph">&lt;&lt;rec 1 title&gt;&gt;</span></h3>
+          <p><span class="ph">&lt;&lt;rec 1 description — 2-3 lines&gt;&gt;</span></p>
+        </div>
+        <div class="rec-card">
+          <div class="rec-num">02</div>
+          <h3><span class="ph">&lt;&lt;rec 2 title&gt;&gt;</span></h3>
+          <p><span class="ph">&lt;&lt;rec 2 description&gt;&gt;</span></p>
+        </div>
+        <div class="rec-card">
+          <div class="rec-num">03</div>
+          <h3><span class="ph">&lt;&lt;rec 3 title&gt;&gt;</span></h3>
+          <p><span class="ph">&lt;&lt;rec 3 description&gt;&gt;</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 19 — Process axis closing summary -->
+<section data-label="19 Process — closing summary">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">19</div>
+    <div class="body">
+      <p class="eyebrow">Process</p>
+      <h1 class="title sm">In summary</h1>
+      <div class="close-grid">
+        <div class="close-card">
+          <span class="lab">The problem</span>
+          <h3><span class="ph">&lt;&lt;process headline&gt;&gt;</span></h3>
+          <p><span class="ph">&lt;&lt;1-2 sentences naming the process pain&gt;&gt;</span></p>
+        </div>
+        <div class="close-card">
+          <span class="lab">The solution</span>
+          <h3><span class="ph">&lt;&lt;solution headline&gt;&gt;</span></h3>
+          <p><span class="ph">&lt;&lt;1-2 sentences on the change we recommend&gt;&gt;</span></p>
+        </div>
+        <div class="close-card">
+          <span class="lab">Key benefits</span>
+          <h3><span class="ph">&lt;&lt;benefits headline&gt;&gt;</span></h3>
+          <p><span class="ph">&lt;&lt;1-2 sentences on outcomes — speed, quality, trust&gt;&gt;</span></p>
+        </div>
+        <div class="close-card">
+          <span class="lab">Bottom line</span>
+          <h3><span class="ph">&lt;&lt;bottom-line headline&gt;&gt;</span></h3>
+          <p><span class="ph">&lt;&lt;1-2 sentences the sponsor will repeat to their board&gt;&gt;</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     PER-AXIS BLOCK 2 — PEOPLE
+     ================================================================= -->
+
+<!-- 20 — People divider -->
+<section data-label="20 Divider — People">
+  <div class="slide deep">
+    <img class="logo" src="assets/logo-white-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">20</div>
+    <div class="section-center" style="align-content:start; padding-top:200px;">
+      <div>
+        <p class="sec-eyebrow">Per-axis findings</p>
+        <h2><span class="ph">&lt;&lt;axis_order[1] — typically People&gt;&gt;</span></h2>
+      </div>
+    </div>
+    <div class="section-quotes">
+      <div class="qtile"><p><span class="ph">&lt;&lt;people_quote 1&gt;&gt;</span></p><div class="who">— <span class="ph">&lt;&lt;role&gt;&gt;</span></div></div>
+      <div class="qtile"><p><span class="ph">&lt;&lt;people_quote 2&gt;&gt;</span></p><div class="who">— <span class="ph">&lt;&lt;role&gt;&gt;</span></div></div>
+      <div class="qtile"><p><span class="ph">&lt;&lt;people_quote 3&gt;&gt;</span></p><div class="who">— <span class="ph">&lt;&lt;role&gt;&gt;</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 21 — People summary + word cloud -->
+<section data-label="21 People — summary">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">21</div>
+    <div class="body">
+      <p class="eyebrow">People</p>
+      <h1 class="title sm">Summary</h1>
+      <div class="two-col">
+        <div>
+          <ul class="bullets">
+            <li><span class="ph">&lt;&lt;people_summary_bullet 1&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;people_summary_bullet 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;people_summary_bullet 3&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;people_summary_bullet 4 (optional)&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <div class="wc-wrap">
+            <span class="wc-tag s4 wc-c1">#<span class="ph">Theme1</span></span>
+            <span class="wc-tag s3 wc-c4">#<span class="ph">Theme2</span></span>
+            <span class="wc-tag s5 wc-c2">#<span class="ph">Theme3</span></span>
+            <span class="wc-tag s2 wc-c3">#<span class="ph">Theme4</span></span>
+            <span class="wc-tag s4 wc-c1">#<span class="ph">Theme5</span></span>
+            <span class="wc-tag s3 wc-c2">#<span class="ph">Theme6</span></span>
+            <span class="wc-tag s2 wc-c4">#<span class="ph">Theme7</span></span>
+            <span class="wc-tag s5 wc-c1">#<span class="ph">Theme8</span></span>
+            <span class="wc-tag s1 wc-c3">#<span class="ph">Theme9</span></span>
+            <span class="wc-tag s3 wc-c2">#<span class="ph">Theme10</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 22 — People detail 1 (reference_model) -->
+<section data-label="22 People — detail 1 (reference model)">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">22</div>
+    <div class="body">
+      <p class="eyebrow">People</p>
+      <h1 class="title sm"><span class="ph">&lt;&lt;people_detail_1.title — e.g. "High-performing analytics team"&gt;&gt;</span></h1>
+      <div class="diag-shell">
+        <div>
+          <h4>Reference model</h4>
+          <p><span class="ph">&lt;&lt;people_detail_1.description — flower diagram, alignment/autonomy 2×2, role-overlap Venn. Replace this shell with the actual SVG.&gt;&gt;</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 23 — People detail 2 (recommendation_list) -->
+<section data-label="23 People — detail 2 (recommendations)">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">23</div>
+    <div class="body">
+      <p class="eyebrow">People</p>
+      <h1 class="title sm"><span class="ph">&lt;&lt;people_detail_2.title — e.g. "Capability &amp; capacity recommendations"&gt;&gt;</span></h1>
+      <div class="rec-cols">
+        <div class="rec-card"><div class="rec-num">01</div><h3><span class="ph">&lt;&lt;rec 1 title&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;rec 1 description&gt;&gt;</span></p></div>
+        <div class="rec-card"><div class="rec-num">02</div><h3><span class="ph">&lt;&lt;rec 2 title&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;rec 2 description&gt;&gt;</span></p></div>
+        <div class="rec-card"><div class="rec-num">03</div><h3><span class="ph">&lt;&lt;rec 3 title&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;rec 3 description&gt;&gt;</span></p></div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 24 — People axis closing summary -->
+<section data-label="24 People — closing summary">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">24</div>
+    <div class="body">
+      <p class="eyebrow">People</p>
+      <h1 class="title sm">In summary</h1>
+      <div class="close-grid">
+        <div class="close-card"><span class="lab">The problem</span><h3><span class="ph">&lt;&lt;people problem headline&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;1-2 sentences&gt;&gt;</span></p></div>
+        <div class="close-card"><span class="lab">The solution</span><h3><span class="ph">&lt;&lt;solution headline&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;1-2 sentences&gt;&gt;</span></p></div>
+        <div class="close-card"><span class="lab">Key benefits</span><h3><span class="ph">&lt;&lt;benefits headline&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;1-2 sentences&gt;&gt;</span></p></div>
+        <div class="close-card"><span class="lab">Bottom line</span><h3><span class="ph">&lt;&lt;bottom-line headline&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;1-2 sentences&gt;&gt;</span></p></div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     PER-AXIS BLOCK 3 — TECHNOLOGY
+     ================================================================= -->
+
+<!-- 25 — Technology divider -->
+<section data-label="25 Divider — Technology">
+  <div class="slide deep">
+    <img class="logo" src="assets/logo-white-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">25</div>
+    <div class="section-center" style="align-content:start; padding-top:200px;">
+      <div>
+        <p class="sec-eyebrow">Per-axis findings</p>
+        <h2><span class="ph">&lt;&lt;axis_order[2] — typically Technology&gt;&gt;</span></h2>
+      </div>
+    </div>
+    <div class="section-quotes">
+      <div class="qtile"><p><span class="ph">&lt;&lt;tech_quote 1&gt;&gt;</span></p><div class="who">— <span class="ph">&lt;&lt;role&gt;&gt;</span></div></div>
+      <div class="qtile"><p><span class="ph">&lt;&lt;tech_quote 2&gt;&gt;</span></p><div class="who">— <span class="ph">&lt;&lt;role&gt;&gt;</span></div></div>
+      <div class="qtile"><p><span class="ph">&lt;&lt;tech_quote 3&gt;&gt;</span></p><div class="who">— <span class="ph">&lt;&lt;role&gt;&gt;</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 26 — Technology summary + word cloud -->
+<section data-label="26 Technology — summary">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">26</div>
+    <div class="body">
+      <p class="eyebrow">Technology</p>
+      <h1 class="title sm">Summary</h1>
+      <div class="two-col">
+        <div>
+          <ul class="bullets">
+            <li><span class="ph">&lt;&lt;tech_summary_bullet 1&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;tech_summary_bullet 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;tech_summary_bullet 3&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;tech_summary_bullet 4 (optional)&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <div class="wc-wrap">
+            <span class="wc-tag s5 wc-c1">#<span class="ph">Theme1</span></span>
+            <span class="wc-tag s3 wc-c2">#<span class="ph">Theme2</span></span>
+            <span class="wc-tag s4 wc-c4">#<span class="ph">Theme3</span></span>
+            <span class="wc-tag s2 wc-c3">#<span class="ph">Theme4</span></span>
+            <span class="wc-tag s4 wc-c1">#<span class="ph">Theme5</span></span>
+            <span class="wc-tag s3 wc-c2">#<span class="ph">Theme6</span></span>
+            <span class="wc-tag s2 wc-c4">#<span class="ph">Theme7</span></span>
+            <span class="wc-tag s5 wc-c1">#<span class="ph">Theme8</span></span>
+            <span class="wc-tag s1 wc-c3">#<span class="ph">Theme9</span></span>
+            <span class="wc-tag s3 wc-c2">#<span class="ph">Theme10</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 27 — Technology detail 1 (process_diagram — reference architecture) -->
+<section data-label="27 Technology — target architecture">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">27</div>
+    <div class="body">
+      <p class="eyebrow">Technology</p>
+      <h1 class="title sm"><span class="ph">&lt;&lt;tech_detail_1.title — e.g. "Recommended target architecture"&gt;&gt;</span></h1>
+      <div class="diag-shell">
+        <div>
+          <h4>Reference architecture</h4>
+          <p><span class="ph">&lt;&lt;tech_detail_1.description — extract / load → transform → semantic → consume layers. Replace shell with the actual SVG.&gt;&gt;</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 28 — Tooling: Product 1 (BigQuery) -->
+<section data-label="28 Technology — Product 1 (BigQuery)">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">28</div>
+    <div class="body">
+      <p class="eyebrow">Technology</p>
+      <h1 class="title sm"><span class="ph">&lt;&lt;product 1 — e.g. "BigQuery — the warehouse"&gt;&gt;</span></h1>
+      <div class="two-col text-right">
+        <div>
+          <ul class="bullets">
+            <li><span class="ph">&lt;&lt;capability bullet 1&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;capability bullet 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;capability bullet 3&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;capability bullet 4&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <div class="ss-frame">
+            <div class="ss-bar"><span></span><span></span><span></span><span class="url">console.cloud.google.com / bigquery</span></div>
+            <div class="ss-body"><div><span class="ph">&lt;&lt;BigQuery UI screenshot&gt;&gt;</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 29 — Tooling: Product 2 (dbt) -->
+<section data-label="29 Technology — Product 2 (dbt)">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">29</div>
+    <div class="body">
+      <p class="eyebrow">Technology</p>
+      <h1 class="title sm"><span class="ph">&lt;&lt;product 2 — e.g. "dbt — the transformation layer"&gt;&gt;</span></h1>
+      <div class="two-col text-right">
+        <div>
+          <ul class="bullets">
+            <li><span class="ph">&lt;&lt;capability bullet 1&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;capability bullet 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;capability bullet 3&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;capability bullet 4&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <div class="ss-frame">
+            <div class="ss-bar"><span></span><span></span><span></span><span class="url">cloud.getdbt.com</span></div>
+            <div class="ss-body"><div><span class="ph">&lt;&lt;dbt UI screenshot&gt;&gt;</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 30 — Tooling: Product 3 (Looker) -->
+<section data-label="30 Technology — Product 3 (Looker)">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">30</div>
+    <div class="body">
+      <p class="eyebrow">Technology</p>
+      <h1 class="title sm"><span class="ph">&lt;&lt;product 3 — e.g. "Looker — the BI &amp; semantic layer"&gt;&gt;</span></h1>
+      <div class="two-col text-right">
+        <div>
+          <ul class="bullets">
+            <li><span class="ph">&lt;&lt;capability bullet 1&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;capability bullet 2&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;capability bullet 3&gt;&gt;</span></li>
+            <li><span class="ph">&lt;&lt;capability bullet 4&gt;&gt;</span></li>
+          </ul>
+        </div>
+        <div class="col-diag">
+          <div class="ss-frame">
+            <div class="ss-bar"><span></span><span></span><span></span><span class="url">looker.com / dashboards</span></div>
+            <div class="ss-body"><div><span class="ph">&lt;&lt;Looker UI screenshot&gt;&gt;</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 31 — Tooling comparison (only if tooling_replacement populated) -->
+<section data-label="31 Technology — tooling comparison">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">31</div>
+    <div class="body">
+      <p class="eyebrow">Technology</p>
+      <h1 class="title sm">Why not <span class="ph">&lt;&lt;incumbent_tool&gt;&gt;</span>?</h1>
+      <div class="cmp-table">
+        <div class="cmp-h"></div>
+        <div class="cmp-h"><span class="ph">&lt;&lt;incumbent_tool&gt;&gt;</span></div>
+        <div class="cmp-h repl"><span class="ph">&lt;&lt;replacement_tool&gt;&gt;</span></div>
+
+        <div class="cmp-axis"><span class="ph">&lt;&lt;axis 1 — e.g. Semantic model&gt;&gt;</span></div>
+        <div><span class="ph">&lt;&lt;incumbent on axis 1&gt;&gt;</span></div>
+        <div><span class="ph">&lt;&lt;replacement on axis 1&gt;&gt;</span></div>
+
+        <div class="cmp-axis"><span class="ph">&lt;&lt;axis 2 — e.g. Cost at scale&gt;&gt;</span></div>
+        <div><span class="ph">&lt;&lt;incumbent on axis 2&gt;&gt;</span></div>
+        <div><span class="ph">&lt;&lt;replacement on axis 2&gt;&gt;</span></div>
+
+        <div class="cmp-axis"><span class="ph">&lt;&lt;axis 3 — e.g. Governance&gt;&gt;</span></div>
+        <div><span class="ph">&lt;&lt;incumbent on axis 3&gt;&gt;</span></div>
+        <div><span class="ph">&lt;&lt;replacement on axis 3&gt;&gt;</span></div>
+
+        <div class="cmp-axis"><span class="ph">&lt;&lt;axis 4 — e.g. Embedded analytics&gt;&gt;</span></div>
+        <div><span class="ph">&lt;&lt;incumbent on axis 4&gt;&gt;</span></div>
+        <div><span class="ph">&lt;&lt;replacement on axis 4&gt;&gt;</span></div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 32 — Technology axis closing summary -->
+<section data-label="32 Technology — closing summary">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">32</div>
+    <div class="body">
+      <p class="eyebrow">Technology</p>
+      <h1 class="title sm">In summary</h1>
+      <div class="close-grid">
+        <div class="close-card"><span class="lab">The problem</span><h3><span class="ph">&lt;&lt;tech problem headline&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;1-2 sentences&gt;&gt;</span></p></div>
+        <div class="close-card"><span class="lab">The solution</span><h3><span class="ph">&lt;&lt;solution headline&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;1-2 sentences&gt;&gt;</span></p></div>
+        <div class="close-card"><span class="lab">Key benefits</span><h3><span class="ph">&lt;&lt;benefits headline&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;1-2 sentences&gt;&gt;</span></p></div>
+        <div class="close-card"><span class="lab">Bottom line</span><h3><span class="ph">&lt;&lt;bottom-line headline&gt;&gt;</span></h3><p><span class="ph">&lt;&lt;1-2 sentences&gt;&gt;</span></p></div>
+      </div>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     CLOSING
+     ================================================================= -->
+
+<!-- 33 — Next steps -->
+<section data-label="33 Next steps">
+  <div class="slide">
+    <img class="logo" src="assets/logo-black-blue.svg" alt="Rittman Analytics">
+    <div class="slide-num">33</div>
+    <div class="body">
+      <p class="eyebrow">What happens next</p>
+      <h1 class="title sm">Next steps</h1>
+      <ol class="ns-list">
+        <li class="ns-item">
+          <span class="ns-num">01</span>
+          <span class="ns-title"><span class="ph">&lt;&lt;next_step 1 — e.g. "Confirm Roadmap session date"&gt;&gt;</span></span>
+          <span class="ns-owner"><span class="ph">&lt;&lt;Owner&gt;&gt;</span></span>
+          <span class="ns-date"><span class="ph">&lt;&lt;Date&gt;&gt;</span></span>
+        </li>
+        <li class="ns-item">
+          <span class="ns-num">02</span>
+          <span class="ns-title"><span class="ph">&lt;&lt;next_step 2&gt;&gt;</span></span>
+          <span class="ns-owner"><span class="ph">&lt;&lt;Owner&gt;&gt;</span></span>
+          <span class="ns-date"><span class="ph">&lt;&lt;Date&gt;&gt;</span></span>
+        </li>
+        <li class="ns-item">
+          <span class="ns-num">03</span>
+          <span class="ns-title"><span class="ph">&lt;&lt;next_step 3&gt;&gt;</span></span>
+          <span class="ns-owner"><span class="ph">&lt;&lt;Owner&gt;&gt;</span></span>
+          <span class="ns-date"><span class="ph">&lt;&lt;Date&gt;&gt;</span></span>
+        </li>
+        <li class="ns-item">
+          <span class="ns-num">04</span>
+          <span class="ns-title"><span class="ph">&lt;&lt;next_step 4 (optional)&gt;&gt;</span></span>
+          <span class="ns-owner"><span class="ph">&lt;&lt;Owner&gt;&gt;</span></span>
+          <span class="ns-date"><span class="ph">&lt;&lt;Date&gt;&gt;</span></span>
+        </li>
+        <li class="ns-item">
+          <span class="ns-num">05</span>
+          <span class="ns-title"><span class="ph">&lt;&lt;next_step 5 (optional)&gt;&gt;</span></span>
+          <span class="ns-owner"><span class="ph">&lt;&lt;Owner&gt;&gt;</span></span>
+          <span class="ns-date"><span class="ph">&lt;&lt;Date&gt;&gt;</span></span>
+        </li>
+      </ol>
+    </div>
+    <div class="foot"><span>© Rittman Analytics 2026</span><span>T: +44 (0)208 058 5951</span><span>W: rittmananalytics.com</span><span>E: info@rittmananalytics.com</span></div>
+  </div>
+</section>
+
+<!-- 34 — Q&A divider -->
+<section data-label="34 Q&amp;A">
+  <div class="slide deep">
+    <img class="logo" src="assets/logo-white-blue.svg" alt="Rittman Analytics">
+    <div class="section-center">
+      <h2>Questions &amp; Answers</h2>
+    </div>
+  </div>
+</section>
+
+<!-- 35 — Cover repeat (close) -->
+<section data-label="35 Cover repeat">
+  <div class="slide dark">
+    <div class="cover-wrap">
+      <img class="cover-logo" src="assets/logo-white-blue.svg" alt="Rittman Analytics">
+      <div class="cover-stack">
+        <p class="cover-eyebrow">Discovery exercise</p>
+        <h1 class="cover-title">Findings playback<br>&amp; delivery plan</h1>
+        <p class="cover-sub"><span class="ph">&lt;&lt;engagement_title&gt;&gt;</span></p>
+        <div class="cover-meta">
+          <span>Presented by <span class="ph">&lt;&lt;presenter_name&gt;&gt;</span>, <span class="ph">&lt;&lt;presenter_title&gt;&gt;</span></span>
+          <span class="sep">|</span>
+          <span><span class="ph">&lt;&lt;presentation_month&gt;&gt;</span></span>
+        </div>
+      </div>
+      <div class="cover-partner" data-cond="google_cloud_partner">
+        <img src="assets/google_partner.png" alt="Google Cloud Partner">
+      </div>
+    </div>
+  </div>
+</section>
+
+</deck-stage>
+
+<script src="deck-stage.js"></script>
+</body>
+</html>

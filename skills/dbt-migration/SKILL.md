@@ -5,6 +5,18 @@ description: Proactive skill for migrating dbt projects between data platforms (
 
 # dbt Migration Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dbt-migration | activated | dbt migration or upgrade work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 This skill provides a systematic, validation-driven workflow for migrating dbt projects between data platforms (BigQuery, Snowflake, Databricks) or upgrading between dbt versions. It covers cross-platform SQL dialect translation, pre/post-migration testing, and documentation of all changes made.

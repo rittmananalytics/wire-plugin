@@ -5,6 +5,18 @@ description: Proactive skill for answering business analytics questions using db
 
 # dbt Analytics Q&A Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dbt-analytics-qa | activated | dbt analytics QA or data validation work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 Answer business data questions using the best available method. Users asking "What were total sales last month?" or "How many active customers do we have?" should always get an answer if the data exists in the dbt project — even without a full Semantic Layer setup.

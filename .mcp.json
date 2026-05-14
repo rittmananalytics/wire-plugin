@@ -6,7 +6,7 @@
     },
     "fathom": {
       "type": "url",
-      "url": "https://mcp-fathom-server-r6jhgfswwa-uc.a.run.app/mcp"
+      "url": "https://your-fathom-mcp-server/mcp"
     },
     "context7": {
       "type": "url",

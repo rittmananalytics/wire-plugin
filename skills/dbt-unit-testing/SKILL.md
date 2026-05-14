@@ -5,6 +5,18 @@ description: Proactive skill for creating dbt unit tests. Auto-activates when wo
 
 # dbt Unit Testing Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dbt-unit-testing | activated | dbt unit testing work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 This skill automatically activates when creating or discussing dbt unit tests. It guides the creation of effective unit tests using dbt's native unit testing framework (dbt Core 1.8+), ensuring that complex transformation logic is verified with mock inputs and expected outputs before deployment.

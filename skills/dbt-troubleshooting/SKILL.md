@@ -5,6 +5,18 @@ description: Proactive skill for diagnosing dbt job failures and test errors. Au
 
 # dbt Troubleshooting Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dbt-troubleshooting | activated | dbt error or troubleshooting work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 This skill automatically activates when diagnosing dbt job failures, test errors, compilation issues, or runtime problems. It provides a systematic methodology for classifying errors, investigating root causes, and implementing fixes with preventive measures.

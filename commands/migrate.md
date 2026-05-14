@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.4.17\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.4.22\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"migrate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.17\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"migrate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.22\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -90,8 +90,9 @@ Migrate an engagement repository to the **Wire v3.4+ two-tier layout** (`.wire/e
 |------|--------------|-------------|
 | **Case A** | Pre-v3.4 flat `.wire/` | Old layout with project folders directly under `.wire/` |
 | **Case B** | Near-wire root-level structure | Repos with `releases/`, `context/`, `artifacts/` at the repo root — no `.wire/` directory — that evolved organically alongside the Wire framework |
+| **Case C** | v3.4+ layout with legacy `release_type: "discovery"` | Already on the two-tier layout but the release type is the now-renamed `discovery` — rewrite to `shape_up_discovery` and update any internal references |
 
-This command is safe to re-run. For Case B, the migration runs on a **new git branch** and raises a **PR** so changes can be reviewed before merging.
+This command is safe to re-run. For Case B, the migration runs on a **new git branch** and raises a **PR** so changes can be reviewed before merging. Case C is a small in-place edit and does not need its own branch.
 
 ---
 
@@ -206,13 +207,17 @@ Determine which case applies:
 
 | Condition | Result |
 |-----------|--------|
-| `.wire/engagement/` exists, no stray project folders at `.wire/` root | Already migrated — confirm and stop |
+| `.wire/engagement/` exists, no stray project folders at `.wire/` root, and no `release_type: "shape_up_discovery"` strings | Already migrated — confirm and stop |
+| `.wire/engagement/` exists AND any `.wire/releases/*/status.md` contains `release_type: "shape_up_discovery"` (the briefly-used identifier, reverted to `discovery` in v3.5.1) | **Case C** — release-type normalise |
 | `.wire/` exists with project folders directly under it (no `engagement/` or `releases/` subdirs) | **Case A** |
 | No `.wire/` directory; root contains `releases/` dir and `context/engagement.md` | **Case B** |
 | Neither `.wire/` nor `releases/context/` found | Error: nothing to migrate — suggest `/wire:new` |
 
 If **Case A**: proceed to [Case A Workflow](#case-a-workflow).
 If **Case B**: proceed to [Case B Workflow](#case-b-workflow).
+If **Case C**: proceed to [Case C Workflow](#case-c-workflow).
+
+Case A and Case B may **also** require Case C steps if the migrated releases use the briefly-used `shape_up_discovery` identifier — after completing the primary case, re-check for `release_type: "shape_up_discovery"` and chain into Case C if found.
 
 ---
 
@@ -534,15 +539,21 @@ rmdir releases
 
 For each release, read the existing `status.md` at `.wire/releases/<folder>/status.md`. The old format has a simple YAML frontmatter block and a deliverable table. Replace it with the full wire-format status file:
 
-**Determine the release type**: read the release name and the deliverable table. If the release is named `discovery` or its deliverables match discovery-phase work (business structure review, stakeholder interviews, solution definition), classify as `discovery`. Otherwise classify as `delivery`.
+**Determine the release type**: read the release name and the deliverable table. If the release is named `discovery` or its deliverables match discovery-phase work (business structure review, stakeholder interviews, solution definition), classify as a discovery release. Otherwise classify as `delivery`.
 
-**For discovery releases**, generate a status.md using the discovery template schema, mapping existing deliverable statuses:
+For a discovery release, pick the discovery **flavour**:
+
+- If deliverables include a Shape Up sequence (problem definition → pitch → release brief → sprint plan) and there is no Findings Playback deck artefact, classify as `shape_up_discovery`.
+- If deliverables include stakeholder interview write-ups, a Requirements Matrix, the three analyses, or a Findings Playback slide deck, classify as `sop_discovery`.
+- If neither pattern is obvious, default to `shape_up_discovery` (the historical default that this migration replaces) and note in `migrated_from` that the flavour was inferred.
+
+**For `shape_up_discovery` releases**, generate a status.md using the shape-up discovery template schema, mapping existing deliverable statuses:
 
 ```yaml
 ---
 release_id: "<release-folder-name>"
 release_name: "<human-readable from brief.md title or folder name>"
-release_type: "discovery"
+release_type: "shape_up_discovery"
 client_name: "<client_name from .wire/engagement/context.md>"
 engagement_name: "<engagement_name from .wire/engagement/context.md>"
 created_date: "<created from old frontmatter>"
@@ -617,6 +628,20 @@ notes:
 blockers: []
 ---
 ```
+
+**For `sop_discovery` releases**, the schema is materially different (interviews array, sponsor_validation block). Generate the status.md from `TEMPLATES/sop-discovery-status-template.md` instead of inlining the schema here. Map each existing deliverable to one of the SOP artifact names (engagement_brief, stakeholder_map, stakeholder_interview, requirements_matrix, discovery_analyses, findings_playback, delivery_roadmap) using best-effort keyword matching:
+
+| Old deliverable (by keyword) | Mapped SOP artifact |
+|---|---|
+| Engagement brief, project brief, scoping doc | `engagement_brief` |
+| Stakeholder map, interview list | `stakeholder_map` |
+| Stakeholder interview, discovery interview, write-up | `stakeholder_interview` (aggregate state; per-stakeholder files go in `planning/interviews/`) |
+| Requirements matrix, consolidated requirements | `requirements_matrix` |
+| Hierarchy of Needs, PPT analysis, Maturity Curve, three analyses | `discovery_analyses` |
+| Findings playback, playback deck, discovery readout | `findings_playback` |
+| Delivery roadmap, programme plan, Build/Pair/Coach | `delivery_roadmap` |
+
+If migrating per-stakeholder interview files, write each to `.wire/releases/<folder>/planning/interviews/<slug>.md` and append a corresponding entry to `interviews:` in the new status.md. **Tag completeness on legacy interviews must be checked manually** — the v3.4+ four-tag rule was not enforced before, so `validate: not_started` is the safe default until the consultant re-tags.
 
 **Deliverable status → wire artifact state mapping**:
 
@@ -734,6 +759,66 @@ artifacts/             Shared reference materials (not engagement management fil
 
 utils/                 Utility scripts (Fathom fetch, process, etc.)
 \`\`\`
+
+---
+
+## Case C Workflow
+
+Engagements using the **briefly-used `release_type: "shape_up_discovery"`** identifier (from the Wire v3.5.0 window before the rename was reverted in v3.5.1) need to be normalised back to `discovery`. The `discovery` identifier is canonical for the Shape Up flow — the rename to `shape_up_discovery` was reversed for backwards compatibility.
+
+Case C is an **in-place edit** — it does not move any files or restructure the repo. It is also idempotent: re-running on an already-normalised repo is a no-op.
+
+### C1: Identify affected releases
+
+```bash
+grep -l 'release_type: "shape_up_discovery"' .wire/releases/*/status.md 2>/dev/null
+```
+
+For each matching file, report the path before editing.
+
+### C2: Rewrite `release_type`
+
+For each affected `status.md`:
+
+1. Replace `release_type: "shape_up_discovery"` with `release_type: "discovery"`.
+2. Append a one-line note to `notes:` recording the migration:
+
+   ```yaml
+   notes:
+     - "Normalised release_type shape_up_discovery → discovery on <today's date> by /wire:migrate Case C"
+   ```
+
+### C3: Update other in-repo references
+
+Search for any other files that reference the literal release type:
+
+```bash
+grep -rln 'release_type: "shape_up_discovery"' .wire/ 2>/dev/null
+grep -rln 'release_type: shape_up_discovery$' .wire/ 2>/dev/null
+```
+
+Update any matches to `discovery`. Likely candidates: legacy session-history snapshots, exported status copies.
+
+**Do not** mass-rename the word `discovery` — it is a valid phase name, folder name, and search keyword. Only the **release type identifier value** changes.
+
+### C4: Validate
+
+After rewriting, run `/wire:status` to confirm each affected release is recognised under `discovery` and that artifact lifecycle states are unchanged.
+
+### C5: Report
+
+```
+## Case C migration complete
+
+| Release | Before | After |
+|---|---|---|
+| 01-discovery | release_type: "shape_up_discovery" | release_type: "discovery" |
+
+Files updated: <N>
+No file moves, no schema changes.
+```
+
+---
 
 ## Commands
 
@@ -1021,11 +1106,11 @@ Execute the complete workflow as specified above.
 
 After completing the workflow, append a log entry to the project's execution_log.md:
 
-# Execution Log — Post-Command Logging
+# Execution Log — Command and Skill Logging
 
 ## Purpose
 
-After completing any generate, validate, or review workflow (or a project management command that changes state), append a single log entry to the project's execution log file.
+After completing any generate, validate, or review workflow (or a project management command that changes state), append a single log entry to the project's execution log file. Skills also append an entry on activation, making the log a unified trace of all agent activity — both explicit commands and auto-activated skills.
 
 ## Log File Location
 
@@ -1055,8 +1140,8 @@ Then append one row per execution:
 ### Field Definitions
 
 - **Timestamp**: Current date and time in `YYYY-MM-DD HH:MM` format (24-hour, local time)
-- **Command**: The `/wire:*` command that was invoked (e.g., `/wire:requirements-generate`, `/wire:new`, `/wire:dbt-validate`)
-- **Result**: The outcome of the command. Use one of:
+- **Command**: Either the `/wire:*` command invoked, or `skill` for a skill activation entry
+- **Result / Skill name**: For commands, the outcome; for skills, the skill identifier. Use one of:
   - `complete` — generate command finished successfully
   - `pass` — validate command passed all checks
   - `fail` — validate command found failures
@@ -1065,12 +1150,43 @@ Then append one row per execution:
   - `created` — `/wire:new` created a new project
   - `archived` — `/wire:archive` archived a project
   - `removed` — `/wire:remove` deleted a project
+  - `activated` — a skill was auto-activated (used with `skill` in the Command column)
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
   - For review: reviewer name and brief feedback if changes requested
   - For new: project type and client name
   - For archive/remove: project name
+  - For skill activations: brief description of what triggered the skill
+
+## Skill Activation Entries
+
+When a skill activates, it appends a row in the same format as commands, using `skill` in the Command column and the skill identifier in the Result column:
+
+```markdown
+| YYYY-MM-DD HH:MM | skill | <skill-identifier> | activated | <brief trigger description> |
+```
+
+Skill identifiers:
+
+| Skill | Identifier |
+|-------|-----------|
+| Engagement Context | `engagement-context` |
+| Research Persistence | `research-persistence` |
+| dbt Development | `dbt-development` |
+| LookML Content Authoring | `lookml-authoring` |
+| dbt Analytics QA | `dbt-analytics-qa` |
+| dbt Migration | `dbt-migration` |
+| dbt Troubleshooting | `dbt-troubleshooting` |
+| dbt Semantic Layer | `dbt-semantic-layer` |
+| dbt Unit Testing | `dbt-unit-testing` |
+| dbt DAG | `dbt-dag` |
+| Dagster | `dagster` |
+| Fivetran | `fivetran` |
+| Project Review | `project-review` |
+| Looker Dashboard Mockup | `looker-dashboard-mockup` |
+
+This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
 
 ## Rules
 
@@ -1087,6 +1203,7 @@ Then append one row per execution:
 
 | Timestamp | Command | Result | Detail |
 |-----------|---------|--------|--------|
+| 2026-02-22 14:30 | skill | engagement-context | activated | Context loaded for new conversation |
 | 2026-02-22 14:35 | /wire:new | created | Project created (type: full_platform, client: Acme Corp) |
 | 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements specification (3 files) |
 | 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed |

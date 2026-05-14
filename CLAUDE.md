@@ -40,6 +40,10 @@ Deck template: bundled with the plugin at `decks/kickoff/Project Kickoff.html` (
 
 ### Discovery release commands
 
+Wire supports two discovery release types — Shape Up (scoped problem-shaping) and SOP / Canonical (wide-ranging structured discovery with sponsor playback exit).
+
+#### Discovery (Shape Up) (`release_type: discovery`)
+
 ```
 /wire:problem-definition-generate <release>   — Generate structured problem framing
 /wire:problem-definition-validate <release>   — Validate problem definition completeness
@@ -57,8 +61,54 @@ Deck template: bundled with the plugin at `decks/kickoff/Project Kickoff.html` (
 /wire:sprint-plan-validate <release>   — Validate points vs appetite budget
 /wire:sprint-plan-review <release>     — Team review and approval
 
-/wire:release:spawn <discovery-release>   — Create downstream delivery release folders
+/wire:release-spawn <discovery-release>   — Create downstream delivery release folders
 ```
+
+#### SOP / Canonical discovery (`release_type: sop_discovery`)
+
+Models the [Canonical Discovery Playbook (RA Standard)](https://rittmananalytics.atlassian.net/wiki/spaces/RA/pages/3436642306). The exit deliverable is the sponsor-facing **Findings Playback slide deck**; the playback meeting is the Wire review gate.
+
+```
+/wire:engagement-brief-generate <release>    — Internal RA scoping doc from SoW + deal record
+/wire:engagement-brief-validate <release>
+/wire:engagement-brief-review <release>      — Internal RA (Head of Delivery)
+
+/wire:stakeholder-map-generate <release>     — P0/P1/P2 priority, influence/interest, sentiment
+/wire:stakeholder-map-validate <release>
+/wire:stakeholder-map-review <release>       — Sponsor confirms list
+
+/wire:stakeholder-interview-generate <release> --stakeholder <slug>
+                                              — Repeatable per stakeholder; pulls Fathom transcript
+/wire:stakeholder-interview-validate <release> [--stakeholder <slug> | --all]
+                                              — Enforces mandatory four-tag rule mechanically
+/wire:stakeholder-interview-review <release> --stakeholder <slug>
+                                              — Internal RA peer review
+
+/wire:requirements-matrix-generate <release> — Consolidate tagged themes from every interview
+/wire:requirements-matrix-validate <release>
+/wire:requirements-matrix-review <release>   — Internal RA review
+
+/wire:discovery-analyses-generate <release>  — The three analyses: Hierarchy + PPT + Maturity
+/wire:discovery-analyses-validate <release>
+/wire:discovery-analyses-review <release>    — HoD + peer consultant; challenges Maturity pin
+
+/wire:findings-playback-generate <release>   — Populate the bundled HTML deck template
+/wire:findings-playback-validate <release>
+/wire:findings-playback-review <release>     — ⭐ The sponsor playback gate. Captures the
+                                                7-item Sponsor Validation Checklist from
+                                                the Fathom recording of the meeting.
+
+/wire:delivery-roadmap-generate <release>    — Build / Pair / Coach options
+/wire:delivery-roadmap-validate <release>
+/wire:delivery-roadmap-review <release>      — Sponsor sign-off on Release 1 scope
+
+/wire:release-spawn <discovery-release>      — Refuses to chain forward until the
+                                                Sponsor Validation Checklist is all-true
+```
+
+**Mandatory four-tag rule**: every theme bullet on every stakeholder interview write-up carries one tag from each of four closed sets — `#<domain> #<type> #<hierarchy> #<ppt>`. `stakeholder-interview-validate` enforces this with a regex/parser check, not LLM judgement. The three analyses cannot run without it.
+
+The kick-off uses the existing `/wire:kickoff-*` commands — release-type aware, enriches from `engagement_brief` + `stakeholder_map` for SOP discovery, and from `problem_definition` / `pitch` / `sprint_plan` for Shape Up.
 
 ### Delivery commands
 
@@ -217,22 +267,35 @@ This command checks prerequisites (Node.js 18+), downloads and builds Wire Studi
 Every Wire engagement uses a two-tier structure:
 
 - **Engagement level** (`engagement/`): SOW, call transcripts, stakeholders, current-state architecture — context that belongs to the whole engagement, not any specific release.
-- **Release level** (`releases/`): Scoped, time-boxed delivery units. Release types: `discovery`, `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `dashboard_first`, `enablement`.
+- **Release level** (`releases/`): Scoped, time-boxed delivery units. Release types: `discovery`, `sop_discovery`, `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `dashboard_first`, `enablement`, `agentic_commerce`.
 
 ### Repo mode options
 
 - **Combined** (default): `.wire/` lives directly in the client's code repo.
 - **Dedicated delivery repo**: A separate repo for Wire artifacts; client code repo details stored in `engagement/context.md`.
 
-### Discovery release type
+### Discovery release types
 
-The `discovery` release type represents the pre-delivery scoping phase (Shape Up methodology). Its artifact workflow:
+Wire has two discovery release types. Both end by running `/wire:release-spawn` to create the folder structure and status files for each planned downstream delivery release.
+
+**`discovery`** — Shape Up scoping flow:
 
 ```
 Problem Definition → Pitch → Release Brief → Sprint Plan → Spawn delivery releases
 ```
 
-A discovery release ends by running `/wire:release:spawn` to create the folder structure and status files for each planned downstream delivery release.
+Use when the problem to solve is reasonably understood and you need to shape a single bet.
+
+**`sop_discovery`** — RA Canonical (SOP) discovery, modelled on the [Canonical Discovery Playbook (RA Standard)](https://rittmananalytics.atlassian.net/wiki/spaces/RA/pages/3436642306):
+
+```
+Engagement Brief → Stakeholder Map → Kick-off → Stakeholder Interviews (×N)
+   → Requirements Matrix → Discovery Analyses (Hierarchy / PPT / Maturity)
+   → Findings Playback Deck → Sponsor Playback (the gate)
+   → Delivery Roadmap → Spawn Release 1 (or close as no-go)
+```
+
+Use when scope is unclear at SoW signature or a new analytical domain is being introduced. The canonical exit deliverable is the sponsor-facing **Findings Playback slide deck**, presented to the sponsor. The release is `approved` only when the 7-item **Sponsor Validation Checklist** (Maturity pin, Hierarchy diagnosis, PPT diagnosis, Vision Statement, Solution Initiatives, preferred Delivery Option, conflicts resolved) is all-true on the playback meeting notes.
 
 ## Research Persistence Skill
 

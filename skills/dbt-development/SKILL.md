@@ -5,6 +5,18 @@ description: Proactive skill for validating dbt models against coding convention
 
 # dbt Development Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dbt-development | activated | dbt model creation, review, or refactoring triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 This skill automatically activates when working with dbt models to ensure adherence to coding conventions and best practices. It provides validation and recommendations for model structure, naming, SQL style, testing, and documentation.
@@ -73,11 +85,11 @@ This skill should activate when users:
 When working with a dbt model, determine:
 
 **Model Type:**
-- **Staging** (`stg_`): First transformation layer, selects from sources
-- **Integration** (`int_`): Combines multiple sources, enriches entities
-- **Intermediate** (`int__<object>__<action>`): Subcomponent of integration
-- **Warehouse - Dimension** (`_dim`): Mutable, noun-based entities
-- **Warehouse - Fact** (`_fct`): Immutable, verb-based events
+- **Staging** (`stg_<group>__<table>`): First transformation layer, selects from sources only
+- **Integration** (`int_<group>__<entity>`): Joins lower-layer models to enrich entities
+- **Warehouse — Dimension** (`wh_<group>__<entity>_dim`): Mutable, noun-based entities
+- **Warehouse — Fact** (`wh_<group>__<entity>_fact`): Immutable, verb-based events
+- **Warehouse — Cross-attribute** (`wh_<group>__<entity>_xa`): Bridge / many-to-many / cross-entity attribute models
 
 **Context Information:**
 - File location in directory structure
@@ -99,36 +111,53 @@ When working with a dbt model, determine:
 **Check the following:**
 
 **File and Model Naming:**
-- ✓ All objects are singular (e.g., `user` not `users`)
-- ✓ Staging: `stg_<source>__<object>.sql` (e.g., `stg_salesforce__user.sql`)
-- ✓ Integration: `int__<object>.sql` (e.g., `int__user.sql`)
-- ✓ Intermediate: `int__<object>__<action>.sql` (e.g., `int__user__unioned.sql`)
-  - Actions should be past tense verbs (unioned, grouped, filtered, etc.)
-- ✓ Warehouse dimensions: `<object>_dim.sql` or `<warehouse>_<object>_dim.sql`
-  - Core warehouse has no prefix (e.g., `user_dim.sql`)
-  - Other warehouses prefixed (e.g., `finance_revenue_dim.sql`)
-- ✓ Warehouse facts: `<object>_fct.sql` or `<warehouse>_<object>_fct.sql`
-  - Same prefix rules as dimensions
+- ✓ Models are organised into entity groups (`core`, `entity`, or domain-specific groups like `finance`, `risk`, etc.)
+- ✓ File names use the pattern `<layer>_<group>__<entity>.sql` — double underscore separates group from entity
+- ✓ Staging: `stg_<group>__<table>.sql` (e.g., `stg_core__users.sql`, `stg_entity__entity_a.sql`)
+- ✓ Integration: `int_<group>__<entity>.sql` (e.g., `int_core__users.sql`, `int_core__geographies.sql`)
+- ✓ Warehouse dimension: `wh_<group>__<entity>_dim.sql` (e.g., `wh_core__user_dim.sql`, `wh_core__country_dim.sql`)
+- ✓ Warehouse fact: `wh_<group>__<entity>_fact.sql` (e.g., `wh_entity_group__entity_name_b_fact.sql`)
+- ✓ Warehouse cross-attribute: `wh_<group>__<entity>_xa.sql` for bridge / many-to-many / cross-entity attribute models
 
 **Directory Structure:**
 ```
 models/
-├── staging/
-│   └── <source_name>/
-│       ├── stg_<source>.yml
-│       └── stg_<source>__<object>.sql
+│
+├── schema.yml                   # Schema YAML — auto-generated, do not hand-edit
+├── field_descriptions.md         # Centralised dbt doc blocks for shared field descriptions
+│
+├── warehouse/
+│   ├── wh_core/
+│   │   ├── wh_core__user_dim.sql
+│   │   └── wh_core__country_dim.sql
+│   └── wh_entity_group/
+│       ├── wh_entity_group__entity_name_a_dim.sql
+│       ├── wh_entity_group__entity_name_b_fact.sql
+│       └── wh_entity_group__entity_name_d_xa.sql
+│
 ├── integration/
-│   ├── intermediate/
-│   │   ├── intermediate.yml
-│   │   └── int__<object>__<action>.sql
-│   ├── int__<object>.sql
-│   └── integration.yml
-└── warehouse/
-    └── <warehouse_name>/
-        ├── <warehouse>.yml
-        ├── <object>_dim.sql
-        └── <object>_fct.sql
+│   ├── int_core/
+│   │   ├── int_core__users.sql
+│   │   └── int_core__geographies.sql
+│   └── int_entity_group/
+│       └── int_entity_group__entity_name.sql
+│
+└── staging/
+    ├── stg_core/
+    │   ├── _sources.yml
+    │   ├── stg_core__users.sql
+    │   └── stg_core__geographies.sql
+    └── stg_entity/
+        ├── _sources.yml
+        ├── stg_entity__entity_a.sql
+        └── stg_entity__entity_b.sql
 ```
+
+**Layer Rules:**
+- Only **staging** models select from raw data sources (`{{ source(...) }}`)
+- **Integration** and **warehouse** models select from lower-layer models via `{{ ref(...) }}`
+- A warehouse model can select directly from staging if an integration model isn't required
+- Integration models exist primarily to join models and enrich data
 
 **Violations to Flag:**
 - Plural object names
@@ -142,46 +171,97 @@ models/
 
 **Required Structure:**
 
-1. **All refs at top in CTEs:**
+1. **All refs / sources at top in CTEs, prefixed with `s_`:**
 ```sql
-with
+with s_users as (
 
-s_source_table as (
-    select * from {{ ref('source_model') }}
+    select * from {{ source('back_office', 'user_accounts') }}
+
 ),
 
-s_another_source as (
-    select * from {{ ref('another_model') }}
+s_accounts as (
+
+    select * from {{ ref('stg_core__accounts') }}
+
 ),
 ```
 
 2. **CTE Naming:**
    - ✓ Prefix with `s_` for CTEs that select from refs/sources
-   - ✓ Descriptive names for transformation CTEs (e.g., `filtered_events`, `aggregated_metrics`)
-   - ✓ One logical unit of work per CTE
+   - ✓ Descriptive names for transformation CTEs (e.g., `rename_and_cast`, `filtered_events`, `aggregated_metrics`)
+   - ✓ One logical unit of work per CTE where performance permits
+   - ✓ Comment CTEs that contain confusing or notable logic
 
-3. **Final CTE Pattern:**
+3. **Final CTE Pattern — every model must have a `final` CTE:**
 ```sql
 final as (
-    select
-        -- fields here
-    from s_source_table
-    -- joins and where clauses
+
+    select * from rename_and_cast
+
 )
 
 select * from final
 ```
 
-4. **Configuration Block (if needed):**
+   The `final` CTE makes models easier to debug — you can comment out the final `select * from final` and select from any intermediate CTE without having to comment out code.
+
+4. **Configuration Block — model-specific attributes (unique keys, partitioning, description):**
 ```sql
 {{
   config(
+    description = 'A description of the model to help developers',
     materialized = 'table',
-    sort = 'id',
-    dist = 'id'
+    unique_key = 'user_pk'
   )
 }}
 ```
+
+   Global configurations (materialisation defaults per directory) should live in `dbt_project.yml`, not in individual models. If a config applies to every model in a folder, set it at the project level.
+
+5. **Reference staging model — combines all of the above:**
+```sql
+{{
+  config(
+    description = 'A description of the model to help developers'
+    )
+}}
+
+with s_users as (
+
+    select * from {{ source('back_office', 'user_accounts') }}
+
+),
+
+rename_and_cast as (
+
+    select
+
+        {# keys #}
+        lower(cast(id as {{ dbt.type_string() }} )) as user_natural_key,
+        {# attributes #}
+        lower(cast(name as {{ dbt.type_string() }} )) as user_name,
+        {# metrics #}
+        cast(account_balance as {{ dbt.type_numeric() }} ) as user_account_balance_amount,
+        {# booleans #}
+        cast(status as {{ dbt.type_boolean() }} ) as user_status,
+        {# temporal data types #}
+        cast(created_date as {{ type_date() }} ) as user_created_dt,
+        cast(update_at as {{ dbt.type_timestamp() }} ) as user_update_ts,
+
+    from s_users
+
+),
+
+final as (
+
+    select * from rename_and_cast
+
+)
+
+select * from final
+```
+
+   Note the `{# … #}` comments grouping fields by category (keys / attributes / metrics / booleans / temporal data types) — this is the canonical staging-model shape.
 
 **Style Requirements:**
 - ✓ 4-space indentation (not tabs)
@@ -211,32 +291,44 @@ select * from final
 **Field Naming Conventions:**
 
 **Primary Keys:**
-- ✓ Named `<object>_pk` (e.g., `user_pk`, `transaction_pk`)
-- ✓ Generated using `dbt_utils.surrogate_key()`
+- ✓ Named `<entity>_pk` (e.g., `user_pk`, `subscription_pk`)
+- ✓ Generated using `{{ dbt_utils.generate_surrogate_key(...) }}`
 - ✓ Never look up PKs in separate queries
 
 **Foreign Keys:**
-- ✓ Named `<referenced_object>_fk` (e.g., `user_fk`, `transaction_fk`)
-- ✓ Generated using `dbt_utils.surrogate_key()`
+- ✓ Named `<referenced_entity>_fk` (e.g., `user_fk`, `subscription_fk`)
+- ✓ Generated using `{{ dbt_utils.generate_surrogate_key(...) }}`
 
 **Natural Keys:**
-- ✓ Source system identifiers: `<descriptive_name>_natural_key`
-- ✓ Example: `salesforce_user_natural_key`, `stripe_customer_natural_key`
+- ✓ Source-system identifiers renamed `<descriptive_name>_natural_key`
+- ✓ Example: `subscription_natural_key`, `user_natural_key`
 
 **Timestamps:**
 - ✓ Named `<event>_ts` (e.g., `created_ts`, `updated_ts`, `order_placed_ts`)
-- ✓ Always in UTC timezone
-- ✓ If different timezone, add suffix: `created_ts_ct`, `created_ts_pt`
+- ✓ Always assumed UTC unless otherwise indicated
+- ✓ If timezone is **not** UTC, insert the timezone tag between event and `_ts`: `created_cet_ts`, `created_pt_ts`
+- ✓ Dates use `_dt` suffix: `user_created_dt`
 
 **Booleans:**
-- ✓ Prefixed with `is_` or `has_` (e.g., `is_active`, `has_subscription`)
+- ✓ Prefixed with `is_`, `has_`, or `was_` (e.g., `is_active`, `has_subscription`, `was_refunded`)
 
-**Prices/Revenue:**
-- ✓ In decimal currency (e.g., 19.99 for $19.99)
-- ✓ If stored in cents, add suffix: `price_in_cents`
+**Revenue / Money:**
+- ✓ Revenue columns use the suffix `_amount` (e.g., `user_account_balance_amount`, `subscription_revenue_amount`)
+- ✓ Stored as decimal currency (e.g., 19.99 for $19.99) — convert from cents at the staging layer
+- ✓ If a column must remain in integer cents for legacy reasons, document it explicitly
+
+**Type Casting:**
+- ✓ **Always** use dbt's type-cast macros — never raw SQL types:
+  - `{{ dbt.type_string() }}`
+  - `{{ dbt.type_numeric() }}`
+  - `{{ dbt.type_boolean() }}`
+  - `{{ dbt.type_timestamp() }}`
+  - `{{ type_date() }}` (no `dbt.` prefix — it's a community macro)
+- ✓ This keeps models portable across warehouses (BigQuery / Snowflake / Databricks / Postgres)
 
 **Common Fields:**
 - ✓ Prefix with entity name (e.g., `customer_name`, `carrier_name`, not just `name`)
+- ✓ Rename source columns to business-friendly `snake_case` names at the staging layer
 
 **General Rules:**
 - ✓ All names in `snake_case`
@@ -244,22 +336,25 @@ select * from final
 - ✓ Avoid SQL reserved words
 - ✓ Consistency across models (same field names for same concepts)
 
-**Field Ordering (Staging/Base Models):**
-1. Keys (pk, fks, natural keys)
-2. Dates and timestamps
-3. Attributes (dimensions/slicing fields)
-4. Metrics (measures/aggregatable values)
-5. Metadata (insert_ts, updated_ts, etc.)
+**Field Ordering (in `select` lists):**
+1. **Keys** — pk, fks, natural keys
+2. **Attributes** — dimensions, slicing fields, descriptive columns
+3. **Indexes / ranks** — `row_number()`, rank columns, sequence positions
+4. **Metrics** — measures, aggregatable values, `_amount` columns
+5. **Booleans** — `is_*`, `has_*`, `was_*` flags
+6. **Temporal data types** — `_dt`, `_ts` columns last
 
-Within each category, sort alphabetically.
+Use `{# keys #}`, `{# attributes #}`, `{# metrics #}`, `{# booleans #}`, `{# temporal data types #}` Jinja comment markers to visually separate the groups in staging models (see the staging model example above).
 
 **Violations to Flag:**
 - Inconsistent naming patterns
-- Missing _pk or _fk suffixes
-- Timestamps without _ts suffix
-- Booleans without is_/has_ prefix
+- Missing `_pk` / `_fk` suffixes; PKs/FKs not generated via `dbt_utils.generate_surrogate_key`
+- Timestamps without `_ts` suffix; non-UTC timestamps without timezone tag in the middle
+- Booleans without `is_` / `has_` / `was_` prefix
+- Revenue columns without `_amount` suffix
+- Raw SQL type casts instead of `dbt.type_*()` macros
 - Reserved words as column names
-- Incorrect field ordering
+- Incorrect field ordering (e.g. metrics before attributes, temporal columns mid-list)
 
 ---
 
@@ -268,16 +363,18 @@ Within each category, sort alphabetically.
 **Configuration Rules:**
 
 **Warehouse Models:**
-- ✓ Always materialized as `table`
-- ✓ Consider sort/dist keys for performance
+- ✓ Always materialised as `table`
+- ✓ Consider partitioning / clustering / sort keys for performance
 
-**Other Layers:**
-- ✓ Prefer `view` or ephemeral (CTE) materialization
+**Other Layers (Staging, Integration):**
+- ✓ Prefer `view` or ephemeral (CTE) materialisation
 - ✓ Use `table` only if performance requires it
 
 **Configuration Placement:**
-- ✓ Model-specific config in the model file (in config() block)
-- ✓ Directory-wide config in `dbt_project.yml`
+- ✓ Model-specific attributes (unique keys, partitioning, description) live in the model's `{{ config() }}` block
+- ✓ Global configurations (materialisation defaults, schema layout) live in `dbt_project.yml`
+- ✓ If a configuration applies to **all** models in a directory, put it in `dbt_project.yml` — not repeated in every model
+- ✓ Every model should include a `description` in its config so developers can scan the project
 
 **Example:**
 ```sql
@@ -302,9 +399,18 @@ Within each category, sort alphabetically.
 **Minimum Testing Requirements:**
 
 **Every Model:**
-- ✓ Has a corresponding entry in a `schema.yml` file
+- ✓ Has a corresponding entry in the schema YAML
 - ✓ Primary key has `unique` and `not_null` tests
 - ✓ Integration models with multiple sources: use `dbt_utils.unique_combination_of_columns`
+
+**Schema YAML is auto-generated:**
+
+The dbt schema file (`schema.yml`) is **auto-generated** in our projects from the compiled SQL and project-level configuration. This means:
+
+- ✓ **Do not hand-create `schema.yml` files.** The generator produces type-aware, test-aware schema entries derived from compiled SQL.
+- ✓ Tests, descriptions, and column metadata managed by the generator should be set through its configuration, not by editing the generated file directly (it will be overwritten on the next run).
+- ✓ Hand-authored `_sources.yml` files inside `stg_<group>/` folders are still valid — they define the upstream source mapping, not the model schema, and are not regenerated.
+- ✓ A missing schema entry for a model typically means the generator has not been re-run after the model was added.
 
 **Schema.yml Location:**
 - ✓ Every subdirectory should contain a `.yml` file
@@ -348,42 +454,55 @@ models:
 
 **Documentation Requirements:**
 
-**Staging Models:**
-- ✓ 100% documented (all models and columns)
-- ✓ Clear descriptions for all fields
-- ✓ Business terminology explained
+**Warehouse Models (Required):**
+- ✓ **All columns in the warehouse layer must be documented.** No exceptions — this is the layer end-users and BI consumers touch.
+- ✓ End-user focused descriptions written in business terminology
 
-**Warehouse Models:**
-- ✓ 100% documented (all models and columns)
-- ✓ End-user focused descriptions
+**Staging / Integration Models:**
+- ✓ Model `description` in the `{{ config() }}` block — helps developers
+- ✓ Document complex logic / non-obvious transformations
+- ✓ Coverage at the column level is encouraged but not enforced
 
-**Integration/Intermediate:**
-- ✓ Document as needed for clarity
-- ✓ Explain any special cases or complex logic
+**Doc Blocks — centralised field descriptions:**
+- ✓ Field descriptions live in `models/field_descriptions.md` as `{% docs %}` blocks
+- ✓ Reference them in schema YAML via `description: "{{ doc('<doc_block_name>') }}"`
+- ✓ This avoids duplicate descriptions for the same logical column across multiple models
 
-**Doc Blocks:**
-- ✓ Use `{% docs %}` blocks for shared documentation
-- ✓ Reference doc blocks to maintain consistency
-- ✓ Store in `models/docs/` directory
+**Example `field_descriptions.md`:**
+```jinja
+{% docs user_pk %}
+Surrogate primary key for the user entity, generated from the source system
+natural key. Stable across loads.
+{% enddocs %}
 
-**Example:**
+{% docs user_account_balance_amount %}
+The user's current account balance in decimal currency (e.g. 19.99 = $19.99).
+Sourced from the back-office `user_accounts.account_balance` column.
+{% enddocs %}
+```
+
+**Example schema entry referencing doc blocks:**
 ```yaml
-version: 2
-
 models:
-  - name: user_dim
+  - name: wh_core__user_dim
     description: |
-      User dimension containing customer profile information.
-      Updated nightly from Salesforce and Stripe sources.
+      User dimension containing profile information.
+      Refreshed nightly from the back-office source.
     columns:
       - name: user_pk
         description: "{{ doc('user_pk') }}"
+      - name: user_account_balance_amount
+        description: "{{ doc('user_account_balance_amount') }}"
 ```
 
+**Enforcement:**
+- ✓ Documentation coverage can be enforced via [dbt-meta-testing](https://github.com/tnightengale/dbt-meta-testing) — if the package is installed in `packages.yml`, expect a `dbt run-operation` step to fail CI when warehouse-layer columns lack descriptions.
+
 **Violations to Flag:**
-- Staging/warehouse models without descriptions
-- Missing column documentation
-- Vague or unhelpful descriptions
+- Warehouse-layer columns without descriptions
+- Duplicate descriptions for the same logical column across models (should use a shared doc block)
+- Missing `description` in a model's `{{ config() }}` block
+- Vague or unhelpful descriptions ("the user", "an ID")
 
 ---
 
@@ -1016,10 +1135,13 @@ When creating a new dbt model from scratch:
    - Select from final
 
 4. **Apply Field Conventions**
-   - Generate _pk using surrogate_key
-   - Name foreign keys with _fk suffix
-   - Timestamp fields with _ts suffix
-   - Proper field ordering
+   - Generate _pk using `dbt_utils.generate_surrogate_key`
+   - Name foreign keys with _fk suffix (also generate_surrogate_key)
+   - Timestamp fields with _ts suffix (UTC) or _<tz>_ts (non-UTC); dates with _dt
+   - Revenue / money columns with _amount suffix
+   - Booleans with is_/has_/was_ prefix
+   - Use dbt.type_*() macros for all type casting
+   - Field ordering: keys → attributes → indexes/ranks → metrics → booleans → temporal
 
 5. **Create/Update schema.yml**
    - Model description

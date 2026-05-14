@@ -1,50 +1,51 @@
--- Example Staging Model
--- Source: Salesforce contacts
--- Purpose: Basic cleaning and standardization of Salesforce contact data
+-- Example staging model: stg_core/stg_core__users.sql
+-- Source: back-office user_accounts table
+-- Purpose: Rename, type-cast, and standardise user account data ready for
+--          downstream integration and warehouse layers
 
-with
+{{
+  config(
+    description = 'Cleaned and standardised user accounts from the back-office source'
+    )
+}}
 
-s_salesforce_contact as (
-    select * from {{ source('salesforce', 'contact') }}
+with s_users as (
+
+    select * from {{ source('back_office', 'user_accounts') }}
+
+),
+
+rename_and_cast as (
+
+    select
+
+        {# keys #}
+        lower(cast(id as {{ dbt.type_string() }} )) as user_natural_key,
+
+        {# attributes #}
+        lower(cast(name as {{ dbt.type_string() }} )) as user_name,
+        lower(trim(cast(email as {{ dbt.type_string() }} ))) as user_email,
+        lower(cast(country_code as {{ dbt.type_string() }} )) as user_country_code,
+
+        {# metrics #}
+        cast(account_balance as {{ dbt.type_numeric() }} ) as user_account_balance_amount,
+
+        {# booleans #}
+        cast(status as {{ dbt.type_boolean() }} ) as user_status,
+        cast(is_deleted as {{ dbt.type_boolean() }} ) as was_deleted,
+
+        {# temporal data types #}
+        cast(created_date as {{ type_date() }} ) as user_created_dt,
+        cast(updated_at as {{ dbt.type_timestamp() }} ) as user_updated_ts,
+
+    from s_users
+
 ),
 
 final as (
-    select
-        -- Keys
-        {{ dbt_utils.surrogate_key(['id', "'salesforce'"]) }}
-            as contact_pk,
-        id as salesforce_contact_natural_key,
-        account_id as salesforce_account_natural_key,
 
-        -- Dates and timestamps
-        cast(created_date as timestamp) as created_ts,
-        cast(last_modified_date as timestamp) as updated_ts,
-        cast(last_activity_date as date) as last_activity_date,
+    select * from rename_and_cast
 
-        -- Attributes
-        lower(trim(email)) as email,
-        trim(first_name) as first_name,
-        trim(last_name) as last_name,
-        trim(phone) as phone,
-        trim(title) as job_title,
-        lower(trim(lead_source)) as lead_source,
-        trim(mailing_city) as city,
-        trim(mailing_state) as state,
-        trim(mailing_country) as country,
-
-        -- Metrics
-        cast(number_of_employees as integer) as employee_count,
-
-        -- Metadata
-        case
-            when is_deleted = 'true' then true
-            when is_deleted = 'false' then false
-            else null
-        end as is_deleted,
-        cast(system_modstamp as timestamp) as source_updated_ts
-
-    from s_salesforce_contact
-    where is_deleted = 'false'  -- Filter out deleted records
 )
 
 select * from final

@@ -5,6 +5,18 @@ description: Proactive skill for setting up and configuring the dbt MCP server f
 
 # dbt MCP Server Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dbt-mcp-server | activated | dbt MCP server work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 The dbt MCP server connects Claude Code (and Claude Desktop) to dbt's CLI, Semantic Layer, Discovery API, and Admin API. Once configured, other dbt skills (`dbt-analytics-qa`, `dbt-semantic-layer`, `dbt-dag`) can use MCP tools like `list_metrics`, `get_lineage`, `get_mart_models`, and `dbt_build` directly rather than falling back to manifest parsing.

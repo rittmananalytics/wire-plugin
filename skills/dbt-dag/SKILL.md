@@ -5,6 +5,18 @@ description: Proactive skill for generating Mermaid flowchart diagrams of dbt mo
 
 # dbt DAG Visualisation Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dbt-dag | activated | dbt DAG analysis or lineage work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 Generate a Mermaid `graph LR` diagram of dbt model lineage for a given model or set of models. The diagram is returned as fenced markdown that renders in Wire Studio's document viewer, GitHub, Notion, and other Markdown renderers.

@@ -5,6 +5,18 @@ description: Proactive skill for building dbt Semantic Layer with MetricFlow. Au
 
 # dbt Semantic Layer Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dbt-semantic-layer | activated | dbt semantic layer or metrics work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 This skill guides the creation and maintenance of dbt Semantic Layer artifacts — semantic models, entities, dimensions, measures, and metrics — using MetricFlow. It provides conventions, validation workflows, and reference material for building a consistent, queryable metrics layer on top of dbt models.

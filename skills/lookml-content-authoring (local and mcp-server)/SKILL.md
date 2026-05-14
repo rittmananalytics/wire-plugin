@@ -1,5 +1,17 @@
 # LookML Content Authoring Skill for Claude Code
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | lookml-authoring | activated | LookML work (local/MCP) triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Overview
 
 This skill enables Claude Code to create and modify LookML content (views, explores, models) directly in the local filesystem. Claude Code works with LookML projects stored in git repositories, typically in a `/looker` directory structure. The user provides specifications, schema information, and requirements; Claude Code generates properly formatted, validated LookML files.

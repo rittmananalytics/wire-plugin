@@ -5,6 +5,18 @@ description: Production Python quality skill. Auto-activates when writing, revie
 
 # Dignified Python Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dignified-python | activated | Python code work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 This skill ensures Python code written in Wire projects meets production quality standards. It activates proactively when creating or reviewing Python files to enforce consistent patterns around types, error handling, file operations, and module structure.

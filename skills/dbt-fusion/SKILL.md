@@ -5,6 +5,18 @@ description: Proactive skill for triaging and fixing dbt Core → dbt Fusion mig
 
 # dbt Fusion Migration Skill
 
+## On Activation
+
+Before proceeding, append a one-line entry to `.wire/execution_log.md`:
+
+```
+| YYYY-MM-DD HH:MM | skill | dbt-fusion | activated | dbt Fusion work triggered this skill |
+```
+
+If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
+
+
+
 ## Purpose
 
 dbt Fusion is the new Rust-based dbt runtime that is becoming the default execution engine. It is significantly faster than dbt Core but introduces breaking changes through stricter SQL parsing, MiniJinja (vs Jinja2), and a new static analysis layer.

@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.4.17\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.4.22\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"new\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.17\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"new\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.4.22\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -88,13 +88,14 @@ Interactive workflow to create a new engagement or add a new release to an exist
 ## Terminology
 
 - **Engagement**: A complete client engagement. Contains engagement-wide context (SOW, calls, org charts) and one or more releases.
-- **Release**: A scoped, time-boxed unit of delivery within an engagement. The existing delivery types (full_platform, pipeline_only, etc.) and the new discovery type are all release types.
+- **Release**: A scoped, time-boxed unit of delivery within an engagement. Discovery release types (`discovery`, `sop_discovery`) and delivery release types (`full_platform`, `pipeline_only`, etc.) are all release types.
 
 ## Release Types
 
 | Type | Description | Typical Artifacts |
 |------|-------------|------------------|
-| `discovery` | Pre-delivery scoping and discovery (Shape Up) | problem_definition, pitch, release_brief, sprint_plan |
+| `discovery` | Discovery (Shape Up): scoped, problem-first, solution-shaped before commitment | problem_definition, pitch, release_brief, sprint_plan |
+| `sop_discovery` | RA Canonical (SOP) discovery: wide-ranging structured discovery leading to a go/no-go decision on a program of work. Exit deliverable is the sponsor-facing Findings Playback deck. | engagement_brief, stakeholder_map, stakeholder_interview, requirements_matrix, discovery_analyses, findings_playback, delivery_roadmap |
 | `full_platform` | Complete data platform (pipelines + dbt + BI + enablement) | All artifacts |
 | `pipeline_only` | Data pipeline development only | pipeline_design, pipeline, data_quality, deployment |
 | `dbt_development` | dbt models and semantic layer | data_model, dbt, semantic_layer, data_quality |
@@ -210,7 +211,8 @@ Use `AskUserQuestion`:
     "question": "What type is the first release for this engagement?",
     "header": "First Release Type",
     "options": [
-      {"label": "Discovery", "description": "Shape Up discovery: problem definition → pitch → release brief → sprint plan"},
+      {"label": "Discovery (Shape Up)", "description": "Discovery (Shape Up): scoped problem-shaping. Problem definition → pitch → release brief → sprint plan. Use when the problem to solve is reasonably understood and you need to shape a single bet."},
+      {"label": "Discovery (SOP / Canonical)", "description": "RA Canonical discovery: wide-ranging structured discovery leading to a go/no-go decision on a program of work. Engagement brief → stakeholder map → interviews → consolidation → three analyses → Findings Playback deck → roadmap. Use when scope is unclear at SoW signature or a new analytical domain is being introduced."},
       {"label": "Full platform", "description": "Complete implementation (pipelines, dbt, BI, enablement)"},
       {"label": "Pipeline only", "description": "Data pipeline development"},
       {"label": "dbt development", "description": "dbt models and semantic layer"},
@@ -223,7 +225,18 @@ Use `AskUserQuestion`:
 }
 ```
 
-Map selection to `release_type`.
+Map selection to `release_type`:
+
+| Selected label | `release_type` value |
+|---|---|
+| Discovery (Shape Up) | `discovery` |
+| Discovery (SOP / Canonical) | `sop_discovery` |
+| Full platform | `full_platform` |
+| Pipeline only | `pipeline_only` |
+| dbt development | `dbt_development` |
+| Dashboard extension | `dashboard_extension` |
+| Dashboard-first rapid dev | `dashboard_first` |
+| Enablement | `enablement` |
 
 ### Step 6: Determine Release ID
 
@@ -426,10 +439,16 @@ cp [sow_path] .wire/engagement/sow.md   # or sow.pdf if PDF
 
 ### Step 13: Create Release Folder Structure
 
-**For `discovery` release type**:
+**For discovery release types (`discovery`, `sop_discovery`)**:
 ```bash
 mkdir -p .wire/releases/[release_folder]/{artifacts,planning}
 touch .wire/releases/[release_folder]/artifacts/.gitkeep
+```
+
+For `sop_discovery`, also create the interview folder used by the per-stakeholder write-ups:
+```bash
+mkdir -p .wire/releases/[release_folder]/planning/interviews
+touch .wire/releases/[release_folder]/planning/interviews/.gitkeep
 ```
 
 **For all other release types**:
@@ -454,6 +473,11 @@ touch .wire/releases/[release_folder]/enablement/.gitkeep
    - `{{ENGAGEMENT_NAME}}` → engagement_name
    - `{{CREATED_DATE}}` → today's date
    - `{{LAST_UPDATED}}` → today's date
+3. Write to `.wire/releases/[release_folder]/status.md`
+
+**For `sop_discovery` release type**:
+1. Read `TEMPLATES/sop-discovery-status-template.md`
+2. Replace the same placeholders as above
 3. Write to `.wire/releases/[release_folder]/status.md`
 
 **For all other release types**:
@@ -492,17 +516,27 @@ When **Both** is selected, run both workflows. They operate independently — fa
 │   └── [release_folder]/   # [release_type]
 │       ├── status.md       # Release tracking
 │       ├── artifacts/      # Source materials
-│       └── planning/       # [discovery: planning docs]
+│       └── planning/       # [discovery: planning docs; sop_discovery also has planning/interviews/]
 └── research/
     └── sessions/           # Research findings (auto-populated)
 
 ### Next Steps
 
-[If discovery release type]:
+[If `discovery`]:
 1. Generate the problem definition:
    /wire:problem-definition-generate [release_folder]
 
 2. Or start a session first:
+   /wire:session:start [release_folder]
+
+[If `sop_discovery`]:
+1. Draft the engagement brief from the signed SoW and deal record:
+   /wire:engagement-brief-generate [release_folder]
+
+2. Then build the stakeholder map:
+   /wire:stakeholder-map-generate [release_folder]
+
+3. Or start a session first:
    /wire:session:start [release_folder]
 
 [If delivery release type]:
@@ -519,7 +553,8 @@ When **Both** is selected, run both workflows. They operate independently — fa
 |---------|---------|
 | `/wire:session:start [folder]` | Start a focused working session |
 | `/wire:status releases/[folder]` | Check release status |
-| `/wire:problem-definition-generate [folder]` | [discovery] Start the discovery workflow |
+| `/wire:problem-definition-generate [folder]` | [discovery] Start the Shape Up workflow |
+| `/wire:engagement-brief-generate [folder]` | [sop_discovery] Start the SOP discovery workflow |
 | `/wire:requirements-generate releases/[folder]` | [delivery] Generate requirements |
 ```
 
@@ -556,11 +591,11 @@ Execute the complete workflow as specified above.
 
 After completing the workflow, append a log entry to the project's execution_log.md:
 
-# Execution Log — Post-Command Logging
+# Execution Log — Command and Skill Logging
 
 ## Purpose
 
-After completing any generate, validate, or review workflow (or a project management command that changes state), append a single log entry to the project's execution log file.
+After completing any generate, validate, or review workflow (or a project management command that changes state), append a single log entry to the project's execution log file. Skills also append an entry on activation, making the log a unified trace of all agent activity — both explicit commands and auto-activated skills.
 
 ## Log File Location
 
@@ -590,8 +625,8 @@ Then append one row per execution:
 ### Field Definitions
 
 - **Timestamp**: Current date and time in `YYYY-MM-DD HH:MM` format (24-hour, local time)
-- **Command**: The `/wire:*` command that was invoked (e.g., `/wire:requirements-generate`, `/wire:new`, `/wire:dbt-validate`)
-- **Result**: The outcome of the command. Use one of:
+- **Command**: Either the `/wire:*` command invoked, or `skill` for a skill activation entry
+- **Result / Skill name**: For commands, the outcome; for skills, the skill identifier. Use one of:
   - `complete` — generate command finished successfully
   - `pass` — validate command passed all checks
   - `fail` — validate command found failures
@@ -600,12 +635,43 @@ Then append one row per execution:
   - `created` — `/wire:new` created a new project
   - `archived` — `/wire:archive` archived a project
   - `removed` — `/wire:remove` deleted a project
+  - `activated` — a skill was auto-activated (used with `skill` in the Command column)
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
   - For review: reviewer name and brief feedback if changes requested
   - For new: project type and client name
   - For archive/remove: project name
+  - For skill activations: brief description of what triggered the skill
+
+## Skill Activation Entries
+
+When a skill activates, it appends a row in the same format as commands, using `skill` in the Command column and the skill identifier in the Result column:
+
+```markdown
+| YYYY-MM-DD HH:MM | skill | <skill-identifier> | activated | <brief trigger description> |
+```
+
+Skill identifiers:
+
+| Skill | Identifier |
+|-------|-----------|
+| Engagement Context | `engagement-context` |
+| Research Persistence | `research-persistence` |
+| dbt Development | `dbt-development` |
+| LookML Content Authoring | `lookml-authoring` |
+| dbt Analytics QA | `dbt-analytics-qa` |
+| dbt Migration | `dbt-migration` |
+| dbt Troubleshooting | `dbt-troubleshooting` |
+| dbt Semantic Layer | `dbt-semantic-layer` |
+| dbt Unit Testing | `dbt-unit-testing` |
+| dbt DAG | `dbt-dag` |
+| Dagster | `dagster` |
+| Fivetran | `fivetran` |
+| Project Review | `project-review` |
+| Looker Dashboard Mockup | `looker-dashboard-mockup` |
+
+This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
 
 ## Rules
 
@@ -622,6 +688,7 @@ Then append one row per execution:
 
 | Timestamp | Command | Result | Detail |
 |-----------|---------|--------|--------|
+| 2026-02-22 14:30 | skill | engagement-context | activated | Context loaded for new conversation |
 | 2026-02-22 14:35 | /wire:new | created | Project created (type: full_platform, client: Acme Corp) |
 | 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements specification (3 files) |
 | 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed |
