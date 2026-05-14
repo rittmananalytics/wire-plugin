@@ -17,24 +17,26 @@
 5. [Installation and Setup](#5-installation-and-setup)
 6. [Core Concepts You Need to Know](#6-core-concepts-you-need-to-know)
 7. [Running a Discovery Release (Shape Up Planning)](#7-running-a-discovery-release-shape-up-planning)
-8. [Generating a Client Kick-off Deck](#8-generating-a-client-kick-off-deck)
-9. [Running a Full Platform Release (End-to-End)](#9-running-a-full-platform-release-end-to-end)
-10. [Running a Pipeline + dbt Release](#10-running-a-pipeline--dbt-release)
-11. [Running a dbt Development Release](#11-running-a-dbt-development-release)
-12. [Running a Dashboard Extension Release](#12-running-a-dashboard-extension-release)
-13. [Running a Dashboard-First Rapid Development Release](#13-running-a-dashboard-first-rapid-development-release)
-14. [Running an Enablement Release](#14-running-an-enablement-release)
-15. [Running an Agentic Commerce Release](#15-running-an-agentic-commerce-release)
-16. [Worked Example: Barton Peveril Live Pastoral Analytics](#16-worked-example-barton-peveril-live-pastoral-analytics)
-17. [Wire Autopilot: Autonomous Execution](#17-wire-autopilot-autonomous-execution)
-18. [Wire Studio: Web-Based Interface](#18-wire-studio-web-based-interface)
-19. [Wire Framework VS Code Extension](#19-wire-framework-vs-code-extension)
-20. [Issue Tracking: Jira and Linear](#20-issue-tracking-jira-and-linear)
-21. [Document Store: Confluence and Notion](#21-document-store-confluence-and-notion)
-22. [Extending and Customising the Framework](#22-extending-and-customising-the-framework)
-23. [FAQ](#23-faq)
-24. [Troubleshooting](#24-troubleshooting)
-25. [Framework Management Commands](#25-framework-management-commands)
+8. [Running a Discovery Release (SOP / Canonical)](#8-running-a-discovery-release-sop--canonical)
+9. [Generating a Client Kick-off Deck](#9-generating-a-client-kick-off-deck)
+10. [Running a Full Platform Release (End-to-End)](#10-running-a-full-platform-release-end-to-end)
+11. [Running a Pipeline + dbt Release](#11-running-a-pipeline--dbt-release)
+12. [Running a dbt Development Release](#12-running-a-dbt-development-release)
+13. [Running a Dashboard Extension Release](#13-running-a-dashboard-extension-release)
+14. [Running a Dashboard-First Rapid Development Release](#14-running-a-dashboard-first-rapid-development-release)
+15. [Running an Enablement Release](#15-running-an-enablement-release)
+16. [Running an Agentic Commerce Release](#16-running-an-agentic-commerce-release)
+17. [Worked Example: Barton Peveril Live Pastoral Analytics](#17-worked-example-barton-peveril-live-pastoral-analytics)
+18. [Wire Autopilot: Autonomous Execution](#18-wire-autopilot-autonomous-execution)
+19. [Wire Studio: Web-Based Interface](#19-wire-studio-web-based-interface)
+20. [Wire Framework VS Code Extension](#20-wire-framework-vs-code-extension)
+21. [Issue Tracking: Jira and Linear](#21-issue-tracking-jira-and-linear)
+22. [Document Store: Confluence and Notion](#22-document-store-confluence-and-notion)
+23. [Extending and Customising the Framework](#23-extending-and-customising-the-framework)
+24. [FAQ](#24-faq)
+25. [Troubleshooting](#25-troubleshooting)
+26. [Framework Management Commands](#26-framework-management-commands)
+    - [`/wire:playbook-generate`](#wireplaybook-generate--delivery-playbook)
 
 ---
 
@@ -332,7 +334,7 @@ Wire Studio is a separate web-based interface that runs alongside (not instead o
 
 No Docker required. No GitHub OAuth app required.
 
-See [Section 16: Wire Studio](#16-wire-studio-web-based-interface) for full setup and usage instructions.
+See [Section 19: Wire Studio](#19-wire-studio-web-based-interface) for full setup and usage instructions.
 
 ### Upgrading
 
@@ -769,9 +771,59 @@ A new engagement with an uncertain scope:
 → Discovery release complete.
 ```
 
-### Discovery workflow (SOP / Canonical)
+> **Tip**: Run `/wire:playbook-generate 01-discovery` after the problem definition is approved to generate a BPMN-style visual delivery plan and step-by-step narrative for this release. See [Section 26](#26-framework-management-commands).
 
-The SOP discovery release is for engagements where you do not yet know enough to shape the bet — you need a structured, wide-ranging discovery that leads to a go/no-go decision on a programme of work. Models the [Canonical Discovery Playbook (RA Standard)](https://rittmananalytics.atlassian.net/wiki/spaces/RA/pages/3436642306/Canonical+Discovery+Playbook+RA+Standard).
+---
+
+## 8. Running a Discovery Release (SOP / Canonical)
+
+The SOP / Canonical discovery release (`release_type: sop_discovery`) is for engagements where the scope is genuinely unknown at SOW signature — you need structured, wide-ranging stakeholder discovery before you can shape any delivery bet. It models the [Canonical Discovery Playbook (RA Standard)](https://rittmananalytics.atlassian.net/wiki/spaces/RA/pages/3436642306/Canonical+Discovery+Playbook+RA+Standard).
+
+Use this release type when:
+
+- Scope is unknown or stakeholder alignment is low at the start of the engagement
+- This is the first analytics engagement at the client — you need to diagnose the data landscape before prescribing solutions
+- The SOW describes a discovery phase rather than a fixed scope
+- Multiple competing priorities exist and a structured hierarchy-of-needs analysis is needed before any build decision
+
+The Shape Up discovery (`release_type: discovery`) is the right choice when the problem domain is understood and you can shape a solution in one or two weeks. If you are not sure which to use, choose SOP / Canonical.
+
+### SOP discovery artifact flow
+
+```mermaid
+graph LR
+    EB["Engagement\nBrief"]
+    SM["Stakeholder\nMap"]
+    KO["Kick-off"]
+    SI["Stakeholder\nInterviews"]
+    RM["Requirements\nMatrix"]
+    DA["Discovery\nAnalyses"]
+    FP["Findings\nPlayback"]
+    DR["Delivery\nRoadmap"]
+    RS["Spawn\nRelease 1"]
+
+    EB --> SM --> KO --> SI --> RM --> DA --> FP --> DR --> RS
+```
+
+### The exit gate: Findings Playback and Sponsor Validation Checklist
+
+The canonical exit deliverable is the **Findings Playback slide deck**, presented to the sponsor in a live session. The playback meeting is the Wire review gate — the release moves to `approved` only when all seven items on the **Sponsor Validation Checklist** are confirmed true on the Fathom recording of the meeting:
+
+1. Maturity Curve pin agreed
+2. Hierarchy of Needs diagnosis accepted
+3. PPT (People / Process / Technology) diagnosis accepted
+4. Vision Statement validated
+5. Solution Initiatives accepted
+6. Preferred Delivery Option selected
+7. Any conflicts between stakeholder priorities resolved
+
+`/wire:release-spawn` refuses to chain forward until the checklist is all-true. If the sponsor defers or partially approves, the release stays open and the playback is rescheduled.
+
+### The mandatory four-tag rule
+
+Every theme bullet on every stakeholder interview write-up carries one tag from each of four closed sets: `#<domain>`, `#<type>`, `#<hierarchy>`, `#<ppt>`. `/wire:stakeholder-interview-validate` enforces this with a parser check, not LLM judgement. The three discovery analyses cannot run without complete tag coverage across all interviews.
+
+### Command sequence
 
 The canonical exit deliverable is the **Findings Playback slide deck**, presented to the sponsor. The playback meeting is the Wire review gate — the release is `approved` only when the Sponsor Validation Checklist (Maturity pin, Hierarchy diagnosis, PPT diagnosis, Vision Statement, Solution Initiatives, preferred Delivery Option, conflicts resolved) is all-true.
 
@@ -823,9 +875,11 @@ The canonical exit deliverable is the **Findings Playback slide deck**, presente
 
 The mandatory **four-tag rule** on every interview theme bullet (`#<domain> #<type> #<hierarchy> #<ppt>`) is enforced mechanically by `/wire:stakeholder-interview-validate`. The three analyses (Hierarchy of Needs / PPT / Maturity Curve) cannot run without it.
 
+> **Tip**: Run `/wire:playbook-generate 01-discovery` after the engagement brief is approved to generate a BPMN-style diagram of the full SOP discovery flow with your open questions, team, and target dates wired in. See [Section 26](#26-framework-management-commands).
+
 ---
 
-## 8. Generating a Client Kick-off Deck
+## 9. Generating a Client Kick-off Deck
 
 The Wire Framework can generate a branded, client-specific kick-off presentation deck in HTML (exportable to PDF via headless Chrome). This works immediately after `/wire:new` — the primary source is the Statement of Work. If you run a discovery release first, you can re-run the generate command to enrich the deck with approved discovery artifacts.
 
@@ -901,7 +955,7 @@ The blank deck template is at `wire/decks/kickoff/Project Kickoff.html` in the W
 
 ---
 
-## 9. Running a Full Platform Release (End-to-End)
+## 10. Running a Full Platform Release (End-to-End)
 
 Use this for releases that go from SOW to production dashboards and trained users. All 15 artifact types are in scope. If you are starting from a discovery release, the release brief and sprint plan from discovery serve as additional inputs alongside the SOW.
 
@@ -1230,9 +1284,11 @@ In addition to the phase-specific commands above, the framework provides utility
 - **`/wire:utils-jira-create <release-folder>`** — Creates or links Jira issues for a release. Can create a new Epic/Task/Sub-task hierarchy from scratch, or search an existing Jira project for matching issues and link to them
 - **`/wire:utils-atlassian-search <release-folder>`** — Searches Confluence for documentation, useful for finding existing client documentation and prior engagement materials
 
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a visual end-to-end plan for this release. See [Section 26](#26-framework-management-commands).
+
 ---
 
-## 10. Running a Pipeline + dbt Release
+## 11. Running a Pipeline + dbt Release
 
 Use this when a new data source needs connecting through to the dbt layer, but a BI tool / semantic layer is already in place or out of scope.
 
@@ -1293,9 +1349,11 @@ The chosen tool is recorded as `pipeline_tool` in `status.md`. All downstream `/
 /wire:archive <release-folder>
 ```
 
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the pipeline design is approved to generate a visual delivery plan for this release. See [Section 26](#26-framework-management-commands).
+
 ---
 
-## 11. Running a dbt Development Release
+## 12. Running a dbt Development Release
 
 Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or manual loads) and you need to build or extend the dbt transformation layer.
 
@@ -1334,9 +1392,11 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 - Add any existing dbt project files (existing `schema.yml`, source definitions, SQL examples) to `requirements/` before running `data_model:generate` — the AI will use them to understand the existing model structure and extend it correctly
 - Store SQL examples from the source database (schema introspection results, sample queries) so the AI understands actual column names and types
 
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a step-by-step plan for the dbt development work. See [Section 26](#26-framework-management-commands).
+
 ---
 
-## 12. Running a Dashboard Extension Release
+## 13. Running a Dashboard Extension Release
 
 Use this when the semantic layer already has the data, and you're adding new dashboards on top.
 
@@ -1368,9 +1428,11 @@ Use this when the semantic layer already has the data, and you're adding new das
 - Add existing LookML view files to `requirements/` before generating dashboards — the AI needs to know which dimensions and measures are available
 - Screenshots of existing Looker explores also help
 
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the semantic layer design is confirmed to plan the dashboard build. See [Section 26](#26-framework-management-commands).
+
 ---
 
-## 13. Running a Dashboard-First Rapid Development Release
+## 14. Running a Dashboard-First Rapid Development Release
 
 Use this when you want early stakeholder feedback via interactive dashboard mocks before building the data layer. This approach is especially effective when the SOW is well-defined but client data access may be delayed — you can have a working prototype with seed data before the client provides database credentials.
 
@@ -1572,9 +1634,11 @@ The transition from `ref('customers_seed')` to `source('salesforce', 'accounts')
 - **Don't delay the refactor**: Once client data is available, run the data refactor promptly. The longer you wait, the more the seed-based version diverges from what the client expects.
 - **The prototype is disposable**: The seed-based dbt project exists to validate the design. The real value is the iteration it enables, not the seed data itself.
 
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after mockups are approved to generate a delivery plan that shows the mock → seed → real-data refactor progression. See [Section 26](#26-framework-management-commands).
+
 ---
 
-## 14. Running an Enablement Release
+## 15. Running an Enablement Release
 
 Use this when an existing platform needs training and documentation — either as a standalone release or as the final phase of a delivery that was not originally run through the Wire Framework.
 
@@ -1602,9 +1666,11 @@ Use this when an existing platform needs training and documentation — either a
 - Add any existing technical documentation, data dictionaries, or architecture diagrams to `requirements/` — the AI will use them as the basis for generated materials
 - Add the client stakeholder list (names, roles, technical levels) so training materials can be calibrated appropriately
 
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are set to plan the training and documentation sequence. See [Section 26](#26-framework-management-commands).
+
 ---
 
-## 15. Running an Agentic Commerce Release
+## 16. Running an Agentic Commerce Release
 
 The Agentic Commerce release type (`project_type: agentic_commerce`) is for engagements where the deliverable is an AI-powered ecommerce storefront — not a data platform. It combines Lovable (rapid frontend scaffolding), Shopify (product catalog and cart), GitHub (code hosting), Supabase (backend state), Google Cloud (AI/search), and optionally Stripe (payments via the UCP merchant server).
 
@@ -1706,9 +1772,11 @@ See `wire/docs/agentic_commerce/00a-prerequisites-and-worked-examples.md` for a 
 - Keep the Shopify Storefront API token out of the frontend bundle — it should be passed via Supabase Edge Functions or a server-side proxy
 - Use `VITE_` prefix only for environment variables that are safe to expose to the browser
 
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the base storefront is approved to generate a visual delivery plan showing the dependency order of all nine agentic commerce features. See [Section 26](#26-framework-management-commands).
+
 ---
 
-## 16. Worked Example: Barton Peveril Live Pastoral Analytics
+## 17. Worked Example: Barton Peveril Live Pastoral Analytics
 
 This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step. This engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined), so it starts with the full_platform delivery release.
 
@@ -1981,7 +2049,7 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 
 ---
 
-## 17. Wire Autopilot: Autonomous Execution
+## 18. Wire Autopilot: Autonomous Execution
 
 Wire Autopilot takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
 
@@ -2440,7 +2508,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ---
 
-## 18. Wire Studio: Web-Based Interface
+## 19. Wire Studio: Web-Based Interface
 
 > **Status: Active** — Wire Studio v3.4.17 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
@@ -2915,7 +2983,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 19. Wire Framework VS Code Extension
+## 20. Wire Framework VS Code Extension
 
 The Wire Framework VS Code extension brings the delivery lifecycle directly into your editor. Instead of switching between the terminal, file explorer, and Claude Code to track progress, run commands, and review artifacts, you can do all of it from the VS Code sidebar.
 
@@ -3014,7 +3082,7 @@ For the full guide including keyboard reference and troubleshooting, see [`wire-
 
 ---
 
-## 20. Issue Tracking: Jira and Linear
+## 21. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -3091,7 +3159,7 @@ linear:
 
 ---
 
-## 21. Document Store: Confluence and Notion
+## 22. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -3174,7 +3242,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 22. Extending and Customising the Framework
+## 23. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -3332,7 +3400,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 23. FAQ
+## 24. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -3582,7 +3650,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 24. Troubleshooting
+## 25. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -3629,9 +3697,28 @@ Just send a message in the repo. The engagement-context skill fires automaticall
 
 ---
 
-## 25. Framework Management Commands
+## 26. Framework Management Commands
 
-Wire includes two commands for managing the framework itself, rather than delivery work.
+Wire includes several commands for managing the framework itself, rather than delivery work.
+
+### `/wire:playbook-generate` — Delivery Playbook
+
+Generates a step-by-step delivery playbook for any Wire release. The playbook has two parts: a BPMN-style Mermaid control-flow diagram showing the artifact sequence with gates and decision points, followed by a narrative step-by-step guide covering prerequisites, team, timeline, open questions, and risks.
+
+```
+/wire:playbook-generate <release-folder>
+```
+
+**Ideal run point**: after the first scope-setting artifact is complete (`engagement_brief` for `sop_discovery`, `problem_definition` for `discovery`, `requirements` for all delivery release types). Can also run immediately after `/wire:new` for a template-level playbook — the diagram and narrative will lack open questions, dates, and team names but serve as a planning scaffold.
+
+The command reads every completed artifact in the release to extract open questions (OQ-N / DQ-N), named owners, target dates, team members, risks, and constraints. It produces:
+
+- A `flowchart TD` Mermaid diagram with colour-coded nodes: teal for Wire commands, orange for offline activities, red for blocker OQ decision gates, blue for phase and review gates
+- A narrative playbook in Markdown, written in a "recipe" style — numbered steps, who does what, what to read first, and how to handle the most common stumbling points for that release type
+
+Output is written to `.wire/releases/<release-folder>/planning/<release_name>_playbook.md`. If Confluence is configured for the engagement, the playbook is also synced to the release page automatically.
+
+This command is a planning utility — it does not create a tracked artifact in `status.md` and does not block any generate/validate/review gates.
 
 ### `/wire:mcp` — MCP Server Management
 
@@ -3654,7 +3741,7 @@ All servers use OAuth2 managed by Claude Code. The `update` sub-command edits `.
 Man-page style documentation for any Wire command:
 
 ```
-/wire:help                  — List all 89 commands grouped by phase
+/wire:help                  — List all 142 commands grouped by phase
 /wire:help <command>        — NAME, SYNOPSIS, DESCRIPTION, PREREQUISITES, STEPS, SEE ALSO
 ```
 
