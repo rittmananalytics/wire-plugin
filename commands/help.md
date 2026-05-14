@@ -262,6 +262,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 
 | Command | Arguments | Description |
 |---------|-----------|-------------|
+| `/wire:playbook-generate` | `<release-folder>` | Generate a step-by-step BPMN delivery playbook for any Wire release |
 | `/wire:conceptual_model-generate` | `<project-folder>` | Generate conceptual entity model from requirements |
 | `/wire:conceptual_model-validate` | `<project-folder>` | Validate conceptual model completeness and correctness |
 | `/wire:conceptual_model-review` | `<project-folder>` | Review conceptual model with business stakeholders |
