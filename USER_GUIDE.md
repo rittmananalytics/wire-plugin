@@ -323,7 +323,7 @@ claude     # Claude Code
 gemini     # Gemini CLI
 ```
 
-Run `/wire:start` (Claude Code) or `/dp start` (Gemini CLI) to confirm everything works.
+Run `/wire:start` (Claude Code) or `/dp start` (Gemini CLI) to confirm everything works. On first run, `/wire:start` checks whether the plugin is installed and up to date, detects whether this is a new or existing engagement, and either walks you through onboarding or surfaces the right next action for the current project state.
 
 To authenticate optional MCP integrations:
 - **Claude Code**: use the `/mcp` command
@@ -381,7 +381,9 @@ As of v3.4.20, session context loading and state capture are automatic — no se
 
 The **engagement-context skill** activates on the first message in any Wire repo. It identifies the active release, reads `status.md`, and outputs a brief context summary before any work begins. Each command that completes writes its result to `status.md` and appends a row to `execution_log.md` automatically.
 
-Use `/wire:plan [release-folder]` for an optional structured planning ritual — it enters Plan Mode and proposes a 3–5 step session plan. It is never required.
+Run `/wire:start` at the start of any session to get a full project overview and a ranked list of next actions. It also acts as a co-pilot: first-time users get onboarding (release type selection, three-step cycle explanation); returning users get a navigation summary with their current artifact state and a specific next command. Run it any time you're unsure what to do next.
+
+Use `/wire:session-plan [release-folder]` for an optional structured planning ritual — it enters Plan Mode and proposes a 3–5 step session plan. It is never required.
 
 ### Research persistence
 
@@ -435,7 +437,7 @@ The YAML frontmatter lists every in-scope artifact with its generate/validate/re
 
 The framework updates `status.md` automatically after each command — no manual session tracking required. The execution log (`execution_log.md`) provides a complete timestamped audit trail of all commands and skill activations.
 
-When you run `/wire:start`, the framework reads all `status.md` files across all releases and tells you the suggested next action.
+When you run `/wire:start`, the framework reads all `status.md` files across all releases and presents a full project overview — then asks what you want to do. `/wire:start` is also the Wire co-pilot: it checks your plugin version, detects whether you're a new or returning user, and either runs you through onboarding (release type selection, three-step cycle explanation) or navigates you to the right next action. Run it at the start of any session, or any time you're unsure what to do next. Optional arguments: `new` to force onboarding mode, `resume` to go straight to navigation, `explain` to get an explanation of any part of the framework.
 
 ### The execution log
 
