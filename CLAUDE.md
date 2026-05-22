@@ -2,6 +2,40 @@
 
 This plugin provides the **Wire Framework**, an AI-accelerated delivery system for data platform engagements. It encodes 20+ years of analytics engineering methodology as executable workflow specifications, enabling an AI agent to produce production-grade artifacts across the full project lifecycle.
 
+## Session Start Behaviour
+
+At the start of each new conversation (the user's first message), check whether `.wire/` exists in the current directory:
+
+- **`.wire/` exists**: The project has a session-check hook configured. Do not duplicate its output — the hook fires automatically. If for any reason the hook did not fire, output: `[Wire] Run /wire:guide to check project status and get next steps.`
+- **No `.wire/` directory**: Output a single line before responding to the user's message: `Wire Framework is active — run /wire:guide new to start a new engagement, or /wire:adopt if joining a project already in progress.`
+- **`.wire/` exists but no releases**: Output: `[Wire] Engagement set up — no releases started yet. Run /wire:new to create your first release.`
+
+Keep these messages to one line. Do not output them on subsequent turns in the same conversation — only on the first user message.
+
+## Optional: Wire Status Line
+
+Wire includes a status line script that replaces the default Claude Code status bar with a Wire-aware version showing plugin version, active release, and context usage:
+
+```
+[Wire v3.5.4] yourname@macbook:~/client-repo > halocollar-sales-dashboard ctx:42%
+```
+
+To install (one-time, per user):
+
+```bash
+# Copy the script from the Wire templates
+cp ~/.claude/plugins/wire/TEMPLATES/wire-statusline.sh ~/.claude/wire-statusline.sh
+chmod +x ~/.claude/wire-statusline.sh
+
+# Add the statusLine config to your ~/.claude/settings.json:
+# "statusLine": {
+#   "type": "command",
+#   "command": "sh /Users/YOUR_USERNAME/.claude/wire-statusline.sh"
+# }
+```
+
+Replace `YOUR_USERNAME` with your macOS username (`whoami`). The script reads Wire version from the installed plugin manifest and the active release from `.wire/releases/` in the current directory — no additional configuration needed.
+
 ## Usage
 
 All commands are available after installing and restarting Claude Code. Commands are namespaced under `/wire:*`:
@@ -9,6 +43,7 @@ All commands are available after installing and restarting Claude Code. Commands
 ```
 /wire:start              — See all releases and available commands
 /wire:new                — Create a new engagement or add a release
+/wire:guide [new|resume|explain] — Interactive co-pilot: orients new users and surfaces the right next action
 /wire:help [<command>]   — List all commands, or man-page help for one command
 /wire:mcp [list|view|update|auth] [server]  — Manage MCP server connections
 /wire:session:start      — Start a focused working session on any release

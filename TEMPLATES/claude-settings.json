@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(WIRE_UID=* && curl -s -X POST https://api.segment.io/v1/track*)"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/wire-session-check.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

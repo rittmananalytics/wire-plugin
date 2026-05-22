@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.5.4 | **Date**: May 2026
+**Version**: 3.5.5 | **Date**: May 2026
 
 ---
 
@@ -26,16 +26,17 @@
 14. [Running a Dashboard-First Rapid Development Release](#14-running-a-dashboard-first-rapid-development-release)
 15. [Running an Enablement Release](#15-running-an-enablement-release)
 16. [Running an Agentic Commerce Release](#16-running-an-agentic-commerce-release)
-17. [Worked Example: Barton Peveril Live Pastoral Analytics](#17-worked-example-barton-peveril-live-pastoral-analytics)
-18. [Wire Autopilot: Autonomous Execution](#18-wire-autopilot-autonomous-execution)
-19. [Wire Studio: Web-Based Interface](#19-wire-studio-web-based-interface)
-20. [Wire Framework VS Code Extension](#20-wire-framework-vs-code-extension)
-21. [Issue Tracking: Jira and Linear](#21-issue-tracking-jira-and-linear)
-22. [Document Store: Confluence and Notion](#22-document-store-confluence-and-notion)
-23. [Extending and Customising the Framework](#23-extending-and-customising-the-framework)
-24. [FAQ](#24-faq)
-25. [Troubleshooting](#25-troubleshooting)
-26. [Framework Management Commands](#26-framework-management-commands)
+17. [Running a Custom Release](#17-running-a-custom-release)
+18. [Worked Example: Barton Peveril Live Pastoral Analytics](#18-worked-example-barton-peveril-live-pastoral-analytics)
+19. [Wire Autopilot: Autonomous Execution](#19-wire-autopilot-autonomous-execution)
+20. [Wire Studio: Web-Based Interface](#20-wire-studio-web-based-interface)
+21. [Wire Framework VS Code Extension](#21-wire-framework-vs-code-extension)
+22. [Issue Tracking: Jira and Linear](#22-issue-tracking-jira-and-linear)
+23. [Document Store: Confluence and Notion](#23-document-store-confluence-and-notion)
+24. [Extending and Customising the Framework](#24-extending-and-customising-the-framework)
+25. [FAQ](#25-faq)
+26. [Troubleshooting](#26-troubleshooting)
+27. [Framework Management Commands](#27-framework-management-commands)
     - [`/wire:playbook-generate`](#wireplaybook-generate--delivery-playbook)
 
 ---
@@ -236,7 +237,7 @@ This enters Plan Mode, reads the current release state, and proposes a 3–5 ste
 
 ## 4. Release Types
 
-The framework encodes delivery methodology as nine release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
+The framework encodes delivery methodology as ten release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
 
 | Type | `release_type` | Scope | Typical Duration | Artifacts in Scope |
 |------|----------------|-------|------------------|--------------------|
@@ -249,6 +250,7 @@ The framework encodes delivery methodology as nine release types, each defining 
 | **Dashboard Extension** | `dashboard_extension` | New dashboards on an existing semantic layer | 3–5 days | requirements, mockups, dashboards, uat |
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days | training, documentation |
 | **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
+| **Custom** | `custom` | Bespoke scope derived from SoW or project documents — Wire analyses your docs and generates project-scoped specs for deliverables that don't map to any standard type | Varies (typically 2–6 weeks) | Derived from source documents by `/wire:custom-release-define` |
 
 ### Choosing the right release type
 
@@ -261,6 +263,7 @@ The framework encodes delivery methodology as nine release types, each defining 
 - **Semantic layer already has the data; adding new dashboards**: **Dashboard Extension**
 - **Platform exists; engaged to train and document it**: **Enablement**
 - **Building an AI-powered ecommerce storefront**: **Agentic Commerce**
+- **Engagement with bespoke deliverables — architecture blueprints, advisory reports, decision logs, PoC productionisation plans — that don't fit any standard type**: **Custom**
 
 **Discovery (Shape Up) vs Discovery (SOP / Canonical)**: Use Shape Up when the scope is fuzzy but the problem domain is understood and you can shape a solution in a week or two. Use SOP / Canonical when you genuinely do not yet know what to build, stakeholder alignment is low, or this is the first analytics engagement at the client — it runs a formal structured discovery and culminates in a sponsor-facing Findings Playback slide deck that must be signed off before any delivery work begins.
 
@@ -1776,7 +1779,92 @@ See `wire/docs/agentic_commerce/00a-prerequisites-and-worked-examples.md` for a 
 
 ---
 
-## 17. Worked Example: Barton Peveril Live Pastoral Analytics
+## 17. Running a Custom Release
+
+Use the Custom release type when an engagement has bespoke deliverables that don't map cleanly to any standard Wire release type — architecture advisory reports, technology decision logs, PoC productionisation blueprints, MCP/AI integration roadmaps, compliance reviews, data literacy programmes, or any fixed-scope engagement where the deliverables are defined by the SoW rather than by a standard delivery pattern.
+
+**When to use Custom instead of a standard type:**
+- The primary deliverables are documents or advisory outputs (not data pipelines or dashboards)
+- The engagement is time-boxed and advisory (e.g. 4 weeks, 48 hours, architecture-and-handover)
+- More than one standard release type would be needed to cover the scope, and the combination feels awkward
+- The SoW defines specific named deliverables with acceptance criteria that don't match Wire's standard artifact names
+
+**When to use a standard type instead:**
+- The engagement primarily involves building a dbt project, pipeline, or BI layer — use `dbt_development`, `pipeline_only`, or `full_platform`
+- Discovery is needed before any delivery — use `discovery` or `sop_discovery`
+- The "bespoke" deliverable is just one artifact in an otherwise standard release — add it manually to the existing status.md
+
+### How it works
+
+When you select "Custom" in `/wire:new`, Wire immediately invokes `/wire:custom-release-define`, which:
+
+1. **Reads your source documents** — SoW, kick-off notes, agreed delivery plan (PDF, Markdown, Google Drive, Confluence)
+2. **Extracts deliverables** — names, descriptions, acceptance criteria, effort estimates, and timeline milestones
+3. **Maps each deliverable** — scores it against existing Wire commands; uses standard commands where there's a strong match, flags approximate matches with a workflow comparison note, and proposes custom specs for the rest
+4. **Shows a proposal table** — you can accept, swap, or rename any item before anything is written
+5. **Generates fully-specified project-scoped specs** for each custom deliverable — not skeletons, but complete generate/validate/review workflows derived from the SoW acceptance criteria
+6. **Writes `.claude/commands/` wrappers** so each custom spec is invokable as a slash command
+7. **Seeds the status.md session history** from the timeline milestones in the delivery plan
+
+### Workflow
+
+```
+/wire:new                           # select "Custom" → triggers /wire:custom-release-define
+
+# Wire prompts for source documents, then shows a proposal:
+# ┌─────────────────────────────────────────────────────────────────┐
+# │ Deliverable                        │ Handling   │ Command         │
+# │ Target State Architecture Document │ Custom 🔧  │ /target-state-architecture-doc-generate │
+# │ Decision Log                       │ Custom 🔧  │ /decision-log-generate                  │
+# │ Refined dbt Project Structure      │ Custom ⚠️  │ /refined-dbt-structure-generate         │
+# │ MCP / AI Integration Roadmap       │ Custom 🔧  │ /mcp-ai-integration-roadmap-generate    │
+# └─────────────────────────────────────────────────────────────────┘
+# Accept or adjust, then Wire generates the specs and scaffolds the release.
+
+# Custom commands are then available as slash commands:
+/target-state-architecture-doc-generate <release-folder>
+/target-state-architecture-doc-validate <release-folder>
+/target-state-architecture-doc-review <release-folder>
+
+/decision-log-generate <release-folder>
+/decision-log-validate <release-folder>
+/decision-log-review <release-folder>
+
+# ... and so on for each custom deliverable
+
+/wire:archive <release-folder>
+```
+
+### Standalone document analysis
+
+You can analyse source documents before running `/wire:new` — useful for checking what Wire would extract before committing to a release:
+
+```
+/wire:utils-doc-analyze path/to/SoW.pdf path/to/kickoff-notes.md
+```
+
+This shows the extracted deliverables table with Wire match scores and workflow notes, without writing any files.
+
+### Proposing a bespoke command as a framework addition
+
+If a custom spec you've generated represents a pattern that other RA engagements would benefit from, you can ask Wire to raise a GitHub issue on the Wire repo proposing it as a new standard command:
+
+```
+/wire:custom-feature-request target-state-architecture-doc
+```
+
+This generalises the spec (removing client-specific details), drafts a GitHub issue body, shows it to you for review, and posts it on confirmation. **This command is never automatically offered** — it exists as an explicit action only, to avoid a proliferation of narrowly-scoped feature requests.
+
+### Tips
+
+- Provide all three document types when available — SoW for acceptance criteria, kick-off notes for stakeholder context, and the delivery plan for timeline milestones. The combination gives Wire the most complete picture.
+- If a deliverable's description is vague in the SoW, Wire will flag it and ask for clarification before generating the spec. It's better to clarify early than to generate a spec from incomplete criteria.
+- Custom specs live in `.wire/releases/[folder]/custom-commands/` and are the source of truth. The `.claude/commands/` wrappers are entry points only — edit the `.wire/` file if you need to change the workflow.
+- The session history skeleton pre-populated from the delivery plan milestones is editable. Update it after each working session to maintain an accurate progress record.
+
+---
+
+## 18. Worked Example: Barton Peveril Live Pastoral Analytics
 
 This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step. This engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined), so it starts with the full_platform delivery release.
 
@@ -2049,7 +2137,7 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 
 ---
 
-## 18. Wire Autopilot: Autonomous Execution
+## 19. Wire Autopilot: Autonomous Execution
 
 Wire Autopilot takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
 
@@ -2508,7 +2596,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ---
 
-## 19. Wire Studio: Web-Based Interface
+## 20. Wire Studio: Web-Based Interface
 
 > **Status: Active** — Wire Studio v3.4.17 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
@@ -2983,7 +3071,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 20. Wire Framework VS Code Extension
+## 21. Wire Framework VS Code Extension
 
 The Wire Framework VS Code extension brings the delivery lifecycle directly into your editor. Instead of switching between the terminal, file explorer, and Claude Code to track progress, run commands, and review artifacts, you can do all of it from the VS Code sidebar.
 
@@ -3082,7 +3170,7 @@ For the full guide including keyboard reference and troubleshooting, see [`wire-
 
 ---
 
-## 21. Issue Tracking: Jira and Linear
+## 22. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -3159,7 +3247,7 @@ linear:
 
 ---
 
-## 22. Document Store: Confluence and Notion
+## 23. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -3242,7 +3330,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 23. Extending and Customising the Framework
+## 24. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -3400,7 +3488,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 24. FAQ
+## 25. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -3650,7 +3738,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 25. Troubleshooting
+## 26. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -3697,7 +3785,7 @@ Just send a message in the repo. The engagement-context skill fires automaticall
 
 ---
 
-## 26. Framework Management Commands
+## 27. Framework Management Commands
 
 Wire includes several commands for managing the framework itself, rather than delivery work.
 
