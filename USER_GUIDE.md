@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.5.7 | **Date**: May 2026
+**Version**: 3.5.8 | **Date**: May 2026
 
 ---
 
