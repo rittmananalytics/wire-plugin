@@ -35,4 +35,4 @@ APPROVED=$(grep -c "review: approved" "$STATUS_FILE" 2>/dev/null || echo "0")
 # Suppress output if STATUS_FILE doesn't exist (release folder created but not initialised)
 [ ! -f "$STATUS_FILE" ] && exit 0
 
-echo "[Wire] ${CLIENT:-this engagement} / $LATEST_RELEASE (${PROJECT_TYPE:-unknown type}) — ${APPROVED} artifacts approved. Run /wire:guide for status and next steps."
+echo "[Wire] ${CLIENT:-this engagement} / $LATEST_RELEASE (${PROJECT_TYPE:-unknown type}) — ${APPROVED} artifacts approved. Run /wire:start for status and next steps."

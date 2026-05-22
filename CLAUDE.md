@@ -6,8 +6,8 @@ This plugin provides the **Wire Framework**, an AI-accelerated delivery system f
 
 At the start of each new conversation (the user's first message), check whether `.wire/` exists in the current directory:
 
-- **`.wire/` exists**: The project has a session-check hook configured. Do not duplicate its output — the hook fires automatically. If for any reason the hook did not fire, output: `[Wire] Run /wire:guide to check project status and get next steps.`
-- **No `.wire/` directory**: Output a single line before responding to the user's message: `Wire Framework is active — run /wire:guide new to start a new engagement, or /wire:adopt if joining a project already in progress.`
+- **`.wire/` exists**: The project has a session-check hook configured. Do not duplicate its output — the hook fires automatically. If for any reason the hook did not fire, output: `[Wire] Run /wire:start to check project status and get next steps.`
+- **No `.wire/` directory**: Output a single line before responding to the user's message: `Wire Framework is active — run /wire:start new to start a new engagement, or /wire:adopt if joining a project already in progress.`
 - **`.wire/` exists but no releases**: Output: `[Wire] Engagement set up — no releases started yet. Run /wire:new to create your first release.`
 
 Keep these messages to one line. Do not output them on subsequent turns in the same conversation — only on the first user message.
@@ -41,9 +41,8 @@ Replace `YOUR_USERNAME` with your macOS username (`whoami`). The script reads Wi
 All commands are available after installing and restarting Claude Code. Commands are namespaced under `/wire:*`:
 
 ```
-/wire:start              — See all releases and available commands
+/wire:start [new|resume|explain] — Session entry point and co-pilot: orients new users and surfaces the right next action
 /wire:new                — Create a new engagement or add a release
-/wire:guide [new|resume|explain] — Interactive co-pilot: orients new users and surfaces the right next action
 /wire:help [<command>]   — List all commands, or man-page help for one command
 /wire:mcp [list|view|update|auth] [server]  — Manage MCP server connections
 /wire:session:start      — Start a focused working session on any release
