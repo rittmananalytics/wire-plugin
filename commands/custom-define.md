@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.5.6\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.5.7\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"custom-define\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.5.6\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"custom-define\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.5.7\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -152,7 +152,7 @@ Assemble the proposed release table:
 |---|-------------|----------|---------------------|-------|
 | 1 | [name] | Standard ✅ | `/wire:[artifact]-generate` | Matched: [artifact] (score [N]) |
 | 2 | [name] | Approximate ⚠️ | `/wire:[artifact]-generate` | Workflow note: [mismatch_note] |
-| 3 | [name] | Custom 🔧 | `[kebab-name]-generate` | No standard match (score [N]) |
+| 3 | [name] | Custom 🔧 | `/wire:[kebab-name]-generate` | No standard match (score [N]) |
 ```
 
 **Workflow comparison note format** (for approximate matches):
@@ -354,9 +354,9 @@ Create the directory first:
 mkdir -p .wire/releases/[release_folder]/custom-commands
 ```
 
-**4b. `.claude/commands/` wrappers** (for each custom spec):
+**4b. `.claude/commands/wire/` wrappers** (for each custom spec):
 
-Write a thin wrapper to `.claude/commands/[artifact-kebab-name]-generate.md`:
+Write a thin wrapper to `.claude/commands/wire/[artifact-kebab-name]-generate.md`:
 ```markdown
 ---
 description: [same description as the custom spec]
@@ -368,9 +368,11 @@ Read the spec at `.wire/releases/[release_folder]/custom-commands/[artifact-keba
 
 Write equivalent wrappers for `-validate.md` and `-review.md`.
 
+The subdirectory `wire/` gives these commands the `wire:` namespace prefix, so they are invoked as `/wire:[artifact-kebab-name]-generate` — consistent with standard Wire commands.
+
 Create the directory first:
 ```bash
-mkdir -p .claude/commands
+mkdir -p .claude/commands/wire
 ```
 
 **4c. Update `status.md`**:
@@ -433,15 +435,15 @@ Folder: .wire/releases/[release_folder]/
 
 ### Invocation
 
-Custom commands are available as slash commands:
-[list each /[artifact-kebab-name]-generate, -validate, -review]
+All commands use the `/wire:` prefix — custom and standard are consistent:
+[list each /wire:[artifact-kebab-name]-generate, -validate, -review]
 
 Standard commands work as usual:
 [list each /wire:[artifact]-generate etc. for standard deliverables]
 
 ### Suggested First Step
 
-/[first-custom-artifact]-generate [release_folder]
+/wire:[first-custom-artifact]-generate [release_folder]
 ```
 
 ---
