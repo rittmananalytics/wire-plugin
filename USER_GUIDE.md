@@ -782,7 +782,7 @@ A new engagement with an uncertain scope:
 
 ## 8. Running a Discovery Release (SOP / Canonical)
 
-The SOP / Canonical discovery release (`release_type: sop_discovery`) is for engagements where the scope is genuinely unknown at SOW signature — you need structured, wide-ranging stakeholder discovery before you can shape any delivery bet. It models the [Canonical Discovery Playbook (RA Standard)](https://rittmananalytics.atlassian.net/wiki/spaces/RA/pages/3436642306/Canonical+Discovery+Playbook+RA+Standard).
+The SOP / Canonical discovery release (`release_type: sop_discovery`) is for engagements where the scope is genuinely unknown at SOW signature — you need structured, wide-ranging stakeholder discovery before you can shape any delivery bet. It models the [Canonical Discovery Playbook (RA Standard)](https://rittmananalytics.atlassian.net/wiki/spaces/RA/pages/343.6.3306/Canonical+Discovery+Playbook+RA+Standard).
 
 Use this release type when:
 
