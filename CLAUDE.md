@@ -237,6 +237,26 @@ This plugin configures optional MCP servers for:
 
 Authenticate via `/mcp` in Claude Code.
 
+## Companion Plugins
+
+**Wire Work** (Claude Cowork) — sales intelligence, pipeline management, deal qualification, client meeting intelligence, and CRM workflow automation using live MCP connectors. Runs in Claude Cowork (claude.ai), not Claude Code.
+
+```
+/plugin marketplace add rittmananalytics/wirework-plugin
+/plugin install wirework@rittman-analytics
+```
+
+Skills: pipeline report, deal qualification (MEDDIC), RFP assessment, call list, sales follow-up email, client meeting intelligence, stakeholder influence network, SOW generator, PSF validator.
+
+**HubSpot Admin Skills** (Claude Code) — 32 slash commands for HubSpot CRM administration: deduplication, lifecycle stage cleanup, lead scoring setup, workflow automation, quarterly cleanup routines. Requires Python 3.10+ and a HubSpot private app token.
+
+```
+/plugin marketplace add tomgranot/hubspot-admin-skills
+/plugin install hubspot-admin@hubspot-admin-skills
+```
+
+Source: https://github.com/TomGranot/hubspot-admin-skills (MIT licence)
+
 ### MCP Management Command
 
 `/wire:mcp` provides an interactive interface for managing MCP server connections without editing JSON manually:
