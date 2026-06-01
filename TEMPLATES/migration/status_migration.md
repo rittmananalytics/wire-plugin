@@ -1,0 +1,381 @@
+---
+project_id: "{{PROJECT_ID}}"
+project_name: "{{PROJECT_NAME}}"
+project_type: "platform_migration"
+client_name: "{{CLIENT_NAME}}"
+engagement_name: "{{ENGAGEMENT_NAME}}"
+created_date: "{{CREATED_DATE}}"
+last_updated: "{{LAST_UPDATED}}"
+current_phase: "audit"
+
+migration:
+  source_platform: "{{SOURCE_PLATFORM}}"   # bigquery | snowflake
+  target_platform: "{{TARGET_PLATFORM}}"   # bigquery | snowflake
+  dbt_project_path: "{{DBT_PROJECT_PATH}}" # default: ./dbt
+  orchestration_tool: "{{ORCHESTRATION_TOOL}}" # dagster | dbt_cloud | airflow | none
+  connectivity: "{{CONNECTIVITY}}"         # public_endpoint | private_network_mcp_tunnel
+  status: not_started                      # not_started | in_progress | complete
+  completed_date: null
+
+  equivalency_validation:
+    checks_total: null
+    checks_passing: null
+    checks_failing: null
+    last_run_date: null
+    loop_history: []
+    status: null    # null | failing | passing | complete
+
+jira:
+  project_key: null
+  epic_key: null
+  artifacts:
+    ingestion_audit:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    db_object_audit:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    security_audit:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    dbt_audit:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    orchestration_audit:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    migration_inventory:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    migration_strategy:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    target_setup:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    ingestion_migration:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    dbt_migration:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    orchestration_migration:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    cutover:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    migration_report:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+
+docstore:
+  provider: null
+  confluence:
+    cloud_id: null
+    space_key: null
+    parent_page_id: null
+    artifacts:
+      ingestion_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      db_object_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      security_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      dbt_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      orchestration_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      migration_inventory:
+        page_id: null
+        page_url: null
+        last_synced: null
+      migration_strategy:
+        page_id: null
+        page_url: null
+        last_synced: null
+      migration_report:
+        page_id: null
+        page_url: null
+        last_synced: null
+  notion:
+    parent_page_id: null
+    artifacts:
+      ingestion_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      db_object_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      migration_inventory:
+        page_id: null
+        page_url: null
+        last_synced: null
+      migration_report:
+        page_id: null
+        page_url: null
+        last_synced: null
+
+artifacts:
+  ingestion_audit:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    connector_count: null
+    data_source: null   # fivetran_mcp | csv
+    generated_files: []
+    revision_history: []
+
+  db_object_audit:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    total_objects: null
+    tables: null
+    views: null
+    other: null
+    generated_files: []
+    revision_history: []
+
+  security_audit:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    roles_count: null
+    users_count: null
+    rls_policies: null
+    masking_policies: null
+    generated_files: []
+    revision_history: []
+
+  dbt_audit:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    model_count: null
+    simple_count: null
+    moderate_count: null
+    complex_count: null
+    batch_count: null
+    macro_count: null
+    source_count: null
+    test_count: null
+    generated_files: []
+    revision_history: []
+
+  orchestration_audit:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    job_count: null
+    scheduled_job_count: null
+    orchestration_tool: null
+    generated_files: []
+    revision_history: []
+
+  migration_inventory:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    total_objects: null
+    estimated_hours: null
+    generated_files: []
+    revision_history: []
+
+  migration_strategy:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    generated_files: []
+    revision_history: []
+
+  target_setup:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    scripts_count: null
+    tables_in_ddl: null
+    generated_files: []
+    revision_history: []
+
+  ingestion_migration:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    connectors_in_runbook: null
+    generated_files: []
+    revision_history: []
+
+  dbt_migration:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    generated_date: null
+    current_batch: 1
+    batches_complete: []
+    models_translated: null
+    generated_files: []
+    revision_history: []
+
+  orchestration_migration:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    jobs_in_runbook: null
+    generated_files: []
+    revision_history: []
+
+  cutover:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    generated_files: []
+    revision_history: []
+
+  migration_report:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    generated_files: []
+    revision_history: []
+
+notes:
+  - "Release created: {{CREATED_DATE}}"
+
+blockers: []
+---
+
+# Migration Status: {{PROJECT_NAME}}
+
+**Client**: {{CLIENT_NAME}}
+**Release ID**: {{PROJECT_ID}}
+**Type**: Platform Migration
+**Source**: {{SOURCE_PLATFORM}} → **Target**: {{TARGET_PLATFORM}}
+**Created**: {{CREATED_DATE}}
+**Last Updated**: {{LAST_UPDATED}}
+
+## Migration Configuration
+
+| Setting | Value |
+|---------|-------|
+| Source platform | {{SOURCE_PLATFORM}} |
+| Target platform | {{TARGET_PLATFORM}} |
+| dbt project path | {{DBT_PROJECT_PATH}} |
+| Orchestration tool | {{ORCHESTRATION_TOOL}} |
+| Connectivity | {{CONNECTIVITY}} |
+
+## Current Phase: Audit
+
+## Next Action
+
+Run all 5 source platform audits in parallel:
+```
+/wire:migration-audit-all {{PROJECT_NAME}}
+```
+
+Or run individually:
+```
+/wire:ingestion-audit-generate {{PROJECT_NAME}}
+```
+
+## Artifact Status Summary
+
+| Phase | Artifact | Generate | Validate | Review | Ready |
+|-------|----------|----------|----------|--------|-------|
+| **Audit** | ingestion_audit | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| | db_object_audit | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| | security_audit | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| | dbt_audit | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| | orchestration_audit | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| **Inventory** | migration_inventory | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| **Strategy** | migration_strategy | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| **Setup** | target_setup | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| **Ingestion** | ingestion_migration | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| **dbt** | dbt_migration | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| **Orchestration** | orchestration_migration | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| **Equivalency** | equivalency_validation | — | — | — | ❌ |
+| **Cutover** | cutover | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| **Report** | migration_report | ⏸️ | ⏸️ | ⏸️ | ❌ |
+
+**Legend**: ✅ Complete | 🔄 In Progress | ❌ Failed/Not Started | ⏸️ Not Started | ⚠️ Blocked | — (repeatable loop)
+
+## Equivalency Validation Loop
+
+| Run | Date | Passing | Failing | Report |
+|-----|------|---------|---------|--------|
+| — | — | — | — | — |
+
+## Notes
+
+[Add project-specific notes here]
+
+## Blockers
+
+[Add any blockers here]
+
+## Session History
+
+| Date | Objective | Accomplished | Next Focus |
+|------|-----------|--------------|------------|

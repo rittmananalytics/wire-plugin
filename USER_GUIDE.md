@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.5.9 | **Date**: May 2026
+**Version**: 3.7.0 | **Date**: June 2026
 
 ---
 
@@ -26,17 +26,18 @@
 14. [Running a Dashboard-First Rapid Development Release](#14-running-a-dashboard-first-rapid-development-release)
 15. [Running an Enablement Release](#15-running-an-enablement-release)
 16. [Running an Agentic Commerce Release](#16-running-an-agentic-commerce-release)
-17. [Running a Custom Release](#17-running-a-custom-release)
-18. [Worked Example: Barton Peveril Live Pastoral Analytics](#18-worked-example-barton-peveril-live-pastoral-analytics)
-19. [Wire Autopilot: Autonomous Execution](#19-wire-autopilot-autonomous-execution)
-20. [Wire Studio: Web-Based Interface](#20-wire-studio-web-based-interface)
-21. [Wire Framework VS Code Extension](#21-wire-framework-vs-code-extension)
-22. [Issue Tracking: Jira and Linear](#22-issue-tracking-jira-and-linear)
-23. [Document Store: Confluence and Notion](#23-document-store-confluence-and-notion)
-24. [Extending and Customising the Framework](#24-extending-and-customising-the-framework)
-25. [FAQ](#25-faq)
-26. [Troubleshooting](#26-troubleshooting)
-27. [Framework Management Commands](#27-framework-management-commands)
+17. [Running a Platform Migration Release](#17-running-a-platform-migration-release)
+18. [Running a Custom Release](#18-running-a-custom-release)
+19. [Worked Example: Barton Peveril Live Pastoral Analytics](#19-worked-example-barton-peveril-live-pastoral-analytics)
+20. [Wire Autopilot: Autonomous Execution](#20-wire-autopilot-autonomous-execution)
+21. [Wire Studio: Web-Based Interface](#21-wire-studio-web-based-interface)
+22. [Wire Framework VS Code Extension](#22-wire-framework-vs-code-extension)
+23. [Issue Tracking: Jira and Linear](#23-issue-tracking-jira-and-linear)
+24. [Document Store: Confluence and Notion](#24-document-store-confluence-and-notion)
+25. [Extending and Customising the Framework](#25-extending-and-customising-the-framework)
+26. [FAQ](#26-faq)
+27. [Troubleshooting](#27-troubleshooting)
+28. [Framework Management Commands](#28-framework-management-commands)
     - [`/wire:playbook-generate`](#wireplaybook-generate--delivery-playbook)
 
 ---
@@ -237,7 +238,7 @@ This enters Plan Mode, reads the current release state, and proposes a 3–5 ste
 
 ## 4. Release Types
 
-The framework encodes delivery methodology as ten release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
+The framework encodes delivery methodology as eleven release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
 
 | Type | `release_type` | Scope | Typical Duration | Artifacts in Scope |
 |------|----------------|-------|------------------|--------------------|
@@ -250,6 +251,7 @@ The framework encodes delivery methodology as ten release types, each defining a
 | **Dashboard Extension** | `dashboard_extension` | New dashboards on an existing semantic layer | 3–5 days | requirements, mockups, dashboards, uat |
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days | training, documentation |
 | **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
+| **Platform Migration** | `platform_migration` | Full lifecycle migration of a data platform from one warehouse stack to another. Covers source platform audit, migration inventory, strategy, parallel platform setup, batched dbt translation, equivalency validation loop, and cutover | 4–16 weeks | ingestion_audit, db_object_audit, security_audit, dbt_audit, orchestration_audit, migration_inventory, migration_strategy, target_setup, ingestion_migration, dbt_migration, orchestration_migration, equivalency_validation, cutover, migration_report |
 | **Custom** | `custom` | Bespoke scope derived from SoW or project documents — Wire analyses your docs and generates project-scoped specs for deliverables that don't map to any standard type | Varies (typically 2–6 weeks) | Derived from source documents by `/wire:custom-release-define` |
 
 ### Choosing the right release type
@@ -263,6 +265,7 @@ The framework encodes delivery methodology as ten release types, each defining a
 - **Semantic layer already has the data; adding new dashboards**: **Dashboard Extension**
 - **Platform exists; engaged to train and document it**: **Enablement**
 - **Building an AI-powered ecommerce storefront**: **Agentic Commerce**
+- **Migrating an existing data platform from BigQuery to Snowflake or Snowflake to BigQuery**: **Platform Migration** — five-zone source audit → migration inventory → strategy → target setup → batched dbt translation → equivalency validation loop → cutover
 - **Engagement with bespoke deliverables — architecture blueprints, advisory reports, decision logs, PoC productionisation plans — that don't fit any standard type**: **Custom**
 
 **Discovery (Shape Up) vs Discovery (SOP / Canonical)**: Use Shape Up when the scope is fuzzy but the problem domain is understood and you can shape a solution in a week or two. Use SOP / Canonical when you genuinely do not yet know what to build, stakeholder alignment is low, or this is the first analytics engagement at the client — it runs a formal structured discovery and culminates in a sponsor-facing Findings Playback slide deck that must be signed off before any delivery work begins.
@@ -270,6 +273,10 @@ The framework encodes delivery methodology as ten release types, each defining a
 **Full Platform vs Dashboard-First**: Both produce the same end result (production dashboards with a dbt warehouse). The difference is the *order of operations*. Full Platform follows the traditional flow: requirements → conceptual model → pipeline design → data model → dbt → dashboards. Dashboard-First inverts this: requirements → interactive dashboard mocks → visualization catalog → data model → seed data → dbt → dashboards → data refactor. Choose Dashboard-First when getting visual feedback early is more valuable than following the traditional top-down design sequence — typically when the SOW is well-defined enough to mock dashboards immediately but client data access may take time.
 
 **Full Platform vs Dashboard-First**: Both produce the same end result (production dashboards with a dbt warehouse). The difference is the *order of operations*. Full Platform follows the traditional flow: requirements → conceptual model → pipeline design → data model → dbt → dashboards. Dashboard-First inverts this: requirements → interactive dashboard mocks → visualization catalog → data model → seed data → dbt → dashboards → data refactor. Choose Dashboard-First when getting visual feedback early is more valuable than following the traditional top-down design sequence — typically when the SOW is well-defined enough to mock dashboards immediately but client data access may take time.
+
+**When to start with Platform Migration vs a discovery release**: A `sop_discovery` or `discovery` release is strongly recommended before starting a migration if the scope is not yet confirmed — migration is irreversible once Fivetran connectors are cut over. The Platform Migration release type assumes the decision to migrate has been made and the scope boundary is agreed. If there is any doubt, run a discovery release first.
+
+**After a Platform Migration completes**: Use `dashboard_extension` to rebuild the BI layer on the new platform, and `enablement` to train the data team on the new stack.
 
 ---
 
@@ -337,7 +344,7 @@ Wire Studio is a separate web-based interface that runs alongside (not instead o
 
 No Docker required. No GitHub OAuth app required.
 
-See [Section 19: Wire Studio](#19-wire-studio-web-based-interface) for full setup and usage instructions.
+See [Section 21: Wire Studio](#21-wire-studio-web-based-interface) for full setup and usage instructions.
 
 ### Upgrading
 
@@ -776,7 +783,7 @@ A new engagement with an uncertain scope:
 → Discovery release complete.
 ```
 
-> **Tip**: Run `/wire:playbook-generate 01-discovery` after the problem definition is approved to generate a BPMN-style visual delivery plan and step-by-step narrative for this release. See [Section 26](#26-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate 01-discovery` after the problem definition is approved to generate a BPMN-style visual delivery plan and step-by-step narrative for this release. See [Section 28](#28-framework-management-commands).
 
 ---
 
@@ -880,7 +887,7 @@ The canonical exit deliverable is the **Findings Playback slide deck**, presente
 
 The mandatory **four-tag rule** on every interview theme bullet (`#<domain> #<type> #<hierarchy> #<ppt>`) is enforced mechanically by `/wire:stakeholder-interview-validate`. The three analyses (Hierarchy of Needs / PPT / Maturity Curve) cannot run without it.
 
-> **Tip**: Run `/wire:playbook-generate 01-discovery` after the engagement brief is approved to generate a BPMN-style diagram of the full SOP discovery flow with your open questions, team, and target dates wired in. See [Section 26](#26-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate 01-discovery` after the engagement brief is approved to generate a BPMN-style diagram of the full SOP discovery flow with your open questions, team, and target dates wired in. See [Section 28](#28-framework-management-commands).
 
 ---
 
@@ -1289,7 +1296,7 @@ In addition to the phase-specific commands above, the framework provides utility
 - **`/wire:utils-jira-create <release-folder>`** — Creates or links Jira issues for a release. Can create a new Epic/Task/Sub-task hierarchy from scratch, or search an existing Jira project for matching issues and link to them
 - **`/wire:utils-atlassian-search <release-folder>`** — Searches Confluence for documentation, useful for finding existing client documentation and prior engagement materials
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a visual end-to-end plan for this release. See [Section 26](#26-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a visual end-to-end plan for this release. See [Section 28](#28-framework-management-commands).
 
 ---
 
@@ -1354,7 +1361,7 @@ The chosen tool is recorded as `pipeline_tool` in `status.md`. All downstream `/
 /wire:archive <release-folder>
 ```
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the pipeline design is approved to generate a visual delivery plan for this release. See [Section 26](#26-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the pipeline design is approved to generate a visual delivery plan for this release. See [Section 28](#28-framework-management-commands).
 
 ---
 
@@ -1397,7 +1404,7 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 - Add any existing dbt project files (existing `schema.yml`, source definitions, SQL examples) to `requirements/` before running `data_model:generate` — the AI will use them to understand the existing model structure and extend it correctly
 - Store SQL examples from the source database (schema introspection results, sample queries) so the AI understands actual column names and types
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a step-by-step plan for the dbt development work. See [Section 26](#26-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a step-by-step plan for the dbt development work. See [Section 28](#28-framework-management-commands).
 
 ---
 
@@ -1433,7 +1440,7 @@ Use this when the semantic layer already has the data, and you're adding new das
 - Add existing LookML view files to `requirements/` before generating dashboards — the AI needs to know which dimensions and measures are available
 - Screenshots of existing Looker explores also help
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the semantic layer design is confirmed to plan the dashboard build. See [Section 26](#26-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the semantic layer design is confirmed to plan the dashboard build. See [Section 28](#28-framework-management-commands).
 
 ---
 
@@ -1639,7 +1646,7 @@ The transition from `ref('customers_seed')` to `source('salesforce', 'accounts')
 - **Don't delay the refactor**: Once client data is available, run the data refactor promptly. The longer you wait, the more the seed-based version diverges from what the client expects.
 - **The prototype is disposable**: The seed-based dbt project exists to validate the design. The real value is the iteration it enables, not the seed data itself.
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after mockups are approved to generate a delivery plan that shows the mock → seed → real-data refactor progression. See [Section 26](#26-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after mockups are approved to generate a delivery plan that shows the mock → seed → real-data refactor progression. See [Section 28](#28-framework-management-commands).
 
 ---
 
@@ -1671,7 +1678,7 @@ Use this when an existing platform needs training and documentation — either a
 - Add any existing technical documentation, data dictionaries, or architecture diagrams to `requirements/` — the AI will use them as the basis for generated materials
 - Add the client stakeholder list (names, roles, technical levels) so training materials can be calibrated appropriately
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are set to plan the training and documentation sequence. See [Section 26](#26-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are set to plan the training and documentation sequence. See [Section 28](#28-framework-management-commands).
 
 ---
 
@@ -1777,11 +1784,287 @@ See `wire/docs/agentic_commerce/00a-prerequisites-and-worked-examples.md` for a 
 - Keep the Shopify Storefront API token out of the frontend bundle — it should be passed via Supabase Edge Functions or a server-side proxy
 - Use `VITE_` prefix only for environment variables that are safe to expose to the browser
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the base storefront is approved to generate a visual delivery plan showing the dependency order of all nine agentic commerce features. See [Section 26](#26-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the base storefront is approved to generate a visual delivery plan showing the dependency order of all nine agentic commerce features. See [Section 28](#28-framework-management-commands).
 
 ---
 
-## 17. Running a Custom Release
+## 17. Running a Platform Migration Release
+
+The Platform Migration release type (`release_type: platform_migration`) covers the full lifecycle of migrating a data platform from one warehouse stack to another. It supports bidirectional BigQuery ↔ Snowflake migrations and introduces two structural features not found in other release types: a two-zone artifact model (audit zone then migration zone) and an iterative equivalency loop that runs until all data checks pass before cutover is allowed.
+
+**Supported platform pairs**: `bigquery_to_snowflake`, `snowflake_to_bigquery`
+
+**Typical engagement driver**: existing dbt project on source platform needs to land on target platform — every connector, model, role, and job migrated, proven equivalent, and cut over.
+
+---
+
+### Artifact zones
+
+**Audit zone** — read-only analysis of the source platform. No writes to any external system.
+
+| Artifact | Command | Purpose |
+|---|---|---|
+| `ingestion_audit` | `/wire:ingestion-audit-*` | Catalog all Fivetran connectors, sync configs, column selections |
+| `db_object_audit` | `/wire:db-object-audit-*` | Enumerate databases, schemas, tables, views, procedures, scheduled queries |
+| `security_audit` | `/wire:security-audit-*` | Catalog roles, permissions, users, service accounts, row/column-level security |
+| `dbt_audit` | `/wire:dbt-audit-*` | Catalog dbt models, classify by migration complexity, detect platform-specific SQL features |
+| `orchestration_audit` | `/wire:orchestration-audit-*` | Catalog orchestration jobs, schedules, and dependencies |
+| `migration_inventory` | `/wire:migration-inventory-*` | Synthesise all five audits into a unified catalogue with dependency graph and phased plan |
+
+**Migration zone** — writes to the target platform. Safety-gated commands require explicit confirmation before any external system is touched.
+
+| Artifact | Command | Safety gate | Purpose |
+|---|---|---|---|
+| `migration_strategy` | `/wire:migration-strategy-*` | No | Platform-pair translation decisions, phasing, rollback, equivalency success criteria |
+| `target_setup` | `/wire:target-setup-*` | **Yes** | Target warehouse config, schemas, roles, service accounts |
+| `ingestion_migration` | `/wire:ingestion-migration-*` | **Yes** | Reconfigure/replicate Fivetran connectors to land in target platform |
+| `dbt_migration` | `/wire:dbt-migration-*` | No | Translate dbt models batch by batch to target dialect |
+| `orchestration_migration` | `/wire:orchestration-migration-*` | **Yes** | Recreate orchestration jobs on target platform |
+| `equivalency_validation` | `/wire:equivalency-*` | No (loop) | Iterative row-count, schema, value, freshness comparison |
+| `cutover` | `/wire:cutover-*` | **Yes** | Go-live runbook — point of no return |
+| `migration_report` | `/wire:migration-report-*` | No | Post-migration record |
+
+---
+
+### Setting up a Platform Migration release
+
+Run `/wire:new` and select **Platform Migration**. After the standard engagement questions, you will be asked five additional questions:
+
+1. **Source platform** — BigQuery or Snowflake
+2. **Target platform** — must differ from source
+3. **dbt project path** — relative to repo root (default: `./dbt`)
+4. **Orchestration tool** — Dagster, dbt Cloud, Airflow, or None
+5. **Connectivity** — public endpoint (standard MCP) or private network requiring an MCP tunnel
+
+If the source platform is behind a VPC and not publicly reachable, select **Private network — MCP tunnel required**. Wire outputs the exact tunnel deployment steps before continuing — do not proceed until the tunnel is confirmed active.
+
+---
+
+### Audit zone: parallel by default
+
+The five audit commands default to parallel execution via a single wrapper command:
+
+```
+/wire:migration-audit-all <release-folder>
+```
+
+This fans out five subagents simultaneously — ingestion audit (Fivetran MCP or CSV fallback), db object audit (INFORMATION_SCHEMA), security audit (IAM API), dbt audit (project file parsing), orchestration audit (config files). Each subagent's output is independently verified before being folded into the combined result. On completion, `migration-inventory-generate` is triggered automatically.
+
+Before launching, you will see a token cost confirmation:
+
+```
+This will run 5 audit subagents in parallel using a dynamic workflow.
+Estimated token usage: HIGH (particularly for large warehouses or dbt projects).
+
+A) Run all 5 audits in parallel (fastest — recommended for most engagements)
+B) Run audits sequentially instead
+```
+
+If you choose sequential, Wire outputs the five individual commands in order and stops. Run them at your own pace, then continue to `migration-inventory-generate` once all five are approved.
+
+**Individual audit commands (sequential fallback or re-run):**
+```
+/wire:ingestion-audit-generate <release-folder>
+/wire:db-object-audit-generate <release-folder>
+/wire:security-audit-generate <release-folder>
+/wire:dbt-audit-generate <release-folder>
+/wire:orchestration-audit-generate <release-folder>
+```
+
+---
+
+### Fivetran connectivity: MCP or CSV fallback
+
+`ingestion-audit-generate` auto-detects Fivetran MCP availability on a 10-second timeout. If the MCP is reachable, it queries connectors, sync configs, and table selections directly. If it times out, it automatically falls back to reading from a CSV file:
+
+```
+.wire/releases/<release-folder>/audit/fivetran_connectors_input.csv
+```
+
+If neither MCP nor CSV is available, the command outputs the full CSV template with column definitions and halts. The CSV is a first-class input — the audit output is identical whether data came from MCP or CSV. The `status.md` field `ingestion_audit.input_mode` is set to `mcp` or `csv` to record which path was used.
+
+For large engagements (e.g. 134 connectors), prepare the CSV before running the audit zone. The Fivetran Connectors dashboard exports the connector list; the CSV template is at `wire/TEMPLATES/migration/fivetran_connectors_input.csv`.
+
+---
+
+### dbt audit and complexity classification
+
+`dbt-audit-generate` reads every `.sql` model file and applies feature detection patterns from `wire/platform_pairs/<pair>/feature_detection.md`. Each model is tagged with the platform-specific SQL constructs it uses and assigned a complexity rating:
+
+| Rating | Criteria |
+|---|---|
+| `trivial` | No platform-specific features; view or table materialization; no incremental logic |
+| `low` | 1–2 platform-specific functions with direct target equivalents |
+| `medium` | 3+ platform-specific functions, OR incremental materialization, OR 1–2 custom macros |
+| `high` | Nested/repeated field logic (STRUCT/ARRAY or VARIANT/OBJECT), complex incremental strategies, dynamic tables, OR 3+ custom macros |
+| `blocked` | Depends on an out-of-scope object, OR uses a feature with no known target equivalent (e.g. `ML.PREDICT`) |
+
+The audit produces both a narrative report (`audit/dbt_audit.md`) and a machine-readable CSV (`audit/dbt_audit.csv`) with one row per model. The migration inventory uses these complexity ratings to estimate effort and assign batch order.
+
+---
+
+### dbt migration: batched processing
+
+`dbt-migration-generate` processes models in batches defined by the migration inventory's phased plan. Each invocation processes the next pending batch, or a specific batch or model:
+
+```
+/wire:dbt-migration-generate <release-folder>            # next pending batch
+/wire:dbt-migration-generate <release-folder> --batch 3  # specific batch
+/wire:dbt-migration-generate <release-folder> --model stg_salesforce__accounts  # single model
+```
+
+Each model gets one of three translation treatments:
+- **auto-translate**: Mechanical syntax substitution applied with high confidence — no human review needed per model
+- **guided-translate**: Non-trivial dialect difference requiring review — translated then flagged with `-- WIRE:REVIEW` at the specific lines
+- **rewrite**: Logic tightly coupled to source platform features — structural skeleton generated with `-- WIRE:REWRITE` marker
+
+Translated models land in `models_target/` mirroring the source `models/` directory. Flagged models are listed in `migration/flagged_models.md`.
+
+---
+
+### Equivalency validation loop
+
+Once data is flowing into both platforms (after `ingestion_migration` is approved), run the equivalency loop:
+
+```
+/wire:equivalency-validate <release-folder>
+```
+
+This command is **not** a standard generate/validate/review artifact — it is a repeatable loop. Each run performs five check types against all in-scope tables and dbt models:
+
+1. **Row count** — within `row_count_tolerance_pct` from `migration_strategy`
+2. **Schema** — column names, types, nullable flags
+3. **Value** — min, max, mean, null rate, distinct count on business-critical columns
+4. **Freshness** — latest timestamp within `freshness_tolerance_minutes`
+5. **dbt tests** — all tests that pass on source must also pass on target
+
+For projects with more than 50 in-scope tables, checks fan out in parallel automatically. Results are written to `migration/equivalency_report_YYYY-MM-DD-HHMM.md` (timestamped; never overwrites prior reports) and the `status.md` `loop_history` is appended.
+
+When a check fails, investigate and fix before re-running:
+
+```
+/wire:equivalency-investigate <release-folder> --object carwow_sales.fct_orders
+/wire:equivalency-fix <release-folder> --object carwow_sales.fct_orders --approach "Update TIMESTAMP_DIFF translation"
+```
+
+`cutover-generate` is blocked until `checks_failing: 0`.
+
+---
+
+### Safety gates
+
+Four commands require explicit confirmation before proceeding. Each gate displays a checklist:
+
+- **`target-setup-review`** — confirms DDL scripts have been reviewed, target environment is isolated, client has approved in writing, rollback plan is in place
+- **`ingestion-migration-review`** — confirms target landing schemas are ready, parallel running window is agreed, additional MAR cost is approved
+- **`orchestration-migration-review`** — confirms all orchestration jobs have been reviewed, parallel running is stable, jobs will not double-process
+- **`cutover-review`** — the point of no return. Requires all equivalency checks passing, written client sign-off, rollback window agreed, cutover outside business hours, support cover arranged
+
+---
+
+### Full command sequence
+
+```
+/wire:new                                            # release_type: platform_migration
+
+# ── AUDIT ZONE (read-only) ──────────────────────────────────────
+# Run all 5 audits in parallel (default) or sequentially
+/wire:migration-audit-all <release>
+
+# Per-audit validate + review gates
+/wire:ingestion-audit-validate <release>
+/wire:ingestion-audit-review <release>
+/wire:db-object-audit-validate <release>
+/wire:db-object-audit-review <release>
+/wire:security-audit-validate <release>
+/wire:security-audit-review <release>
+/wire:dbt-audit-validate <release>
+/wire:dbt-audit-review <release>
+/wire:orchestration-audit-validate <release>
+/wire:orchestration-audit-review <release>
+
+# Synthesis — requires all five audits approved
+/wire:migration-inventory-generate <release>
+/wire:migration-inventory-validate <release>
+/wire:migration-inventory-review <release>           # internal RA + client scope confirmation
+
+# ── MIGRATION ZONE ──────────────────────────────────────────────
+/wire:migration-strategy-generate <release>
+/wire:migration-strategy-validate <release>
+/wire:migration-strategy-review <release>            # client sign-off on translation decisions
+
+# ⚠ SAFETY GATE
+/wire:target-setup-generate <release>
+/wire:target-setup-validate <release>
+/wire:target-setup-review <release>
+
+# ⚠ SAFETY GATE
+/wire:ingestion-migration-generate <release>
+/wire:ingestion-migration-validate <release>
+/wire:ingestion-migration-review <release>
+
+# dbt migration — batched; repeat for each batch
+/wire:dbt-migration-generate <release>               # or --batch N or --model name
+/wire:dbt-migration-validate <release>
+/wire:dbt-migration-review <release>
+
+# ⚠ SAFETY GATE
+/wire:orchestration-migration-generate <release>
+/wire:orchestration-migration-validate <release>
+/wire:orchestration-migration-review <release>
+
+# Equivalency loop — repeat until checks_failing == 0
+/wire:equivalency-validate <release>
+/wire:equivalency-investigate <release> --object <table_or_model>
+/wire:equivalency-fix <release> --object <table_or_model>
+
+# ⚠ SAFETY GATE — point of no return
+/wire:cutover-generate <release>
+/wire:cutover-validate <release>
+/wire:cutover-review <release>
+
+/wire:migration-report-generate <release>
+/wire:migration-report-validate <release>
+/wire:migration-report-review <release>
+
+/wire:archive <release>
+```
+
+---
+
+### MCP tunnel setup for private networks
+
+If the source or target platform is not publicly reachable (VPC, private endpoint), deploy an MCP server inside the client's network and register a tunnel in the Claude Console. No inbound firewall rules are needed — the tunnel uses a single outbound connection.
+
+**BigQuery (GCP VPC):**
+```bash
+gcloud run deploy bigquery-mcp \
+  --image gcr.io/rittman-analytics/bigquery-mcp:latest \
+  --region europe-west2 \
+  --no-allow-unauthenticated \
+  --ingress internal
+# Then register the tunnel in Claude Console → Settings → MCP Tunnels
+```
+
+**Snowflake (AWS VPC or on-prem):**
+```bash
+docker run -d --name snowflake-mcp \
+  -e SNOWFLAKE_ACCOUNT=$SNOWFLAKE_ACCOUNT \
+  -e SNOWFLAKE_USER=$SNOWFLAKE_USER \
+  -e SNOWFLAKE_PASSWORD=$SNOWFLAKE_PASSWORD \
+  rittmananalytics/snowflake-mcp:latest
+# Then register the tunnel in Claude Console → Settings → MCP Tunnels
+```
+
+When `mcp_tunnel_configured: true` is set in `status.md`, all audit and migration commands route through the tunnel automatically.
+
+---
+
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the migration inventory is approved to generate a visual dependency graph showing which migration batches can proceed in parallel. See [Section 28](#28-framework-management-commands).
+
+---
+
+## 18. Running a Custom Release
 
 Use the Custom release type when an engagement has bespoke deliverables that don't map cleanly to any standard Wire release type — architecture advisory reports, technology decision logs, PoC productionisation blueprints, MCP/AI integration roadmaps, compliance reviews, data literacy programmes, or any fixed-scope engagement where the deliverables are defined by the SoW rather than by a standard delivery pattern.
 
@@ -1866,7 +2149,7 @@ This generalises the spec (removing client-specific details), drafts a GitHub is
 
 ---
 
-## 18. Worked Example: Barton Peveril Live Pastoral Analytics
+## 19. Worked Example: Barton Peveril Live Pastoral Analytics
 
 This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step. This engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined), so it starts with the full_platform delivery release.
 
@@ -2139,7 +2422,7 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 
 ---
 
-## 19. Wire Autopilot: Autonomous Execution
+## 20. Wire Autopilot: Autonomous Execution
 
 Wire Autopilot takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
 
@@ -2287,6 +2570,7 @@ For each planned delivery release, Autopilot:
 | `dashboard_extension` | requirements → mockups → dashboards → training |
 | `dashboard_first` | requirements → mockups → viz_catalog → data_model → seed_data → dbt → semantic_layer → dashboards → data_refactor → data_quality → uat → deployment → training → documentation |
 | `enablement` | training → documentation |
+| `platform_migration` | ingestion_audit → db_object_audit → security_audit → dbt_audit → orchestration_audit → migration_inventory → migration_strategy → target_setup → ingestion_migration → dbt_migration → orchestration_migration → equivalency_validation → cutover → migration_report |
 
 Each artifact follows the same generate → validate (up to 3 retries) → self-review (up to 2 retries) cycle. After each artifact is generated and again after it is approved, Autopilot syncs to Jira, Linear, and the document store (whichever are configured).
 
@@ -2598,7 +2882,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ---
 
-## 20. Wire Studio: Web-Based Interface
+## 21. Wire Studio: Web-Based Interface
 
 > **Status: Active** — Wire Studio v3.4.17 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
@@ -3073,7 +3357,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 21. Wire Framework VS Code Extension
+## 22. Wire Framework VS Code Extension
 
 The Wire Framework VS Code extension brings the delivery lifecycle directly into your editor. Instead of switching between the terminal, file explorer, and Claude Code to track progress, run commands, and review artifacts, you can do all of it from the VS Code sidebar.
 
@@ -3172,7 +3456,7 @@ For the full guide including keyboard reference and troubleshooting, see [`wire-
 
 ---
 
-## 22. Issue Tracking: Jira and Linear
+## 23. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -3249,7 +3533,7 @@ linear:
 
 ---
 
-## 23. Document Store: Confluence and Notion
+## 24. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -3332,7 +3616,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 24. Extending and Customising the Framework
+## 25. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -3490,7 +3774,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 25. FAQ
+## 26. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -3597,6 +3881,24 @@ Use Dashboard-First when: (1) the SOW is well-defined enough to mock dashboards 
 **Q: Can I switch from Dashboard-First to Full Platform mid-project?**
 
 Not automatically — the release type determines the artifact scope at creation time. However, you can manually edit `status.md` to add artifacts that were marked `not_applicable` (e.g. add `pipeline_design` if you later decide you need it). The workflow specs will work correctly with manually added artifacts.
+
+---
+
+**Q: When should I use Platform Migration instead of starting with a discovery release?**
+
+Use Platform Migration when the decision to migrate has already been made and the scope boundary is confirmed in the SOW — you know *what* is being migrated and the client has agreed to proceed. If there is genuine uncertainty about whether migration is the right approach, run a `sop_discovery` or `discovery` release first. Migration is expensive to reverse once Fivetran connectors are cut over to the target.
+
+---
+
+**Q: The Fivetran MCP is not reachable for my client. What do I do?**
+
+`ingestion-audit-generate` detects this automatically after a 10-second timeout and falls back to reading a CSV file at `audit/fivetran_connectors_input.csv`. Export your connector list from the Fivetran dashboard (Connectors → export) and populate the CSV. The template is at `wire/TEMPLATES/migration/fivetran_connectors_input.csv`. The audit output is identical whether data came from MCP or CSV — the CSV is a first-class input, not a degraded fallback.
+
+---
+
+**Q: How many equivalency loop iterations should I expect before cutover?**
+
+Carwow (1,500+ dbt models, BigQuery → Snowflake) ran two iterations: the first pass surfaced 783 failing checks, mostly from TIMESTAMP_DIFF argument order reversals and ARRAY_AGG ordering differences. The second pass after bulk fixes reduced failures to 35, all in high-complexity models needing per-model attention. Typical projects with <300 models and no ML or spatial features should reach zero failures in one or two iterations. High complexity models with extensive STRUCT/ARRAY logic or custom macros may need three or four.
 
 ---
 
@@ -3740,7 +4042,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 26. Troubleshooting
+## 27. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -3787,7 +4089,7 @@ Just send a message in the repo. The engagement-context skill fires automaticall
 
 ---
 
-## 27. Framework Management Commands
+## 28. Framework Management Commands
 
 Wire includes several commands for managing the framework itself, rather than delivery work.
 

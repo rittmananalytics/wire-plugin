@@ -1,0 +1,2 @@
+connector_id,destination_schema,destination_table,column_name,included,exclusion_reason
+example_conn_001,salesforce_prod,contact,email_bounced_reason,false,PII — excluded per data governance policy
