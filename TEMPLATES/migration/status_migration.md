@@ -13,6 +13,7 @@ migration:
   target_platform: "{{TARGET_PLATFORM}}"   # bigquery | snowflake
   dbt_project_path: "{{DBT_PROJECT_PATH}}" # default: ./dbt
   orchestration_tool: "{{ORCHESTRATION_TOOL}}" # dagster | dbt_cloud | airflow | none
+  ingestion_tool: "{{INGESTION_TOOL}}"     # fivetran | rudderstack | coupler-io | segment | airbyte | other
   connectivity: "{{CONNECTIVITY}}"         # public_endpoint | private_network_mcp_tunnel
   status: not_started                      # not_started | in_progress | complete
   completed_date: null
@@ -27,6 +28,7 @@ migration:
 
 jira:
   project_key: null
+  structure: subtasks       # subtasks (default — one Task + 3 Sub-tasks per artifact) | single_issue (one Task per artifact, status transitions)
   epic_key: null
   artifacts:
     ingestion_audit:

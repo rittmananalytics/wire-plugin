@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.7.1\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.7.2\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"new\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.1\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"new\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.2\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -334,14 +334,15 @@ Use `AskUserQuestion`:
     "question": "How would you like to set up Jira?",
     "header": "Jira Setup",
     "options": [
-      {"label": "Create new Jira issues", "description": "Create Epic, Tasks, and Sub-tasks in Jira"},
-      {"label": "Link to existing Jira issues", "description": "Search a Jira project for existing issues and link them"}
+      {"label": "Create new Jira issues — sub-tasks per command", "description": "Create Epic per release → one Task per artifact → three Sub-tasks per artifact (generate / validate / review). Each command transitions its own Sub-task."},
+      {"label": "Create new Jira issues — single issue per artifact", "description": "Create Epic per release → one Task per artifact (no sub-tasks). The single Task moves through To Do → In Progress (generate) → In Review (validate) → Done (review approved). Requires the Jira project's workflow to support those four states."},
+      {"label": "Link to existing Jira issues", "description": "Search a Jira project for existing issues and link them — sub-tasks structure assumed"}
     ],
     "multiSelect": false
   }]
 }
 ```
-Store `jira_project_key` and `jira_mode` for use in Step 15.
+Store `jira_project_key`, `jira_mode` (`create` or `link`), and `jira_structure` (`subtasks` for the first / third option, `single_issue` for the second). Pass all three to Step 15.
 
 **If Linear or Both selected**: Ask the following as three separate questions in sequence:
 
@@ -493,13 +494,14 @@ touch .wire/releases/[release_folder]/enablement/.gitkeep
 
 **For `platform_migration` release type**:
 
-Ask five additional questions (one at a time):
+Ask six additional questions (one at a time):
 
 1. "What is the **source platform**?" (Options: BigQuery / Snowflake)
 2. "What is the **target platform**?" (Must differ from source — re-ask if same platform selected)
 3. "What is the **dbt project path**?" (Default: `./dbt` — accept if user presses Enter)
 4. "What is the **orchestration tool**?" (Options: Dagster / dbt Cloud / Airflow / None)
-5. "What is the **connectivity mode** to the source platform?" (Options: Public endpoint / Private network with MCP tunnel)
+5. "What is the **ingestion tool**?" (Options: Fivetran / RudderStack / Coupler.io / Segment / Airbyte / Other). Store as `migration.ingestion_tool` with values `fivetran` / `rudderstack` / `coupler-io` / `segment` / `airbyte` / `other`. Each named tool has a corresponding skill at `wire/skills/<tool>/SKILL.md` and a tool-specific branch in `ingestion-audit-generate`. "Other" covers Stitch, Estuary, and custom-built ingestion — falls back to CSV-driven audit.
+6. "What is the **connectivity mode** to the source platform?" (Options: Public endpoint / Private network with MCP tunnel)
 
 If **Private network with MCP tunnel** is selected, output these setup instructions and wait for confirmation before proceeding:
 
@@ -516,7 +518,7 @@ Confirm when the tunnel is active and accessible. (Type "tunnel ready" to contin
 
 Wait for confirmation before continuing.
 
-Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_tool`, `connectivity`.
+Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_tool`, `ingestion_tool`, `connectivity`.
 
 1. Read `TEMPLATES/migration/status_migration.md`
 2. Replace placeholders:
@@ -530,6 +532,7 @@ Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_t
    - `{{TARGET_PLATFORM}}` → target_platform
    - `{{DBT_PROJECT_PATH}}` → dbt_project_path
    - `{{ORCHESTRATION_TOOL}}` → orchestration_tool
+   - `{{INGESTION_TOOL}}` → ingestion_tool
    - `{{CONNECTIVITY}}` → connectivity
 3. Write to `.wire/releases/[release_folder]/status.md`
 
@@ -554,7 +557,7 @@ Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_t
 
 ### Step 15: Set Up Issue Tracker(s) (if opted in)
 
-**If Jira or Both selected**: Follow the workflow in `specs/utils/jira_create.md`. Pass `jira_project_key`, `jira_mode`, release type, and artifact scope.
+**If Jira or Both selected**: Follow the workflow in `specs/utils/jira_create.md`. Pass `jira_project_key`, `jira_mode`, `jira_structure`, release type, and artifact scope.
 
 **If Linear or Both selected**: Follow the workflow in `specs/utils/linear_create.md`. Pass `linear_team_id`, `linear_mode`, release type, and artifact scope.
 

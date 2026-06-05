@@ -16,6 +16,7 @@ client_satisfaction: null
 
 jira:
   project_key: null
+  structure: subtasks       # subtasks (default — one Task + 3 Sub-tasks per artifact) | single_issue (one Task per artifact, status transitions)
   epic_key: null
   artifacts:
     problem_definition:

@@ -11,6 +11,18 @@
     "context7": {
       "type": "url",
       "url": "https://mcp.context7.com/mcp"
+    },
+    "rudderstack": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.rudderstack.com/mcp"]
+    },
+    "coupler-io": {
+      "type": "url",
+      "url": "https://mcp.coupler.io/mcp/"
+    },
+    "airbyte": {
+      "type": "url",
+      "url": "https://mcp.airbyte.ai/mcp"
     }
   }
 }
