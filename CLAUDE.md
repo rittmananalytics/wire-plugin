@@ -17,7 +17,7 @@ Keep these messages to one line. Do not output them on subsequent turns in the s
 Wire includes a status line script that replaces the default Claude Code status bar with a Wire-aware version showing plugin version, active release, and context usage:
 
 ```
-[Wire v3.5.4] yourname@macbook:~/client-repo > halocollar-sales-dashboard ctx:42%
+[Wire v3.7.1] yourname@macbook:~/client-repo > halocollar-sales-dashboard ctx:42%
 ```
 
 To install (one-time, per user):

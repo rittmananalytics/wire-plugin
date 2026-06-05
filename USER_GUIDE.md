@@ -1903,6 +1903,45 @@ The audit produces both a narrative report (`audit/dbt_audit.md`) and a machine-
 
 ---
 
+### Translation guides, worked examples, and engagement overrides
+
+Wire's platform migration commands read translation knowledge from `wire/platform_pairs/<source>_to_<target>/` (bundled with the plugin) and, optionally, from `.wire/engagement/platform_pair_overrides/<source>_to_<target>/` (engagement-specific).
+
+**Canonical translation knowledge** ships with the plugin and covers the general case:
+
+```
+wire/platform_pairs/bigquery_to_snowflake/
+├── translation_guide.md     ← pattern table: source construct → target construct → macro
+├── type_mapping.md          ← source type → target type
+├── feature_detection.md     ← regex / AST patterns the audits use
+└── examples/                ← end-to-end before/after worked translations (v3.7.1+)
+    ├── 01_unnest_to_flatten/
+    │   ├── before.sql
+    │   ├── after.sql
+    │   └── notes.md
+    ├── 02_struct_to_object_construct/
+    ├── 03_date_arithmetic/
+    └── 04_ml_predict_no_equivalent/
+```
+
+The `examples/` folder is what `dbt-migration-generate` uses as few-shot context when translating models with matching patterns. Each example covers the translation rationale, edge cases, dbt-config impact, and any Wire macro equivalent. The Snowflake → BigQuery direction ships its own mirror examples.
+
+**Engagement-level overrides** (v3.7.1+) let teams carry bespoke translations from one engagement to the next at the same client without modifying the framework. Drop overrides into:
+
+```
+.wire/engagement/platform_pair_overrides/<source>_to_<target>/
+├── translation_guide.md     ← extra rows / overrides for this engagement
+└── examples/                ← engagement-specific worked examples
+```
+
+When `migration-strategy-generate` and `dbt-migration-generate` run, they load the canonical files first, then layer the engagement directory on top — overrides win where they cover the same construct and supplement where they introduce new ones. The strategy artifact records which decisions came from where under a "Translation overrides applied" section.
+
+**Recommended workflow**: during an engagement, capture novel translations as project-scope overrides. At engagement close, review the override directory and promote anything reusable into the canonical guide via a framework PR. Client-specific patterns stay in the override directory and ride forward into the next engagement at the same client.
+
+See `wire/platform_pairs/README.md` for the full structure and PR guidance.
+
+---
+
 ### dbt migration: batched processing
 
 `dbt-migration-generate` processes models in batches defined by the migration inventory's phased plan. Each invocation processes the next pending batch, or a specific batch or model:
