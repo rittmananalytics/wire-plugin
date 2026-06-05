@@ -253,7 +253,7 @@ The framework encodes delivery methodology as eleven release types, each definin
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days | training, documentation |
 | **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
 | **Platform Migration** | `platform_migration` | Full lifecycle migration of a data platform from one warehouse stack to another. Covers source platform audit, migration inventory, strategy, parallel platform setup, batched dbt translation, equivalency validation loop, and cutover | 4–16 weeks | ingestion_audit, db_object_audit, security_audit, dbt_audit, orchestration_audit, migration_inventory, migration_strategy, target_setup, ingestion_migration, dbt_migration, orchestration_migration, equivalency_validation, cutover, migration_report |
-| **Agentic Data Stack** | `agentic_data_stack` | Governed self-service agentic data stack: dataset audit, semantic layer expansion, per-domain knowledge skill files, eval suite with per-domain accuracy gates. Delivers an installable Claude agentic data stack and the maintenance infrastructure to keep it accurate. | 4–6 weeks | dataset_audit, metric_audit, query_audit, governance_design, semantic_layer_design, canonical_models, semantic_layer, knowledge_skill, agent_config, eval_suite, adversarial_config, launch_gate, enablement |
+| **Agentic Data Stack** | `agentic_data_stack` | Overlay for an existing data platform (warehouse + dbt + BI tool). Audits governance maturity, extends the semantic layer, generates per-domain knowledge skill files collocated with dbt models, delivers an installable agentic data stack skill with a CI-wired eval suite. Does not build the underlying pipeline or dbt project — use `full_platform` or `pipeline_only` first if the platform doesn't yet exist. | 4–6 weeks | dataset_audit, metric_audit, query_audit, governance_design, semantic_layer_design, canonical_models, semantic_layer, knowledge_skill, agent_config, eval_suite, adversarial_config, launch_gate, enablement |
 | **Custom** | `custom` | Bespoke scope derived from SoW or project documents — Wire analyses your docs and generates project-scoped specs for deliverables that don't map to any standard type | Varies (typically 2–6 weeks) | Derived from source documents by `/wire:custom-release-define` |
 
 ### Choosing the right release type
@@ -2108,7 +2108,9 @@ When `mcp_tunnel_configured: true` is set in `status.md`, all audit and migratio
 
 ## 18. Running an Agentic Data Stack Release
 
-The Agentic Data Stack release type (`release_type: agentic_data_stack`) is for engagements where the deliverable is a governed self-service analytics capability — an AI that answers business questions accurately, routes through the semantic layer first, and stays accurate as the data platform evolves.
+The Agentic Data Stack release type (`release_type: agentic_data_stack`) is an **overlay for an existing data platform** — it assumes a warehouse, a dbt project, and a BI tool are already in place. The deliverable is a governed self-service analytics capability built on top of that foundation: an AI that answers business questions accurately, routes through the semantic layer first, and stays accurate as the data platform evolves.
+
+This is not a platform build. It does not provision infrastructure, build pipelines, or create a dbt project from scratch. If a client's warehouse and dbt project don't yet exist, start with `full_platform` or `pipeline_only` and add `agentic_data_stack` as a subsequent release once the foundation is stable.
 
 The release directly implements the architecture [Anthropic published](https://claude.com/blog/how-anthropic-enables-self-service-data-analytics-with-claude) from their own internal analytics build: governed canonical datasets, per-domain knowledge skill files collocated with dbt models, a mandatory semantic-layer-first routing order, adversarial review on every answer, and an offline eval harness wired into CI. The key finding from that build: accuracy failures are primarily governance failures, not model failures. Resolving concept-entity ambiguity before the agent ever sees a question is more effective than any amount of prompt engineering.
 
@@ -2119,7 +2121,7 @@ Use `agentic_data_stack` when:
 - The data team has tried a self-service SQL agent and accuracy is below 70% — the audit phase will almost always find widespread table duplication as the root cause
 - The engagement goal is to reduce analyst time spent answering ad-hoc data questions for business stakeholders
 
-Do not use `agentic_data_stack` as a first release for a new client. The release assumes a data platform exists. If the warehouse and dbt project need to be built first, start with `full_platform` or `pipeline_only`, then add `agentic_data_stack` as a subsequent release.
+Do not use `agentic_data_stack` as a first release for a new client. If the warehouse and dbt project need to be built first, start with `full_platform` or `pipeline_only`, then add `agentic_data_stack` as a subsequent release once the platform is stable.
 
 ### Phase overview
 
