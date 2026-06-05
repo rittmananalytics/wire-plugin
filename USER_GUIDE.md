@@ -253,7 +253,7 @@ The framework encodes delivery methodology as eleven release types, each definin
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days | training, documentation |
 | **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
 | **Platform Migration** | `platform_migration` | Full lifecycle migration of a data platform from one warehouse stack to another. Covers source platform audit, migration inventory, strategy, parallel platform setup, batched dbt translation, equivalency validation loop, and cutover | 4–16 weeks | ingestion_audit, db_object_audit, security_audit, dbt_audit, orchestration_audit, migration_inventory, migration_strategy, target_setup, ingestion_migration, dbt_migration, orchestration_migration, equivalency_validation, cutover, migration_report |
-| **Agentic Data Stack** | `agentic_data_stack` | Overlay for an existing data platform (warehouse + dbt + BI tool). Audits governance maturity, extends the semantic layer, generates per-domain knowledge skill files collocated with dbt models, delivers an installable agentic data stack skill with a CI-wired eval suite. Does not build the underlying pipeline or dbt project — use `full_platform` or `pipeline_only` first if the platform doesn't yet exist. | 4–6 weeks | dataset_audit, metric_audit, query_audit, governance_design, semantic_layer_design, canonical_models, semantic_layer, knowledge_skill, agent_config, eval_suite, adversarial_config, launch_gate, enablement |
+| **Agentic Data Stack** | `agentic_data_stack` | Overlay for an existing data platform (warehouse + dbt + BI tool). Audits governance maturity, extends the semantic layer, generates per-domain knowledge skill files collocated with dbt models, delivers an installable agentic data stack skill with a CI-wired eval suite. Does not build the underlying pipeline or dbt project — use `full_platform` or `pipeline_only` first if the platform doesn't yet exist. | 4–6 weeks | dataset_audit, metric_audit, query_audit, governance_design, semantic_layer_design, canonical_models, lookml_views (Looker only), semantic_layer, knowledge_skill, agent_config, eval_suite, adversarial_config, launch_gate, enablement |
 | **Custom** | `custom` | Bespoke scope derived from SoW or project documents — Wire analyses your docs and generates project-scoped specs for deliverables that don't map to any standard type | Varies (typically 2–6 weeks) | Derived from source documents by `/wire:custom-release-define` |
 
 ### Choosing the right release type
@@ -2129,7 +2129,7 @@ Do not use `agentic_data_stack` as a first release for a new client. If the ware
 |---|---|---|
 | Audit | 1–2 weeks | dataset_audit, metric_audit, query_audit |
 | Design | 1 week | governance_design, semantic_layer_design |
-| Build | 2 weeks | canonical_models, semantic_layer, knowledge_skill, agent_config |
+| Build | 2 weeks | canonical_models, lookml_views (Looker only), semantic_layer, knowledge_skill, agent_config |
 | Validation | 1 week | eval_suite, adversarial_config |
 | Launch | 3–5 days | launch_gate, enablement |
 
@@ -2179,6 +2179,12 @@ Do not use `agentic_data_stack` as a first release for a new client. If the ware
 /wire:ads_canonical-models-generate YYYYMMDD_client_agentic_data_stack
 /wire:ads_canonical-models-validate YYYYMMDD_client_agentic_data_stack
 /wire:ads_canonical-models-review YYYYMMDD_client_agentic_data_stack
+
+# LookML views — Looker projects only (auto-skipped for dbt Semantic Layer / MetricFlow)
+/wire:ads_lookml-views-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_lookml-views-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_lookml-views-review YYYYMMDD_client_agentic_data_stack
+
 /wire:ads_semantic-layer-generate YYYYMMDD_client_agentic_data_stack
 /wire:ads_semantic-layer-validate YYYYMMDD_client_agentic_data_stack
 /wire:ads_semantic-layer-review YYYYMMDD_client_agentic_data_stack

@@ -1,9 +1,9 @@
 ---
-description: Validate migration strategy completeness
+description: Looker admin sign-off on view files before semantic layer metric build
 argument-hint: <release-folder>
 ---
 
-# Validate migration strategy completeness
+# Looker admin sign-off on view files before semantic layer metric build
 
 ## User Input
 
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"migration-strategy-validate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.4\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"ads_lookml-views-review\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.4\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -76,56 +76,119 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Validate migration strategy completeness
+description: Looker admin and data team sign-off on new and updated LookML view files before semantic layer metric build
+argument-hint: <release-folder>
 ---
 
-# Migration Strategy — Validate
+# Agentic Data Stack — LookML Views Review
 
-## Validation Checks
+## Purpose
 
-**Check 1 — All platform-specific features have translation approaches**
-Every feature tag appearing in the dbt and db_object audits has a corresponding translation pattern in the strategy.
-PASS: All features covered.
-FAIL: List uncovered features.
+Get confirmation from the Looker admin and data team that the generated view files correctly expose the canonical models, are wired into the right explores, and are ready to receive metric definitions from `ads_semantic-layer-generate`.
 
-**Check 2 — All phases have rollback procedures**
-Every migration phase in the strategy has a documented rollback procedure.
-PASS: All phases have rollback.
-FAIL: List phases without rollback.
+The audience is technical — Looker developers and analytics engineers, not business stakeholders.
 
-**Check 3 — Equivalency criteria defined for all in-scope tables**
-The strategy defines equivalency checks for every table flagged `include_in_migration: true` in the inventory.
-PASS: All in-scope tables have criteria.
-FAIL: Report how many are missing criteria.
+## Usage
 
-**Check 4 — Data type mapping covers all source types**
-Every distinct data type found in the db_object audit appears in the type mapping section.
-PASS: All types mapped.
-FAIL: List unmapped types.
+```bash
+/wire:ads_lookml-views-review YYYYMMDD_client_agentic_data_stack
+```
 
-**Check 5 — Risk register present**
-The strategy includes a risk register with at least 3 risks, each having likelihood, impact, and mitigation.
-PASS: Risk register present and populated.
-FAIL: Risk register missing or fewer than 3 risks.
+## Prerequisites
 
-**Check 6 — Go/no-go checklist present**
-The strategy includes a go/no-go checklist for cutover authorisation.
-PASS: Checklist present.
-FAIL: Checklist missing.
+- `lookml_views.validate: complete`
 
-**Check 7 — Phase durations consistent with inventory estimates**
-The phase timelines in the strategy are consistent with the effort estimates in the migration inventory (within ±20%).
-PASS: Consistent.
-FAIL: Report discrepancies.
+## Skip Condition
 
-### Update status
+If `lookml_views.generate: skipped` in status.md, output:
+
+```
+LookML Views — Review Skipped (bi_tool is not looker)
+```
+
+Update status and stop.
+
+---
+
+## Workflow
+
+### Step 1: Search Meeting Context
+
+Before presenting the review summary, search Fathom for recent calls that discussed LookML structure, explore design, or Looker project conventions for this client. Surface any decisions or constraints that bear on view file design.
+
+---
+
+### Step 2: Present Review Summary
+
+```
+## LookML Views Review
+
+### Views Created (N)
+
+| View | File | Canonical Model | Explore |
+|---|---|---|---|
+| fct_orders | views/fct_orders.view.lkml | fct_orders | orders_explore |
+| dim_customers | views/dim_customers.view.lkml | dim_customers | orders_explore |
+
+### Views Updated (N)
+
+| View | File | Changes |
+|---|---|---|
+| fct_subscriptions | views/fct_subscriptions.view.lkml | net_mrr renamed from mrr_amount; churn_date added |
+
+### Validation Results
+
+- LookML syntax: PASS (0 errors)
+- Column references: PASS (0 orphaned)
+- Primary keys: PASS
+- Explore wiring: PASS (all views reachable)
+
+### What Happens Next
+
+ads_semantic-layer-generate will add measure definitions to these view files
+(no structural changes — measures only). Confirm the view scaffolding is
+correct before proceeding.
+```
+
+---
+
+### Step 3: Review Questions
+
+Ask the Looker admin and data team to confirm:
+
+1. **Explore coverage** — are all new views in the correct explores? Are there existing explores that also need access to the new views?
+2. **View naming** — do the generated view names follow the project's existing convention?
+3. **Label conventions** — do dimension labels match how the business refers to these fields?
+4. **Hidden fields** — are the correct FK and technical columns marked `hidden: yes`?
+5. **Missing dimensions** — are there ARRAY/STRUCT columns (skipped in generation) that need manual view expansion before metrics can reference them?
+
+---
+
+### Step 4: Handle Feedback
+
+For each piece of feedback, apply changes to the view files and re-run `ads_lookml-views-validate` before returning to this review.
+
+Common changes at this stage:
+- Rename a view or dimension to match existing project conventions
+- Add a missing explore join
+- Adjust `hidden` flags
+- Resolve a `# TODO: confirm primary_key` comment
+
+Do not add measures — any metric-level feedback belongs in the `ads_semantic-layer-design` review, which has already been completed. Log it in `lookml_views_notes.md` under a "Deferred to semantic layer" section instead.
+
+---
+
+### Step 5: Record Sign-off
 
 ```yaml
-artifacts:
-  migration_strategy:
-    validate: pass | fail
-    validated_date: "{{TODAY}}"
+lookml_views:
+  review: approved
+  reviewer: Name
+  review_date: YYYY-MM-DD
+  notes: ""
 ```
+
+Once approved, `ads_semantic-layer-generate` can proceed.
 
 Execute the complete workflow as specified above.
 

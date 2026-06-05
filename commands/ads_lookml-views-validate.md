@@ -1,9 +1,9 @@
 ---
-description: Validate migration strategy completeness
+description: Verify LookML view files are valid, canonical models covered, no orphaned column references
 argument-hint: <release-folder>
 ---
 
-# Validate migration strategy completeness
+# Verify LookML view files are valid, canonical models covered, no orphaned column references
 
 ## User Input
 
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"migration-strategy-validate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.4\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"ads_lookml-views-validate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.4\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -76,56 +76,145 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Validate migration strategy completeness
+description: Verify LookML view files are valid, every canonical model is covered, and no orphaned column references exist
+argument-hint: <release-folder>
 ---
 
-# Migration Strategy — Validate
+# Agentic Data Stack — LookML Views Validate
+
+## Purpose
+
+Confirm that the generated and updated view files are syntactically valid, structurally complete, and correctly wired into the Looker project before the semantic layer step adds metrics on top.
+
+## Usage
+
+```bash
+/wire:ads_lookml-views-validate YYYYMMDD_client_agentic_data_stack
+```
+
+## Prerequisites
+
+- `lookml_views.generate: complete` or `skipped`
+
+## Skip Condition
+
+If `lookml_views.generate: skipped` in status.md, output:
+
+```
+LookML Views — Validate Skipped (bi_tool is not looker)
+```
+
+Update status and stop.
+
+---
 
 ## Validation Checks
 
-**Check 1 — All platform-specific features have translation approaches**
-Every feature tag appearing in the dbt and db_object audits has a corresponding translation pattern in the strategy.
-PASS: All features covered.
-FAIL: List uncovered features.
+### Check 1 — LookML Syntax
 
-**Check 2 — All phases have rollback procedures**
-Every migration phase in the strategy has a documented rollback procedure.
-PASS: All phases have rollback.
-FAIL: List phases without rollback.
+Run the LookML linter against all modified files:
 
-**Check 3 — Equivalency criteria defined for all in-scope tables**
-The strategy defines equivalency checks for every table flagged `include_in_migration: true` in the inventory.
-PASS: All in-scope tables have criteria.
-FAIL: Report how many are missing criteria.
+```bash
+# Option A — lookml-lint (open source)
+lookml-lint <lookml_project_path>/views/<model_name>.view.lkml
 
-**Check 4 — Data type mapping covers all source types**
-Every distinct data type found in the db_object audit appears in the type mapping section.
-PASS: All types mapped.
-FAIL: List unmapped types.
+# Option B — Looker CLI (if configured)
+looker lookml-test --project <project_name>
 
-**Check 5 — Risk register present**
-The strategy includes a risk register with at least 3 risks, each having likelihood, impact, and mitigation.
-PASS: Risk register present and populated.
-FAIL: Risk register missing or fewer than 3 risks.
+# Option C — if neither is available, perform a manual syntax check:
+# Scan each generated file for:
+#   - Balanced braces {}
+#   - Valid parameter names (no unknown keys)
+#   - sql_table_name ends with ;;
+#   - All sql: parameters end with ;;
+```
 
-**Check 6 — Go/no-go checklist present**
-The strategy includes a go/no-go checklist for cutover authorisation.
-PASS: Checklist present.
-FAIL: Checklist missing.
+- [ ] All generated/updated view files pass linting with 0 errors
 
-**Check 7 — Phase durations consistent with inventory estimates**
-The phase timelines in the strategy are consistent with the effort estimates in the migration inventory (within ±20%).
-PASS: Consistent.
-FAIL: Report discrepancies.
+---
 
-### Update status
+### Check 2 — Every Canonical Model Has a View
+
+Cross-reference the new/modified model list from `canonical_models_lineage.md` against the LookML project scan:
+
+- [ ] Every **new** canonical model has exactly one view file with a matching `sql_table_name`
+- [ ] No new canonical model is referenced by zero views
+- [ ] No duplicate views reference the same `sql_table_name`
+
+---
+
+### Check 3 — Column References
+
+For each view file generated or updated in this phase, check that every `${TABLE}.<column>` reference exists in the underlying dbt model's schema.yml:
+
+```bash
+# Extract column names from schema.yml for each model
+grep "name:" <dbt_project_path>/models/marts/<domain>/<model>.yml | awk '{print $2}'
+
+# Compare against ${TABLE}. references in the view file
+grep -o '\${TABLE}\.[a-z_]*' <lookml_project_path>/views/<view>.view.lkml | \
+  sed 's/${TABLE}\.//'
+```
+
+- [ ] Every `${TABLE}.<column>` in generated views maps to a column in the dbt schema.yml
+- [ ] No orphaned references from modified views (columns removed from the canonical model but still referenced in the view)
+
+---
+
+### Check 4 — Primary Keys
+
+For each generated view:
+
+- [ ] Exactly one dimension has `primary_key: yes`
+- [ ] That dimension references a column with `unique` + `not_null` tests in schema.yml
+- [ ] No `# TODO: confirm primary_key` comments remain unresolved
+
+---
+
+### Check 5 — Explore Wiring
+
+Read `lookml_views_notes.md` — check the "Explores Needing Manual Review" section:
+
+- [ ] No new views are in the "needs manual wiring" list (all have been added to an explore, either in this step or by the team)
+
+If views remain unwired, **block progression** with:
+
+```
+VALIDATION FAIL — N view(s) not yet added to any explore.
+Metrics added by ads_semantic-layer-generate on unwired views will be
+unreachable in Looker. Resolve before proceeding:
+
+  <view_name> — add to an explore in <lookml_project_path>/models/<model>.model.lkml
+
+Re-run ads_lookml-views-validate after resolving.
+```
+
+---
+
+### Check 6 — No Accidental Measure Changes
+
+Diff each modified view file against its pre-modification state (via git diff):
+
+- [ ] No measures were added or removed in existing view files (measures are `ads_semantic-layer-generate`'s responsibility)
+- [ ] No existing `measure:` blocks were altered in any way
+
+---
+
+## Status Update
+
+On pass:
 
 ```yaml
-artifacts:
-  migration_strategy:
-    validate: pass | fail
-    validated_date: "{{TODAY}}"
+lookml_views:
+  validate: complete
+  validate_date: YYYY-MM-DD
+  validation_result: pass
+  lint_errors: 0
+  coverage_gaps: 0
+  orphaned_references: 0
 ```
+
+On fail, record the specific checks that failed and leave `validate: failed`. Do not proceed to review until all checks pass.
 
 Execute the complete workflow as specified above.
 

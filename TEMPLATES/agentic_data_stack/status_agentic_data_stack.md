@@ -11,6 +11,7 @@ warehouse: bigquery  # bigquery | snowflake | databricks | redshift
 bi_tool: looker  # looker | tableau | powerbi | metabase | other
 semantic_layer: dbt_semantic_layer  # dbt_semantic_layer | lookml | metricflow | none
 dbt_project_path: ./  # relative or absolute path to dbt project
+lookml_project_path: ~  # relative or absolute path to LookML project (looker bi_tool only)
 primary_domain: ecommerce  # ecommerce | saas | marketing | finance | other
 query_history_access: true  # true | false
 
@@ -95,6 +96,18 @@ canonical_models:
   models_canonicalized: ~
   models_deprecated: ~
   dbt_test_pass_rate: ~
+```
+
+### LookML Views
+```yaml
+lookml_views:
+  generate: not_started  # set to skipped automatically if bi_tool != looker
+  validate: not_started
+  review: not_started
+  views_created: ~
+  views_updated: ~
+  explores_updated: ~
+  lookml_project_path: ~
 ```
 
 ### Semantic Layer
