@@ -1,0 +1,39 @@
+# Agentic Data Stack Eval Suite — Question Template
+# One file per domain. Minimum 10 questions per domain.
+
+domain: DOMAIN_NAME
+created: YYYY-MM-DD
+baseline_date: YYYY-MM-DD  # date correct_answer_value was verified
+
+questions:
+  - id: DOMAIN_001
+    question: "Natural language question exactly as a user would ask it"
+    expected_tier: semantic  # semantic | curated | raw
+    expected_metric: metric_name  # for semantic tier questions
+    expected_table: table_name  # for curated/raw tier questions
+    expected_filter: "dimension = 'value'"  # key filter that must be present
+    correct_answer_sql: |
+      SELECT ...
+      FROM canonical_table
+      WHERE ...
+    correct_answer_value: 0  # numeric value verified at baseline_date; 0 = N/A
+    correct_answer_description: "Description for non-numeric answers"
+    tolerance_pct: 1  # acceptable % deviation from correct_answer_value
+    verification: warehouse_query  # warehouse_query | domain_owner_confirmed | dashboard_verified
+    priority: must_have  # must_have | nice_to_have
+
+  - id: DOMAIN_002
+    question: "Second question"
+    expected_tier: curated
+    expected_table: fct_table_name
+    correct_answer_description: "Returns a table with N rows, sorted by X descending"
+    tolerance_pct: 5
+    verification: domain_owner_confirmed
+    priority: must_have
+
+  # Add at least 8 more questions per domain covering:
+  # - Time period variations (last month, last quarter, YTD)
+  # - Group-by variations (by channel, by category, by region)
+  # - Edge cases from DOMAIN_REFERENCE.md
+  # - At least one question that should route to each tier
+  # - At least one boundary question testing deprecated table avoidance

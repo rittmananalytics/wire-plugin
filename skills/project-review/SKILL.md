@@ -38,7 +38,7 @@ Before doing any research, collect the four required inputs. Ask all four in a s
 
 > To generate the project review I need four things:
 >
-> 1. **Client name** — e.g. "Rapha" (used in the report title and repo clone path)
+> 1. **Client name** — e.g. "Client A" (used in the report title and repo clone path)
 > 2. **Wire delivery repo URL** — the GitHub URL of the client's Wire delivery repo (e.g. `https://github.com/rittmananalytics/rapha-delivery`)
 > 3. **Project directory basename** — the exact `project_dir_basename` value in BigQuery telemetry (e.g. `rapha-dbt`, `halocollar-delivery`). This is usually the name of the dbt or delivery repo folder on the consultant's machine.
 > 4. **Jira project key** *(optional)* — the Jira project key for this engagement (e.g. `RAP`, `HC`). If you don't know it, leave blank and the skill will search Jira by client name.

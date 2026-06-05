@@ -27,17 +27,18 @@
 15. [Running an Enablement Release](#15-running-an-enablement-release)
 16. [Running an Agentic Commerce Release](#16-running-an-agentic-commerce-release)
 17. [Running a Platform Migration Release](#17-running-a-platform-migration-release)
-18. [Running a Custom Release](#18-running-a-custom-release)
-19. [Worked Example: Barton Peveril Live Pastoral Analytics](#19-worked-example-barton-peveril-live-pastoral-analytics)
-20. [Wire Autopilot: Autonomous Execution](#20-wire-autopilot-autonomous-execution)
-21. [Wire Studio: Web-Based Interface](#21-wire-studio-web-based-interface)
-22. [Wire Framework VS Code Extension](#22-wire-framework-vs-code-extension)
-23. [Issue Tracking: Jira and Linear](#23-issue-tracking-jira-and-linear)
-24. [Document Store: Confluence and Notion](#24-document-store-confluence-and-notion)
-25. [Extending and Customising the Framework](#25-extending-and-customising-the-framework)
-26. [FAQ](#26-faq)
-27. [Troubleshooting](#27-troubleshooting)
-28. [Framework Management Commands](#28-framework-management-commands)
+18. [Running an Agentic Data Stack Release](#18-running-an-agentic-data-stack-release)
+19. [Running a Custom Release](#19-running-a-custom-release)
+20. [Worked Example: Barton Peveril Live Pastoral Analytics](#20-worked-example-barton-peveril-live-pastoral-analytics)
+21. [Wire Autopilot: Autonomous Execution](#21-wire-autopilot-autonomous-execution)
+22. [Wire Studio: Web-Based Interface](#22-wire-studio-web-based-interface)
+23. [Wire Framework VS Code Extension](#23-wire-framework-vs-code-extension)
+24. [Issue Tracking: Jira and Linear](#24-issue-tracking-jira-and-linear)
+25. [Document Store: Confluence and Notion](#25-document-store-confluence-and-notion)
+26. [Extending and Customising the Framework](#26-extending-and-customising-the-framework)
+27. [FAQ](#27-faq)
+28. [Troubleshooting](#28-troubleshooting)
+29. [Framework Management Commands](#29-framework-management-commands)
     - [`/wire:playbook-generate`](#wireplaybook-generate--delivery-playbook)
 
 ---
@@ -252,6 +253,7 @@ The framework encodes delivery methodology as eleven release types, each definin
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days | training, documentation |
 | **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
 | **Platform Migration** | `platform_migration` | Full lifecycle migration of a data platform from one warehouse stack to another. Covers source platform audit, migration inventory, strategy, parallel platform setup, batched dbt translation, equivalency validation loop, and cutover | 4–16 weeks | ingestion_audit, db_object_audit, security_audit, dbt_audit, orchestration_audit, migration_inventory, migration_strategy, target_setup, ingestion_migration, dbt_migration, orchestration_migration, equivalency_validation, cutover, migration_report |
+| **Agentic Data Stack** | `agentic_data_stack` | Governed self-service agentic data stack: dataset audit, semantic layer expansion, per-domain knowledge skill files, eval suite with per-domain accuracy gates. Delivers an installable Claude agentic data stack and the maintenance infrastructure to keep it accurate. | 4–6 weeks | dataset_audit, metric_audit, query_audit, governance_design, semantic_layer_design, canonical_models, semantic_layer, knowledge_skill, agent_config, eval_suite, adversarial_config, launch_gate, enablement |
 | **Custom** | `custom` | Bespoke scope derived from SoW or project documents — Wire analyses your docs and generates project-scoped specs for deliverables that don't map to any standard type | Varies (typically 2–6 weeks) | Derived from source documents by `/wire:custom-release-define` |
 
 ### Choosing the right release type
@@ -266,6 +268,7 @@ The framework encodes delivery methodology as eleven release types, each definin
 - **Platform exists; engaged to train and document it**: **Enablement**
 - **Building an AI-powered ecommerce storefront**: **Agentic Commerce**
 - **Migrating an existing data platform from BigQuery to Snowflake or Snowflake to BigQuery**: **Platform Migration** — five-zone source audit → migration inventory → strategy → target setup → batched dbt translation → equivalency validation loop → cutover
+- **Client wants an AI that answers business questions from their data warehouse accurately and reliably**: **Agentic Data Stack** — three-phase audit → governance and semantic layer design → build → eval suite with per-domain accuracy gates → installable agentic data stack skill
 - **Engagement with bespoke deliverables — architecture blueprints, advisory reports, decision logs, PoC productionisation plans — that don't fit any standard type**: **Custom**
 
 **Discovery (Shape Up) vs Discovery (SOP / Canonical)**: Use Shape Up when the scope is fuzzy but the problem domain is understood and you can shape a solution in a week or two. Use SOP / Canonical when you genuinely do not yet know what to build, stakeholder alignment is low, or this is the first analytics engagement at the client — it runs a formal structured discovery and culminates in a sponsor-facing Findings Playback slide deck that must be signed off before any delivery work begins.
@@ -2103,7 +2106,145 @@ When `mcp_tunnel_configured: true` is set in `status.md`, all audit and migratio
 
 ---
 
-## 18. Running a Custom Release
+## 18. Running an Agentic Data Stack Release
+
+The Agentic Data Stack release type (`release_type: agentic_data_stack`) is for engagements where the deliverable is a governed self-service analytics capability — an AI that answers business questions accurately, routes through the semantic layer first, and stays accurate as the data platform evolves.
+
+The release directly implements the architecture [Anthropic published](https://claude.com/blog/how-anthropic-enables-self-service-data-analytics-with-claude) from their own internal analytics build: governed canonical datasets, per-domain knowledge skill files collocated with dbt models, a mandatory semantic-layer-first routing order, adversarial review on every answer, and an offline eval harness wired into CI. The key finding from that build: accuracy failures are primarily governance failures, not model failures. Resolving concept-entity ambiguity before the agent ever sees a question is more effective than any amount of prompt engineering.
+
+### When to use it
+
+Use `agentic_data_stack` when:
+- A client already has a data platform (warehouse + dbt + BI tool) and wants an AI that can answer business questions from it reliably
+- The data team has tried a self-service SQL agent and accuracy is below 70% — the audit phase will almost always find widespread table duplication as the root cause
+- The engagement goal is to reduce analyst time spent answering ad-hoc data questions for business stakeholders
+
+Do not use `agentic_data_stack` as a first release for a new client. The release assumes a data platform exists. If the warehouse and dbt project need to be built first, start with `full_platform` or `pipeline_only`, then add `agentic_data_stack` as a subsequent release.
+
+### Phase overview
+
+| Phase | Duration | Artifacts |
+|---|---|---|
+| Audit | 1–2 weeks | dataset_audit, metric_audit, query_audit |
+| Design | 1 week | governance_design, semantic_layer_design |
+| Build | 2 weeks | canonical_models, semantic_layer, knowledge_skill, agent_config |
+| Validation | 1 week | eval_suite, adversarial_config |
+| Launch | 3–5 days | launch_gate, enablement |
+
+### Setting up an Agentic Data Stack release
+
+```bash
+/wire:new
+# Select: Agentic Data Stack
+# Answer 7 additional questions:
+# 1. BI tool (Looker / Tableau / Power BI / Metabase / Other)
+# 2. Semantic layer (dbt Semantic Layer / MetricFlow / LookML / None)
+# 3. dbt project path
+# 4. Warehouse (BigQuery / Snowflake / Databricks / Redshift)
+# 5. Primary business domain
+# 6. Approximate table count
+# 7. Query history access (yes / limited / no)
+```
+
+### Command sequence
+
+```bash
+# Phase 1 — Audit (run all three in parallel)
+/wire:ads-audit-all YYYYMMDD_client_agentic_data_stack
+
+# Or run individually:
+/wire:ads_dataset-audit-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_metric-audit-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_query-audit-generate YYYYMMDD_client_agentic_data_stack
+
+# Validate and review each audit
+/wire:ads_dataset-audit-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_dataset-audit-review YYYYMMDD_client_agentic_data_stack
+/wire:ads_metric-audit-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_metric-audit-review YYYYMMDD_client_agentic_data_stack
+/wire:ads_query-audit-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_query-audit-review YYYYMMDD_client_agentic_data_stack
+
+# Phase 2 — Design
+/wire:ads_governance-design-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_governance-design-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_governance-design-review YYYYMMDD_client_agentic_data_stack
+/wire:ads_semantic-layer-design-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_semantic-layer-design-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_semantic-layer-design-review YYYYMMDD_client_agentic_data_stack
+
+# Phase 3 — Build
+/wire:ads_canonical-models-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_canonical-models-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_canonical-models-review YYYYMMDD_client_agentic_data_stack
+/wire:ads_semantic-layer-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_semantic-layer-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_semantic-layer-review YYYYMMDD_client_agentic_data_stack
+/wire:ads_knowledge-skill-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_knowledge-skill-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_knowledge-skill-review YYYYMMDD_client_agentic_data_stack
+/wire:ads_agent-config-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_agent-config-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_agent-config-review YYYYMMDD_client_agentic_data_stack
+
+# Phase 4 — Validation
+/wire:ads_eval-suite-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_eval-suite-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_eval-suite-review YYYYMMDD_client_agentic_data_stack
+/wire:ads_adversarial-config-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_adversarial-config-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_adversarial-config-review YYYYMMDD_client_agentic_data_stack
+
+# Phase 5 — Launch
+/wire:ads_launch-gate-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_launch-gate-review YYYYMMDD_client_agentic_data_stack
+/wire:ads_analytics-enablement-generate YYYYMMDD_client_agentic_data_stack
+/wire:ads_analytics-enablement-validate YYYYMMDD_client_agentic_data_stack
+/wire:ads_analytics-enablement-review YYYYMMDD_client_agentic_data_stack
+```
+
+### The eval suite and launch gate
+
+The eval suite (`/wire:ads_eval-suite-generate`) is the most important artifact in the release. It produces:
+- Per-domain YAML question-answer pairs (minimum 10 per domain)
+- A CI runner script that checks accuracy against every schema change
+- Per-domain accuracy thresholds (default 90%)
+
+The launch gate validates accuracy before any domain is announced. A domain that falls below its threshold is blocked until the specific failing questions are fixed. This is not optional — Anthropic documented accuracy falling from 95% to 65% within a month without active maintenance. The eval suite and its CI integration are the mechanism that prevents this.
+
+### Knowledge skill colocation
+
+The `/wire:ads_knowledge-skill-generate` command writes `DOMAIN_REFERENCE.md` files into the client's dbt project alongside their mart models:
+
+```
+models/marts/
+  orders/
+    fct_orders.sql
+    fct_orders.yml
+    DOMAIN_REFERENCE.md   ← generated and maintained here
+  customers/
+    dim_customers.sql
+    dim_customers.yml
+    DOMAIN_REFERENCE.md
+```
+
+A CI check template is included that flags when a model PR doesn't update the collocated reference file. This keeps the agent's knowledge current as the data platform evolves — the maintenance becomes an engineering discipline, not a documentation backlog.
+
+### What the release delivers
+
+At the end of the engagement, the client has:
+1. A governance-clean dbt project with canonical models and deprecated tables marked for sunset
+2. An extended semantic layer covering the most common analytical questions
+3. Per-domain knowledge skill files in their dbt repo, with CI maintenance checks
+4. An installable Wire skill (`agentic-data-stack-SKILL.md`) their data team runs in Claude Code
+5. A per-domain eval suite wired into CI with accuracy baselines
+6. User training documentation and a data team maintenance guide
+
+**After the engagement**: The data team installs the agent skill, maintains the `DOMAIN_REFERENCE.md` files in their normal PR workflow, and runs the eval suite monthly. Domain owners can request new metrics via their normal analytics backlog — each addition goes through `ads_semantic-layer-generate` and then `ads_eval-suite-validate` before deployment.
+
+---
+
+## 19. Running a Custom Release
 
 Use the Custom release type when an engagement has bespoke deliverables that don't map cleanly to any standard Wire release type — architecture advisory reports, technology decision logs, PoC productionisation blueprints, MCP/AI integration roadmaps, compliance reviews, data literacy programmes, or any fixed-scope engagement where the deliverables are defined by the SoW rather than by a standard delivery pattern.
 
@@ -2188,7 +2329,7 @@ This generalises the spec (removing client-specific details), drafts a GitHub is
 
 ---
 
-## 19. Worked Example: Barton Peveril Live Pastoral Analytics
+## 20. Worked Example: Barton Peveril Live Pastoral Analytics
 
 This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step. This engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined), so it starts with the full_platform delivery release.
 
@@ -2461,7 +2602,7 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 
 ---
 
-## 20. Wire Autopilot: Autonomous Execution
+## 21. Wire Autopilot: Autonomous Execution
 
 Wire Autopilot takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
 
@@ -2921,7 +3062,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ---
 
-## 21. Wire Studio: Web-Based Interface
+## 22. Wire Studio: Web-Based Interface
 
 > **Status: Active** — Wire Studio v3.4.17 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
@@ -3396,7 +3537,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 22. Wire Framework VS Code Extension
+## 23. Wire Framework VS Code Extension
 
 The Wire Framework VS Code extension brings the delivery lifecycle directly into your editor. Instead of switching between the terminal, file explorer, and Claude Code to track progress, run commands, and review artifacts, you can do all of it from the VS Code sidebar.
 
@@ -3495,7 +3636,7 @@ For the full guide including keyboard reference and troubleshooting, see [`wire-
 
 ---
 
-## 23. Issue Tracking: Jira and Linear
+## 24. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -3572,7 +3713,7 @@ linear:
 
 ---
 
-## 24. Document Store: Confluence and Notion
+## 25. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -3655,7 +3796,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 25. Extending and Customising the Framework
+## 26. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -3813,7 +3954,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 26. FAQ
+## 27. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -3937,7 +4078,7 @@ Use Platform Migration when the decision to migrate has already been made and th
 
 **Q: How many equivalency loop iterations should I expect before cutover?**
 
-Carwow (1,500+ dbt models, BigQuery → Snowflake) ran two iterations: the first pass surfaced 783 failing checks, mostly from TIMESTAMP_DIFF argument order reversals and ARRAY_AGG ordering differences. The second pass after bulk fixes reduced failures to 35, all in high-complexity models needing per-model attention. Typical projects with <300 models and no ML or spatial features should reach zero failures in one or two iterations. High complexity models with extensive STRUCT/ARRAY logic or custom macros may need three or four.
+Client C (1,500+ dbt models, BigQuery → Snowflake) ran two iterations: the first pass surfaced 783 failing checks, mostly from TIMESTAMP_DIFF argument order reversals and ARRAY_AGG ordering differences. The second pass after bulk fixes reduced failures to 35, all in high-complexity models needing per-model attention. Typical projects with <300 models and no ML or spatial features should reach zero failures in one or two iterations. High complexity models with extensive STRUCT/ARRAY logic or custom macros may need three or four.
 
 ---
 
@@ -4081,7 +4222,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 27. Troubleshooting
+## 28. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -4128,7 +4269,7 @@ Just send a message in the repo. The engagement-context skill fires automaticall
 
 ---
 
-## 28. Framework Management Commands
+## 29. Framework Management Commands
 
 Wire includes several commands for managing the framework itself, rather than delivery work.
 
