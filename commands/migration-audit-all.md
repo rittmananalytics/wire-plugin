@@ -1,9 +1,9 @@
 ---
-description: Run all 5 source platform audits in parallel using dynamic workflow
+description: Run all platform migration audits in parallel (5 core + optional reverse ETL)
 argument-hint: <release-folder>
 ---
 
-# Run all 5 source platform audits in parallel using dynamic workflow
+# Run all platform migration audits in parallel (5 core + optional reverse ETL)
 
 ## User Input
 
@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.7.6\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.7.7\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"migration-audit-all\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.6\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"migration-audit-all\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.7\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -76,14 +76,14 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Run all 5 source platform audits in parallel using dynamic workflow
+description: Run all platform migration audits in parallel using dynamic workflow (5 core audits + optional reverse ETL audit)
 ---
 
 # Migration Audit All — Utility
 
 ## Purpose
 
-Fans out all five platform migration audit commands simultaneously using parallel subagents. This reduces the total wall-clock time for audit completion from sequential hours to roughly the duration of the slowest individual audit. Use this command instead of running the five audit generates one by one.
+Fans out all platform migration audit commands simultaneously using parallel subagents. Five core audits always run; a sixth (reverse ETL) runs automatically when `migration.reverse_etl_tool` is set in `status.md`. This reduces total wall-clock time from sequential hours to roughly the duration of the slowest individual audit.
 
 ## Arguments
 
@@ -95,34 +95,35 @@ Fans out all five platform migration audit commands simultaneously using paralle
 
 Read `.wire/releases/$ARGUMENTS/status.md`. Confirm `release_type: platform_migration`. If not, stop.
 
+Check `migration.reverse_etl_tool` — if set (e.g. `hightouch`), the reverse ETL audit will run as a sixth parallel subagent.
+
 Confirm no audits are already complete unless the user explicitly wants to re-run them. List any already-complete audits.
 
 ### Step 2: Token cost confirmation
 
-Running 5 parallel audits will consume significant context tokens — particularly if the source platform has large INFORMATION_SCHEMA tables or a large dbt project.
-
-Present the following confirmation prompt:
+Present the following confirmation prompt — adjust the count and list based on whether reverse_etl_tool is set:
 
 ```
-This command will launch 5 parallel audit subagents simultaneously:
-  1. ingestion_audit  — Fivetran connector catalog
-  2. db_object_audit  — Database object catalog (INFORMATION_SCHEMA query)
-  3. security_audit   — IAM roles and policies catalog
-  4. dbt_audit        — dbt project model catalog
-  5. orchestration_audit — Orchestration job catalog
+This command will launch [5|6] parallel audit subagents simultaneously:
+  1. ingestion_audit       — Fivetran connector catalog
+  2. db_object_audit       — Database object catalog (INFORMATION_SCHEMA query)
+  3. security_audit        — IAM roles and policies catalog
+  4. dbt_audit             — dbt project model catalog
+  5. orchestration_audit   — Orchestration job catalog
+  6. reverse_etl_audit     — Hightouch sync catalog [only if reverse_etl_tool is set]
 
 Estimated token usage: HIGH (particularly for large warehouses or dbt projects).
 
 How would you like to proceed?
 
-A) Run all 5 audits in parallel (fastest — recommended for most engagements)
+A) Run all audits in parallel (fastest — recommended for most engagements)
 B) Run audits sequentially instead (lower peak token usage — use for very large projects)
 ```
 
 Wait for user choice.
 
 **If option B (sequential)** is chosen:
-Output the 5 individual commands in order and stop:
+Output the individual commands in order and stop:
 
 ```
 Run each audit in sequence:
@@ -132,14 +133,15 @@ Run each audit in sequence:
 3. /wire:security-audit-generate $ARGUMENTS
 4. /wire:dbt-audit-generate $ARGUMENTS
 5. /wire:orchestration-audit-generate $ARGUMENTS
+[6. /wire:reverse-etl-audit-generate $ARGUMENTS   ← only if reverse_etl_tool is set]
 
-When all five are complete, run:
+When all audits are complete, run:
 /wire:migration-inventory-generate $ARGUMENTS
 ```
 
 ### Step 3: Launch parallel audit subagents (option A)
 
-Dispatch 5 parallel subagents. Each subagent runs one audit generate command by following its spec:
+Dispatch parallel subagents — always launch these five:
 
 - Subagent 1: Follow `specs/migration/ingestion_audit/generate.md` for `$ARGUMENTS`
 - Subagent 2: Follow `specs/migration/db_object_audit/generate.md` for `$ARGUMENTS`
@@ -147,11 +149,14 @@ Dispatch 5 parallel subagents. Each subagent runs one audit generate command by 
 - Subagent 4: Follow `specs/migration/dbt_audit/generate.md` for `$ARGUMENTS`
 - Subagent 5: Follow `specs/migration/orchestration_audit/generate.md` for `$ARGUMENTS`
 
+If `migration.reverse_etl_tool` is set in `status.md`, also dispatch:
+- Subagent 6: Follow `specs/migration/reverse_etl_audit/generate.md` for `$ARGUMENTS`
+
 Each subagent writes its own output file and updates status.md independently.
 
 ### Step 4: Collect results
 
-Wait for all 5 subagents to complete. Report outcomes:
+Wait for all subagents to complete. Report outcomes:
 
 ```
 Parallel audit results:
@@ -163,8 +168,9 @@ db_object_audit       | complete | audit/db_object_audit.md
 security_audit        | complete | audit/security_audit.md
 dbt_audit             | complete | audit/dbt_audit.md (+ dbt_audit.csv)
 orchestration_audit   | complete | audit/orchestration_audit.md
+reverse_etl_audit     | complete | audit/reverse_etl_audit.md  [if applicable]
 
-All 5 audits complete. Next steps:
+All audits complete. Next steps:
 
 1. Validate each audit:
    /wire:ingestion-audit-validate $ARGUMENTS
@@ -172,10 +178,11 @@ All 5 audits complete. Next steps:
    /wire:security-audit-validate $ARGUMENTS
    /wire:dbt-audit-validate $ARGUMENTS
    /wire:orchestration-audit-validate $ARGUMENTS
+   [/wire:reverse-etl-audit-validate $ARGUMENTS]
 
 2. Review each audit with the team.
 
-3. When all 5 are approved:
+3. When all audits are approved:
    /wire:migration-inventory-generate $ARGUMENTS
 ```
 

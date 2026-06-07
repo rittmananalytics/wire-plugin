@@ -1,9 +1,9 @@
 ---
-description: Synthesise all 5 audits into unified catalogue with dependency graph
+description: Synthesise all audits into unified catalogue with dependency graph
 argument-hint: <release-folder>
 ---
 
-# Synthesise all 5 audits into unified catalogue with dependency graph
+# Synthesise all audits into unified catalogue with dependency graph
 
 ## User Input
 
@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.7.6\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.7.7\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"migration-inventory-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.6\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"migration-inventory-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.7.7\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -76,25 +76,28 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Synthesise all 5 audits into a unified catalogue with dependency graph
+description: Synthesise all audits into a unified catalogue with dependency graph
 ---
 
 # Migration Inventory — Generate
 
 ## Purpose
 
-Synthesises the five approved audits (ingestion, db_object, security, dbt, orchestration) into a single unified migration inventory. The inventory is the canonical scope document — every object that will be migrated, its complexity, its migration approach, and its dependencies. It is the primary input to migration strategy and the reference point for all subsequent generate commands.
+Synthesises all approved audits into a single unified migration inventory. The five core audits (ingestion, db_object, security, dbt, orchestration) are always required. The reverse ETL audit is required when `migration.reverse_etl_tool` is set in `status.md`. The inventory is the canonical scope document — every object that will be migrated, its complexity, its migration approach, and its dependencies. It is the primary input to migration strategy and the reference point for all subsequent generate commands.
 
 ## Prerequisites
 
-All five audits must have `review: approved`:
+The following five audits must always have `review: approved`:
 - `ingestion_audit`
 - `db_object_audit`
 - `security_audit`
 - `dbt_audit`
 - `orchestration_audit`
 
-If any audit is not yet approved, output the list of incomplete audits and stop:
+If `migration.reverse_etl_tool` is set in `status.md`, this audit must also be `review: approved`:
+- `reverse_etl_audit`
+
+If any required audit is not yet approved, output the list of incomplete audits and stop:
 ```
 The following audits are not yet approved — complete them before generating the inventory:
 [list of pending audits]
@@ -104,7 +107,7 @@ Run all audits in parallel: /wire:migration-audit-all $ARGUMENTS
 
 ## Inputs
 
-- All five audit files under `.wire/releases/$ARGUMENTS/audit/`
+- All required audit files under `.wire/releases/$ARGUMENTS/audit/`
 - `.wire/releases/$ARGUMENTS/status.md`
 
 ## Workflow
@@ -117,6 +120,7 @@ Read each approved audit file. Extract:
 - Security audit: role and policy inventory
 - dbt audit: model catalog with complexity, batch number, feature tags (from CSV)
 - Orchestration audit: job inventory
+- Reverse ETL audit (if present): sync catalog with migration approach, warehouse object dependencies, Lightning engine flags
 
 ### Step 2: Cross-reference and deduplicate
 
@@ -125,16 +129,25 @@ Identify objects that appear in multiple audits and link them:
 - dbt models reference source tables → link dbt models to db objects
 - Orchestration jobs run dbt commands → link jobs to dbt models
 - Service accounts in security audit → link to Fivetran connectors and orchestration jobs
+- Hightouch syncs reference warehouse objects → link each sync to the db objects and dbt models it reads from (using the `warehouse_objects` field from the reverse ETL audit)
+- Hightouch `dbtModel`-type syncs → link to the specific dbt models in the dbt audit
 
 ### Step 3: Build the dependency graph
 
 Construct a directed dependency graph where:
 - Edges point from dependency to dependent (data flows downstream)
-- Node types: `connector`, `table`, `view`, `dbt_model`, `job`, `role`
+- Node types: `connector`, `table`, `view`, `dbt_model`, `job`, `role`, `reverse_etl_sync`, `reverse_etl_destination`
+
+The graph now spans the full data flow: ingestion sources → warehouse objects → dbt models → reverse ETL syncs → SaaS destinations.
 
 Output the graph in two formats:
 1. Text adjacency list (always)
 2. Mermaid diagram (if total nodes ≤200)
+
+The Mermaid diagram should represent the six layers left-to-right:
+```
+[Ingestion] → [Raw Tables] → [dbt Models] → [Warehouse Views/Tables] → [Hightouch Syncs] → [Destinations]
+```
 
 ### Step 4: Calculate migration effort estimate
 
@@ -154,6 +167,10 @@ For each object type, apply effort weights:
 | Security object | translate/evaluate | 1 |
 | Orchestration job | recreate | 0.5 |
 | Orchestration job | translate/evaluate | 2 |
+| Hightouch sync | repoint (Low) | 0.5 |
+| Hightouch sync | rewrite_model (Medium) | 2 |
+| Hightouch sync | rebuild (High) | 8 |
+| Lightning schema provisioning | per workspace | 0.5 |
 
 Sum the estimates by phase and produce a total effort estimate.
 
@@ -163,11 +180,11 @@ Sum the estimates by phase and produce a total effort estimate.
 
 Use the template at `TEMPLATES/migration/migration_inventory.md`. Include:
 - Executive summary: total objects, total effort estimate, migration duration estimate (assuming 6 hours/day productive migration work)
-- Phase breakdown: audit → strategy → ingestion → dbt batches → orchestration → equivalency → cutover
+- Phase breakdown: audit → strategy → ingestion → dbt batches → orchestration → reverse ETL → equivalency → cutover
 - Unified object catalog (linked across audits)
 - Dependency graph
-- Risk summary: count of High-complexity and evaluate objects
-- Recommended phasing approach
+- Risk summary: count of High-complexity and evaluate objects; count of rebuild-type reverse ETL syncs
+- Recommended phasing approach — note that reverse ETL syncs cannot be re-pointed until their dependent warehouse objects and dbt models are migrated in earlier phases
 
 ### Step 6: Update status
 
@@ -179,6 +196,7 @@ artifacts:
     generated_date: "{{TODAY}}"
     total_objects: N
     estimated_hours: N
+    reverse_etl_syncs: N   # 0 if not applicable
 ```
 
 ### Step 7: Output summary
