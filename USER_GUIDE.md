@@ -1,4 +1,4 @@
-<img src="wire/docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
+<img src="wire_logo_transparent.png" alt="Wire Framework" width="220">
 
 # The Wire Framework: User Guide
 
