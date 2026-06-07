@@ -1,10 +1,10 @@
-<img src="wire_logo_transparent.png" alt="Wire Framework" width="220">
+<img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
 # The Wire Framework: User Guide
 
 **Rittman Analytics**
 
-**Version**: 3.7.2 | **Date**: June 2026
+**Version**: 3.7.5 | **Date**: June 2026
 
 ---
 
@@ -252,7 +252,7 @@ The framework encodes delivery methodology as eleven release types, each definin
 | **Dashboard Extension** | `dashboard_extension` | New dashboards on an existing semantic layer | 3–5 days | requirements, mockups, dashboards, uat |
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days | training, documentation |
 | **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
-| **Platform Migration** | `platform_migration` | Full lifecycle migration of a data platform from one warehouse stack to another. Covers source platform audit, migration inventory, strategy, parallel platform setup, batched dbt translation, equivalency validation loop, and cutover | 4–16 weeks | ingestion_audit, db_object_audit, security_audit, dbt_audit, orchestration_audit, migration_inventory, migration_strategy, target_setup, ingestion_migration, dbt_migration, orchestration_migration, equivalency_validation, cutover, migration_report |
+| **Platform Migration** | `platform_migration` | Full lifecycle migration of a data platform from one warehouse stack to another. Covers source platform audit, migration inventory, strategy, parallel platform setup, batched dbt translation, equivalency validation loop, and cutover | 4–16 weeks | ingestion_audit, db_object_audit, security_audit, dbt_audit, orchestration_audit, migration_inventory, lineage_view, migration_strategy, target_setup, ingestion_migration, dbt_migration, orchestration_migration, equivalency_validation, cutover, migration_report |
 | **Agentic Data Stack** | `agentic_data_stack` | Overlay for an existing data platform (warehouse + dbt + BI tool). Audits governance maturity, extends the semantic layer, generates per-domain knowledge skill files collocated with dbt models, delivers an installable agentic data stack skill with a CI-wired eval suite. Does not build the underlying pipeline or dbt project — use `full_platform` or `pipeline_only` first if the platform doesn't yet exist. | 4–6 weeks | dataset_audit, metric_audit, query_audit, governance_design, semantic_layer_design, canonical_models, lookml_views (Looker only), semantic_layer, knowledge_skill, agent_config, eval_suite, adversarial_config, launch_gate, enablement |
 | **Custom** | `custom` | Bespoke scope derived from SoW or project documents — Wire analyses your docs and generates project-scoped specs for deliverables that don't map to any standard type | Varies (typically 2–6 weeks) | Derived from source documents by `/wire:custom-release-define` |
 
@@ -2758,7 +2758,7 @@ For each planned delivery release, Autopilot:
 | `dashboard_extension` | requirements → mockups → dashboards → training |
 | `dashboard_first` | requirements → mockups → viz_catalog → data_model → seed_data → dbt → semantic_layer → dashboards → data_refactor → data_quality → uat → deployment → training → documentation |
 | `enablement` | training → documentation |
-| `platform_migration` | ingestion_audit → db_object_audit → security_audit → dbt_audit → orchestration_audit → migration_inventory → migration_strategy → target_setup → ingestion_migration → dbt_migration → orchestration_migration → equivalency_validation → cutover → migration_report |
+| `platform_migration` | ingestion_audit → db_object_audit → security_audit → dbt_audit → orchestration_audit → migration_inventory → lineage_view → migration_strategy → target_setup → ingestion_migration → dbt_migration → orchestration_migration → equivalency_validation → cutover → migration_report |
 
 Each artifact follows the same generate → validate (up to 3 retries) → self-review (up to 2 retries) cycle. After each artifact is generated and again after it is approved, Autopilot syncs to Jira, Linear, and the document store (whichever are configured).
 
@@ -3184,11 +3184,11 @@ Click **Create**. Wire Studio creates the environment, provisions a workspace, a
 
 When no project is open, Wire Studio shows the welcome screen with **Open Project** and **New Project** buttons:
 
-![Wire Studio — Open Project screen](wire-web-ui/docs/images/wire_studio_open_project.png)
+![Wire Studio — Open Project screen](docs/images/wire_studio_open_project.png)
 
 Clicking **Open Project** opens the project selection dialog:
 
-![Wire Studio — Select Project dialog](wire-web-ui/docs/images/wire_studio_select_project.png)
+![Wire Studio — Select Project dialog](docs/images/wire_studio_select_project.png)
 
 #### 2. Viewing the artifact graph
 
@@ -3210,11 +3210,11 @@ Right-click any artifact node to see the context menu:
 - **Refresh Document** — reloads the content (useful after running a Generate command)
 - **Close Document** — closes the tab
 
-![Wire Studio — Right-click context menu on artifact node](wire-web-ui/docs/images/wire_studio_open_diagram.png)
+![Wire Studio — Right-click context menu on artifact node](docs/images/wire_studio_open_diagram.png)
 
 For example, right-clicking the **Data Model** node and selecting "View Document" opens a tab showing the ER diagram rendered from the mermaid code in the data model specification:
 
-![Wire Studio — Viewing a rendered pipeline design diagram in a tab](wire-web-ui/docs/images/wire_studio_view_diagram.png)
+![Wire Studio — Viewing a rendered pipeline design diagram in a tab](docs/images/wire_studio_view_diagram.png)
 
 #### 4. Running commands from the artifact graph
 
@@ -3242,7 +3242,7 @@ This is useful for reading requirements specifications, design documents, traini
 
 When a file in the file explorer corresponds to a Wire artifact (matched by filename keywords and output directory), the right-click context menu also shows **Generate**, **Validate**, and **Review** actions:
 
-![Wire Studio — Right-click context menu on file with Generate/Validate/Review](wire-web-ui/docs/images/wire_studio_validate_requirements.png)
+![Wire Studio — Right-click context menu on file with Generate/Validate/Review](docs/images/wire_studio_validate_requirements.png)
 
 This provides a second way to trigger Wire commands — directly from the file tree rather than the artifact graph. The same command is executed either way, and output streams to the Execution Log.
 
@@ -3553,31 +3553,31 @@ The Wire Framework VS Code extension brings the delivery lifecycle directly into
 
 Search for **Wire Framework** in the VS Code Extensions marketplace (`⌘⇧X` / `Ctrl⇧X`), then click **Install**.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_0_install_extension.png" alt="Search for Wire Framework in Extensions marketplace" width="50%">
+<img src="docs/images/wire_plugin_ss_0_install_extension.png" alt="Search for Wire Framework in Extensions marketplace" width="50%">
 
 If this is your first install from Rittman Analytics, VS Code will show a **Trust Publisher & Install** dialog — click through to confirm.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_00_choose_install.png" alt="Trust Publisher & Install dialog" width="50%">
+<img src="docs/images/wire_plugin_ss_00_choose_install.png" alt="Trust Publisher & Install dialog" width="50%">
 
 Once installed, click the **W** icon in the activity bar. For a new project with no `.wire/` folder you'll see a prompt to start a new engagement.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_000_new_wire_engagement.png" alt="Wire sidebar open on a new project" width="50%">
+<img src="docs/images/wire_plugin_ss_000_new_wire_engagement.png" alt="Wire sidebar open on a new project" width="50%">
 
 Run `/wire:new` in Claude Code to scaffold the engagement, create your first release, and configure MCP servers. Wire asks for the client name, project type, and scope before generating the structure.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_0000_run_wire_new.png" alt="Running /wire:new in Claude Code" width="50%">
+<img src="docs/images/wire_plugin_ss_0000_run_wire_new.png" alt="Running /wire:new in Claude Code" width="50%">
 
 ### Installing the Wire Plugin
 
 The extension activates automatically in any workspace. Before running Wire commands you need the Wire Claude Code plugin installed. Open the **MCP Servers** panel in the Wire sidebar, click the cloud-download button in the title bar, and choose **Install from marketplace**. The picker sends `/plugin marketplace add rittmananalytics/wire-plugin` to Claude Code and copies the follow-up `/plugin install wire@rittman-analytics` command to your clipboard. After install completes, run `/reload-plugins` in Claude Code to activate the plugin in the current session.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_4_plugin_install.png" alt="Plugin install picker" width="50%">
+<img src="docs/images/wire_plugin_ss_4_plugin_install.png" alt="Plugin install picker" width="50%">
 
 ### The Releases Panel
 
 The Releases panel is the primary navigation surface. Click the **W** icon in the activity bar to open it.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_1_releases_panel.png" alt="Releases panel" width="50%">
+<img src="docs/images/wire_plugin_ss_1_releases_panel.png" alt="Releases panel" width="50%">
 
 The panel reads `.wire/releases/*/status.md` and renders one collapsible section per release, organised by delivery phase. Green filled icons (✅) indicate all steps for that artifact are complete; yellow outlines show work in progress; grey outlines are not started. Clicking a completed artifact opens its generated file. Clicking an un-generated artifact triggers the generate command in Claude Code. Inline ✨ / ✓ / 💬 buttons appear on hover to generate, validate, or review without opening a menu.
 
@@ -3585,7 +3585,7 @@ The panel reads `.wire/releases/*/status.md` and renders one collapsible section
 
 The Status panel gives a compact at-a-glance view across all releases using a G (Generate) / V (Validate) / R (Review) dot grid.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_2_statuses_panel.png" alt="Status panel" width="50%">
+<img src="docs/images/wire_plugin_ss_2_statuses_panel.png" alt="Status panel" width="50%">
 
 The most recently modified release shows an **ACTIVE** badge and expands by default. A teal progress bar shows overall completion. Teal dots are complete, yellow are in progress, grey are not started, and `–` means that step is not applicable to the artifact.
 
@@ -3593,7 +3593,7 @@ The most recently modified release shows an **ACTIVE** badge and expands by defa
 
 Wire uses MCP servers to give Claude Code access to Jira, Confluence, Fathom, Linear, and other external services. The MCP Servers panel reads all four config locations (`~/.claude.json`, `~/.claude/settings.json`, `.mcp.json`, `.claude/settings.json`) and shows a live status indicator for each server.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_3_mcp_servers_panel.png" alt="MCP Servers panel" width="50%">
+<img src="docs/images/wire_plugin_ss_3_mcp_servers_panel.png" alt="MCP Servers panel" width="50%">
 
 Green dots indicate the server URL is responding; red means unreachable; grey means not yet checked (stdio servers are never pinged). Use the `+` button in the panel title bar to add a new server to the project `.mcp.json`.
 
@@ -3601,7 +3601,7 @@ Green dots indicate the server URL is responding; red means unreachable; grey me
 
 Right-click a release in the Releases tree and select **Show Workflow Graph** (or click the ⎇ icon in the title bar) to open a visual map of every artifact, arranged by phase with connecting arrows.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_5_workflow_panel.png" alt="Workflow graph" width="50%">
+<img src="docs/images/wire_plugin_ss_5_workflow_panel.png" alt="Workflow graph" width="50%">
 
 Each card shows the artifact name, G/V/R dot status, and the filename of the primary generated file. Drag the canvas to pan; scroll to zoom; click **Reset view** to return to 100%.
 
@@ -3609,23 +3609,23 @@ Each card shows the artifact name, G/V/R dot status, and the filename of the pri
 
 Right-click any artifact card to open its action menu.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_6_workflow_generate_menu_item.png" alt="Generate context menu" width="50%">
+<img src="docs/images/wire_plugin_ss_6_workflow_generate_menu_item.png" alt="Generate context menu" width="50%">
 
 Choose **Generate**, **Validate**, or **Review** to send the corresponding `/wire:*` command to Claude Code. **Preview file** opens a rendered markdown view beside your editor:
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_7_preview_document_menu_item.png" alt="Preview file menu" width="50%">
+<img src="docs/images/wire_plugin_ss_7_preview_document_menu_item.png" alt="Preview file menu" width="50%">
 
 ### Previewing Generated Artifacts
 
 Selecting **Preview file** from any context menu opens the artifact in VS Code's built-in markdown renderer — formatted headings, tables, and code blocks exactly as a client would read it.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_8_preview_document_panel.png" alt="Document preview" width="50%">
+<img src="docs/images/wire_plugin_ss_8_preview_document_panel.png" alt="Document preview" width="50%">
 
 ### How Commands Reach Claude Code
 
 When you trigger any Wire action from the sidebar, the extension sends the `/wire:<artifact>-<action> <release>` command to Claude Code's chat panel and Claude Code begins execution immediately.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_9_generate_command_chat_panel.png" alt="Claude Code receiving a command" width="50%">
+<img src="docs/images/wire_plugin_ss_9_generate_command_chat_panel.png" alt="Claude Code receiving a command" width="50%">
 
 ### The Command Picker
 

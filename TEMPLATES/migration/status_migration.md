@@ -234,6 +234,14 @@ artifacts:
     generated_files: []
     revision_history: []
 
+  lineage_view:
+    generate: not_started
+    file: null
+    generated_date: null
+    node_count: null
+    edge_count: null
+    generated_files: []
+
   migration_strategy:
     generate: not_started
     validate: not_started
@@ -352,6 +360,7 @@ Or run individually:
 | | dbt_audit | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | orchestration_audit | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | **Inventory** | migration_inventory | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| | lineage_view | ⏸️ | — | — | ❌ |
 | **Strategy** | migration_strategy | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | **Setup** | target_setup | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | **Ingestion** | ingestion_migration | ⏸️ | ⏸️ | ⏸️ | ❌ |
