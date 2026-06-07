@@ -129,14 +129,25 @@ Update `USER_GUIDE.md` at the repo root:
 
 ### 3c. README files
 
-Update version references in:
+Four files carry a version string in their title heading and **must be updated on every release**, unconditionally:
 
-- `README.md` (repo root) — installation command, version badge if present
-- `wire/README.md` — version in plugin install instructions
-- `wire-web-ui/README.md` — if Wire Studio version is also bumping
-- `wire-vscode/README.md` — if VSCode extension version is bumping
+| File | What to update |
+|------|----------------|
+| `README.md` (repo root) | `# Wire Framework vX.Y.Z` heading |
+| `wire/README.md` | `# Wire Framework vX.Y.Z` heading |
+| `USER_GUIDE.md` | `**Version**: X.Y.Z` header line (also covered in 3b, but confirm here) |
+| `wire-web-ui/README.md` | `# Wire Studio vX.Y.Z` heading |
 
-Search for the old version string across all README files and replace it.
+Verify every target before editing:
+
+```bash
+grep -n "Wire Framework v\|Wire Studio v\|\*\*Version\*\*" README.md wire/README.md wire-web-ui/README.md USER_GUIDE.md
+```
+
+Replace every hit. Do not skip `wire-web-ui/README.md` because "Wire Studio isn't bumping" — the Studio README heading tracks the framework version.
+
+Also update if applicable:
+- `wire-vscode/README.md` — if the VSCode extension version is bumping
 
 ### 3d. QUICK-REFERENCE.md
 
@@ -224,6 +235,12 @@ Use `--no-push` to run locally without remote pushes:
 bash wire/scripts/release.sh --no-push
 ```
 
+Use `--push-only` to re-push the current dist to all plugin repos without bumping the version.
+Run this after a post-release fix that updates `wire/dist/` but doesn't warrant a new version number:
+```bash
+bash wire/scripts/release.sh --push-only
+```
+
 ### For minor or major bumps
 
 `release.sh` only increments the patch component. For minor or major bumps, manually set the
@@ -232,12 +249,25 @@ version first, then invoke the script with `--no-bump` or edit the version files
 **Version files to update manually for minor/major:**
 
 ```
-wire/packaging/claude-plugin/.claude-plugin/plugin.json   → "version" field
-wire/packaging/gemini-extension/gemini-extension.json     → "version" field
-wire/packaging/wirework-plugin/.claude-plugin/plugin.json → "version" field
-wire-vscode/package.json                                   → "version" field (if bumping)
-wire-web-ui/package.json                                   → "version" field (if bumping)
+# Packaging manifests — "version" field
+wire/packaging/claude-plugin/.claude-plugin/plugin.json
+wire/packaging/gemini-extension/gemini-extension.json
+wire/packaging/wirework-plugin/.claude-plugin/plugin.json
+
+# Prose heading files — update version string in title/header line (REQUIRED every release)
+README.md                   → # Wire Framework vX.Y.Z
+wire/README.md              → # Wire Framework vX.Y.Z
+USER_GUIDE.md               → **Version**: X.Y.Z
+wire-web-ui/README.md       → # Wire Studio vX.Y.Z
+
+# package.json files (only if the component is bumping)
+wire-vscode/package.json    → "version" field
+wire-web-ui/package.json    → "version" field
 ```
+
+The build script reads its version from `plugin.json` — it does NOT automatically rewrite
+`wire/README.md`, `README.md`, `USER_GUIDE.md`, or `wire-web-ui/README.md`. Those four files
+must be updated manually before every release commit.
 
 After manually setting versions, run `build-packages.sh` directly:
 ```bash
@@ -287,24 +317,32 @@ After the release completes, verify:
 2. The Claude plugin remote repo (`rittmananalytics/wire-plugin`) has the new version committed.
 3. The Gemini extension remote repo (`rittmananalytics/wire-extension`) has the new version.
 4. CHANGELOG.md top entry matches the new version and today's date.
-5. **USER_GUIDE.md version** — check that the version header in `USER_GUIDE.md` (root) matches:
+5. **USER_GUIDE.md version** — check that the version header matches:
    ```bash
    grep "^\*\*Version\*\*" USER_GUIDE.md
    ```
-6. **README.md version** — check that the heading in `README.md` (root) matches:
+6. **README.md (root) heading** — check the framework version heading:
    ```bash
    grep "^# Wire Framework v" README.md
    ```
-7. **Plugin repo README** — the `rittmananalytics/wire-plugin` repo must have a non-empty `README.md`.
+7. **wire/README.md heading** — must also match:
+   ```bash
+   grep "^# Wire Framework v" wire/README.md
+   ```
+8. **wire-web-ui/README.md heading** — must also match:
+   ```bash
+   grep "^# Wire Studio v" wire-web-ui/README.md
+   ```
+9. **Plugin repo README** — the `rittmananalytics/wire-plugin` repo must have a non-empty `README.md`.
    The build script generates this from the root `README.md`. If it's missing, run
    `bash wire/scripts/build-packages.sh` and re-push.
-8. **Logo path in plugin repo** — the USER_GUIDE.md served from `rittmananalytics/wire-plugin` must
-   reference `docs/images/wire_logo_transparent.png` (not `wire/docs/images/...`). Check the first
-   line of `wire/dist/claude-plugin/USER_GUIDE.md`:
-   ```bash
-   head -1 wire/dist/claude-plugin/USER_GUIDE.md
-   ```
-   It must read `<img src="docs/images/wire_logo_transparent.png" ...>`.
+10. **Logo path in plugin repo** — the USER_GUIDE.md served from `rittmananalytics/wire-plugin` must
+    reference `docs/images/wire_logo_transparent.png` (not `wire/docs/images/...`). Check the first
+    line of `wire/dist/claude-plugin/USER_GUIDE.md`:
+    ```bash
+    head -1 wire/dist/claude-plugin/USER_GUIDE.md
+    ```
+    It must read `<img src="docs/images/wire_logo_transparent.png" ...>`.
 
 Report the results as a brief checklist with pass/fail for each item.
 
@@ -325,10 +363,12 @@ Documentation
 [ ] CHANGELOG.md updated (new block at top)
 [ ] RELEASE_NOTES.md updated
 [ ] wire/docs/CHANGELOG.md and RELEASE_NOTES.md mirrored
-[ ] USER_GUIDE.md version bumped, new features documented
+[ ] USER_GUIDE.md version bumped (**Version**: line), new features documented
 [ ] New release type walkthrough added (if applicable)
 [ ] WIRE_WORK_USER_GUIDE.md updated (if applicable)
-[ ] README.md, wire/README.md version references updated
+[ ] README.md (root) — # Wire Framework vX.Y.Z heading updated
+[ ] wire/README.md — # Wire Framework vX.Y.Z heading updated
+[ ] wire-web-ui/README.md — # Wire Studio vX.Y.Z heading updated
 [ ] QUICK-REFERENCE.md updated (if commands added/removed)
 
 Wire Studio
@@ -354,8 +394,10 @@ Git
 
 Post-release
 [ ] plugin.json version confirmed correct
-[ ] USER_GUIDE.md version header matches (grep "^\*\*Version\*\*" USER_GUIDE.md)
-[ ] README.md heading version matches (grep "^# Wire Framework v" README.md)
+[ ] USER_GUIDE.md **Version** header matches new version
+[ ] README.md (root) # Wire Framework heading matches new version
+[ ] wire/README.md # Wire Framework heading matches new version
+[ ] wire-web-ui/README.md # Wire Studio heading matches new version
 [ ] wire-plugin repo has non-empty README.md
 [ ] wire-plugin USER_GUIDE.md logo path is docs/images/wire_logo_transparent.png (not wire/docs/images/...)
 [ ] Remote plugin repos confirmed updated

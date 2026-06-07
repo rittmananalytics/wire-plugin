@@ -24,7 +24,7 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 - **12 release types** matching common engagement shapes: Shape Up discovery, SOP / Canonical discovery (sponsor-facing Findings Playback), full platform builds, pipeline-only, dbt development, dashboard extensions, dashboard-first rapid dev, enablement, agentic commerce storefronts, platform migration (BigQuery ↔ Snowflake), agentic data stack (governed self-service analytics with eval suite), and custom (bespoke deliverables defined from SoW documents)
 - **Two-tier engagement structure** separating long-running client context from individual scoped releases
 - **Generate / validate / review lifecycle** for every artifact: structured generation, automated checks, stakeholder sign-off
-- **19 ad-hoc development skills** that activate automatically during coding work (dbt, LookML, Dagster, Python, Fivetran, Airbyte, Coupler.io, RudderStack, Segment, Looker) without any explicit invocation
+- **21 ad-hoc development skills** that activate automatically during coding work (dbt, LookML, Dagster, Python, Fivetran, Airbyte, Coupler.io, RudderStack, Segment, Looker, Snowflake, Hightouch) without any explicit invocation
 - **Autopilot mode** for autonomous end-to-end delivery
 - **Jira and Linear integration** for issue tracking synced to the artifact lifecycle
 - **Confluence and Notion integration** for client-facing document review
@@ -61,6 +61,8 @@ Wire is distributed as a Claude Code plugin and a Gemini CLI extension. Installi
 | `coupler-io` | Managing Coupler.io dataflows (ingestion and reverse ETL) via MCP |
 | `rudderstack` | Managing RudderStack sources, destinations, and tracking plans via MCP |
 | `segment` | Working with Twilio Segment sources, destinations, and tracking plans |
+| `snowflake-development` | Writing queries, designing objects, auditing, and migrating Snowflake via MCP |
+| `hightouch` | Auditing and migrating Hightouch reverse ETL syncs via the Hightouch REST API |
 | `research` | Conducting technical research (findings auto-saved to `.wire/research/`) |
 
 **MCP servers** connect Wire to external systems. Configure them once and all commands that need them use them automatically:
@@ -76,6 +78,7 @@ Wire is distributed as a Claude Code plugin and a Gemini CLI extension. Installi
 | Airbyte | AI agent connector queries via the Airbyte Agent MCP server |
 | Coupler.io | Dataflow management, dataset inspection, and reverse ETL |
 | RudderStack | Event tracking, tracking plans, and data catalog management |
+| Snowflake | Direct SQL execution against Snowflake via the Snowflake MCP server |
 
 ---
 
@@ -135,6 +138,9 @@ claude mcp add --transport http coupler-io https://mcp.coupler.io/mcp/ \
 
 # RudderStack (OAuth via mcp-remote — requires Node.js / npx on PATH)
 claude mcp add rudderstack --command "npx -y mcp-remote https://mcp.rudderstack.com/mcp"
+
+# Snowflake (available via Claude.ai native connector, or self-hosted — see USER_GUIDE §MCP Tunnels)
+claude mcp add snowflake --command "npx -y mcp-remote https://mcp.snowflake.com/mcp"
 ```
 
 Run `/wire:mcp` at any time to check connection status, update endpoints, or force re-authentication.
