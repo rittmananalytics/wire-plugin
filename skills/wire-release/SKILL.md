@@ -287,7 +287,24 @@ After the release completes, verify:
 2. The Claude plugin remote repo (`rittmananalytics/wire-plugin`) has the new version committed.
 3. The Gemini extension remote repo (`rittmananalytics/wire-extension`) has the new version.
 4. CHANGELOG.md top entry matches the new version and today's date.
-5. USER_GUIDE.md no longer references the old version number.
+5. **USER_GUIDE.md version** — check that the version header in `USER_GUIDE.md` (root) matches:
+   ```bash
+   grep "^\*\*Version\*\*" USER_GUIDE.md
+   ```
+6. **README.md version** — check that the heading in `README.md` (root) matches:
+   ```bash
+   grep "^# Wire Framework v" README.md
+   ```
+7. **Plugin repo README** — the `rittmananalytics/wire-plugin` repo must have a non-empty `README.md`.
+   The build script generates this from the root `README.md`. If it's missing, run
+   `bash wire/scripts/build-packages.sh` and re-push.
+8. **Logo path in plugin repo** — the USER_GUIDE.md served from `rittmananalytics/wire-plugin` must
+   reference `docs/images/wire_logo_transparent.png` (not `wire/docs/images/...`). Check the first
+   line of `wire/dist/claude-plugin/USER_GUIDE.md`:
+   ```bash
+   head -1 wire/dist/claude-plugin/USER_GUIDE.md
+   ```
+   It must read `<img src="docs/images/wire_logo_transparent.png" ...>`.
 
 Report the results as a brief checklist with pass/fail for each item.
 
@@ -337,6 +354,10 @@ Git
 
 Post-release
 [ ] plugin.json version confirmed correct
+[ ] USER_GUIDE.md version header matches (grep "^\*\*Version\*\*" USER_GUIDE.md)
+[ ] README.md heading version matches (grep "^# Wire Framework v" README.md)
+[ ] wire-plugin repo has non-empty README.md
+[ ] wire-plugin USER_GUIDE.md logo path is docs/images/wire_logo_transparent.png (not wire/docs/images/...)
 [ ] Remote plugin repos confirmed updated
 [ ] CHANGELOG top entry correct
 ```
