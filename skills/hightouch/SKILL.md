@@ -55,6 +55,82 @@ Then re-run.
 
 ---
 
+### Step 0b: Git Source (Alternative)
+
+If the client uses Hightouch's Git sync feature, the full workspace configuration — sources, models, syncs, and destinations — is stored as YAML files in a GitHub repository. This is a valid alternative to the API for the structural parts of the audit.
+
+**When to use this path**: API token is unavailable or the client prefers not to issue one; the client's Hightouch workspace has Git sync configured.
+
+**How to obtain the files**: Ask the client to share access to their Hightouch config repo, or confirm it is already accessible under the delivery project's GitHub access. Then copy the Hightouch config directory into the delivery repo:
+
+```bash
+# From within the delivery repo
+git clone --depth 1 <hightouch-config-repo-url> /tmp/ht_config
+cp -r /tmp/ht_config/<config-dir> .wire/releases/$PROJECT_ID/audit/hightouch_git/
+```
+
+**Expected directory structure** (typical — confirm against the client's actual repo):
+
+```
+audit/hightouch_git/
+  sources/
+    <source-name>.yaml        # warehouse connection config
+  models/
+    <model-name>.yaml         # SQL or dbt model reference + primary key
+  syncs/
+    <sync-name>.yaml          # destination, mode, schedule, field mappings
+  destinations/
+    <destination-name>.yaml   # SaaS destination type and metadata
+```
+
+**Typical YAML shapes**:
+
+```yaml
+# models/<name>.yaml
+id: "model-456"
+name: "Contacts Model"
+source_id: "source-001"
+primary_key: "id"
+query_type: raw_sql          # or: dbt_model, table
+sql: |
+  SELECT id, email, ...
+  FROM prod.contacts
+```
+
+```yaml
+# syncs/<name>.yaml
+id: "sync-123"
+name: "Contact Sync to Salesforce"
+model_id: "model-456"
+destination_id: "dest-789"
+sync_mode: upsert
+schedule:
+  type: interval             # or: cron, triggered
+  interval: 3600
+configuration:
+  # field mappings — structure varies by destination type
+```
+
+**Fields available from Git vs API**:
+
+| Field | Git | API |
+|---|---|---|
+| sync id, name, model, destination | Yes | Yes |
+| model SQL (full) | Yes | Yes (200-char truncated via API) |
+| model query type | Yes | Yes |
+| primary key | Yes | Yes |
+| sync mode, schedule, field mappings | Yes | Yes |
+| source type (warehouse platform) | Yes | Yes |
+| destination type | Yes | Yes |
+| `status` (active / disabled / interrupted) | **No** | Yes |
+| `last_run_at`, `last_run_rows` | **No** | Yes |
+| run history | **No** | Yes |
+| Lightning engine flag | Partial (may appear in sync config) | Inferred |
+
+Runtime state — sync status, row volumes, last run timestamps — is not stored in Git. When auditing from Git files, mark those fields as `n/a (git source)` in the audit report and note that decommission decisions and volume estimates require manual input from the client.
+
+---
+
 ### Step 1: Object Hierarchy
 
 A Hightouch workspace contains:
