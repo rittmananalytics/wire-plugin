@@ -11,7 +11,7 @@
 | Metric | Value |
 |--------|-------|
 | Total objects checked | |
-| Passing (all 5 checks) | |
+| Passing (all applicable checks) | |
 | Failing (any check) | |
 | Pass rate | |
 
@@ -24,6 +24,8 @@
 | Value sampling | | |
 | Freshness | | |
 | dbt tests | | |
+| Row-level checksum | | |
+| Business invariants | | |
 
 ## Failing Objects
 

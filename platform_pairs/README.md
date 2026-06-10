@@ -31,6 +31,8 @@ wire/platform_pairs/<source>_to_<target>/
 
 `translation_guide.md` is the pattern table — short rules, one row per SQL construct. `examples/` is the library of worked translations used as few-shot context when the migration commands write code.
 
+A pair may also carry tooling references. The `snowflake_to_bigquery` pair includes `bqms_first_pass.md`, covering the BigQuery Migration Service as an automated first-pass DDL/SQL translator that `target_setup` and `dbt_migration` can optionally invoke before hand-finishing against the guide. Tooling like this is direction-specific — BQMS only translates *to* BigQuery — so it lives in the relevant pair, not the shared structure.
+
 ## Engagement-level overrides (v3.7.1+)
 
 The Wire framework's canonical pair files cover the general case. Real engagements often need bespoke translations — a particular client's JSON schema is unusual, or the legacy dbt project uses a non-standard macro library, or there's an internal convention to preserve through the migration.

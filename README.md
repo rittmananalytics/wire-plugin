@@ -1,6 +1,6 @@
 <img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
-# Wire Framework v3.7.8
+# Wire Framework v3.7.9
 
 Wire is a structured delivery system for data platform engagements, built on top of Claude Code and Gemini CLI. It encodes analytics engineering methodology as workflow specifications that the AI reads before generating anything so that output follows consistent patterns, traces back to requirements and can be validated automatically rather than having to be manually eyeballed.
 
@@ -24,7 +24,7 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 - **12 release types** matching common engagement shapes: Shape Up discovery, SOP / Canonical discovery (sponsor-facing Findings Playback), full platform builds, pipeline-only, dbt development, dashboard extensions, dashboard-first rapid dev, enablement, agentic commerce storefronts, platform migration (BigQuery ↔ Snowflake), agentic data stack (governed self-service analytics with eval suite), and custom (bespoke deliverables defined from SoW documents)
 - **Two-tier engagement structure** separating long-running client context from individual scoped releases
 - **Generate / validate / review lifecycle** for every artifact: structured generation, automated checks, stakeholder sign-off
-- **21 ad-hoc development skills** that activate automatically during coding work (dbt, LookML, Dagster, Python, Fivetran, Airbyte, Coupler.io, RudderStack, Segment, Looker, Snowflake, Hightouch) without any explicit invocation
+- **27 ad-hoc development skills** that activate automatically during coding work (dbt, LookML, Dagster, Python, Fivetran, Airbyte, Coupler.io, RudderStack, Segment, Looker, Snowflake, Hightouch, BigQuery, Cloud Run, gcloud) without any explicit invocation, plus **26 Amplitude product-analytics skills** for working with an Amplitude instance
 - **Autopilot mode** for autonomous end-to-end delivery
 - **Jira and Linear integration** for issue tracking synced to the artifact lifecycle
 - **Confluence and Notion integration** for client-facing document review
@@ -63,6 +63,12 @@ Wire is distributed as a Claude Code plugin and a Gemini CLI extension. Installi
 | `segment` | Working with Twilio Segment sources, destinations, and tracking plans |
 | `snowflake-development` | Writing queries, designing objects, auditing, and migrating Snowflake via MCP |
 | `hightouch` | Auditing and migrating Hightouch reverse ETL syncs via the Hightouch REST API |
+| `bigquery-basics` | Managing BigQuery datasets, tables, jobs, SQL, and BigQuery ML |
+| `cloud-run-basics` | Deploying Cloud Run services, jobs, and worker pools for pipelines |
+| `gcloud` | Running `gcloud` CLI commands safely, with validation and a safety denylist |
+| `google-cloud-recipe-auth` | Authenticating to Google Cloud (ADC, service identities, secure access) |
+| `google-cloud-waf-cost-optimization` | Cost-optimization review against the Google Cloud Well-Architected Framework |
+| `google-cloud-waf-security` | Security-posture review against the Google Cloud Well-Architected Framework |
 | `research` | Conducting technical research (findings auto-saved to `.wire/research/`) |
 
 **MCP servers** connect Wire to external systems. Configure them once and all commands that need them use them automatically:
@@ -79,6 +85,20 @@ Wire is distributed as a Claude Code plugin and a Gemini CLI extension. Installi
 | Coupler.io | Dataflow management, dataset inspection, and reverse ETL |
 | RudderStack | Event tracking, tracking plans, and data catalog management |
 | Snowflake | Direct SQL execution against Snowflake via the Snowflake MCP server |
+| Amplitude | Product analytics — charts, dashboards, experiments, session replay, instrumentation, and taxonomy |
+
+**Amplitude product analytics skills.** Wire bundles the [official Amplitude AI skills](https://github.com/amplitude/mcp-marketplace) (MIT licence) for administering and working with an Amplitude instance through the Amplitude MCP server. They activate automatically when relevant and cover seven areas:
+
+| Area | Skills |
+|---|---|
+| Core analytics | `create-chart`, `create-dashboard`, `analyze-chart`, `analyze-dashboard` |
+| Product insights | `analyze-experiment`, `monitor-experiments`, `analyze-feedback`, `analyze-account-health`, `discover-opportunities`, `compare-user-journeys` |
+| Session replay & debugging | `debug-replay`, `replay-ux-audit`, `diagnose-errors`, `monitor-reliability` |
+| AI agent analytics | `analyze-ai-topics`, `investigate-ai-session`, `monitor-ai-quality`, `review-agent-insights` |
+| Instrumentation | `diff-intake`, `discover-event-surfaces`, `discover-analytics-patterns`, `instrument-events`, `add-analytics-instrumentation`, `taxonomy` |
+| Briefings | `daily-brief`, `weekly-brief` |
+
+A typical instrumentation flow chains `diff-intake` → `discover-event-surfaces` → `instrument-events`, with `discover-analytics-patterns` keeping new tracking consistent with existing conventions. The `taxonomy` skill aligns naturally with Wire's existing CDP work (Segment, RudderStack).
 
 ---
 

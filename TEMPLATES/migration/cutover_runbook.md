@@ -4,7 +4,8 @@
 **Generated**: {{TODAY}}
 **Platform pair**: {{SOURCE_PLATFORM}} → {{TARGET_PLATFORM}}
 **Maintenance window**: {{MAINTENANCE_WINDOW_DATE}} at {{MAINTENANCE_WINDOW_TIME}} ({{TIMEZONE}})
-**Rollback deadline**: T+120min from maintenance window start
+**Fast-rollback deadline**: T+120min from maintenance window start (or the first production write to target, whichever comes first)
+**Rollback window**: source kept live and rollback-ready until {{DECOMMISSION_DATE}} (default 7–14 days post-cutover)
 
 ## Pre-Cutover Checklist
 
@@ -18,8 +19,10 @@ Complete all items before the maintenance window begins:
 - [ ] BI tool connection strings identified (list below)
 - [ ] Application config changes identified (list below)
 - [ ] Maintenance window communicated to all users (template below)
+- [ ] Full cutover rehearsed end-to-end on staging at production scale; step timings recorded and fed into the sequence below
 - [ ] Rollback decision owner nominated: {{ROLLBACK_OWNER}}
 - [ ] Rollback procedure rehearsed with on-call team
+- [ ] Source-platform decommission scheduled for {{DECOMMISSION_DATE}} (after rollback window closes)
 - [ ] No month-end / quarter-end reporting deadline within 48h
 
 ## Connection Strings to Update
@@ -46,7 +49,9 @@ Complete all items before the maintenance window begins:
 
 ## Rollback Procedure
 
-Valid until T+120min. After this point, rollback requires a separate remediation plan.
+The **true point of no return is the first successful production write to the target**, not the clock. Sequence smoke tests and validation to complete before any production write lands on target. Fast rollback is valid until that write, and no later than T+120min.
+
+### Fast rollback steps
 
 1. Reactivate source Fivetran connectors (RA engineer — 5 min)
 2. Revert BI tool connection strings to source (Client IT — 10 min)
@@ -55,18 +60,46 @@ Valid until T+120min. After this point, rollback requires a separate remediation
 5. Send rollback notification to users (RA lead — 10 min)
 6. Document rollback reason and schedule retrospective
 
-**Total rollback time estimate**: ~40 minutes
+**Total fast-rollback time estimate**: ~40 minutes
+
+### Decision tree — what warrants a rollback
+
+| Issue | Action |
+|-------|--------|
+| Data loss or corruption | **Roll back immediately** — no evaluation |
+| Performance regression < ~2× slower | Optimise in place (clustering, partitioning, slots); do not roll back |
+| Performance regression > ~2× slower, no quick fix | Roll back, investigate |
+| Minor data discrepancy (near accepted tolerance) | **Fix forward** — run reconciliation; do not roll back |
+| Cosmetic / non-blocking | Log, fix forward, proceed |
+
+### Rollback window
+
+Keep the source platform live and rollback-ready until {{DECOMMISSION_DATE}} (7–14 days post-cutover). T+120min ends the *fast* rollback; the window covers issues that only surface across a full business cycle (month-end close, weekly batch). Decommission the source as a distinct scheduled step only after the window closes with no rollback triggered.
 
 ## Post-Cutover Monitoring Checklist
 
-For the 48 hours following cutover:
+For the first 48 hours following cutover:
 
 - [ ] All Fivetran target connectors syncing on schedule
 - [ ] All orchestration jobs completing successfully
 - [ ] All dbt tests passing on target
 - [ ] Key business reports validated by client analysts
 - [ ] No unexpected data quality alerts
-- [ ] Source platform stable (for rollback window)
+- [ ] Source platform stable (kept live for rollback window)
+
+Across the full rollback window (until {{DECOMMISSION_DATE}}):
+
+- [ ] First month-end / weekly batch cycle completed on target without discrepancy
+- [ ] Business invariants re-checked after the first full cycle (revenue, key counts)
+- [ ] No rollback trigger raised
+
+## Source Decommission (after rollback window closes)
+
+- [ ] Rollback window elapsed with no trigger raised
+- [ ] Final snapshot / export of source taken and archived
+- [ ] Source connectors and jobs disabled
+- [ ] Source platform access revoked and resources decommissioned
+- [ ] Decommission confirmed with client sponsor
 
 ## Communication Templates
 

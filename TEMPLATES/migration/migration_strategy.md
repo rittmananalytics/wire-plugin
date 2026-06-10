@@ -78,12 +78,21 @@ See `wire/platform_pairs/{{PLATFORM_PAIR}}/type_mapping.md` for the full mapping
 **Rollback**: Not applicable — read-only phase.
 **Estimated duration**: N days to N weeks
 
-### Phase 6: Cutover
+### Phase 6: Cutover Rehearsal
 
 **Entry criterion**: Equivalency validation complete.
-**Work**: Execute cutover runbook during agreed maintenance window.
-**Rollback deadline**: [time limit after maintenance window starts]
-**Estimated duration**: 1–4 hours
+**Work**: Execute the full cutover sequence on staging at production scale. Time each step.
+**Exit criterion**: Sequence runs clean end to end, rollback proven to work, step timings recorded and fed into the runbook.
+**Rollback**: Not applicable — staging only.
+**Estimated duration**: 1 day
+
+### Phase 7: Cutover
+
+**Entry criterion**: Rehearsal passed.
+**Work**: Execute cutover runbook during agreed maintenance window. Keep source live through the rollback window afterwards.
+**Fast-rollback deadline**: [time limit after maintenance window starts — and no later than the first production write to target]
+**Rollback window**: source kept live and rollback-ready for 7–14 days; decommission as a separate scheduled step after it closes.
+**Estimated duration**: 1–4 hours cutover; rollback window 7–14 days; decommission ~1 day
 
 ## Equivalency Success Criteria
 
@@ -96,6 +105,18 @@ See `wire/platform_pairs/{{PLATFORM_PAIR}}/type_mapping.md` for the full mapping
 | Value sampling | ±1% on numeric stats | Document accepted statistical differences |
 | Freshness | Within max(sync_frequency, 24h) of source | |
 | dbt tests | 100% pass | Document known pre-existing test failures |
+| Row-level checksum | Aggregate hash match over same row set | Document accepted canonicalisation differences |
+| Business invariants | Exact for counts; ±0.01% for monetary sums | Define per invariant below |
+
+### Business Invariants
+
+Engagement-specific control totals that must reconcile between source and target. These confirm the data still *means* the same thing, not just that it moved.
+
+| Invariant | Query (both platforms) | Tolerance |
+|-----------|-----------------------|-----------|
+| Total revenue | `SELECT SUM(amount) FROM orders` | ±0.01% |
+| Active customer count | | exact |
+| | | |
 
 ### Per-Table Overrides
 
@@ -118,9 +139,11 @@ See `wire/platform_pairs/{{PLATFORM_PAIR}}/type_mapping.md` for the full mapping
 - [ ] All equivalency checks passing (or accepted differences formally agreed)
 - [ ] All orchestration jobs passing manual test runs on target
 - [ ] BI tool connections identified and change scripts prepared
+- [ ] Full cutover rehearsed on staging at production scale; timings recorded
 - [ ] Maintenance window communicated to all users
 - [ ] Client executive sponsor confirmed
-- [ ] Rollback team nominated and briefed
+- [ ] Rollback team nominated and briefed; rollback decision tree agreed
+- [ ] Rollback window agreed and source decommission scheduled after it
 - [ ] No business-critical reporting deadline within 48h of cutover
 - [ ] Monitoring alerts configured for target platform
 

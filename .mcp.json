@@ -23,6 +23,10 @@
     "airbyte": {
       "type": "url",
       "url": "https://mcp.airbyte.ai/mcp"
+    },
+    "amplitude": {
+      "type": "http",
+      "url": "https://mcp.amplitude.com/mcp"
     }
   }
 }

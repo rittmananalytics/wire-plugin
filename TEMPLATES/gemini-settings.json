@@ -8,6 +8,9 @@
     },
     "context7": {
       "httpUrl": "https://mcp.context7.com/mcp"
+    },
+    "amplitude": {
+      "httpUrl": "https://mcp.amplitude.com/mcp"
     }
   }
 }

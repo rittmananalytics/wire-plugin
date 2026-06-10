@@ -234,6 +234,7 @@ This plugin configures optional MCP servers for:
 - **Fathom** — Meeting transcript context for reviews
 - **Context7** — Library documentation lookups
 - **Notion** — Document store for client artifact review (`https://mcp.notion.com/mcp`, HTTP, OAuth)
+- **Amplitude** — Product analytics: charts, dashboards, experiments, session replay, instrumentation, and taxonomy (`https://mcp.amplitude.com/mcp`, HTTP, OAuth)
 
 Authenticate via `/mcp` in Claude Code.
 
@@ -269,7 +270,7 @@ Source: https://github.com/TomGranot/hubspot-admin-skills (MIT licence)
 /wire:mcp auth <server>    — Guided re-authentication walkthrough with exact CLI commands
 ```
 
-Server keys: `atlassian`, `linear`, `fathom`, `context7`, `notion`.
+Server keys: `atlassian`, `linear`, `fathom`, `context7`, `notion`, `amplitude`.
 
 ## Issue Tracking
 
