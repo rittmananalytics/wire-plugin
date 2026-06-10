@@ -205,6 +205,35 @@ Commands for `project_type: agentic_commerce` releases — building AI-powered e
 
 **Dependency order**: `ac_storefront` must be approved before all other `ac_*` features. Features can otherwise be developed in parallel, though `ac_personalisation` enriches `ac_conversational_assistant` and `ac_semantic_search` when completed.
 
+### Droughty commands
+
+Commands for `project_type: droughty` releases and for the optional Droughty phase within any delivery release. Droughty is a bottom-up schema-introspection toolkit: it reads the live warehouse and generates LookML base views, dbt tests, DBML diagrams, AI field descriptions, and data quality reports. It complements Wire's top-down document-driven workflow.
+
+```
+/wire:droughty-setup <release>       — Install Droughty (pinned version), generate profile.yaml
+                                       and droughty_project.yaml from Wire context
+/wire:droughty-introspect <release>  — Schema inventory: tables, columns, PK/FK coverage report
+/wire:droughty-dbml <release>        — DBML entity-relationship diagram from live warehouse schema
+/wire:droughty-docs <release>        — AI-generated field descriptions for all columns (OpenAI)
+/wire:droughty-qa <release>          — LangGraph data quality agent report (OpenAI)
+/wire:droughty-stage <release>       — Staging SQL + sources.yml from a BigQuery dataset (BigQuery only)
+/wire:droughty-dbt-tests <release>   — Pattern-based schema.yml tests from deployed table schema
+/wire:droughty-lookml <release>      — Base LookML views, explores, and measures from deployed tables
+/wire:droughty-generate <release>    — Full Droughty phase in sequence (mode-aware: discovery or post-dbt)
+```
+
+**Droughty spec location**: `wire/specs/droughty/`
+
+**Pinned version**: `wire/droughty/pinned_version.txt` — Wire repo owners update this file to refresh the pinned version; consultants re-run `/wire:droughty-setup --force` to install the new version.
+
+**Droughty release type** (`release_type: droughty`): For engagements where the primary goal is schema introspection or warehouse audit. Two sub-modes:
+- **Discovery / audit** — maps an existing warehouse: `introspect → dbml → docs → qa`. No dbt deployment needed. Use as a standalone release or as discovery evidence feeding into `problem-definition-generate`.
+- **Post-dbt deploy** — generates the base layer from deployed dbt models: `dbt-tests → stage → lookml → docs → qa`. Precedes `/wire:semantic_layer-generate`, which extends the base views with business logic.
+
+**LookML file organisation**: Droughty writes base views to `views/generated/`. Wire extensions (explores, refinements, business logic) go in `views/extended/` using LookML refinements. Never hand-edit `views/generated/` — it is regenerated on each `/wire:droughty-lookml` run.
+
+**Droughty as an optional phase in delivery releases**: Add a Droughty release to any `full_platform` or `dbt_development` engagement by running `/wire:new` and selecting "Droughty" as the release type, or invoke the commands directly within any release after `dbt run`.
+
 ### Migration
 
 ```
@@ -322,7 +351,7 @@ This command checks prerequisites (Node.js 18+), downloads and builds Wire Studi
 Every Wire engagement uses a two-tier structure:
 
 - **Engagement level** (`engagement/`): SOW, call transcripts, stakeholders, current-state architecture — context that belongs to the whole engagement, not any specific release.
-- **Release level** (`releases/`): Scoped, time-boxed delivery units. Release types: `discovery`, `sop_discovery`, `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `dashboard_first`, `enablement`, `agentic_commerce`.
+- **Release level** (`releases/`): Scoped, time-boxed delivery units. Release types: `discovery`, `sop_discovery`, `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `dashboard_first`, `enablement`, `agentic_commerce`, `droughty`.
 
 ### Repo mode options
 

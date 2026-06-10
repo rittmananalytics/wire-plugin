@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.7.9 | **Date**: June 2026
+**Version**: 3.8.0 | **Date**: June 2026
 
 ---
 
@@ -28,17 +28,18 @@
 16. [Running an Agentic Commerce Release](#16-running-an-agentic-commerce-release)
 17. [Running a Platform Migration Release](#17-running-a-platform-migration-release)
 18. [Running an Agentic Data Stack Release](#18-running-an-agentic-data-stack-release)
-19. [Running a Custom Release](#19-running-a-custom-release)
-20. [Worked Example: Barton Peveril Live Pastoral Analytics](#20-worked-example-barton-peveril-live-pastoral-analytics)
-21. [Wire Autopilot: Autonomous Execution](#21-wire-autopilot-autonomous-execution)
-22. [Wire Studio: Web-Based Interface](#22-wire-studio-web-based-interface)
-23. [Wire Framework VS Code Extension](#23-wire-framework-vs-code-extension)
-24. [Issue Tracking: Jira and Linear](#24-issue-tracking-jira-and-linear)
-25. [Document Store: Confluence and Notion](#25-document-store-confluence-and-notion)
-26. [Extending and Customising the Framework](#26-extending-and-customising-the-framework)
-27. [FAQ](#27-faq)
-28. [Troubleshooting](#28-troubleshooting)
-29. [Framework Management Commands](#29-framework-management-commands)
+19. [Running a Droughty Release](#19-running-a-droughty-release)
+20. [Running a Custom Release](#20-running-a-custom-release)
+21. [Worked Example: Barton Peveril Live Pastoral Analytics](#21-worked-example-barton-peveril-live-pastoral-analytics)
+22. [Wire Autopilot: Autonomous Execution](#22-wire-autopilot-autonomous-execution)
+23. [Wire Studio: Web-Based Interface](#23-wire-studio-web-based-interface)
+24. [Wire Framework VS Code Extension](#24-wire-framework-vs-code-extension)
+25. [Issue Tracking: Jira and Linear](#25-issue-tracking-jira-and-linear)
+26. [Document Store: Confluence and Notion](#26-document-store-confluence-and-notion)
+27. [Extending and Customising the Framework](#27-extending-and-customising-the-framework)
+28. [FAQ](#28-faq)
+29. [Troubleshooting](#29-troubleshooting)
+30. [Framework Management Commands](#30-framework-management-commands)
     - [`/wire:playbook-generate`](#wireplaybook-generate--delivery-playbook)
 
 ---
@@ -239,7 +240,7 @@ This enters Plan Mode, reads the current release state, and proposes a 3–5 ste
 
 ## 4. Release Types
 
-The framework encodes delivery methodology as eleven release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
+The framework encodes delivery methodology as twelve release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
 
 | Type | `release_type` | Scope | Typical Duration | Artifacts in Scope |
 |------|----------------|-------|------------------|--------------------|
@@ -254,6 +255,7 @@ The framework encodes delivery methodology as eleven release types, each definin
 | **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
 | **Platform Migration** | `platform_migration` | Full lifecycle migration of a data platform from one warehouse stack to another. Covers source platform audit, migration inventory, strategy, parallel platform setup, batched dbt translation, equivalency validation loop, and cutover | 4–16 weeks | ingestion_audit, db_object_audit, security_audit, dbt_audit, orchestration_audit, migration_inventory, lineage_view, migration_strategy, target_setup, ingestion_migration, dbt_migration, orchestration_migration, equivalency_validation, cutover, migration_report |
 | **Agentic Data Stack** | `agentic_data_stack` | Overlay for an existing data platform (warehouse + dbt + BI tool). Audits governance maturity, extends the semantic layer, generates per-domain knowledge skill files collocated with dbt models, delivers an installable agentic data stack skill with a CI-wired eval suite. Does not build the underlying pipeline or dbt project — use `full_platform` or `pipeline_only` first if the platform doesn't yet exist. | 4–6 weeks | dataset_audit, metric_audit, query_audit, governance_design, semantic_layer_design, canonical_models, lookml_views (Looker only), semantic_layer, knowledge_skill, agent_config, eval_suite, adversarial_config, launch_gate, enablement |
+| **Droughty** | `droughty` | Schema introspection and base-layer generation using the Droughty toolkit. Two modes: **discovery/audit** (maps an existing warehouse — ERD, field docs, QA report — no dbt deployment needed) and **post-dbt** (generates staging SQL, pattern-based schema tests, and base LookML views from deployed dbt tables). Can also be added as an optional phase within any `full_platform` or `dbt_development` release. | 1–3 days | droughty_setup, droughty_introspect, droughty_dbml, droughty_docs, droughty_qa, droughty_stage, droughty_dbt_tests, droughty_lookml |
 | **Custom** | `custom` | Bespoke scope derived from SoW or project documents — Wire analyses your docs and generates project-scoped specs for deliverables that don't map to any standard type | Varies (typically 2–6 weeks) | Derived from source documents by `/wire:custom-release-define` |
 
 ### Choosing the right release type
@@ -269,6 +271,8 @@ The framework encodes delivery methodology as eleven release types, each definin
 - **Building an AI-powered ecommerce storefront**: **Agentic Commerce**
 - **Migrating an existing data platform from BigQuery to Snowflake or Snowflake to BigQuery**: **Platform Migration** — five-zone source audit → migration inventory → strategy → target setup → batched dbt translation → equivalency validation loop → cutover
 - **Client wants an AI that answers business questions from their data warehouse accurately and reliably**: **Agentic Data Stack** — three-phase audit → governance and semantic layer design → build → eval suite with per-domain accuracy gates → installable agentic data stack skill
+- **Need to map an existing warehouse quickly — ERD, field descriptions, data quality report — before starting design work**: **Droughty** (discovery/audit mode)
+- **dbt models are deployed and you need base LookML views, pattern-based schema tests, and staging SQL generated from the live schema**: **Droughty** (post-dbt mode) — or add a Droughty release alongside any `full_platform` or `dbt_development` release
 - **Engagement with bespoke deliverables — architecture blueprints, advisory reports, decision logs, PoC productionisation plans — that don't fit any standard type**: **Custom**
 
 **Discovery (Shape Up) vs Discovery (SOP / Canonical)**: Use Shape Up when the scope is fuzzy but the problem domain is understood and you can shape a solution in a week or two. Use SOP / Canonical when you genuinely do not yet know what to build, stakeholder alignment is low, or this is the first analytics engagement at the client — it runs a formal structured discovery and culminates in a sponsor-facing Findings Playback slide deck that must be signed off before any delivery work begins.
@@ -2252,7 +2256,187 @@ At the end of the engagement, the client has:
 
 ---
 
-## 19. Running a Custom Release
+## 19. Running a Droughty Release
+
+> **Already a Droughty user?** See [USER_GUIDE_droughty.md](USER_GUIDE_droughty.md) for a guide specifically aimed at existing Droughty users — covering how Wire's commands map to the standalone CLI, configuration management, and worked examples of integrating Droughty into other Wire release types.
+
+Use the Droughty release type when the engagement begins with an existing data warehouse and the immediate goal is to understand what's in it, generate documentation, or produce a base semantic layer — before (or instead of) writing dbt models from scratch.
+
+Droughty is a bottom-up schema-introspection toolkit. It reads the live warehouse and generates four categories of artefact: DBML entity-relationship diagrams, AI-generated field descriptions, LangGraph data-quality reports, and base LookML views. Wire wraps these into a structured delivery phase with its own commands, status tracking, and integration with the broader delivery lifecycle.
+
+**Two modes:**
+
+- **Discovery / audit mode** — maps an existing warehouse with no dbt requirement. Use this at the start of an engagement, or when auditing a client's existing analytics estate. Produces schema inventory, DBML, field docs, and QA report.
+- **Post-dbt mode** — generates staging SQL, dbt schema tests, and LookML base views from already-deployed dbt models. Use this after `dbt run` succeeds in a full-platform or dbt-development engagement. Can also be added as an optional phase to any standard release type.
+
+### Prerequisites
+
+- Python 3.9–3.12.3 on the consultant's machine
+- Access to the target warehouse (BigQuery project and dataset, or Snowflake account credentials)
+- OpenAI API key (required for `/wire:droughty-docs` and `/wire:droughty-qa` only)
+- For post-dbt mode: a successfully deployed dbt project
+
+### Starting a Droughty Engagement
+
+```
+/wire:new
+```
+
+When prompted for release type, select **droughty**. Wire will ask two follow-up questions:
+
+1. **Warehouse**: BigQuery or Snowflake
+2. **Context**: discovery/audit (no dbt needed) or post-dbt (dbt already deployed)
+
+Wire creates the standard folder structure under `.wire/releases/<release>/`, with an additional `artifacts/droughty/` directory for generated artefacts and a `field_descriptions/` subdirectory.
+
+### Discovery / Audit Mode Walkthrough
+
+**Step 1 — Set up Droughty**
+
+```
+/wire:droughty-setup <release>
+```
+
+This installs the pinned Droughty version (`pip install "droughty==<pinned-version>"`), generates `~/.droughty/profile.yaml` with your warehouse credentials, and creates `droughty_project.yaml` at the git root pointing output paths to Wire's artefact directories. The profile file is not committed to git — it stays local to the consultant's machine.
+
+For BigQuery, Wire derives the project and dataset from the MCP configuration. For Snowflake, it prompts for account, username, password, warehouse, database, schema, and role.
+
+**Step 2 — Introspect the schema**
+
+```
+/wire:droughty-introspect <release>
+```
+
+This is a Wire-level step (not a Droughty CLI command). It queries `INFORMATION_SCHEMA` directly and produces a `schema_inventory.md` report — table counts per schema, column counts, estimated PK/FK coverage, and tables without descriptions. Use this to scope the rest of the Droughty phase and identify which schemas need the most attention.
+
+**Step 3 — Generate the DBML diagram**
+
+```
+/wire:droughty-dbml <release>
+```
+
+Runs `droughty dbml` and stores the `.dbml` file in the artefacts directory. The DBML captures entity relationships across all schemas in scope and can be rendered with any DBML-compatible viewer (dbdiagram.io, DataGrip, etc.).
+
+**Step 4 — Generate field descriptions**
+
+```
+/wire:droughty-docs <release>
+```
+
+Requires an OpenAI API key in `profile.yaml`. Sends table and column metadata to GPT-4o and writes AI-generated field descriptions back to `field_descriptions/`. For schemas with more than 200 tables, Wire prompts to confirm scope before proceeding — large schemas can take 30+ minutes and cost meaningful OpenAI tokens.
+
+**Step 5 — Run the data quality agent**
+
+```
+/wire:droughty-qa <release>
+```
+
+Runs the LangGraph QA agent, which executes live warehouse queries to surface data quality issues: nulls in expected-not-null columns, referential integrity gaps, value distribution outliers. **This step is non-deterministic** — the agent chooses which queries to run based on the schema. Different runs on the same schema may surface different issues. Review all output carefully before presenting to a client.
+
+**Step 6 — Feed artefacts forward**
+
+At this point you have a schema inventory, DBML diagram, field descriptions, and QA report. These feed directly into the Wire problem-definition phase:
+
+```
+/wire:problem-definition-generate <project_id>
+```
+
+The problem-definition spec will read the schema inventory and QA report as upstream context.
+
+### Post-dbt Mode Walkthrough
+
+This mode assumes dbt models have already been built and deployed to the warehouse. Run setup first if not already done:
+
+```
+/wire:droughty-setup <release>
+```
+
+**Step 1 — Generate staging SQL and sources.yml**
+
+```
+/wire:droughty-stage <release>
+```
+
+BigQuery only. Runs `droughty stage -p <project> -d <dataset>` and writes staging SQL files and a `sources.yml` to `models/staging/`. If a `sources.yml` already exists, Wire presents three options: merge (add new entries only), overwrite (replace entirely), or diff (show differences and decide). Wire-authored entries take priority in a merge.
+
+**Step 2 — Generate dbt schema tests**
+
+```
+/wire:droughty-dbt-tests <release>
+```
+
+Confirms that dbt has been deployed before proceeding. Runs `droughty dbt` to generate pattern-based schema tests (`not_null`, `unique`, `accepted_values` where column naming conventions suggest it) and writes them to `schema.yml`. If `schema.yml` already exists, Wire merges new tests in — existing Wire-authored tests are preserved by default.
+
+**Step 3 — Generate base LookML views**
+
+```
+/wire:droughty-lookml <release>
+```
+
+Confirms dbt has been deployed. Runs `droughty lookml` and writes base views to `lookml/views/generated/`. Wire then creates `lookml/views/extended/` for business-logic extensions. **Never hand-edit files in `views/generated/`** — each `/wire:droughty-lookml` run regenerates them. All business logic goes in `views/extended/` using LookML refinements:
+
+```lookml
+view: +orders {
+  dimension: order_value_band {
+    type: string
+    sql: CASE WHEN ${order_total} < 100 THEN 'low'
+              WHEN ${order_total} < 500 THEN 'medium'
+              ELSE 'high' END ;;
+  }
+}
+```
+
+**Steps 4–5 — Docs and QA**
+
+```
+/wire:droughty-docs <release>
+/wire:droughty-qa <release>
+```
+
+Same as discovery mode. At this point the semantic layer work continues with:
+
+```
+/wire:semantic_layer-generate <project_id>
+```
+
+which extends the Droughty base views with explores, measures, and business logic.
+
+### Running the Full Phase in One Command
+
+```
+/wire:droughty-generate <release>
+```
+
+This orchestrates the full sequence based on the context set in `status.md`. Before executing, it shows the planned steps and asks for confirmation. Modes:
+
+- **discovery**: setup → introspect → dbml → docs → qa
+- **post-dbt**: setup → dbt-tests → stage → lookml → docs → qa
+- **full**: all steps in order
+
+### Keeping the Droughty Version Current
+
+The installed version is pinned in `wire/droughty/pinned_version.txt`. Consultants always install from that pin. If a new Droughty version is released and you want to update the pin:
+
+```bash
+bash wire/droughty/refresh_version.sh           # updates pinned_version.txt
+bash wire/droughty/refresh_version.sh --commit  # updates and commits
+```
+
+Consultants then pull the updated repo and re-run `/wire:droughty-setup --force` to install the new version.
+
+### Common Issues
+
+**`droughty: command not found`** — run `/wire:droughty-setup <release>` first. Python 3.9–3.12.3 is required.
+
+**`No tables found`** — check that the `schemas:` list in `~/.droughty/profile.yaml` matches the actual schema names in the warehouse. BigQuery schema names are case-sensitive.
+
+**`droughty qa` runs for a very long time** — the QA agent executes live queries; large schemas (100+ tables) can take 20–30 minutes. Narrow the `schemas:` list in `profile.yaml` to the most relevant schemas.
+
+**`OpenAI API error`** — check that `openai_api_key` is set in `profile.yaml` and the key has an active billing method.
+
+---
+
+## 20. Running a Custom Release
 
 Use the Custom release type when an engagement has bespoke deliverables that don't map cleanly to any standard Wire release type — architecture advisory reports, technology decision logs, PoC productionisation blueprints, MCP/AI integration roadmaps, compliance reviews, data literacy programmes, or any fixed-scope engagement where the deliverables are defined by the SoW rather than by a standard delivery pattern.
 
@@ -2337,7 +2521,7 @@ This generalises the spec (removing client-specific details), drafts a GitHub is
 
 ---
 
-## 20. Worked Example: Barton Peveril Live Pastoral Analytics
+## 21. Worked Example: Barton Peveril Live Pastoral Analytics
 
 This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step. This engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined), so it starts with the full_platform delivery release.
 
@@ -2610,7 +2794,7 @@ UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
 
 ---
 
-## 21. Wire Autopilot: Autonomous Execution
+## 22. Wire Autopilot: Autonomous Execution
 
 Wire Autopilot takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
 
@@ -3070,7 +3254,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ---
 
-## 22. Wire Studio: Web-Based Interface
+## 23. Wire Studio: Web-Based Interface
 
 > **Status: Active** — Wire Studio v3.4.17 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
@@ -3545,7 +3729,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 23. Wire Framework VS Code Extension
+## 24. Wire Framework VS Code Extension
 
 The Wire Framework VS Code extension brings the delivery lifecycle directly into your editor. Instead of switching between the terminal, file explorer, and Claude Code to track progress, run commands, and review artifacts, you can do all of it from the VS Code sidebar.
 
@@ -3644,7 +3828,7 @@ For the full guide including keyboard reference and troubleshooting, see [`wire-
 
 ---
 
-## 24. Issue Tracking: Jira and Linear
+## 25. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -3721,7 +3905,7 @@ linear:
 
 ---
 
-## 25. Document Store: Confluence and Notion
+## 26. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -3804,7 +3988,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 26. Extending and Customising the Framework
+## 27. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -3962,7 +4146,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 27. FAQ
+## 28. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -4230,7 +4414,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 28. Troubleshooting
+## 29. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -4277,7 +4461,7 @@ Just send a message in the repo. The engagement-context skill fires automaticall
 
 ---
 
-## 29. Framework Management Commands
+## 30. Framework Management Commands
 
 Wire includes several commands for managing the framework itself, rather than delivery work.
 
