@@ -9,8 +9,10 @@ These regex and grep patterns identify BigQuery-specific SQL features in dbt mod
 | Tag | Pattern | Description |
 |-----|---------|-------------|
 | `unnest` | `\bUNNEST\s*\(` | Array expansion using UNNEST |
+| `in_unnest` | `\bIN\s+UNNEST\s*\(` | Array-membership join/filter — translates to Snowflake `ARRAY_CONTAINS(value::variant, array)`, args reversed (see example 05) |
 | `struct_literal` | `\bSTRUCT\s*\(` | Struct constructor |
 | `struct_dot_access` | `[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_]` | Multi-level dot notation (potential struct path access — review context) |
+| `array_agg` | `\bARRAY_AGG\s*\(` | ARRAY_AGG — on Snowflake drop `IGNORE NULLS` (no-op); a `STRUCT` array becomes `ARRAY_AGG(OBJECT_CONSTRUCT(...))` (see example 06) |
 | `array_agg_ordered` | `ARRAY_AGG\s*\([^)]+\)\s+WITHIN\|ARRAY_AGG\s*\([^)]+ORDER\s+BY` | Ordered ARRAY_AGG |
 | `json_extract` | `\bJSON_EXTRACT\s*\(\|JSON_EXTRACT_SCALAR\s*\(` | JSON extraction functions |
 | `json_value` | `\bJSON_VALUE\s*\(\|JSON_QUERY\s*\(` | JSON value/query functions |

@@ -10,6 +10,8 @@ These regex and grep patterns identify Snowflake-specific SQL features in dbt mo
 |-----|---------|-------------|
 | `flatten` | `\bFLATTEN\s*\(` | FLATTEN function for array expansion |
 | `lateral_flatten` | `LATERAL\s+FLATTEN\s*\(` | LATERAL FLATTEN (most common form) |
+| `flatten_join` | `TABLE\s*\(\s*FLATTEN\s*\(` | FLATTEN table-function form — commonly a pre-flatten CTE for an array-membership join (becomes `IN UNNEST`; see example 04) |
+| `array_agg` | `\bARRAY_AGG\s*\(` | ARRAY_AGG — review NULL handling; BigQuery needs `IGNORE NULLS` to match Snowflake's default and avoid a runtime error (see example 05) |
 | `parse_json` | `\bPARSE_JSON\s*\(` | JSON string parsing |
 | `get_path` | `\bGET_PATH\s*\(\|::VARIANT\b` | VARIANT path access via GET_PATH |
 | `colon_path` | `[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_]` | Colon path notation for VARIANT/OBJECT access |
@@ -53,10 +55,15 @@ These regex and grep patterns identify Snowflake-specific SQL features in dbt mo
 
 Apply each pattern as a case-insensitive grep against each model's SQL file. Store results as comma-separated tags in `dbt_audit.csv` `feature_tags` column.
 
+Each pattern is a single-construct, line-based match — they do not span lines. Some patterns are only meaningful in combination: a model tagged both `array_agg` and `parse_json` is building a record array as JSON (`ARRAY_AGG(PARSE_JSON(...))`), which translates to a native BigQuery `ARRAY_AGG(STRUCT(...))` — see example 05. Read co-occurring tags together when selecting translation patterns.
+
 ## Complexity Contribution
 
 - `copy_into`, `stage_ref`, `dynamic_table`: immediately Complex (requires architectural decision — no SQL equivalent in BQ)
 - `lateral_flatten`, `flatten`, `parse_json`, `colon_path`: contribute to Moderate → Complex threshold
 - `object_construct`, `array_construct`, `variant_type`, `object_type`: Moderate (semi-structured data requires type decision)
 - `iff`, `zeroifnull`, `nullifzero`, `nvl`, `dateadd`, `datediff`, `listagg`: Simple → Moderate (mechanical replacements)
+- `flatten_join`: Moderate (structural rewrite — the join shape changes, not just function names; see example 04)
+- `array_agg` co-occurring with `parse_json`: Moderate — a record array built as JSON (`ARRAY_AGG(PARSE_JSON(...))`) that becomes a native `ARRAY_AGG(STRUCT(...))` on BigQuery (see example 05)
+- `array_agg`: Simple, but a silent-failure flag — a bare port drops `IGNORE NULLS` and fails at runtime on the first NULL
 - `account_usage`, `show_command`: flag separately — these are meta-queries, not data transformation models

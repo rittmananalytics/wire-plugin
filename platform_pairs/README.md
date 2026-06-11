@@ -31,7 +31,13 @@ wire/platform_pairs/<source>_to_<target>/
 
 `translation_guide.md` is the pattern table — short rules, one row per SQL construct. `examples/` is the library of worked translations used as few-shot context when the migration commands write code.
 
+A pair may also carry a `translation_reference.md` — an exhaustive companion to the quick `translation_guide.md` pattern table, covering dialect fundamentals, silent-behaviour-change cases, semi-structured data, and a gotcha checklist. The `snowflake_to_bigquery` pair has one. The migration commands read the quick guide and examples first, and reach into the reference for the ⚠ cases. Where the reference and the quick guide disagree on a detail, the reference wins — it carries the careful version.
+
 A pair may also carry tooling references. The `snowflake_to_bigquery` pair includes `bqms_first_pass.md`, covering the BigQuery Migration Service as an automated first-pass DDL/SQL translator that `target_setup` and `dbt_migration` can optionally invoke before hand-finishing against the guide. Tooling like this is direction-specific — BQMS only translates *to* BigQuery — so it lives in the relevant pair, not the shared structure.
+
+## Shared, direction-agnostic guidance
+
+`dbt_neutral_translation.md` sits at the root of `platform_pairs/`, not inside a pair, because its guidance applies in every direction. It covers *where* a dialect difference should live — the macro-first hierarchy (dbt built-in → `dbt_utils` → dispatched macro → `target.type` as a last resort), the `dbt.*` cross-database built-in reference, portable incremental and profile patterns, and the equivalence-testing backbone the `equivalency-*` commands follow. The per-pair `translation_guide.md` files tell you what a construct *becomes*; this shared doc tells you how to keep one dbt project maintainable while it runs on both warehouses through a parallel-run window.
 
 ## Engagement-level overrides (v3.7.1+)
 

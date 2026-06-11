@@ -16,6 +16,10 @@ These examples are used as few-shot context by `/wire:dbt_migration-generate` wh
 | 02 | `STRUCT(...)` + dot-notation field access → `OBJECT_CONSTRUCT` + colon-notation | Nested record types, especially from JSON ingestion |
 | 03 | `TIMESTAMP_DIFF` / `DATE_ADD` / `INTERVAL` → `TIMESTAMPDIFF` / `DATEADD` | Any date or timestamp arithmetic — high frequency |
 | 04 | `ML.PREDICT(MODEL ...)` → no direct equivalent | Models using BigQuery ML — requires architectural decision |
+| 05 | `JOIN … ON x IN UNNEST(array)` → `ARRAY_CONTAINS(x::variant, array)` | Joining a fact to a dimension that stores an array of ids (e.g. merged-entity id lists) |
+| 06 | `ARRAY_AGG(… IGNORE NULLS)` and native `STRUCT` arrays → `ARRAY_AGG(...)` and `OBJECT_CONSTRUCT` | Any aggregation rolling rows up into arrays — scalar or record |
+
+For projects that must run on both warehouses, see `wire/platform_pairs/dbt_neutral_translation.md` — the macro-first hierarchy these examples point back to.
 
 ## Adding new examples
 
