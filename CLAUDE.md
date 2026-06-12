@@ -48,7 +48,7 @@ All commands are available after installing and restarting Claude Code. Commands
 /wire:session:start      — Start a focused working session on any release
 /wire:session:end        — Close a session and record what was accomplished
 /wire:autopilot [sow]    — Autonomous end-to-end engagement: discovery sprint → all delivery releases
-/wire:orchestrate <release>  — Decompose pending work and dispatch to specialist managed agents
+/wire:delegate <release>     — Decompose pending work and dispatch to specialist local subagents
 /wire:status <release>   — Check release status
 ```
 
@@ -344,19 +344,20 @@ If the release folder is omitted, the command infers it from the most recently m
 
 ## Wire Agents
 
-Wire Agents (v3.9+) replaces the single-agent pattern with eight named specialist agents orchestrated by `/wire:orchestrate`. Each agent has a focused role, a bounded spec scope, and explicit out-of-scope declarations.
+Wire Agents (v3.9+) replaces the single-agent pattern with twelve named specialist agents dispatched by `/wire:delegate`. Each agent has a focused role, a bounded spec scope, and explicit out-of-scope declarations. Agents run locally as Claude Code subagents — no separate API key or managed agent service required.
 
-**The eight agents**: `dbt-developer`, `lookml-developer`, `dashboard-prototyper`, `migration-auditor`, `qa-agent`, `data-quality-agent`, `stakeholder-interviewer`, `playbook-generator`.
+**The twelve agents**: `discovery-analyst`, `data-designer`, `pipeline-engineer`, `dbt-developer`, `semantic-layer-developer`, `orchestration-engineer`, `data-quality-engineer`, `migration-specialist`, `delivery-lead`, `agentic-data-stack-developer`, `agentic-commerce-developer`, `qa-agent`.
 
 Agent definitions live in `wire/agents/<name>/AGENT.md` (bundled into the plugin). Each definition sets the agent's role, Wire specs it runs, skills it loads, MCP requirements, and output contract.
 
-**Orchestration commands**:
-- `/wire:agents-setup <engagement-folder>` — register agents with the Anthropic Managed Agents API; creates `.wire/engagement/agents.json`
-- `/wire:orchestrate <release-folder>` — read `status.md`, compute parallel/sequential execution plan, dispatch to specialist sessions
+**Auto-delegation**: individual generate/validate commands automatically delegate to the appropriate specialist subagent when the agent definition is available. Review commands always stay in the main session.
 
-**How `/wire:autopilot` relates**: autopilot calls `/wire:orchestrate` internally when agent mode is configured. Run `/wire:orchestrate` directly to review and confirm the plan before sessions start.
+**Batch delegation**:
+- `/wire:delegate <release-folder>` — read `status.md`, compute parallel/sequential execution plan, dispatch to specialist local subagents
 
-**Review gates remain human-in-the-loop**: orchestration pauses before every `*-review` step. Run the review command, approve, then re-run `/wire:orchestrate` to continue.
+**How `/wire:autopilot` relates**: autopilot calls `/wire:delegate` internally. Run `/wire:delegate` directly to review and confirm the plan before subagents start.
+
+**Review gates remain human-in-the-loop**: delegation pauses before every `*-review` step. Run the review command, approve, then re-run `/wire:delegate` to continue.
 
 Full documentation: `wire/docs/AGENTS.md`
 
