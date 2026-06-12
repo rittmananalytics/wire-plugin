@@ -237,6 +237,12 @@ Check by inspecting `configuration.syncEngineType` or asking the user — the AP
 
 ### Step 4: Key Migration Considerations
 
+**Prefer a parallel workspace over an in-place re-point.** On plans that support multiple workspaces (Business and above), each workspace is an isolated environment with its own sources, destinations, models, audiences, syncs, users, settings, and GitHub integration — and GitHub Sync is configured per workspace, so a repository reflects one workspace's config, not the whole org. The safer migration topology is therefore: clone the existing Hightouch config repo, create a new workspace for the target warehouse, point its GitHub Sync at the clone, add the target-warehouse source connection, translate the model SQL, and deploy into the new workspace — leaving the production source-backed workspace running and unmodified. Fall back to an in-place re-point (PATCH the existing syncs' `sourceId`) only when the plan does not support a second workspace.
+
+**Validate by preview, with syncs disabled.** There is no need to enable destination syncs to validate a migration — and it is safer not to, since enabling them writes to live downstream systems. Keep destination connections present but disabled and validate with Hightouch's sync previews and record-level inspection. Compare model outputs (row counts, primary-key uniqueness, aggregates, samples) and audience sizes against a **frozen source baseline** (not moving production, which keeps ingesting and rebuilding). Only enable syncs after business sign-off.
+
+**Review sync-level logic, not just model output.** A matching model output does not prove a matching sync. Transformation logic also lives on the sync — field mappings, computed fields, sync filters, match rules and identity resolution, and audience inclusion/exclusion. Review and test these per sync; they are a common source of silent divergence.
+
 **Source re-point order matters.** Hightouch has one source connection per workspace (or multiple). If the migration cuts the source over in phases, syncs that query tables not yet migrated will fail. The sync cutover order must respect the warehouse migration phases.
 
 **Lightning schema recreation.** If any syncs use the Lightning engine, the target warehouse must have `hightouch_planner` and `hightouch_audit` schemas provisioned before syncs are enabled. Hightouch provisions them automatically on first sync run, but they must exist under the new service account's permissions.
