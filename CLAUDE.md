@@ -48,6 +48,7 @@ All commands are available after installing and restarting Claude Code. Commands
 /wire:session:start      — Start a focused working session on any release
 /wire:session:end        — Close a session and record what was accomplished
 /wire:autopilot [sow]    — Autonomous end-to-end engagement: discovery sprint → all delivery releases
+/wire:orchestrate <release>  — Decompose pending work and dispatch to specialist managed agents
 /wire:status <release>   — Check release status
 ```
 
@@ -340,6 +341,24 @@ To create a PR pre-populated from session artifacts:
 - `/wire:utils-pr-create [release-folder]` — reads `execution_log.md` and `status.md` to fill in the PR body, then calls `gh pr create`
 
 If the release folder is omitted, the command infers it from the most recently modified `status.md`.
+
+## Wire Agents
+
+Wire Agents (v3.9+) replaces the single-agent pattern with eight named specialist agents orchestrated by `/wire:orchestrate`. Each agent has a focused role, a bounded spec scope, and explicit out-of-scope declarations.
+
+**The eight agents**: `dbt-developer`, `lookml-developer`, `dashboard-prototyper`, `migration-auditor`, `qa-agent`, `data-quality-agent`, `stakeholder-interviewer`, `playbook-generator`.
+
+Agent definitions live in `wire/agents/<name>/AGENT.md` (bundled into the plugin). Each definition sets the agent's role, Wire specs it runs, skills it loads, MCP requirements, and output contract.
+
+**Orchestration commands**:
+- `/wire:agents-setup <engagement-folder>` — register agents with the Anthropic Managed Agents API; creates `.wire/engagement/agents.json`
+- `/wire:orchestrate <release-folder>` — read `status.md`, compute parallel/sequential execution plan, dispatch to specialist sessions
+
+**How `/wire:autopilot` relates**: autopilot calls `/wire:orchestrate` internally when agent mode is configured. Run `/wire:orchestrate` directly to review and confirm the plan before sessions start.
+
+**Review gates remain human-in-the-loop**: orchestration pauses before every `*-review` step. Run the review command, approve, then re-run `/wire:orchestrate` to continue.
+
+Full documentation: `wire/docs/AGENTS.md`
 
 ## User Guide
 

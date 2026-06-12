@@ -357,6 +357,14 @@ artifacts:
     generated_files: []
     revision_history: []
 
+agents:
+  mode: null              # null | local | managed
+  coordinator_session: null
+  last_orchestrated: null
+  paused_at: null
+  active_sessions: []
+  completed_sessions: []
+
 notes:
   - "Project created: {{CREATED_DATE}}"
 
