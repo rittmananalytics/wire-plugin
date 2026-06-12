@@ -332,6 +332,15 @@ Three utility commands support document store operations:
 - `utils/docstore-sync` — Sync a generated artifact to the document store
 - `utils/docstore-fetch` — Fetch document store content and comments for review
 
+## Pull Request Workflow
+
+Every Wire engagement repo includes a `.github/pull_request_template.md` scaffolded by `/wire:new`. The template is Wire-aware: it references the release folder, artifacts changed, Wire commands run and next, and links to Jira/Linear issues.
+
+To create a PR pre-populated from session artifacts:
+- `/wire:utils-pr-create [release-folder]` — reads `execution_log.md` and `status.md` to fill in the PR body, then calls `gh pr create`
+
+If the release folder is omitted, the command infers it from the most recently modified `status.md`.
+
 ## User Guide
 
 The full user guide is available at `USER_GUIDE.md`. It covers all six project types, worked examples, Wire Studio setup, Autopilot, and troubleshooting. Reference it when answering questions about how to run engagements.
