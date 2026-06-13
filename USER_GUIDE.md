@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.9.1 | **Date**: June 2026
+**Version**: 3.9.2 | **Date**: June 2026
 
 ---
 
@@ -403,7 +403,7 @@ Use `/wire:session-plan [release-folder]` for an optional structured planning ri
 
 ### Specialist agents
 
-As of v3.9.1, Wire commands auto-delegate to one of twelve specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`. See [Section 23](#23-wire-agents-specialist-subagents) for the full agent roster and how delegation works.
+As of v3.9.2, Wire commands auto-delegate to one of twelve specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`. See [Section 23](#23-wire-agents-specialist-subagents) for the full agent roster and how delegation works.
 
 ### Research persistence
 
@@ -1499,6 +1499,34 @@ flowchart TB
     DM --> SD --> DBT --> SL --> DASH
     DASH --> DR --> DQ --> UAT
     UAT --> DEP --> TR --> DOC
+```
+
+### Specialist agents for dashboard_first
+
+Two specialist agents activate exclusively for this release type:
+
+**`dashboard-mock-developer`** handles the mockup and visualization catalog phases. Unlike other agents that produce an artifact and stop, this agent runs an explicit iteration loop: it generates the first HTML mock immediately from requirements, then presents it and invites changes — tile names, chart types, layout, new pages, filter dimensions. It keeps iterating until you confirm approval. Only then does it produce three derived artifacts:
+- `design/dashboard_visualization_catalog.csv` — one row per chart, KPI tile, and table
+- `design/dashboard_spec.md` — data-content spec stripped of chrome and styling
+- `design/data_model_requirements.md` — the distinct measures and dimensions the mock needs, with grain and calculation definitions
+
+The `data_model_requirements.md` is the primary input for both `data-designer` (formal data model) and `mock-data-developer` (seed data).
+
+**`mock-data-developer`** handles two phases separated in time. In the seed data phase (immediately after data model approval), it generates referentially-integral CSV seed files with domain-appropriate data — realistic enough to produce non-zero dashboard output without needing a single row of client data. In the data refactor phase (once client data access is confirmed), it repoints staging models from seeds to real sources, produces a written refactor plan before touching any code, and validates `dbt compile` succeeds.
+
+When using `/wire:delegate` for a `dashboard_first` release, the delegation plan reflects this:
+
+```
+Step 1:  discovery-analyst           → requirements
+Step 2:  dashboard-mock-developer    → mockups (iterate), viz_catalog, data_model_requirements
+Step 3:  data-designer               → data_model (driven by data_model_requirements.md)
+Step 4:  mock-data-developer         → seed_data
+Step 5:  dbt-developer               → dbt (seed-based, ref() not source())
+Step 6a: semantic-layer-developer    → semantic_layer, dashboards  (parallel)
+Step 6b: data-quality-engineer       → data_quality                (parallel)
+Step 7:  qa-agent                    → validate all artifacts
+Step 8:  mock-data-developer         → data_refactor (triggered when client data available)
+Step 9:  delivery-lead               → deployment, training, documentation
 ```
 
 ### Workflow
@@ -3874,18 +3902,20 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ## 23. Wire Agents: Specialist Subagents
 
-> **Introduced**: v3.8.6 (orchestrate command) → v3.9.1 (12 specialists + `/wire:delegate`)
+> **Introduced**: v3.8.6 (orchestrate command) → v3.9.2 (12 specialists + `/wire:delegate`) → v3.9.2 (14 specialists, adds `dashboard-mock-developer` and `mock-data-developer`)
 
-Wire Agents replaces the single-agent pattern with twelve named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
+Wire Agents replaces the single-agent pattern with fourteen named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
 
 The core insight is simple: a single Claude Code agent doing requirements, dbt development, LookML authoring, data quality, and migration audits across a full engagement dilutes context and produces generic output. A specialist with a narrow brief — "your job is dbt models and nothing else" — operates with a much cleaner context and makes better decisions within its domain.
 
-### The twelve agents
+### The fourteen agents
 
 | Agent | Domain |
 |---|---|
 | `discovery-analyst` | Requirements, workshops, all SOP discovery artifacts |
-| `data-designer` | Conceptual model, pipeline design, mockups, viz catalog |
+| `data-designer` | Conceptual model, pipeline design, standard-mode mockups and viz catalog |
+| `dashboard-mock-developer` | Interactive HTML mockups for `dashboard_first` — iterates with user until approved, then derives viz catalog and data model requirements |
+| `mock-data-developer` | CSV seed data from approved viz catalog; manages data refactor from seeds to real client data |
 | `pipeline-engineer` | Fivetran, Airbyte, dlt connector configuration |
 | `dbt-developer` | Staging → integration → warehouse model generation |
 | `semantic-layer-developer` | LookML views, explores, dashboards, ads/semantic_layer |
@@ -5272,7 +5302,7 @@ Recent release history for the Wire Framework. Full changelog from v3.0.0 onward
 
 ---
 
-### v3.9.1 — Wire Agents Phase 1: 12 Specialists + `/wire:delegate` (June 2026)
+### v3.9.2 — Wire Agents Phase 1: 12 Specialists + `/wire:delegate` (June 2026)
 
 The agent taxonomy is expanded to 12 specialists covering every Wire release type, and the orchestration command is rewritten for local execution — no managed agents API required.
 
@@ -5288,7 +5318,7 @@ The agent taxonomy is expanded to 12 specialists covering every Wire release typ
 
 ### v3.8.6 — Wire Agents Phase 1: Initial Eight Agents (June 2026)
 
-First cut of the specialist agent system: eight agents and the `/wire:orchestrate` command (later replaced by `/wire:delegate` in v3.9.1).
+First cut of the specialist agent system: eight agents and the `/wire:orchestrate` command (later replaced by `/wire:delegate` in v3.9.2).
 
 - Agents: `dbt-developer`, `lookml-developer`, `dashboard-prototyper`, `migration-auditor`, `qa-agent`, `data-quality-agent`, `stakeholder-interviewer`, `playbook-generator`
 - `status.md` gains an agents block tracking mode, active sessions, and completed sessions

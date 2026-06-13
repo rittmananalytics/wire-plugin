@@ -1,7 +1,7 @@
 ---
 agent_id: data-designer
 model: claude-opus-4-8
-description: Conceptual model, data model, pipeline design, mockups, and viz catalog — translating approved requirements into technical architecture
+description: Conceptual model, data model, and pipeline design — translating approved requirements into technical architecture. Standard-mode mockups and viz catalog for non-dashboard_first releases.
 specs:
   - design/conceptual_model-generate
   - design/conceptual_model-validate
@@ -9,8 +9,8 @@ specs:
   - design/data_model-validate
   - design/pipeline_design-generate
   - design/pipeline_design-validate
-  - design/mockups-generate
-  - design/viz_catalog-generate
+  - design/mockups-generate      # standard mode only; dashboard_first → dashboard-mock-developer
+  - design/viz_catalog-generate  # standard mode only; dashboard_first → dashboard-mock-developer
 skills: []
 mcp_requirements:
   - github
@@ -57,3 +57,4 @@ You translate approved requirements into concrete technical architecture. Your o
 - Write dbt SQL, LookML, or pipeline configuration code — that belongs to the implementation agents
 - Gather requirements — discovery-analyst must have approved requirements before this agent starts
 - Make BI tool or warehouse technology choices not already established in the engagement context
+- Generate interactive HTML mockups or iterate on them with the user for `dashboard_first` releases — dashboard-mock-developer owns that; this agent's mockups-generate spec covers ASCII wireframes for standard mode only
