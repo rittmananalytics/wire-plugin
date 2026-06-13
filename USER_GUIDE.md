@@ -42,6 +42,7 @@
 30. [Troubleshooting](#30-troubleshooting)
 31. [Framework Management Commands](#31-framework-management-commands)
     - [`/wire:playbook-generate`](#wireplaybook-generate--delivery-playbook)
+32. [Release Notes](#32-release-notes)
 
 ---
 
@@ -1035,7 +1036,7 @@ graph LR
 /wire:utils-run-dbt <release-folder>
 /wire:dbt-review <release-folder>
 
-/wire:orchestration-generate <release-folder>    # choose Dagster or dbt Cloud
+/wire:orchestration-generate <release-folder>    # choose Dagster, dbt Cloud, or Airflow
 /wire:orchestration-validate <release-folder>
 /wire:orchestration-review <release-folder>
 
@@ -1058,8 +1059,8 @@ graph LR
 # Phase 5: Deployment
 /wire:deployment-generate <release-folder>
 /wire:deployment-validate <release-folder>
-/wire:deployment-review <release-folder>
 /wire:utils-deploy-to-dev <release-folder>
+/wire:deployment-review <release-folder>
 /wire:utils-deploy-to-prod <release-folder>
 
 # Phase 6: Enablement
@@ -1197,10 +1198,11 @@ Validates dbt models against a comprehensive checklist: file and model naming co
 ```
 /wire:orchestration-generate <release-folder>
 ```
-Sets up the orchestration layer. Prompts you to choose between **Dagster** (Python-native, assets-first) and **dbt Cloud** (managed scheduling):
+Sets up the orchestration layer. Prompts you to choose between three tools:
 
 - **Dagster**: scaffolds a Dagster project, adds `dagster-dbt` integration via a `DbtProjectComponent` YAML (one asset per dbt model), generates `@dg.asset` definitions per source system, and creates schedules/sensors matching the pipeline design cadences. Run locally with `dg dev` (Dagster UI at localhost:3000) and `dg launch --assets "*"`.
 - **dbt Cloud**: generates environment configs (dev/prod), job definitions per cadence, a CI/PR job, and a `.env.template` for credentials. Includes Terraform HCL snippets for IaC management.
+- **Airflow**: generates a Python DAG with `BashOperator` dbt tasks and source readiness sensors (one per source system), an `airflow_connections.md` reference, and an `airflow_variables.md` template. Best when the client already runs Airflow. If Astronomer Cosmos is available, a `DbtTaskGroup` alternative is provided as an inline comment.
 
 The tool choice is stored in `status.md` as `orchestration_tool` and reused by validate and review.
 
@@ -1260,12 +1262,17 @@ Pre-deployment checklist: verifies all upstream artifacts are ready, no outstand
 ```
 /wire:utils-deploy-to-dev <release-folder>
 ```
-Test the deployment process in the dev environment.
+Test the deployment process in the dev environment. Smoke-test all models, pipelines, and dashboards before the review gate.
+
+```
+/wire:deployment-review <release-folder>
+```
+Present the deployment runbook and dev-environment results to the technical lead. Confirm the production deployment plan and rollback procedures before any production changes.
 
 ```
 /wire:utils-deploy-to-prod <release-folder>
 ```
-Follow the runbook. Smoke-test after deployment. Monitor for the first 24 hours.
+Follow the approved runbook. Smoke-test after deployment. Monitor for the first 24 hours.
 
 **Ready criteria**: production deployment successful, monitoring operational.
 
@@ -2528,7 +2535,9 @@ This generalises the spec (removing client-specific details), drafts a GitHub is
 
 ## 21. Worked Example: Barton Peveril Live Pastoral Analytics
 
-This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework, including the actual commands used and the decisions made at each step. This engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined), so it starts with the full_platform delivery release.
+This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework from start to finish. It covers every command in the canonical sequence and shows two Wire Agents features in practice: auto-delegation during the design phase, and batch dispatch via `/wire:delegate` at the start of development.
+
+The engagement was run directly from a signed SOW (no discovery release needed — scope was already well-defined).
 
 ### Engagement overview
 
@@ -2539,16 +2548,18 @@ This section shows how a real engagement — a Full Platform release for Barton 
 | **Duration** | 2 weeks (Feb 2–13, 2026) |
 | **Budget** | $7,100 / 35 hours |
 | **Release type** | Full Platform |
+| **Orchestration** | Apache Airflow (college IT team already runs Airflow for timetabling) |
 
 **SOW deliverables**:
 
-| ID | Deliverable | Framework Artifacts |
+| ID | Deliverable | Framework artifacts |
 |----|-------------|-------------------|
-| D1 | Live Pastoral Data Pipeline (ProSolution + Focus → BigQuery) | `pipeline_design`, `pipeline`, `data_quality` |
+| D1 | Live Pastoral Data Pipeline (ProSolution + Focus → BigQuery) | `pipeline_design`, `pipeline`, `orchestration`, `data_quality` |
 | D2 | Looker Semantic Layer Extension (risk signals) | `data_model`, `dbt`, `semantic_layer` |
 | D3 | SPA Operational Dashboard | `mockups`, `dashboards` |
 | D4 | Data Team Enablement Session | `training` (technical) |
 | D5 | End User Training Session | `training` (end-user) |
+| D6 | Technical documentation | `documentation` |
 
 ### Data architecture
 
@@ -2598,57 +2609,182 @@ graph LR
     EX --> DB
 ```
 
-### Week 1: Requirements → Design → Development (Part 1)
+---
 
-#### Day 1 — Engagement setup and requirements
+### Phase 1: Requirements (Day 1)
 
-```bash
-# Set up the engagement and the delivery release
+#### Engagement setup
+
+```
 /wire:new
-# → Client: Barton Peveril Sixth Form College
-# → Engagement name: barton_peveril
-# → Repo mode: A (combined — .wire/ in this repo)
-# → First release type: full_platform (activates all 15 artifact workflows)
-# → Release ID: 01-barton-peveril-live-pastoral
-# → Branch: feature/barton-peveril-live-pastoral (created automatically if on main)
-# → .wire/engagement/context.md and sow.md created
-# → .wire/releases/01-barton-peveril-live-pastoral/status.md created
-#   with full delivery process: requirements through enablement
-
-# → engagement-context skill fires on first message
-# → Scans status.md: all artifacts at not_started
-# → No prior research found; outputs context summary
+→ Client: Barton Peveril Sixth Form College
+→ Engagement name: barton_peveril
+→ Release type: full_platform
+→ Release ID: 01-barton-peveril-live-pastoral
+→ Branch: feature/barton-peveril-live-pastoral (created automatically from main)
+→ Jira: WIRE project, Epic BP-1 created
+→ .wire/releases/01-barton-peveril-live-pastoral/status.md created
+  16 artifacts across 6 phases, all at not_started
 ```
 
-Selecting `full_platform` instantiated the complete delivery process into the release's `status.md` — all 15 artifacts across six phases, each with generate/validate/review gates set to `not_started`. This is the process definition that will govern the entire release.
+After `/wire:new`: copy the SOW PDF and the ProSolution SQL schema examples into `releases/01-barton-peveril-live-pastoral/requirements/`, and meeting notes from the pre-engagement call to `engagement/calls/2026-02-01-kickoff.md`.
 
-The SOW PDF was copied to `.wire/engagement/sow.md` during `/wire:new`.
-
-Also add to the engagement folder:
-- Client SQL examples showing the ProSolution schema (`vw_AttendanceDaily`, `RegisterMark`, `RegisterStudent`, etc.) → place in `releases/01-barton-peveril-live-pastoral/requirements/`
-- Meeting notes from the pre-engagement call → add to `engagement/calls/2026-02-01-kickoff.md`
+#### Requirements generation — auto-delegated to `discovery-analyst`
 
 ```
 /wire:requirements-generate 01-barton-peveril-live-pastoral
+→ [auto-delegated to discovery-analyst agent]
 ```
 
-**What the AI produced**:
-- 13-section requirements specification (150+ lines)
-- Functional requirements FR-1 through FR-9 with measurable acceptance criteria
-- Non-functional requirements NFR-1 through NFR-7 (performance, security, freshness SLAs)
-- D1–D5 deliverable-to-artifact mapping
-- Key design flags requiring workshop resolution: attendance granularity (register-level vs daily snapshot), Fivetran replication cost vs data refresh frequency
+The `discovery-analyst` agent reads the SOW and SQL examples and produces a 13-section requirements specification. Key outputs:
+- FR-1 through FR-9: functional requirements with measurable acceptance criteria
+- NFR-1 through NFR-7: performance, security, freshness SLAs
+- D1–D6 deliverable-to-artifact mapping
+- Design flags: attendance granularity (register-level vs daily snapshot), Fivetran replication cost
+
+The agent appends two entries to `decisions.md`:
+
+```
+[2026-02-02] discovery-analyst: Modelled attendance at daily-snapshot grain rather than
+register-level. Register-level would require 6× the Fivetran MAR volume. Daily snapshot
+supports all dashboard use cases in the SOW. If drill-to-register is needed in future
+it can be added as a separate Fivetran table without redesigning the model.
+
+[2026-02-02] discovery-analyst: Excluded student_notes.body from replication scope.
+Body text contains free-text pastoral records; replicating it to BigQuery would create
+a GDPR data minimisation risk. All SOW requirements are met by note metadata alone.
+```
 
 ```
 /wire:requirements-validate 01-barton-peveril-live-pastoral
-→ PASS (all 13 sections complete, acceptance criteria present for all deliverables)
+→ [auto-delegated to discovery-analyst agent]
+→ PASS — all 13 sections complete, acceptance criteria present for all deliverables
+```
 
+```
 /wire:requirements-review 01-barton-peveril-live-pastoral
-→ Approved by Head of MIS, 2026-02-03
+→ [main session — review gates always stay with the consultant]
+→ Fathom context: pulled 2026-02-01 pre-engagement call transcript
+→ Surfaced: client concern about data freshness SLA for live pastoral notes
+→ Reviewer: Head of MIS
+→ Approved 2026-02-03, with note: "Freshness SLA tightened to 30 min for Focus data"
+```
+
+The status of `requirements.review` moves to `approved`. This unblocks Phase 2.
+
+#### Delivery playbook
+
+Before moving into design, generate a playbook so you can see the full delivery sequence and timeline:
+
+```
+/wire:playbook-generate 01-barton-peveril-live-pastoral
+```
+
+The command reads the approved requirements, SOW timeline, and `status.md` and produces two things:
+
+1. **A Mermaid flowchart** — the complete artifact sequence for this release, colour-coded: teal for Wire commands, orange for offline activities (client workshops, UAT sessions), red for blocker open questions that must resolve before progression. For this engagement it surfaces OQ-1 (attendance granularity decision) and OQ-2 (Airflow DAG deployment access) as red gates.
+
+2. **A narrative delivery playbook** at `.wire/releases/01-barton-peveril-live-pastoral/planning/barton_peveril_playbook.md` — 14 steps covering the 10-day schedule, who does what at each gate, the three most common stumbling points for full_platform engagements, and the inputs each phase needs from the client.
+
+This is a planning utility — it creates no tracked artifact and blocks nothing. Run it again after any significant scope change to refresh the timeline.
+
+---
+
+### Phase 2: Design (Days 2–4)
+
+#### Day 2 morning — Conceptual entity model
+
+```
+/wire:conceptual_model-generate 01-barton-peveril-live-pastoral
+→ [auto-delegated to data-designer agent]
+```
+
+The `data-designer` agent produces a business-level entity model: five domain entities (`Student`, `Attendance`, `PastoralNote`, `SPAAlert`, `Assignment`) with a Mermaid `erDiagram` showing cardinalities, and a relationship narrative. No column detail — just what the business cares about.
+
+```
+/wire:conceptual_model-validate 01-barton-peveril-live-pastoral
+→ [auto-delegated to data-designer agent]
+→ PASS — entity coverage against FR-1 through FR-6, cardinality complete,
+         no column-level detail leaked in
+```
+
+```
+/wire:conceptual_model-review 01-barton-peveril-live-pastoral
+→ [main session]
+→ Reviewer: Head of MIS + Head of Student Services (business stakeholders)
+→ Approved 2026-02-04
+→ Decision recorded: SPAAlert is a first-class entity, not a derived flag on PastoralNote
+```
+
+Approving the conceptual model gates `pipeline_design` and `data_model`. The `data-designer` appends to `decisions.md`:
+
+```
+[2026-02-04] data-designer: Modelled SPAAlert as a separate entity rather than a
+boolean flag on PastoralNote. SPAs create alerts independently of note creation;
+a note can exist without an alert and an alert can outlive its originating note.
+Treating it as a flag would make "days since last SPA contact" uncomputable.
+```
+
+#### Day 2 afternoon — Pipeline design
+
+```
+/wire:pipeline_design-generate 01-barton-peveril-live-pastoral
+→ [auto-delegated to pipeline-engineer agent]
+```
+
+The `pipeline-engineer` agent produces the full pipeline architecture document using the ProSolution SQL examples from `requirements/`:
+- Source schema analysis: `StudentDetail` → `Enrolment` → `RegisterStudent` → `RegisterMark` → `MarkType` → `RegisterSession`
+- Three Fivetran replication scenarios with cost comparison
+- 10 design decisions (PD-1 through PD-10) needing client input
+- An embedded Data Flow Diagram (DFD) in Mermaid showing end-to-end data movement
+
+```
+/wire:pipeline_design-validate 01-barton-peveril-live-pastoral
+→ [auto-delegated to pipeline-engineer agent]
+→ PASS — all sources present, naming conventions compliant, DFD syntax valid
+```
+
+**Decision taken before review**: Scenario C (Hybrid) — daily view for attendance dashboard, raw tables for drill-through. Client DBA agreed to create `vw_AttendanceDaily` on the ProSolution SQL Server. Recorded in `decisions.md` by the consultant.
+
+```
+/wire:pipeline_design-review 01-barton-peveril-live-pastoral
+→ [main session]
+→ Reviewer: data engineering lead
+→ Approved 2026-02-05
+→ Scope addition noted: Markbook/Assignment data added to D1 scope (v2.0)
+```
+
+#### Days 3–4 — Data model and mockups
+
+```
+/wire:data_model-generate 01-barton-peveril-live-pastoral
+→ [auto-delegated to data-designer agent]
+```
+
+The `data-designer` agent produces the complete dbt-layer data model specification:
+- `_sources.yml` for `fivetran_focus` and `fivetran_prosolution` with freshness thresholds (`warn_after: 30 min / error_after: 60 min` for Focus; `warn_after: 120 min / error_after: 1560 min` for ProSolution daily view)
+- Staging models: `stg_fivetran_prosolution__attendance_daily`, `stg_focus__student_notes`, `stg_focus__assignment_marks`, `stg_focus__users`
+- Warehouse models: `attendance_fct`, `pastoral_notes_fct`, `spa_alerts_fct`, `assignment_marks_fct`, `student_risk_summary`
+- Physical ERD with all columns, PKs, FKs, and relationship lines
+- Cross-system join keys: Focus `assignment_marks.enrolment_id` → ProSolution `Enrolment.EnrolmentID`
+
+```
+/wire:data_model-validate 01-barton-peveril-live-pastoral
+→ [auto-delegated to data-designer agent]
+→ PASS — naming conventions, grain definitions, PK/FK traceability, ERD consistency
+```
+
+```
+/wire:data_model-review 01-barton-peveril-live-pastoral
+→ [main session — this is the most consequential review gate in a full_platform engagement]
+→ Reviewer: analytics engineering lead
+→ Approved 2026-02-06 after one iteration
+→ Iteration: student_risk_summary grain changed from daily to current-state snapshot
 ```
 
 ```
 /wire:mockups-generate 01-barton-peveril-live-pastoral
+→ [main session — no specialist agent for wireframes]
 ```
 
 Dashboard wireframes for the SPA Operational Dashboard:
@@ -2656,145 +2792,379 @@ Dashboard wireframes for the SPA Operational Dashboard:
 - Unanswered SPA alert tracker
 - Student detail drillthrough panel
 
-Reviewed with SPAs and pastoral leads on Day 2.
-
-#### Day 2 — Design review and development start
-
 ```
-/wire:pipeline_design-generate 01-barton-peveril-live-pastoral
-```
-
-**What the AI produced** (using the SQL examples from artifacts/):
-- Source schema analysis: ProSolution — `StudentDetail` → `Enrolment` → `RegisterStudent` → `RegisterMark` → `MarkType` → `RegisterSession`
-- Three Fivetran replication scenarios with cost analysis:
-  - Scenario A: Raw register-level tables (high granularity, high MAR cost)
-  - Scenario B: Server-side view `vw_AttendanceDaily` (moderate cost, DBA creates)
-  - Scenario C: Hybrid (daily view for dashboard, raw tables for drill-through)
-- Architecture diagrams for all scenarios
-- 10 design decisions (PD-1 through PD-10) requiring client input
-
-**Decision taken**: Scenario C (Hybrid). Client DBA created `vw_AttendanceDaily` on the ProSolution SQL Server. Pipeline design went through two versions (v2.0 added Markbook/Assignment data to scope).
-
-```
-/wire:data_model-generate 01-barton-peveril-live-pastoral
+/wire:mockups-review 01-barton-peveril-live-pastoral
+→ [main session]
+→ Reviewers: SPAs and pastoral leads
+→ Approved 2026-02-06
+→ Change request noted: add "days since last SPA contact" column to risk list
 ```
 
-**What the AI produced**:
-- Complete `_sources.yml` for `fivetran_focus` and `fivetran_prosolution` with column-level descriptions and freshness thresholds (`warn_after: 30 min / error_after: 60 min` for Focus live data; `warn_after: 120 min / error_after: 1560 min` for ProSolution daily view)
-- Staging models: `stg_fivetran_prosolution__attendance_daily`, `stg_focus__student_notes`, `stg_focus__assignment_marks`, `stg_focus__users`
-- Warehouse models: `attendance_fct`, `pastoral_notes_fct`, `spa_alerts_fct`, `assignment_marks_fct`, `student_risk_summary` (aggregate)
-- Seed files: `note_type_mappings.csv`, `attendance_mark_types.csv`
-- Cross-system join keys documented: Focus `assignment_marks.enrolment_id` → ProSolution `Enrolment.EnrolmentID`
+All four design artifacts are now `review: approved`. Phase 3 is unblocked.
 
-Note: the AI flagged that note body text should be excluded at the Fivetran level for safeguarding reasons — the `student_notes.body` column was explicitly marked as not replicated.
+#### End of Week 1 — close the session
 
-#### Days 3–4 — Development: Pipeline and dbt
+At the end of Day 4, with design complete and development about to start:
 
 ```
-/wire:pipeline-generate 01-barton-peveril-live-pastoral
+/wire:session:end 01-barton-peveril-live-pastoral
 ```
 
-Generated Fivetran connector configuration and supplementary Python Cloud Functions for transformations outside Fivetran's capability. Error handling and alerting on pipeline failures.
+Wire produces a session summary:
 
 ```
-/wire:dbt-generate 01-barton-peveril-live-pastoral
+Session summary — 2026-02-06
+
+Completed this session:
+  ✓ requirements (generate, validate, review)
+  ✓ playbook generated
+  ✓ conceptual_model (generate, validate, review)
+  ✓ pipeline_design (generate, validate, review)
+  ✓ data_model (generate, validate, review)
+  ✓ mockups (generate, review)
+
+Open items carried forward:
+  • OQ-1 resolved: Scenario C (Hybrid) chosen for pipeline architecture
+  • OQ-2 open: Airflow DAG deployment — IT team needs to confirm dags/ sync method
+  • Change request from mockups review: "days since last SPA contact" column
+
+Next session focus: Phase 3 Development
+  Recommend starting with /wire:delegate to dispatch all development artifacts in parallel
+
+Status written to .wire/releases/01-barton-peveril-live-pastoral/status.md
 ```
 
-**Generated models** (using templates from the workflow spec):
-- 4 staging models (views, `tags=['staging', 'focus'/'prosolution']`)
+---
+
+### Phase 3: Development (Days 5–8)
+
+#### Day 5 morning — Starting a new session and planning the work
+
+Two days later, the consultant opens a new Claude Code session:
+
+```
+/wire:start
+```
+
+Wire shows all active releases and their states. The consultant selects `01-barton-peveril-live-pastoral` and chooses **Plan session**:
+
+```
+Planning session for: 01-barton-peveril-live-pastoral
+Current phase: Development (Phase 3 of 6)
+
+Completed artifacts (6/16):
+  ✓ requirements, conceptual_model, pipeline_design, data_model, mockups, playbook
+
+Next artifacts (all at not_started):
+  → pipeline           (pipeline-engineer)
+  → dbt                (dbt-developer)
+  → orchestration      (orchestration-engineer)
+  → semantic_layer     (semantic-layer-developer)
+  → dashboards         (main session)
+
+Open items from last session:
+  ⚠ OQ-2: Airflow DAG deployment method — IT team response pending
+  ⚠ Change request: "days since last SPA contact" in mockups (resolved in data_model v1.1)
+
+Recommended action: /wire:delegate 01-barton-peveril-live-pastoral
+  This will dispatch pipeline, dbt, orchestration, and semantic_layer to specialist
+  agents in parallel. Estimated wall time: ~15 minutes for all four to complete.
+  Dashboards-generate should follow once semantic_layer is approved.
+```
+
+#### Day 5 — Batch dispatch with `/wire:delegate`
+
+```
+/wire:delegate 01-barton-peveril-live-pastoral
+```
+
+Wire inspects `status.md`, identifies all development artifacts at `not_started`, and presents the delegation plan for confirmation:
+
+```
+Delegation plan for 01-barton-peveril-live-pastoral
+
+  pipeline-engineer        → pipeline-generate, pipeline-validate
+  dbt-developer            → dbt-generate, utils-run-dbt, dbt-validate
+  orchestration-engineer   → orchestration-generate, orchestration-validate
+  semantic-layer-developer → semantic_layer-generate, semantic_layer-validate
+
+4 agents will run in parallel. Review commands stay in this session.
+Dashboards-generate will be suggested after semantic_layer is approved.
+
+Confirm? [y/n]
+```
+
+After confirmation, four specialist agents run concurrently.
+
+#### What the agents produced
+
+**`pipeline-engineer`** — Fivetran connector configuration for both ProSolution (SQL Server CDC) and Focus (REST API). A supplementary Cloud Function handles the Focus authentication token refresh. Error handling: dead-letter queue to a `pipeline_errors` BigQuery table, Slack alerting on consecutive failures.
+
+**`dbt-developer`** — All 9 dbt models built and tested:
+- 4 staging models (views, `tags=['staging']`)
 - 5 warehouse models (tables, `tags=['warehouse', 'fact']`)
-- Surrogate keys on all models using `dbt_utils.generate_surrogate_key()`
-- 47 automated tests: not_null + unique on every PK, relationship tests on every FK, custom freshness tests on live data
+- Surrogate keys via `dbt_utils.generate_surrogate_key()`
+- 47 tests: not_null + unique on every PK, relationship tests on every FK, custom freshness check on Focus data
+
+`dbt run` result: 9 models built successfully, 47 tests passing. The agent adds to `decisions.md`:
 
 ```
-/wire:utils-run-dbt 01-barton-peveril-live-pastoral
-→ 9 models built successfully
-→ 47 tests passing
+[2026-02-10] dbt-developer: Used BashOperator rather than PythonVirtualenvOperator
+for the dbt tasks in the Airflow DAG. The college Airflow instance runs Python 3.11
+and already has dbt-core and the BigQuery adapter installed in the base environment —
+a virtual env would add 90 seconds to every run for no isolation benefit.
+
+[2026-02-10] dbt-developer: student_risk_summary materialised as a table with
+full_refresh=false. The model accumulates historical snapshots; incremental would
+require a unique_key that changes the grain. Full-refresh on schedule is acceptable
+at current row volumes (~180k students × 250 school days).
 ```
 
-```
-/wire:dbt-validate 01-barton-peveril-live-pastoral
-→ PASS
-→ Naming conventions: compliant
-→ Test coverage: 100% PK and FK coverage
-→ Documentation: all columns described
+**`orchestration-engineer`** — Generates the Airflow orchestration layer (tool choice: Airflow, confirmed from OQ-2 resolution). Produces:
+
+`dags/barton_peveril_pipeline.py`:
+```python
+with DAG(
+    dag_id="barton_peveril_pipeline",
+    schedule_interval="*/30 * * * *",  # every 30 minutes, matches NFR-3
+    start_date=datetime(2026, 2, 10),
+    catchup=False,
+    tags=["barton_peveril", "dbt", "pastoral"],
+) as dag:
+    prosolution_sensor = BigQueryTableExistenceSensor(
+        task_id="check_prosolution_loaded",
+        project_id="bp-analytics",
+        dataset_id="fivetran_prosolution",
+        table_id="vw_attendance_daily",
+        timeout=3600,
+    )
+    focus_sensor = BigQueryTableExistenceSensor(
+        task_id="check_focus_loaded",
+        project_id="bp-analytics",
+        dataset_id="fivetran_focus",
+        table_id="student_notes",
+        timeout=3600,
+    )
+    dbt_run = BashOperator(
+        task_id="dbt_run",
+        bash_command="cd /opt/airflow/dags/bp_dbt && dbt run --target prod",
+    )
+    dbt_test = BashOperator(
+        task_id="dbt_test",
+        bash_command="cd /opt/airflow/dags/bp_dbt && dbt test --target prod",
+    )
+    [prosolution_sensor, focus_sensor] >> dbt_run >> dbt_test
 ```
 
-### Week 2: Development (Part 2) → Testing → Deployment → Enablement
-
-#### Day 5 — Semantic layer and dashboard development
+Also produces `airflow_connections.md` and `airflow_variables.md`. Agent adds to `decisions.md`:
 
 ```
-/wire:semantic_layer-generate 01-barton-peveril-live-pastoral
+[2026-02-10] orchestration-engineer: Set schedule_interval to */30 rather than
+@hourly to align with the 30-minute freshness SLA in NFR-3. The BigQuery sensors
+will hold execution if Fivetran hasn't landed data yet, so the 30-minute cadence
+is a ceiling not a guarantee — actual latency depends on Fivetran sync speed.
 ```
 
-Generated LookML:
-- Views for all 5 warehouse models
-- Risk signal measures: `attendance_deterioration_flag`, `pastoral_note_spike_flag`, `unanswered_alert_flag`
-- `pastoral_risk` explore with joins across student, attendance, notes, and alerts
+**`semantic-layer-developer`** — LookML views for all 5 warehouse models, risk signal measures, and the `pastoral_risk` explore:
+- `attendance_deterioration_flag`: sessions below 85% in rolling 10 school days
+- `pastoral_note_spike_flag`: more than 3 notes in 5 school days
+- `unanswered_alert_flag`: open SPA alert older than 3 school days
+- `days_since_last_spa_contact`: derived dimension (fulfils mockups change request)
+
+#### Days 6–8 — Development reviews
+
+Review gates stay in the main session — the consultant reviews each artifact with the relevant stakeholder:
+
+```
+/wire:pipeline-review 01-barton-peveril-live-pastoral
+→ Reviewer: data engineering lead
+→ Approved 2026-02-11
+→ Note: Cloud Function authentication approach reviewed and accepted
+
+/wire:dbt-review 01-barton-peveril-live-pastoral
+→ Reviewer: analytics engineering lead
+→ decisions.md entries surfaced during review — both accepted without override
+→ Approved 2026-02-11
+
+/wire:orchestration-review 01-barton-peveril-live-pastoral
+→ Reviewer: IT infrastructure lead (Airflow owner)
+→ DAG reviewed — BashOperator approach confirmed correct for college environment
+→ Connection IDs and variables confirmed against college Airflow instance config
+→ Approved 2026-02-11
+→ OQ-2 formally closed: dags/ folder synced via Git Sync from the delivery repo
+
+/wire:semantic_layer-review 01-barton-peveril-live-pastoral
+→ Reviewer: analytics engineering lead
+→ Approved 2026-02-12
+```
+
+With semantic_layer approved, generate the dashboards:
 
 ```
 /wire:dashboards-generate 01-barton-peveril-live-pastoral
+→ [main session]
 ```
 
-Generated SPA Operational Dashboard from approved mockups:
-- Tile: At-risk students (ranked by composite risk score)
-- Tile: Unanswered SPA alerts (overdue indicators)
-- Tile: Workload prioritisation (alerts by SPA)
-- Student drillthrough
+SPA Operational Dashboard from approved mockups:
+- Tile: At-risk students, ranked by composite risk score
+- Tile: Unanswered SPA alerts with overdue indicators
+- Tile: Workload by SPA (alert count per student services advisor)
+- Student drillthrough with "days since last SPA contact" column (from change request)
 
-#### Day 6 — Testing and iteration
+```
+/wire:dashboards-validate 01-barton-peveril-live-pastoral
+→ PASS — all mockup tiles present, LookML field references valid
+
+/wire:dashboards-review 01-barton-peveril-live-pastoral
+→ Reviewers: SPAs and pastoral leads
+→ Approved 2026-02-12
+```
+
+All development artifacts are `review: approved`. Phase 4 is unblocked.
+
+---
+
+### Phase 4: Testing (Days 9–10)
 
 ```
 /wire:data_quality-generate 01-barton-peveril-live-pastoral
-→ Added: freshness alerts (data older than 90 minutes triggers Slack notification)
-→ Added: row count reconciliation (ProSolution register count vs attendance_fct row count)
-→ Added: null rate monitoring on attendance mark fields
-
-/wire:uat-generate 01-barton-peveril-live-pastoral
+→ [auto-delegated to data-quality-engineer agent]
 ```
 
-UAT conducted with SPAs and pastoral leads on Day 6 (as per SOW timeline):
-- All primary UAT scenarios passed
-- One change request: add "days since last SPA contact" to student risk tile
-- Dashboard iterated and re-reviewed
+The `data-quality-engineer` agent adds quality checks beyond the embedded dbt tests:
+- Freshness alert: Focus data older than 30 minutes → Slack notification to `#pastoral-data-alerts`
+- Row count reconciliation: ProSolution register count vs `attendance_fct` row count (tolerance ±2%)
+- Null rate monitoring: attendance mark fields above 5% null rate triggers warning
+- Cross-system join integrity: `assignment_marks.enrolment_id` FK hit rate (expected >99%)
+
+```
+/wire:data_quality-validate 01-barton-peveril-live-pastoral
+→ [auto-delegated to data-quality-engineer agent]
+→ PASS — all checks runnable, Slack webhook configured, thresholds documented
+
+/wire:data_quality-review 01-barton-peveril-live-pastoral
+→ [main session]
+→ Reviewer: Head of MIS
+→ Approved 2026-02-13
+```
+
+```
+/wire:uat-generate 01-barton-peveril-live-pastoral
+→ [main session]
+```
+
+UAT plan mapped to FR-1 through FR-9. UAT session conducted with SPAs and pastoral leads on Day 9:
+- All primary scenarios passed
+- One iteration: "days since last SPA contact" column needed rounding to whole days
 
 ```
 /wire:uat-review 01-barton-peveril-live-pastoral
-→ Approved by Head of Student Services, 2026-02-10
+→ Reviewer: Head of Student Services
+→ Approved 2026-02-13
 ```
 
-#### Day 7 — Deployment
+---
+
+### Phase 5: Deployment (Day 11)
 
 ```
 /wire:deployment-generate 01-barton-peveril-live-pastoral
-→ Generated: deployment runbook, dbt Cloud job configuration, Looker deployment steps, rollback procedures
-
-/wire:utils-deploy-to-dev 01-barton-peveril-live-pastoral
-→ Dev deployment verified
-
-/wire:utils-deploy-to-prod 01-barton-peveril-live-pastoral
-→ Production deployment successful
-→ Fivetran connectors active
-→ dbt Cloud jobs scheduled
-→ Dashboards published to Looker production
+→ [main session — deployment involves external systems, stays with consultant]
 ```
 
-#### Day 8 — Enablement
+Generates:
+- Step-by-step deployment runbook (Fivetran → BigQuery → dbt Cloud → Airflow DAG enable → Looker publish)
+- Airflow DAG enable instructions with Git Sync confirmation steps
+- Monitoring and alerting setup confirmation
+- Rollback procedures for each stage
+
+```
+/wire:deployment-validate 01-barton-peveril-live-pastoral
+→ PASS — all upstream artifacts approved, no outstanding blockers,
+         monitoring config complete, Airflow connection IDs verified
+
+/wire:utils-deploy-to-dev 01-barton-peveril-live-pastoral
+→ Dev deployment verified — all 9 models built, 47 tests passing,
+  DAG runs cleanly in dev Airflow environment, dashboards visible in Looker dev
+
+/wire:deployment-review 01-barton-peveril-live-pastoral
+→ [main session]
+→ Reviewer: IT infrastructure lead + analytics engineering lead
+→ Dev results presented, runbook walked through step-by-step
+→ Approved 2026-02-13
+
+/wire:utils-deploy-to-prod 01-barton-peveril-live-pastoral
+→ Fivetran connectors activated
+→ dbt Cloud CI job configured and tested
+→ Airflow DAG enabled in production (Git Sync confirmed dags/ up to date)
+→ Dashboards published to Looker production
+→ Monitoring alerts live
+```
+
+---
+
+### Phase 6: Enablement (Days 12–13)
 
 ```
 /wire:training-generate 01-barton-peveril-live-pastoral
+→ [main session]
 ```
 
-**D4 — Data Team Enablement** (morning, Chris, Joanne, Ethan):
-- Session plan: How the live pipeline works, how dbt models are structured, how to add a new live data source, how to extend LookML
-- Hands-on exercise: trace a data point from ProSolution SQL Server to the Looker dashboard
+**D4 — Data Team Enablement** (Day 12 morning, Chris / Joanne / Ethan):
+- How the Fivetran connectors work and how to extend them
+- How the dbt models are structured; how to add a new source or warehouse model
+- How the Airflow DAG works; how to change the schedule or add a task
+- How to extend LookML views and explores
+- Hands-on: trace a data point from ProSolution SQL Server to the Looker dashboard
 
-**D5 — End User Training** (afternoon, SPAs and pastoral leads):
-- Session plan: Dashboard navigation, interpreting risk signals responsibly, when to act vs when to investigate further, data freshness expectations
+**D5 — End User Training** (Day 12 afternoon, SPAs and pastoral leads):
+- Dashboard navigation and filtering
+- Interpreting risk signals responsibly — correlation not causation
+- Data freshness expectations and what to do when data is stale
+- How to raise a data quality issue
+
+```
+/wire:training-validate 01-barton-peveril-live-pastoral
+→ PASS — both session plans present, learning outcomes mapped to SOW requirements
+
+/wire:training-review 01-barton-peveril-live-pastoral
+→ Reviewer: Head of MIS
+→ Approved 2026-02-14
+```
+
+```
+/wire:documentation-generate 01-barton-peveril-live-pastoral
+→ [delivery-lead agent handles the technical handover doc draft]
+```
+
+The `delivery-lead` agent reads all approved artifacts and `decisions.md` (now 11 entries) and produces the technical documentation package:
+- Architecture overview with the data flow diagram
+- dbt model reference (grain, columns, test coverage per model)
+- Airflow DAG runbook (schedule, tasks, connection IDs, how to change cadence)
+- LookML field catalogue (all dimensions and measures, with business definitions)
+- Operational runbook (monitoring alerts, common failure modes, escalation path)
+
+The consultant reviews, adds the college's IT support contact details, and approves:
+
+```
+/wire:documentation-validate 01-barton-peveril-live-pastoral
+→ PASS — all required sections present
+
+/wire:documentation-review 01-barton-peveril-live-pastoral
+→ [main session]
+→ Reviewer: Head of MIS
+→ Approved 2026-02-14
+```
+
+#### Archive and close
 
 ```
 /wire:archive 01-barton-peveril-live-pastoral
+→ Reason: Completed
+→ Final status snapshot written
+→ Jira Epic BP-1 closed
+→ Execution log: 16 artifacts, 48 generate/validate/review actions, 11 decisions.md entries
+→ Archived to .wire/releases/archive/20260214_01-barton-peveril-live-pastoral/
 ```
 
 ---
@@ -4625,3 +4995,113 @@ Supports alias forms (`/wire:help new`, `/wire:help wire:new`, `/wire:help /wire
 ---
 
 *This handbook is a living document. Update it when the framework changes, when new release types are added, or when new FAQs emerge from delivery experience.*
+
+---
+
+## 32. Release Notes
+
+Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v3.9.0 — Wire Agents Phase 1: 12 Specialists + `/wire:delegate` (June 2026)
+
+The agent taxonomy is expanded to 12 specialists covering every Wire release type, and the orchestration command is rewritten for local execution — no managed agents API required.
+
+**New agents**: `discovery-analyst`, `data-designer`, `pipeline-engineer`, `dbt-developer`, `semantic-layer-developer`, `orchestration-engineer`, `data-quality-engineer`, `migration-specialist`, `delivery-lead`, `agentic-data-stack-developer`, `agentic-commerce-developer`, `qa-agent`
+
+**Key changes**:
+- `/wire:delegate` replaces `/wire:orchestrate` — dispatches pending release work to specialist subagents using Claude Code's native Agent tool on the user's own workstation, using their existing API key
+- Each agent appends non-obvious decisions to `decisions.md`; downstream agents and reviewers use this as a lightweight audit trail
+- Auto-delegation: individual generate/validate commands now delegate to the appropriate specialist automatically; review commands remain in the main session
+- All 12 agent definitions bundled into the distributed plugin
+
+---
+
+### v3.8.6 — Wire Agents Phase 1: Initial Eight Agents (June 2026)
+
+First cut of the specialist agent system: eight agents and the `/wire:orchestrate` command (later replaced by `/wire:delegate` in v3.9.0).
+
+- Agents: `dbt-developer`, `lookml-developer`, `dashboard-prototyper`, `migration-auditor`, `qa-agent`, `data-quality-agent`, `stakeholder-interviewer`, `playbook-generator`
+- `status.md` gains an agents block tracking mode, active sessions, and completed sessions
+- `/wire:upgrade` surfaces `/wire:orchestrate` for releases created before v3.8.6
+
+---
+
+### v3.8.5 — Wire-Aware PR Template (June 2026)
+
+- New `/wire:utils-pr-create` command auto-populates a pull request body from `execution_log.md` and `status.md`
+- `/wire:new` Step 10.5 scaffolds `.github/pull_request_template.md` at engagement setup
+- PR template covers: release folder, artifacts changed, commands run and next, issue tracker links
+
+---
+
+### v3.8.4 — dbt Migration Companion YAML Coverage (June 2026)
+
+`dbt-migration-generate` and `-validate` now cover the companion schema/properties YAML alongside the model SQL.
+
+- Explicit step to repoint `sources.yml` to the target namespace, translate source-dialect SQL inside singular tests and `where:` filters, and author `policy_tags`/`meta` into the YAML when column protection is dbt-managed
+- New validate Check 7 enforces companion-YAML coverage — un-repointed `sources.yml`, untranslated test SQL, or dropped policy-tag config all fail the check
+
+---
+
+### v3.8.3 — Reverse ETL Parallel-Workspace Migration (June 2026)
+
+Hightouch migration defaults changed to reduce production risk.
+
+- Parallel-workspace topology: clone the Hightouch config repo into a new workspace pointed at the target warehouse, validate with syncs disabled, then enable — leaving the source-backed workspace untouched
+- Validation is now preview-based against a frozen source baseline (syncs present but disabled) rather than live runs
+- Per-sync transformation review step added: field mappings, computed fields, sync filters, match/identity-resolution rules
+
+---
+
+### v3.8.2 — `/wire:upgrade` and Wire Adoption Review (June 2026)
+
+- New `/wire:upgrade [release-folder]` — brings an existing release `status.md` up to date with the current plugin version's schema. Adds missing YAML sections, stamps `wire_plugin_version` and `last_upgraded_at`, surfaces commands that weren't available when the release was created. Supports `--dry-run`. Safe to re-run.
+- New `cowork-wire-adoption-review` skill (Wire Work plugin) — generates structured Wire and Claude Code adoption reports from BigQuery telemetry. Three report types: project-level, consultant-level, company-wide. Enriches from GitHub, Jira, and Fathom.
+
+---
+
+### v3.8.1 — Platform Migration Translation Improvements (June 2026)
+
+- Two new platform-pair translation examples: array-membership joins (`FLATTEN` / `IN UNNEST` / `ARRAY_CONTAINS`) and `ARRAY_AGG` null and struct-array semantics
+- New `dbt_neutral_translation.md`: macro-first hierarchy and equivalence-testing backbone for dual-target dbt projects
+- New `snowflake_to_bigquery/translation_reference.md`: 25-item silent-behaviour-change checklist
+- New `/wire:dbt-migration-lint` command: static offline equivalence lint before the live equivalency loop
+
+---
+
+### v3.8.0 — Droughty Integration (June 2026)
+
+Integrates the [Droughty](https://github.com/rittmananalytics/droughty) schema-introspection toolkit as a first-class Wire release type.
+
+Nine new `/wire:droughty-*` commands cover the full Droughty workflow:
+
+| Command | What it does |
+|---|---|
+| `/wire:droughty-setup` | Install pinned Droughty, generate profile and project config |
+| `/wire:droughty-introspect` | Schema inventory: tables, columns, PK/FK coverage |
+| `/wire:droughty-dbml` | DBML entity-relationship diagram from live schema |
+| `/wire:droughty-docs` | AI-generated field descriptions (requires OpenAI key) |
+| `/wire:droughty-qa` | LangGraph data quality agent report (requires OpenAI key) |
+| `/wire:droughty-stage` | dbt staging SQL + `sources.yml` (BigQuery only) |
+| `/wire:droughty-dbt-tests` | Pattern-based `schema.yml` tests |
+| `/wire:droughty-lookml` | Base LookML views from deployed dbt tables |
+| `/wire:droughty-generate` | Full Droughty phase in sequence |
+
+Droughty runs in two modes: **discovery/audit** (maps an existing warehouse, no dbt needed) and **post-dbt** (generates base layer from deployed dbt models, feeding into `/wire:semantic_layer-generate`). See [Section 19](#19-running-a-droughty-release) for a full walkthrough.
+
+---
+
+### Earlier releases
+
+For release history before v3.8.0, see [CHANGELOG.md](CHANGELOG.md) or the [full release notes](RELEASE_NOTES.md). Notable milestones:
+
+- **v3.7.7** (June 2026) — Snowflake support: full estate audit via Snowflake MCP, Hightouch reverse ETL audit as a sixth migration audit type
+- **v3.7.5** (June 2026) — Interactive lineage visualisation: `/wire:lineage-generate` produces a self-contained HTML dependency explorer for `platform_migration` engagements
+- **v3.7.3** (June 2026) — Agentic Data Stack release type: 41 new `ads_` commands across Audit, Design, Build, Validate, and Deploy phases
+- **v3.7.0** (June 2026) — Platform Migration release type: full warehouse-to-warehouse migration lifecycle with six parallel audit tracks
+- **v3.5.0** (May 2026) — Agentic Commerce release type: AI-powered ecommerce storefront delivery with Lovable, Supabase, and Shopify Storefront API
+- **v3.4.0** (March 2026) — Discovery SOP release type; Jira and Linear issue tracking integration
+- **v3.3.0** (January 2026) — Confluence and Notion document store integration
+- **v3.0.0** (October 2025) — Wire Framework initial release: six-phase lifecycle, 12 release types, Claude Code and Gemini CLI runtimes
