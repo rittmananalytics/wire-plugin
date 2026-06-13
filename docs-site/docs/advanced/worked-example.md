@@ -375,22 +375,50 @@ Wire shows the release state (6/16 artifacts done), lists the next four at `not_
 /wire:delegate 01-barton-peveril-live-pastoral
 ```
 
-Wire inspects `status.md`, identifies all development artifacts at `not_started`, and presents the delegation plan:
+Wire inspects `status.md`, identifies all development artifacts at `not_started`, and presents the delegation plan. With 9 staging models and 7 warehouse models in scope, the dbt step fans out across parallel agents per layer:
 
 ```
-pipeline-engineer        → pipeline-generate, pipeline-validate
-dbt-developer            → dbt-generate, utils-run-dbt, dbt-validate
-orchestration-engineer   → orchestration-generate, orchestration-validate
-semantic-layer-developer → semantic_layer-generate, semantic_layer-validate
+Delegation plan — Barton Peveril Live Pastoral Analytics / 01-barton-peveril-live-pastoral
+───────────────────────────────────────────────────────────────────────────────────────────
 
-4 agents will run in parallel. Review commands stay in this session.
+Step 1 (sequential):
+  pipeline-engineer  →  pipeline-generate
+                        (ProSolution SQL Server CDC + Focus REST API connectors)
+
+Step 2 (multi-wave fan-out, starts after Step 1):
+
+  Wave 2a — Staging layer  (2 parallel agents):
+    dbt-developer [staging 1/2]  →  stg_prosolution__students, stg_prosolution__courses,
+                                     stg_prosolution__enrolments, stg_prosolution__attendance,
+                                     stg_prosolution__targets  (+3 seeds)
+    dbt-developer [staging 2/2]  →  stg_focus__attendance_observations,
+                                     stg_mis__timetable_slots,
+                                     stg_mis__staff_absence,
+                                     stg_mis__exam_results
+
+  Wave 2b — Integration layer  (1 agent, starts after Wave 2a):
+    dbt-developer [integration 1/1]  →  int__student_unified_profile
+
+  Wave 2c — Warehouse layer  (2 parallel agents, starts after Wave 2b):
+    dbt-developer [warehouse 1/2]  →  student_dim, course_dim,
+                                       attendance_summary_fct, exam_performance_fct
+    dbt-developer [warehouse 2/2]  →  student_risk_scores_fct, student_risk_summary,
+                                       student_risk_history
+
+  Total dbt-developer agents: 5  (2 + 1 + 2)
+
+Step 3 (parallel, starts after Step 2):
+  3a  orchestration-engineer    →  orchestration-generate  (dbt Cloud job config)
+  3b  semantic-layer-developer  →  semantic_layer-generate  (LookML views + explores)
+
+Total: 8 specialist agents across 4 execution stages. Review commands stay in this session.
 ```
 
 ### What the agents produce
 
 **`pipeline-engineer`** — Fivetran connector config for ProSolution (SQL Server CDC) and Focus (REST API), plus a Cloud Function for Focus auth token refresh. Error handling: dead-letter queue to `pipeline_errors` BigQuery table, Slack alerting on consecutive failures.
 
-**`dbt-developer`** — 19 SQL models (9 staging, 1 integration, 7 warehouse, 2 utility) plus 3 seeds and 34 static-analysis tests. Surrogate keys via `dbt_utils.generate_surrogate_key()`; all facts incremental with `merge` strategy. Static analysis PASS with two findings the team must fix before requesting review: `ref()` calls inside transformation CTEs in two models (must move to source CTEs at the top of the file); missing `s_` prefixes on source CTEs across several warehouse models. Both corrected before the review is requested. Adds to `decisions.md`:
+**`dbt-developer`** — 5 agents ran across 3 sequential waves. Wave 2a (2 staging agents in parallel) ran concurrently with each other. Wave 2b ran the single integration model. Wave 2c ran 2 warehouse agents in parallel. Total: 19 SQL models (9 staging, 1 integration, 7 warehouse, 2 utility) plus 3 seeds and 34 static-analysis tests. Surrogate keys via `dbt_utils.generate_surrogate_key()`; all facts incremental with `merge` strategy. Static analysis PASS with two findings the team must fix before requesting review: `ref()` calls inside transformation CTEs in two models (must move to source CTEs at the top of the file); missing `s_` prefixes on source CTEs across several warehouse models. Both corrected before the review is requested. Adds to `decisions.md`:
 
 - `student_risk_summary` materialised as table with `full_refresh=false` — model accumulates historical snapshots; incremental would require a unique_key that changes the grain
 

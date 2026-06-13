@@ -3091,29 +3091,58 @@ Recommended action: /wire:delegate 01-barton-peveril-live-pastoral
 /wire:delegate 01-barton-peveril-live-pastoral
 ```
 
-Wire inspects `status.md`, identifies all development artifacts at `not_started`, and presents the delegation plan for confirmation:
+Wire inspects `status.md`, identifies all development artifacts at `not_started`, and presents the delegation plan for confirmation. With 9 staging models and 7 warehouse models in scope, the `dbt-developer` step fans out across parallel agents per layer:
 
 ```
-Delegation plan for 01-barton-peveril-live-pastoral
+Delegation plan — Barton Peveril Live Pastoral Analytics / 01-barton-peveril-live-pastoral
+───────────────────────────────────────────────────────────────────────────────────────────
 
-  pipeline-engineer        → pipeline-generate, pipeline-validate
-  dbt-developer            → dbt-generate, utils-run-dbt, dbt-validate
-  orchestration-engineer   → orchestration-generate, orchestration-validate
-  semantic-layer-developer → semantic_layer-generate, semantic_layer-validate
+Step 1 (sequential):
+  pipeline-engineer  →  pipeline-generate
+                        (ProSolution SQL Server CDC connector + Focus REST API connector)
+  Subagent: 1
 
-4 agents will run in parallel. Review commands stay in this session.
+Step 2 (multi-wave fan-out, starts after Step 1):
+
+  Wave 2a — Staging layer  (2 parallel agents):
+    dbt-developer [staging 1/2]  →  stg_prosolution__students, stg_prosolution__courses,
+                                     stg_prosolution__enrolments, stg_prosolution__attendance,
+                                     stg_prosolution__targets  (+3 seeds)
+    dbt-developer [staging 2/2]  →  stg_focus__attendance_observations,
+                                     stg_mis__timetable_slots,
+                                     stg_mis__staff_absence,
+                                     stg_mis__exam_results
+
+  Wave 2b — Integration layer  (1 agent, starts after Wave 2a):
+    dbt-developer [integration 1/1]  →  int__student_unified_profile
+
+  Wave 2c — Warehouse layer  (2 parallel agents, starts after Wave 2b):
+    dbt-developer [warehouse 1/2]  →  student_dim, course_dim,
+                                       attendance_summary_fct, exam_performance_fct
+    dbt-developer [warehouse 2/2]  →  student_risk_scores_fct, student_risk_summary,
+                                       student_risk_history
+
+  Total dbt-developer agents: 5  (2 + 1 + 2)
+
+Step 3 (parallel, starts after Step 2):
+  3a  orchestration-engineer    →  orchestration-generate  (dbt Cloud job config)
+  3b  semantic-layer-developer  →  semantic_layer-generate  (LookML views + explores)
+  Subagents: 2 parallel
+
+Total: 8 specialist agents across 4 execution stages.
+Review commands stay in this session.
 Dashboards-generate will be suggested after semantic_layer is approved.
 
 Confirm? [y/n]
 ```
 
-After confirmation, four specialist agents run concurrently.
+After confirmation, the pipeline agent runs first, then the three dbt waves execute (staging agents run in parallel, then integration, then warehouse agents in parallel), then orchestration and semantic layer run concurrently.
 
 #### What the agents produced
 
 **`pipeline-engineer`** — Fivetran connector configuration for both ProSolution (SQL Server CDC) and Focus (REST API). A supplementary Cloud Function handles the Focus authentication token refresh. Error handling: dead-letter queue to a `pipeline_errors` BigQuery table, Slack alerting on consecutive failures.
 
-**`dbt-developer`** — 19 SQL models generated (9 staging, 1 integration, 7 warehouse, plus 2 utility models) plus 3 seeds and 34 static-analysis tests. Surrogate keys via `dbt_utils.generate_surrogate_key()`; all facts incremental with `merge` strategy. Static analysis PASS with two findings flagged for the team to fix before review:
+**`dbt-developer`** — 5 agents ran across 3 sequential waves. Wave 2a (2 staging agents in parallel) completed in roughly the time it would have taken one agent to handle the first 5 staging models; Wave 2b ran the single integration model; Wave 2c ran the warehouse layer in parallel. Total: 19 SQL models generated (9 staging, 1 integration, 7 warehouse, plus 2 utility models) plus 3 seeds and 34 static-analysis tests. Surrogate keys via `dbt_utils.generate_surrogate_key()`; all facts incremental with `merge` strategy. Static analysis PASS with two findings flagged for the team to fix before review:
 
 1. `ref()` calls inside transformation CTEs in `student_risk_score_fct` and `student_risk_summary` — `ref()` must be in the `FROM` or `JOIN` of a source CTE, not embedded in a transformation CTE. Both models refactored before review is requested.
 2. Missing `s_` prefixes on source CTEs in several warehouse models — Wire naming convention requires source CTEs to be prefixed `s_`. Applied across all affected models before review.
@@ -3324,7 +3353,7 @@ Generates:
 → [main session]
 ```
 
-**D4 — Data Team Enablement** (Day 12 morning, Chris / Joanne / Ethan):
+**D4 — Data Team Enablement** (Day 12 morning, data team):
 - How the Fivetran connectors work and how to extend them
 - How the dbt models are structured; how to add a new source or warehouse model
 - How dbt Cloud jobs work; how to change the schedule or add a command step
@@ -3882,7 +3911,7 @@ Review commands (`*-review`) always stay in the main session — they require yo
 /wire:delegate <release-folder>
 ```
 
-Wire reads `status.md`, identifies all pending artifact work, groups it by agent type, computes a parallel/sequential execution plan, and presents it for your approval before spawning any subagents. A typical full-platform plan looks like:
+Wire reads `status.md`, identifies all pending artifact work, groups it by agent type, computes a parallel/sequential execution plan, and presents it for your approval before spawning any subagents. A typical full-platform plan:
 
 ```
 Step 1 (sequential):
@@ -3892,8 +3921,8 @@ Step 2 (parallel, starts after step 1):
   2a  data-designer    → conceptual_model-generate, pipeline_design-generate
   2b  pipeline-engineer → pipeline-generate
 
-Step 3 (sequential, starts after step 2):
-  dbt-developer → data_model-generate, dbt-generate
+Step 3 (multi-wave fan-out, starts after step 2):
+  dbt-developer → data_model-generate, dbt-generate  [see fan-out below]
 
 Step 4 (parallel, starts after step 3):
   4a  semantic-layer-developer → semantic_layer-generate, dashboards-generate
@@ -3907,6 +3936,31 @@ Step 6 (sequential, starts after step 5):
 ```
 
 The plan respects Wire's artifact dependency graph — requirements must be approved before any technical agent starts; dbt and dashboard work can proceed concurrently once design is done.
+
+### Fan-out parallelism for large model sets
+
+When any dbt layer has more than 5 models, `/wire:delegate` splits that layer's models into batches of 5 and runs one agent per batch in parallel. Layers are still sequential: all staging agents complete before integration starts, which completes before warehouse starts. Within each layer, every agent runs in parallel.
+
+A release with 9 staging models and 7 warehouse models produces this fan-out structure for Step 3:
+
+```
+Wave 3a — Staging layer  (2 parallel agents):
+  dbt-developer [staging 1/2]  →  stg_source_a__entity_x, stg_source_a__entity_y, ...  (+seeds)
+  dbt-developer [staging 2/2]  →  stg_source_b__entity_a, stg_source_b__entity_b, ...
+
+Wave 3b — Integration layer  (1 agent, starts after Wave 3a):
+  dbt-developer [integration 1/1]  →  int__unified_entity
+
+Wave 3c — Warehouse layer  (2 parallel agents, starts after Wave 3b):
+  dbt-developer [warehouse 1/2]  →  entity_dim, summary_fct, ...
+  dbt-developer [warehouse 2/2]  →  risk_fct, history_fct, ...
+
+Total dbt-developer agents: 5  (2 + 1 + 2)
+```
+
+Each agent receives a `task_scope` list — the specific models it should generate. It reads the same upstream artifacts as normal but writes only the models in its scope. The orchestrating session merges `decisions.md` entries from all agents after each wave completes.
+
+The same pattern applies to `semantic-layer-developer` (batch size: 3 explores per agent) and `migration-specialist` (batch size: 10 source tables per agent).
 
 ### Review gates remain human-in-the-loop
 

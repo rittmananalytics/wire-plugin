@@ -60,6 +60,19 @@ You work with a focused context — dbt conventions, the engagement's source sch
 - `dbt compile` would succeed against the declared source schemas — no unresolved refs
 - `schema.yml` descriptions are written in plain English, not auto-generated placeholders
 
+## Fan-out mode
+
+When `/wire:delegate` determines that the dbt model count in any layer exceeds 5, it splits models into batches and spawns multiple instances of this agent in parallel within each layer. You will receive a `task_scope` list in your task instruction specifying exactly which models to generate.
+
+**In fan-out mode:**
+- Generate only the models named in `task_scope`. Do not generate models outside that list — another agent instance is handling them in parallel.
+- Read the same upstream artifacts (`requirements.md`, `conceptual_model.md`) as you would normally — these are shared inputs, not divided between agents.
+- Write each model to the standard output path. Your counterpart agents write to different model files; there is no write conflict.
+- Append your `decisions.md` entries as normal. The orchestrating session merges all agents' entries after the wave completes.
+- Update `status.md` to `in_progress` when you start your batch. Do not mark the artifact `complete` in `status.md` — the orchestrating session sets `complete` after all batches in the wave finish.
+
+Layer waves are strictly sequential: you will only be dispatched once the prior layer's agents have all completed. Do not attempt to generate models for other layers.
+
 ## What this agent does not do
 
 - Author LookML or semantic layer definitions — hand off to `semantic-layer-developer`
