@@ -7,7 +7,7 @@ title: Worked Example
 
 This walkthrough traces a complete Wire engagement from initial kick-off through delivery handover, using a real-world further education client. It covers every command in the canonical sequence and shows two Wire Agents features in practice: auto-delegation during the design phase, and batch dispatch via `/wire:delegate` at the start of development.
 
-The engagement is a `full_platform` release using BigQuery, dbt, Looker, and Apache Airflow for orchestration.
+The engagement is a `full_platform` release using BigQuery, dbt, Looker, and dbt Cloud for orchestration.
 
 ## Engagement overview
 
@@ -17,7 +17,7 @@ The engagement is a `full_platform` release using BigQuery, dbt, Looker, and Apa
 | **Engagement** | Live Pastoral Analytics (SOW 2) |
 | **Duration** | 2 weeks (Feb 2–13, 2026) |
 | **Release type** | `full_platform` |
-| **Orchestration** | Apache Airflow (college IT already runs Airflow for timetabling) |
+| **Orchestration** | dbt Cloud (scheduled jobs + CI/PR job) |
 
 **SOW deliverables**: Live pastoral pipeline (ProSolution + Focus → BigQuery), Looker semantic layer, SPA Operational Dashboard, data team and end-user training, technical documentation.
 
@@ -392,30 +392,28 @@ semantic-layer-developer → semantic_layer-generate, semantic_layer-validate
 
 **`dbt-developer`** — 19 SQL models (9 staging, 1 integration, 7 warehouse, 2 utility) plus 3 seeds and 34 static-analysis tests. Surrogate keys via `dbt_utils.generate_surrogate_key()`; all facts incremental with `merge` strategy. Static analysis PASS with two findings the team must fix before requesting review: `ref()` calls inside transformation CTEs in two models (must move to source CTEs at the top of the file); missing `s_` prefixes on source CTEs across several warehouse models. Both corrected before the review is requested. Adds to `decisions.md`:
 
-- Used `BashOperator` not `PythonVirtualenvOperator` for dbt tasks — college Airflow already has dbt-core installed; a virtual env would add 90s per run for no isolation benefit
 - `student_risk_summary` materialised as table with `full_refresh=false` — model accumulates historical snapshots; incremental would require a unique_key that changes the grain
 
-**`orchestration-engineer`** — Generates the Airflow DAG (`dags/barton_peveril_pipeline.py`):
+**`orchestration-engineer`** — Generates the dbt Cloud job configuration (`dbt_cloud_config.md`):
 
-```python
-with DAG(
-    dag_id="barton_peveril_pipeline",
-    schedule_interval="*/30 * * * *",  # every 30 minutes, matches NFR-3
-    start_date=datetime(2026, 2, 10),
-    catchup=False,
-) as dag:
-    prosolution_sensor = BigQueryTableExistenceSensor(
-        task_id="check_prosolution_loaded", ...
-    )
-    focus_sensor = BigQueryTableExistenceSensor(
-        task_id="check_focus_loaded", ...
-    )
-    dbt_run = BashOperator(task_id="dbt_run", bash_command="dbt run ...")
-    dbt_test = BashOperator(task_id="dbt_test", bash_command="dbt test ...")
-    [prosolution_sensor, focus_sensor] >> dbt_run >> dbt_test
+```markdown
+## Jobs
+
+### barton_peveril_scheduled_run
+- Environment: Production (bp-analytics, target: prod)
+- Schedule: every 30 minutes (matches NFR-3 freshness SLA)
+- Commands:
+    dbt run --select staging+ warehouse+
+    dbt test --select staging+ warehouse+
+- On failure: Slack → #pastoral-data-alerts
+
+### barton_peveril_ci
+- Trigger: pull request against main
+- Commands: dbt build --select state:modified+
+- On completion: GitHub PR status check
 ```
 
-Also produces `airflow_connections.md` and `airflow_variables.md`. Adds to `decisions.md`: set schedule to `*/30` to match the 30-minute freshness SLA in NFR-3; sensors ensure the cadence is a ceiling not a guarantee.
+Adds to `decisions.md`: scheduled job runs on cadence regardless of source readiness — downstream freshness tests surface stale data via Slack alert, which is simpler than sensor-based gating at this data volume. CI job uses `state:modified+` to keep PR feedback fast; production job uses full selector to prevent silent exclusions after a merge.
 
 **`semantic-layer-developer`** — LookML views for all 7 warehouse models and 5 explores: `student_risk_summary`, `pastoral_notes`, `attendance`, `assignment_marks`, `student_risk_score`. `attendance_percentage` calculated dynamically as `SUM(sessions_present) / (SUM(sessions_present) + SUM(sessions_absent))` — never stored (CR-1). Risk signal measures: `attendance_deterioration_flag`, `pastoral_note_spike_flag`, `unanswered_alert_flag`, `days_since_last_spa_contact`.
 
@@ -427,8 +425,8 @@ Review gates stay in the main session:
 /wire:pipeline-review 01-barton-peveril-live-pastoral → Approved 2026-02-11
 /wire:dbt-review 01-barton-peveril-live-pastoral → Approved 2026-02-11
 /wire:orchestration-review 01-barton-peveril-live-pastoral
-→ IT infrastructure lead confirms BashOperator approach
-→ OQ-2 formally closed: dags/ synced via Git Sync
+→ data engineering lead (dbt Cloud admin)
+→ Job selectors verified, 30-minute schedule confirmed against NFR-3
 → Approved 2026-02-11
 /wire:semantic_layer-review 01-barton-peveril-live-pastoral → Approved 2026-02-12
 ```
@@ -474,22 +472,24 @@ UAT plan mapped to FR-1 through FR-9. One iteration: "days since last SPA contac
 /wire:deployment-generate 01-barton-peveril-live-pastoral
 ```
 
-Generates: step-by-step deployment runbook, Airflow DAG enable instructions with Git Sync confirmation, monitoring setup, rollback procedures.
+Generates: step-by-step deployment runbook (Fivetran → BigQuery datasets → dbt Cloud environment + jobs → Looker publish), monitoring setup, rollback procedures.
 
 ```
 /wire:deployment-validate 01-barton-peveril-live-pastoral → PASS
 
 /wire:utils-deploy-to-dev 01-barton-peveril-live-pastoral
-→ 9 models built, 47 tests passing, DAG runs in dev, dashboards visible in Looker dev
+→ All models built, all tests passing in dbt Cloud dev environment,
+  dashboards visible in Looker dev
 
 /wire:deployment-review 01-barton-peveril-live-pastoral
-→ IT lead + analytics lead
+→ data engineering lead + analytics engineering lead
 → Dev results presented, runbook walked through
 → Approved 2026-02-13
 
 /wire:utils-deploy-to-prod 01-barton-peveril-live-pastoral
 → Fivetran connectors activated
-→ Airflow DAG enabled in production (Git Sync confirmed)
+→ dbt Cloud production environment configured and tested
+→ Scheduled job (30-minute cadence) and CI/PR job activated
 → Dashboards published to Looker production
 → Monitoring alerts live
 ```
@@ -500,7 +500,7 @@ Generates: step-by-step deployment runbook, Airflow DAG enable instructions with
 /wire:training-generate 01-barton-peveril-live-pastoral
 ```
 
-**Data Team Enablement** (Day 12 morning): pipeline architecture, dbt model structure, Airflow DAG operation, LookML extension, hands-on trace of a data point from ProSolution to Looker.
+**Data Team Enablement** (Day 12 morning): pipeline architecture, dbt model structure, dbt Cloud job operation, LookML extension, hands-on trace of a data point from ProSolution to Looker.
 
 **End User Training** (Day 12 afternoon): dashboard navigation, interpreting risk signals, data freshness expectations, how to raise a data quality issue.
 
@@ -514,7 +514,7 @@ Generates: step-by-step deployment runbook, Airflow DAG enable instructions with
 → [delivery-lead agent reads all approved artifacts and decisions.md]
 ```
 
-Produces: architecture overview, dbt model reference, Airflow DAG runbook, LookML field catalogue, operational runbook.
+Produces: architecture overview, dbt model reference, dbt Cloud job reference (selectors, cadence, how to change), LookML field catalogue, operational runbook.
 
 ```
 /wire:documentation-validate 01-barton-peveril-live-pastoral → PASS
@@ -539,9 +539,9 @@ Produces: architecture overview, dbt model reference, Airflow DAG runbook, LookM
 | Pipeline design | `.wire/releases/.../pipeline_design.md` |
 | Physical data model | `.wire/releases/.../data_model.md` |
 | Dashboard wireframes | `.wire/releases/.../mockups.md` |
-| dbt project | 9 models, 47 tests |
-| Airflow DAG | `dags/barton_peveril_pipeline.py` |
-| LookML | `pastoral_risk` explore, SPA Operational Dashboard |
-| Technical documentation | Architecture, DAG runbook, field catalogue, ops runbook |
+| dbt project | 19 SQL models, 3 seeds, 34 tests |
+| dbt Cloud config | `dbt_cloud_config.md` — scheduled run + CI/PR job |
+| LookML | 5 explores, SPA Operational Dashboard |
+| Technical documentation | Architecture, dbt Cloud job reference, field catalogue, ops runbook |
 | Training materials | Data team session + end-user session |
 | `decisions.md` | 11 agent decisions recorded across the engagement |

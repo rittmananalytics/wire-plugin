@@ -2548,7 +2548,7 @@ The engagement was run directly from a signed SOW (no discovery release needed �
 | **Duration** | 2 weeks (Feb 2–13, 2026) |
 | **Budget** | $7,100 / 35 hours |
 | **Release type** | Full Platform |
-| **Orchestration** | Apache Airflow (college IT team already runs Airflow for timetabling) |
+| **Orchestration** | dbt Cloud (scheduled jobs + CI/PR job) |
 
 **SOW deliverables**:
 
@@ -3040,7 +3040,6 @@ Completed this session:
 
 Open items carried forward:
   • OQ-1 resolved: Scenario C (Hybrid) chosen for pipeline architecture
-  • OQ-2 open: Airflow DAG deployment — IT team needs to confirm dags/ sync method
   • Change request from mockups review: "days since last SPA contact" column
 
 Next session focus: Phase 3 Development
@@ -3078,7 +3077,6 @@ Next artifacts (all at not_started):
   → dashboards         (main session)
 
 Open items from last session:
-  ⚠ OQ-2: Airflow DAG deployment method — IT team response pending
   ⚠ Change request: "days since last SPA contact" in mockups (resolved in data_model v1.1)
 
 Recommended action: /wire:delegate 01-barton-peveril-live-pastoral
@@ -3123,60 +3121,55 @@ After confirmation, four specialist agents run concurrently.
 The agent adds to `decisions.md`:
 
 ```
-[2026-02-10] dbt-developer: Used BashOperator rather than PythonVirtualenvOperator
-for the dbt tasks in the Airflow DAG. The college Airflow instance runs Python 3.11
-and already has dbt-core and the BigQuery adapter installed in the base environment —
-a virtual env would add 90 seconds to every run for no isolation benefit.
-
 [2026-02-10] dbt-developer: student_risk_summary materialised as a table with
 full_refresh=false. The model accumulates historical snapshots; incremental would
 require a unique_key that changes the grain. Full-refresh on schedule is acceptable
-at current row volumes (~180k students × 250 school days).
+at current row volumes (~18,000 enrolments × 250 school days).
 ```
 
-**`orchestration-engineer`** — Generates the Airflow orchestration layer (tool choice: Airflow, confirmed from OQ-2 resolution). Produces:
+**`orchestration-engineer`** — Generates the dbt Cloud job configuration. Produces `dbt_cloud_config.md`:
 
-`dags/barton_peveril_pipeline.py`:
-```python
-with DAG(
-    dag_id="barton_peveril_pipeline",
-    schedule_interval="*/30 * * * *",  # every 30 minutes, matches NFR-3
-    start_date=datetime(2026, 2, 10),
-    catchup=False,
-    tags=["barton_peveril", "dbt", "pastoral"],
-) as dag:
-    prosolution_sensor = BigQueryTableExistenceSensor(
-        task_id="check_prosolution_loaded",
-        project_id="bp-analytics",
-        dataset_id="fivetran_prosolution",
-        table_id="vw_attendance_daily",
-        timeout=3600,
-    )
-    focus_sensor = BigQueryTableExistenceSensor(
-        task_id="check_focus_loaded",
-        project_id="bp-analytics",
-        dataset_id="fivetran_focus",
-        table_id="student_notes",
-        timeout=3600,
-    )
-    dbt_run = BashOperator(
-        task_id="dbt_run",
-        bash_command="cd /opt/airflow/dags/bp_dbt && dbt run --target prod",
-    )
-    dbt_test = BashOperator(
-        task_id="dbt_test",
-        bash_command="cd /opt/airflow/dags/bp_dbt && dbt test --target prod",
-    )
-    [prosolution_sensor, focus_sensor] >> dbt_run >> dbt_test
+```markdown
+## Environments
+
+### Production
+- Name: barton_peveril_prod
+- dbt version: 1.8.x
+- Target: prod
+- BigQuery project: bp-analytics
+- Dataset: bp_analytics
+
+## Jobs
+
+### barton_peveril_scheduled_run
+- Environment: Production
+- Schedule: every 30 minutes (matches NFR-3 freshness SLA)
+- Commands:
+    dbt run --select staging+ warehouse+
+    dbt test --select staging+ warehouse+
+- On failure: Slack notification → #pastoral-data-alerts
+
+### barton_peveril_ci
+- Environment: CI/PR
+- Trigger: pull request opened or updated against main
+- Commands:
+    dbt build --select state:modified+
+- On completion: GitHub PR status check
 ```
 
-Also produces `airflow_connections.md` and `airflow_variables.md`. Agent adds to `decisions.md`:
+Agent adds to `decisions.md`:
 
 ```
-[2026-02-10] orchestration-engineer: Set schedule_interval to */30 rather than
-@hourly to align with the 30-minute freshness SLA in NFR-3. The BigQuery sensors
-will hold execution if Fivetran hasn't landed data yet, so the 30-minute cadence
-is a ceiling not a guarantee — actual latency depends on Fivetran sync speed.
+[2026-02-10] orchestration-engineer: Scheduled dbt Cloud job at 30-minute
+cadence to match NFR-3. Source readiness is not gated — the job runs on
+schedule and downstream freshness tests flag stale data. This is simpler
+than sensor-based gating and appropriate for the college's data volumes;
+a Fivetran delay longer than 30 minutes would be caught by the dbt test
+layer and surface in the Slack alert.
+
+[2026-02-10] orchestration-engineer: CI job uses state:modified+ rather
+than a full build to keep PR feedback fast. The production job runs the
+full selector to ensure nothing is silently excluded after a merge.
 ```
 
 **`semantic-layer-developer`** — LookML views for all 7 warehouse models and 5 explores:
@@ -3208,11 +3201,11 @@ Review gates stay in the main session — the consultant reviews each artifact w
 → Approved 2026-02-11
 
 /wire:orchestration-review 01-barton-peveril-live-pastoral
-→ Reviewer: IT infrastructure lead (Airflow owner)
-→ DAG reviewed — BashOperator approach confirmed correct for college environment
-→ Connection IDs and variables confirmed against college Airflow instance config
+→ Reviewer: data engineering lead (dbt Cloud admin)
+→ Job selectors verified against deployed model list
+→ 30-minute schedule confirmed against NFR-3
+→ CI/PR job approach reviewed and accepted
 → Approved 2026-02-11
-→ OQ-2 formally closed: dags/ folder synced via Git Sync from the delivery repo
 
 /wire:semantic_layer-review 01-barton-peveril-live-pastoral
 → Reviewer: analytics engineering lead
@@ -3294,30 +3287,30 @@ UAT plan mapped to FR-1 through FR-9. UAT session conducted with SPAs and pastor
 ```
 
 Generates:
-- Step-by-step deployment runbook (Fivetran → BigQuery → dbt Cloud → Airflow DAG enable → Looker publish)
-- Airflow DAG enable instructions with Git Sync confirmation steps
+- Step-by-step deployment runbook (Fivetran → BigQuery datasets → dbt Cloud environment + jobs → Looker publish)
+- dbt Cloud production environment configuration steps
 - Monitoring and alerting setup confirmation
 - Rollback procedures for each stage
 
 ```
 /wire:deployment-validate 01-barton-peveril-live-pastoral
 → PASS — all upstream artifacts approved, no outstanding blockers,
-         monitoring config complete, Airflow connection IDs verified
+         dbt Cloud job selectors verified, monitoring config complete
 
 /wire:utils-deploy-to-dev 01-barton-peveril-live-pastoral
-→ Dev deployment verified — all 9 models built, 47 tests passing,
-  DAG runs cleanly in dev Airflow environment, dashboards visible in Looker dev
+→ Dev deployment verified — all models built, all tests passing in dbt Cloud
+  dev environment, dashboards visible in Looker dev
 
 /wire:deployment-review 01-barton-peveril-live-pastoral
 → [main session]
-→ Reviewer: IT infrastructure lead + analytics engineering lead
+→ Reviewer: data engineering lead + analytics engineering lead
 → Dev results presented, runbook walked through step-by-step
 → Approved 2026-02-13
 
 /wire:utils-deploy-to-prod 01-barton-peveril-live-pastoral
 → Fivetran connectors activated
-→ dbt Cloud CI job configured and tested
-→ Airflow DAG enabled in production (Git Sync confirmed dags/ up to date)
+→ dbt Cloud production environment configured and tested
+→ Scheduled job (30-minute cadence) and CI/PR job activated
 → Dashboards published to Looker production
 → Monitoring alerts live
 ```
@@ -3334,7 +3327,7 @@ Generates:
 **D4 — Data Team Enablement** (Day 12 morning, Chris / Joanne / Ethan):
 - How the Fivetran connectors work and how to extend them
 - How the dbt models are structured; how to add a new source or warehouse model
-- How the Airflow DAG works; how to change the schedule or add a task
+- How dbt Cloud jobs work; how to change the schedule or add a command step
 - How to extend LookML views and explores
 - Hands-on: trace a data point from ProSolution SQL Server to the Looker dashboard
 
@@ -3361,7 +3354,7 @@ Generates:
 The `delivery-lead` agent reads all approved artifacts and `decisions.md` (now 11 entries) and produces the technical documentation package:
 - Architecture overview with the data flow diagram
 - dbt model reference (grain, columns, test coverage per model)
-- Airflow DAG runbook (schedule, tasks, connection IDs, how to change cadence)
+- dbt Cloud job reference (scheduled run and CI/PR job — selectors, cadence, how to change)
 - LookML field catalogue (all dimensions and measures, with business definitions)
 - Operational runbook (monitoring alerts, common failure modes, escalation path)
 
