@@ -104,6 +104,12 @@ graph LR
     LML -->|"generates"| DASH
 ```
 
+## Specialist agents
+
+As of v3.9.0, Wire commands auto-delegate to one of twelve specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`.
+
+See [Wire Agents](../advanced/wire-agents) for the full agent roster and how delegation works.
+
 ## Research persistence
 
 When the AI performs technical research during a session, it automatically saves structured summaries to `.wire/research/sessions/YYYY-MM-DD-HHMM/summary.md`. The engagement-context skill checks these saved summaries when loading context — if a relevant prior finding exists, it is surfaced rather than re-running the same research.

@@ -39,6 +39,7 @@ const sidebars = {
       label: 'Advanced',
       items: [
         'advanced/worked-example',
+        'advanced/wire-agents',
         'advanced/autopilot',
         'advanced/wire-studio',
         'advanced/vscode-extension',

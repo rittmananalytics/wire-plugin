@@ -1,4 +1,4 @@
-<img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
+<img src="wire/docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
 # The Wire Framework: User Guide
 
@@ -32,14 +32,15 @@
 20. [Running a Custom Release](#20-running-a-custom-release)
 21. [Worked Example: Barton Peveril Live Pastoral Analytics](#21-worked-example-barton-peveril-live-pastoral-analytics)
 22. [Wire Autopilot: Autonomous Execution](#22-wire-autopilot-autonomous-execution)
-23. [Wire Studio: Web-Based Interface](#23-wire-studio-web-based-interface)
-24. [Wire Framework VS Code Extension](#24-wire-framework-vs-code-extension)
-25. [Issue Tracking: Jira and Linear](#25-issue-tracking-jira-and-linear)
-26. [Document Store: Confluence and Notion](#26-document-store-confluence-and-notion)
-27. [Extending and Customising the Framework](#27-extending-and-customising-the-framework)
-28. [FAQ](#28-faq)
-29. [Troubleshooting](#29-troubleshooting)
-30. [Framework Management Commands](#30-framework-management-commands)
+23. [Wire Agents: Specialist Subagents](#23-wire-agents-specialist-subagents)
+24. [Wire Studio: Web-Based Interface](#24-wire-studio-web-based-interface)
+25. [Wire Framework VS Code Extension](#25-wire-framework-vs-code-extension)
+26. [Issue Tracking: Jira and Linear](#26-issue-tracking-jira-and-linear)
+27. [Document Store: Confluence and Notion](#27-document-store-confluence-and-notion)
+28. [Extending and Customising the Framework](#28-extending-and-customising-the-framework)
+29. [FAQ](#29-faq)
+30. [Troubleshooting](#30-troubleshooting)
+31. [Framework Management Commands](#31-framework-management-commands)
     - [`/wire:playbook-generate`](#wireplaybook-generate--delivery-playbook)
 
 ---
@@ -398,6 +399,10 @@ The **engagement-context skill** activates on the first message in any Wire repo
 Run `/wire:start` at the start of any session to get a full project overview and a ranked list of next actions. It also acts as a co-pilot: first-time users get onboarding (release type selection, three-step cycle explanation); returning users get a navigation summary with their current artifact state and a specific next command. Run it any time you're unsure what to do next.
 
 Use `/wire:session-plan [release-folder]` for an optional structured planning ritual — it enters Plan Mode and proposes a 3–5 step session plan. It is never required.
+
+### Specialist agents
+
+As of v3.9.0, Wire commands auto-delegate to one of twelve specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`. See [Section 23](#23-wire-agents-specialist-subagents) for the full agent roster and how delegation works.
 
 ### Research persistence
 
@@ -790,7 +795,7 @@ A new engagement with an uncertain scope:
 → Discovery release complete.
 ```
 
-> **Tip**: Run `/wire:playbook-generate 01-discovery` after the problem definition is approved to generate a BPMN-style visual delivery plan and step-by-step narrative for this release. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate 01-discovery` after the problem definition is approved to generate a BPMN-style visual delivery plan and step-by-step narrative for this release. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -894,7 +899,7 @@ The canonical exit deliverable is the **Findings Playback slide deck**, presente
 
 The mandatory **four-tag rule** on every interview theme bullet (`#<domain> #<type> #<hierarchy> #<ppt>`) is enforced mechanically by `/wire:stakeholder-interview-validate`. The three analyses (Hierarchy of Needs / PPT / Maturity Curve) cannot run without it.
 
-> **Tip**: Run `/wire:playbook-generate 01-discovery` after the engagement brief is approved to generate a BPMN-style diagram of the full SOP discovery flow with your open questions, team, and target dates wired in. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate 01-discovery` after the engagement brief is approved to generate a BPMN-style diagram of the full SOP discovery flow with your open questions, team, and target dates wired in. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -1303,7 +1308,7 @@ In addition to the phase-specific commands above, the framework provides utility
 - **`/wire:utils-jira-create <release-folder>`** — Creates or links Jira issues for a release. Can create a new Epic/Task/Sub-task hierarchy from scratch, or search an existing Jira project for matching issues and link to them
 - **`/wire:utils-atlassian-search <release-folder>`** — Searches Confluence for documentation, useful for finding existing client documentation and prior engagement materials
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a visual end-to-end plan for this release. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a visual end-to-end plan for this release. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -1368,7 +1373,7 @@ The chosen tool is recorded as `pipeline_tool` in `status.md`. All downstream `/
 /wire:archive <release-folder>
 ```
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the pipeline design is approved to generate a visual delivery plan for this release. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the pipeline design is approved to generate a visual delivery plan for this release. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -1411,7 +1416,7 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 - Add any existing dbt project files (existing `schema.yml`, source definitions, SQL examples) to `requirements/` before running `data_model:generate` — the AI will use them to understand the existing model structure and extend it correctly
 - Store SQL examples from the source database (schema introspection results, sample queries) so the AI understands actual column names and types
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a step-by-step plan for the dbt development work. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a step-by-step plan for the dbt development work. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -1447,7 +1452,7 @@ Use this when the semantic layer already has the data, and you're adding new das
 - Add existing LookML view files to `requirements/` before generating dashboards — the AI needs to know which dimensions and measures are available
 - Screenshots of existing Looker explores also help
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the semantic layer design is confirmed to plan the dashboard build. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the semantic layer design is confirmed to plan the dashboard build. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -1653,7 +1658,7 @@ The transition from `ref('customers_seed')` to `source('salesforce', 'accounts')
 - **Don't delay the refactor**: Once client data is available, run the data refactor promptly. The longer you wait, the more the seed-based version diverges from what the client expects.
 - **The prototype is disposable**: The seed-based dbt project exists to validate the design. The real value is the iteration it enables, not the seed data itself.
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after mockups are approved to generate a delivery plan that shows the mock → seed → real-data refactor progression. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after mockups are approved to generate a delivery plan that shows the mock → seed → real-data refactor progression. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -1685,7 +1690,7 @@ Use this when an existing platform needs training and documentation — either a
 - Add any existing technical documentation, data dictionaries, or architecture diagrams to `requirements/` — the AI will use them as the basis for generated materials
 - Add the client stakeholder list (names, roles, technical levels) so training materials can be calibrated appropriately
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are set to plan the training and documentation sequence. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are set to plan the training and documentation sequence. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -1791,7 +1796,7 @@ See `wire/docs/agentic_commerce/00a-prerequisites-and-worked-examples.md` for a 
 - Keep the Shopify Storefront API token out of the frontend bundle — it should be passed via Supabase Edge Functions or a server-side proxy
 - Use `VITE_` prefix only for environment variables that are safe to expose to the browser
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the base storefront is approved to generate a visual delivery plan showing the dependency order of all nine agentic commerce features. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the base storefront is approved to generate a visual delivery plan showing the dependency order of all nine agentic commerce features. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -2106,7 +2111,7 @@ When `mcp_tunnel_configured: true` is set in `status.md`, all audit and migratio
 
 ---
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the migration inventory is approved to generate a visual dependency graph showing which migration batches can proceed in parallel. See [Section 28](#28-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the migration inventory is approved to generate a visual dependency graph showing which migration batches can proceed in parallel. See [Section 31](#31-framework-management-commands).
 
 ---
 
@@ -3254,7 +3259,113 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ---
 
-## 23. Wire Studio: Web-Based Interface
+## 23. Wire Agents: Specialist Subagents
+
+> **Introduced**: v3.8.6 (orchestrate command) → v3.9.0 (12 specialists + `/wire:delegate`)
+
+Wire Agents replaces the single-agent pattern with twelve named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
+
+The core insight is simple: a single Claude Code agent doing requirements, dbt development, LookML authoring, data quality, and migration audits across a full engagement dilutes context and produces generic output. A specialist with a narrow brief — "your job is dbt models and nothing else" — operates with a much cleaner context and makes better decisions within its domain.
+
+### The twelve agents
+
+| Agent | Domain |
+|---|---|
+| `discovery-analyst` | Requirements, workshops, all SOP discovery artifacts |
+| `data-designer` | Conceptual model, pipeline design, mockups, viz catalog |
+| `pipeline-engineer` | Fivetran, Airbyte, dlt connector configuration |
+| `dbt-developer` | Staging → integration → warehouse model generation |
+| `semantic-layer-developer` | LookML views, explores, dashboards, ads/semantic_layer |
+| `orchestration-engineer` | DAG authoring, scheduling, orchestration migration |
+| `data-quality-engineer` | Schema tests, Droughty QA, field docs, UAT |
+| `migration-specialist` | Full migration lifecycle — audits, inventory, strategy, cutover |
+| `delivery-lead` | Deployment guides, training, kickoff, enablement |
+| `agentic-data-stack-developer` | Canonical models, knowledge skills, agent configs, eval suites |
+| `agentic-commerce-developer` | Lovable storefront, Shopify integration, all AC AI features |
+| `qa-agent` | Pure validator across all release types — no generation |
+
+The `qa-agent` has no generation responsibility. It validates outputs from other agents and reports pass/fail with specific remediation actions.
+
+### Auto-delegation on individual commands
+
+Nothing changes for individual commands. When you run `/wire:dbt-generate` (or any generate/validate command), the main session automatically delegates to the appropriate specialist subagent. You see a brief "→ delegating to dbt-developer agent" message. The subagent executes and the result appears in the usual artifact location.
+
+Review commands (`*-review`) always stay in the main session — they require your direct input.
+
+### Batch delegation with `/wire:delegate`
+
+```
+/wire:delegate <release-folder>
+```
+
+Wire reads `status.md`, identifies all pending artifact work, groups it by agent type, computes a parallel/sequential execution plan, and presents it for your approval before spawning any subagents. A typical full-platform plan looks like:
+
+```
+Step 1 (sequential):
+  discovery-analyst → requirements-generate, workshops-generate
+
+Step 2 (parallel, starts after step 1):
+  2a  data-designer    → conceptual_model-generate, pipeline_design-generate
+  2b  pipeline-engineer → pipeline-generate
+
+Step 3 (sequential, starts after step 2):
+  dbt-developer → data_model-generate, dbt-generate
+
+Step 4 (parallel, starts after step 3):
+  4a  semantic-layer-developer → semantic_layer-generate, dashboards-generate
+  4b  data-quality-engineer    → data_quality-generate
+
+Step 5 (sequential, starts after step 4):
+  qa-agent → validate all artifacts from steps 1–4
+
+Step 6 (sequential, starts after step 5):
+  delivery-lead → deployment-generate, training-generate
+```
+
+The plan respects Wire's artifact dependency graph — requirements must be approved before any technical agent starts; dbt and dashboard work can proceed concurrently once design is done.
+
+### Review gates remain human-in-the-loop
+
+Delegation pauses before every `*-review` step. You receive a notification with the artifact location and the validate result:
+
+```
+[Release] Delegation paused at review gate.
+
+Artifact: data_model
+Status:   PASS WITH WARNINGS
+Location: .wire/releases/[release]/artifacts/data_model/
+
+Run /wire:data_model-review [release_folder] to conduct the stakeholder review.
+Once approved, re-run /wire:delegate [release_folder] to continue.
+```
+
+Run the review manually, then re-run `/wire:delegate` to resume from where it stopped.
+
+### The decisions.md convention
+
+Each subagent appends non-obvious choices and rationale to `.wire/releases/{release}/decisions.md` as it works. This creates a lightweight audit trail of architectural decisions that wouldn't otherwise be captured in the artifacts — grain choices, tool selections, modelling trade-offs. Downstream agents read it; so do human reviewers at the review gates.
+
+### Local execution — no additional infrastructure
+
+Wire Agents runs entirely on your workstation. Subagents are spawned using Claude Code's built-in Agent tool. They use your existing Claude Code API key — no additional keys, accounts, or managed agent services required. All computation happens locally against your existing API endpoint configuration.
+
+### Autopilot and agents
+
+`/wire:autopilot` calls `/wire:delegate` internally. When you run Autopilot, you are already using Wire Agents — the batch delegation and specialist routing happen automatically. Run `/wire:delegate` directly when you want to review and confirm the delegation plan before agents start.
+
+### Roadmap
+
+Phase 1 (v3.9, current): twelve specialist agent definitions and local batch orchestration via `/wire:delegate`.
+
+Phase 2 (v4.0): ticket-driven pull model — agents watch Jira/Linear for `ready_for_agent` issues on a schedule and execute autonomously.
+
+Phase 3 (v4.1): agent-to-agent coordination via child tickets.
+
+Phase 4 (v4.2): named persistent agents with engagement-level expertise; a delivery-coordinator that takes a SoW and generates the full project plan autonomously.
+
+---
+
+## 24. Wire Studio: Web-Based Interface
 
 > **Status: Active** — Wire Studio v3.4.17 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
 
@@ -3368,11 +3479,11 @@ Click **Create**. Wire Studio creates the environment, provisions a workspace, a
 
 When no project is open, Wire Studio shows the welcome screen with **Open Project** and **New Project** buttons:
 
-![Wire Studio — Open Project screen](docs/images/wire_studio_open_project.png)
+![Wire Studio — Open Project screen](wire-web-ui/docs/images/wire_studio_open_project.png)
 
 Clicking **Open Project** opens the project selection dialog:
 
-![Wire Studio — Select Project dialog](docs/images/wire_studio_select_project.png)
+![Wire Studio — Select Project dialog](wire-web-ui/docs/images/wire_studio_select_project.png)
 
 #### 2. Viewing the artifact graph
 
@@ -3394,11 +3505,11 @@ Right-click any artifact node to see the context menu:
 - **Refresh Document** — reloads the content (useful after running a Generate command)
 - **Close Document** — closes the tab
 
-![Wire Studio — Right-click context menu on artifact node](docs/images/wire_studio_open_diagram.png)
+![Wire Studio — Right-click context menu on artifact node](wire-web-ui/docs/images/wire_studio_open_diagram.png)
 
 For example, right-clicking the **Data Model** node and selecting "View Document" opens a tab showing the ER diagram rendered from the mermaid code in the data model specification:
 
-![Wire Studio — Viewing a rendered pipeline design diagram in a tab](docs/images/wire_studio_view_diagram.png)
+![Wire Studio — Viewing a rendered pipeline design diagram in a tab](wire-web-ui/docs/images/wire_studio_view_diagram.png)
 
 #### 4. Running commands from the artifact graph
 
@@ -3426,7 +3537,7 @@ This is useful for reading requirements specifications, design documents, traini
 
 When a file in the file explorer corresponds to a Wire artifact (matched by filename keywords and output directory), the right-click context menu also shows **Generate**, **Validate**, and **Review** actions:
 
-![Wire Studio — Right-click context menu on file with Generate/Validate/Review](docs/images/wire_studio_validate_requirements.png)
+![Wire Studio — Right-click context menu on file with Generate/Validate/Review](wire-web-ui/docs/images/wire_studio_validate_requirements.png)
 
 This provides a second way to trigger Wire commands — directly from the file tree rather than the artifact graph. The same command is executed either way, and output streams to the Execution Log.
 
@@ -3729,7 +3840,7 @@ The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and 
 
 ---
 
-## 24. Wire Framework VS Code Extension
+## 25. Wire Framework VS Code Extension
 
 The Wire Framework VS Code extension brings the delivery lifecycle directly into your editor. Instead of switching between the terminal, file explorer, and Claude Code to track progress, run commands, and review artifacts, you can do all of it from the VS Code sidebar.
 
@@ -3737,31 +3848,31 @@ The Wire Framework VS Code extension brings the delivery lifecycle directly into
 
 Search for **Wire Framework** in the VS Code Extensions marketplace (`⌘⇧X` / `Ctrl⇧X`), then click **Install**.
 
-<img src="docs/images/wire_plugin_ss_0_install_extension.png" alt="Search for Wire Framework in Extensions marketplace" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_0_install_extension.png" alt="Search for Wire Framework in Extensions marketplace" width="50%">
 
 If this is your first install from Rittman Analytics, VS Code will show a **Trust Publisher & Install** dialog — click through to confirm.
 
-<img src="docs/images/wire_plugin_ss_00_choose_install.png" alt="Trust Publisher & Install dialog" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_00_choose_install.png" alt="Trust Publisher & Install dialog" width="50%">
 
 Once installed, click the **W** icon in the activity bar. For a new project with no `.wire/` folder you'll see a prompt to start a new engagement.
 
-<img src="docs/images/wire_plugin_ss_000_new_wire_engagement.png" alt="Wire sidebar open on a new project" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_000_new_wire_engagement.png" alt="Wire sidebar open on a new project" width="50%">
 
 Run `/wire:new` in Claude Code to scaffold the engagement, create your first release, and configure MCP servers. Wire asks for the client name, project type, and scope before generating the structure.
 
-<img src="docs/images/wire_plugin_ss_0000_run_wire_new.png" alt="Running /wire:new in Claude Code" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_0000_run_wire_new.png" alt="Running /wire:new in Claude Code" width="50%">
 
 ### Installing the Wire Plugin
 
 The extension activates automatically in any workspace. Before running Wire commands you need the Wire Claude Code plugin installed. Open the **MCP Servers** panel in the Wire sidebar, click the cloud-download button in the title bar, and choose **Install from marketplace**. The picker sends `/plugin marketplace add rittmananalytics/wire-plugin` to Claude Code and copies the follow-up `/plugin install wire@rittman-analytics` command to your clipboard. After install completes, run `/reload-plugins` in Claude Code to activate the plugin in the current session.
 
-<img src="docs/images/wire_plugin_ss_4_plugin_install.png" alt="Plugin install picker" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_4_plugin_install.png" alt="Plugin install picker" width="50%">
 
 ### The Releases Panel
 
 The Releases panel is the primary navigation surface. Click the **W** icon in the activity bar to open it.
 
-<img src="docs/images/wire_plugin_ss_1_releases_panel.png" alt="Releases panel" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_1_releases_panel.png" alt="Releases panel" width="50%">
 
 The panel reads `.wire/releases/*/status.md` and renders one collapsible section per release, organised by delivery phase. Green filled icons (✅) indicate all steps for that artifact are complete; yellow outlines show work in progress; grey outlines are not started. Clicking a completed artifact opens its generated file. Clicking an un-generated artifact triggers the generate command in Claude Code. Inline ✨ / ✓ / 💬 buttons appear on hover to generate, validate, or review without opening a menu.
 
@@ -3769,7 +3880,7 @@ The panel reads `.wire/releases/*/status.md` and renders one collapsible section
 
 The Status panel gives a compact at-a-glance view across all releases using a G (Generate) / V (Validate) / R (Review) dot grid.
 
-<img src="docs/images/wire_plugin_ss_2_statuses_panel.png" alt="Status panel" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_2_statuses_panel.png" alt="Status panel" width="50%">
 
 The most recently modified release shows an **ACTIVE** badge and expands by default. A teal progress bar shows overall completion. Teal dots are complete, yellow are in progress, grey are not started, and `–` means that step is not applicable to the artifact.
 
@@ -3777,7 +3888,7 @@ The most recently modified release shows an **ACTIVE** badge and expands by defa
 
 Wire uses MCP servers to give Claude Code access to Jira, Confluence, Fathom, Linear, and other external services. The MCP Servers panel reads all four config locations (`~/.claude.json`, `~/.claude/settings.json`, `.mcp.json`, `.claude/settings.json`) and shows a live status indicator for each server.
 
-<img src="docs/images/wire_plugin_ss_3_mcp_servers_panel.png" alt="MCP Servers panel" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_3_mcp_servers_panel.png" alt="MCP Servers panel" width="50%">
 
 Green dots indicate the server URL is responding; red means unreachable; grey means not yet checked (stdio servers are never pinged). Use the `+` button in the panel title bar to add a new server to the project `.mcp.json`.
 
@@ -3785,7 +3896,7 @@ Green dots indicate the server URL is responding; red means unreachable; grey me
 
 Right-click a release in the Releases tree and select **Show Workflow Graph** (or click the ⎇ icon in the title bar) to open a visual map of every artifact, arranged by phase with connecting arrows.
 
-<img src="docs/images/wire_plugin_ss_5_workflow_panel.png" alt="Workflow graph" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_5_workflow_panel.png" alt="Workflow graph" width="50%">
 
 Each card shows the artifact name, G/V/R dot status, and the filename of the primary generated file. Drag the canvas to pan; scroll to zoom; click **Reset view** to return to 100%.
 
@@ -3793,23 +3904,23 @@ Each card shows the artifact name, G/V/R dot status, and the filename of the pri
 
 Right-click any artifact card to open its action menu.
 
-<img src="docs/images/wire_plugin_ss_6_workflow_generate_menu_item.png" alt="Generate context menu" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_6_workflow_generate_menu_item.png" alt="Generate context menu" width="50%">
 
 Choose **Generate**, **Validate**, or **Review** to send the corresponding `/wire:*` command to Claude Code. **Preview file** opens a rendered markdown view beside your editor:
 
-<img src="docs/images/wire_plugin_ss_7_preview_document_menu_item.png" alt="Preview file menu" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_7_preview_document_menu_item.png" alt="Preview file menu" width="50%">
 
 ### Previewing Generated Artifacts
 
 Selecting **Preview file** from any context menu opens the artifact in VS Code's built-in markdown renderer — formatted headings, tables, and code blocks exactly as a client would read it.
 
-<img src="docs/images/wire_plugin_ss_8_preview_document_panel.png" alt="Document preview" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_8_preview_document_panel.png" alt="Document preview" width="50%">
 
 ### How Commands Reach Claude Code
 
 When you trigger any Wire action from the sidebar, the extension sends the `/wire:<artifact>-<action> <release>` command to Claude Code's chat panel and Claude Code begins execution immediately.
 
-<img src="docs/images/wire_plugin_ss_9_generate_command_chat_panel.png" alt="Claude Code receiving a command" width="50%">
+<img src="wire-vscode/resources/images/wire_plugin_ss_9_generate_command_chat_panel.png" alt="Claude Code receiving a command" width="50%">
 
 ### The Command Picker
 
@@ -3828,7 +3939,7 @@ For the full guide including keyboard reference and troubleshooting, see [`wire-
 
 ---
 
-## 25. Issue Tracking: Jira and Linear
+## 26. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -3905,7 +4016,7 @@ linear:
 
 ---
 
-## 26. Document Store: Confluence and Notion
+## 27. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -3988,7 +4099,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 27. Extending and Customising the Framework
+## 28. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -4146,7 +4257,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 28. FAQ
+## 29. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -4414,7 +4525,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 29. Troubleshooting
+## 30. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -4461,7 +4572,7 @@ Just send a message in the repo. The engagement-context skill fires automaticall
 
 ---
 
-## 30. Framework Management Commands
+## 31. Framework Management Commands
 
 Wire includes several commands for managing the framework itself, rather than delivery work.
 
