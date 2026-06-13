@@ -69,13 +69,183 @@ Before moving into design, generate a playbook for the full release:
 /wire:playbook-generate 01-barton-peveril-live-pastoral
 ```
 
-This reads the approved requirements and `status.md` and produces:
+The command reads the approved requirements, SOW timeline, and `status.md` and produces a Mermaid control-flow diagram plus a narrative step guide at `planning/live_pastoral_analytics_playbook.md`. The ✅ and 🔄 markers on phase headings update each time you regenerate — the version below was produced mid-engagement after design was complete.
 
-1. A Mermaid flowchart of the complete artifact sequence, colour-coded: teal for Wire commands, orange for offline activities (workshops, UAT), red for open questions that block progression. Two red gates are surfaced: OQ-1 (attendance granularity) and OQ-2 (Airflow DAG deployment access).
+```mermaid
+flowchart TD
 
-2. A narrative delivery playbook at `planning/barton_peveril_playbook.md` — 14 steps covering the 10-day schedule, who acts at each gate, and the inputs each phase needs from the client.
+START([Sprint Start]):::event
 
-This is a planning utility — it creates no tracked artifact and blocks nothing.
+subgraph REQ["Phase 1 — Requirements ✅ COMPLETE"]
+    R1["/wire:requirements-generate"]:::wireCmd
+    R2["/wire:requirements-validate<br/>/wire:requirements-review"]:::wireCmd
+    RGATE{"Requirements\napproved?"}:::decision
+    RCHASE["Chase MIS team\n— requirements sign-off"]:::offline
+end
+
+subgraph DESIGN["Phase 2 — Design ✅ COMPLETE"]
+    PD1["/wire:pipeline_design-generate"]:::wireCmd
+    PD2["/wire:pipeline_design-validate<br/>/wire:pipeline_design-review"]:::wireCmd
+    PDGATE{"Pipeline design\napproved?"}:::decision
+    PDCHASE["Chase systems engineer\n— pipeline design review"]:::offline
+    DM1["/wire:data_model-generate"]:::wireCmd
+    DM2["/wire:data_model-validate<br/>/wire:data_model-review"]:::wireCmd
+    DMGATE{"Data model\napproved?"}:::decision
+    DMCHASE["Chase data team lead\n— data model review"]:::offline
+    MK1["/wire:mockups-generate"]:::wireCmd
+    MK2["/wire:mockups-review"]:::wireCmd
+    MKGATE{"Mockups\napproved?"}:::decision
+    MKCHASE["Chase MIS manager\n— mockups review"]:::offline
+end
+
+subgraph DEV["Phase 3 — Development 🔄 IN PROGRESS"]
+    PIP1["/wire:pipeline-generate"]:::wireCmd
+    PIP2["/wire:pipeline-validate<br/>/wire:pipeline-review"]:::wireCmd
+    PIPGATE{"Pipeline impl.\napproved?"}:::decision
+    PIPCHASE["Chase systems engineer\n— pipeline implementation review"]:::offline
+    OQ_PD2{"PD-2: note_type_id 31\nconfirmed?"}:::decision
+    OQ_PD2_CHASE["Chase systems engineer\n— confirm role of note type 31"]:::offline
+    DBT1["/wire:dbt-generate"]:::wireCmd
+    DBT2["/wire:dbt-validate<br/>/wire:dbt-review"]:::wireCmd
+    DBTGATE{"dbt models\napproved?"}:::decision
+    DBTCHASE["Address findings\n(ref() in CTEs, s_ prefixes)\nthen re-validate"]:::offline
+    SL1["/wire:semantic_layer-generate"]:::wireCmd
+    SL2["/wire:semantic_layer-validate<br/>/wire:semantic_layer-review"]:::wireCmd
+    SLGATE{"Semantic layer\napproved?"}:::decision
+    SLCHASE["Chase data team lead\n— semantic layer review"]:::offline
+end
+
+subgraph TEST["Phase 4 — Testing"]
+    DASH1["/wire:dashboards-generate"]:::wireCmd
+    DASH2["/wire:dashboards-validate<br/>/wire:dashboards-review"]:::wireCmd
+    DASHGATE{"Dashboards\napproved?"}:::decision
+    DASHCHASE["Chase MIS manager\n— dashboard review"]:::offline
+    OQ_PD11{"PD-11: FSA Stage 2/3\nsnapshot data available?"}:::decision
+    OQ_PD11_CHASE["Chase MIS team\n— FSA snapshot availability"]:::offline
+    DQ1["/wire:data_quality-generate"]:::wireCmd
+    DQ2["/wire:data_quality-validate<br/>/wire:data_quality-review"]:::wireCmd
+    DQGATE{"Data quality\napproved?"}:::decision
+    DQCHASE["Chase systems engineer\n— data quality review"]:::offline
+    UAT1["/wire:uat-generate"]:::wireCmd
+    UAT2["[Offline] UAT sessions\n— SPAs, tutors, pastoral leads"]:::offline
+    UAT3["/wire:uat-review"]:::wireCmd
+    UATGATE{"UAT passed?"}:::decision
+    UATCHASE["Fix defects raised in UAT\nthen reschedule sessions"]:::offline
+end
+
+subgraph DEPLOY["Phase 5 — Deployment"]
+    DEP0["[Offline] Confirm production env,\naccess controls, rollback plan"]:::offline
+    DEP1["/wire:deployment-generate"]:::wireCmd
+    DEP2["/wire:deployment-validate<br/>/wire:deployment-review"]:::wireCmd
+    DEPGATE{"Deployment\napproved?"}:::decision
+    DEPCHASE["Chase client sponsor\n— deployment sign-off"]:::offline
+end
+
+subgraph ENABLE["Phase 6 — Enablement"]
+    TRN1["/wire:training-generate"]:::wireCmd
+    TRN2["/wire:training-validate<br/>/wire:training-review"]:::wireCmd
+    TRNGATE{"Training content\napproved?"}:::decision
+    TRNCHASE["Chase MIS manager\n— training content review"]:::offline
+    TRN3["[Offline] Data team enablement session"]:::offline
+    TRN4["[Offline] End-user training session\n(SPAs / tutors / pastoral leads)"]:::offline
+    DOC1["/wire:documentation-generate"]:::wireCmd
+    DOC2["/wire:documentation-validate<br/>/wire:documentation-review"]:::wireCmd
+    DOCGATE{"Documentation\napproved?"}:::decision
+    DOCCHASE["Chase client sponsor\n— documentation sign-off"]:::offline
+end
+
+END([Sprint Complete — Platform Go-Live]):::event
+
+START --> R1
+R1 --> R2
+R2 --> RGATE
+RGATE -->|No| RCHASE
+RCHASE --> R2
+RGATE -->|Yes| PD1
+PD1 --> PD2
+PD2 --> PDGATE
+PDGATE -->|No| PDCHASE
+PDCHASE --> PD1
+PDGATE -->|Yes| DM1
+DM1 --> DM2
+DM2 --> DMGATE
+DMGATE -->|No| DMCHASE
+DMCHASE --> DM1
+DMGATE -->|Yes| MK1
+MK1 --> MK2
+MK2 --> MKGATE
+MKGATE -->|No| MKCHASE
+MKCHASE --> MK2
+MKGATE -->|Yes| PIP1
+PIP1 --> PIP2
+PIP2 --> PIPGATE
+PIPGATE -->|No| PIPCHASE
+PIPCHASE --> PIP1
+PIPGATE -->|Yes| OQ_PD2
+OQ_PD2 -->|Not yet| OQ_PD2_CHASE
+OQ_PD2_CHASE --> OQ_PD2
+OQ_PD2 -->|Confirmed| DBT1
+DBT1 --> DBT2
+DBT2 --> DBTGATE
+DBTGATE -->|No| DBTCHASE
+DBTCHASE --> DBT1
+DBTGATE -->|Yes| SL1
+SL1 --> SL2
+SL2 --> SLGATE
+SLGATE -->|No| SLCHASE
+SLCHASE --> SL1
+SLGATE -->|Yes| DASH1
+DASH1 --> DASH2
+DASH2 --> DASHGATE
+DASHGATE -->|No| DASHCHASE
+DASHCHASE --> DASH1
+DASHGATE -->|Yes| OQ_PD11
+OQ_PD11 -->|Not yet| OQ_PD11_CHASE
+OQ_PD11_CHASE --> OQ_PD11
+OQ_PD11 -->|Available or deferred| DQ1
+DQ1 --> DQ2
+DQ2 --> DQGATE
+DQGATE -->|No| DQCHASE
+DQCHASE --> DQ1
+DQGATE -->|Yes| UAT1
+UAT1 --> UAT2
+UAT2 --> UAT3
+UAT3 --> UATGATE
+UATGATE -->|No| UATCHASE
+UATCHASE --> UAT2
+UATGATE -->|Yes| DEP0
+DEP0 --> DEP1
+DEP1 --> DEP2
+DEP2 --> DEPGATE
+DEPGATE -->|No| DEPCHASE
+DEPCHASE --> DEP1
+DEPGATE -->|Yes| TRN1
+TRN1 --> TRN2
+TRN2 --> TRNGATE
+TRNGATE -->|No| TRNCHASE
+TRNCHASE --> TRN1
+TRNGATE -->|Yes| TRN3
+TRN3 --> TRN4
+TRN4 --> DOC1
+DOC1 --> DOC2
+DOC2 --> DOCGATE
+DOCGATE -->|No| DOCCHASE
+DOCCHASE --> DOC1
+DOCGATE -->|Yes| END
+
+classDef wireCmd fill:#1a3a5c,stroke:#4a90d9,color:#fff
+classDef offline fill:#2d4a1e,stroke:#6abf4b,color:#fff
+classDef decision fill:#5c3a00,stroke:#d98c1a,color:#fff
+classDef event fill:#1a1a1a,stroke:#888,color:#fff
+```
+
+The narrative guide covers prerequisites, open questions, and offline activities for each step. Two open questions surface at generation time: **PD-2** (confirm the role of `note_type_id = 31` in Focus before the dbt review is approved) and **PD-11** (FSA Stage 2/3 snapshot data — may need to defer to Phase 2 scope).
+
+> **What Wire does and does not do.** Wire writes the artifacts: requirements, pipeline design, data model, dbt SQL models, LookML, UAT scripts, deployment runbooks, training plans, and documentation. It also runs all mechanical validations. Wire does not take decisions on the team's behalf — every `-generate` is followed by a `-validate` and a `-review`, and the review is the human gate where a named stakeholder approves the artifact before the next phase begins.
+
+Each session should start with `/wire:status` to confirm the current artifact state, then scope to advancing one artifact through one gate. For development artifacts, generate + validate typically fit in one session. When a review returns `changes_requested`, re-generate and re-validate before going back to the reviewer. Log open questions immediately with a named owner.
+
+This is a planning utility — it creates no tracked artifact and blocks nothing. Regenerate after any significant scope change to refresh the ✅ markers.
 
 ## Phase 2: Design (Days 2–4)
 
@@ -105,12 +275,12 @@ Produces a business-level entity model: five domain entities (`Student`, `Attend
 → [auto-delegated to pipeline-engineer agent]
 ```
 
-Produces the full pipeline architecture document: ProSolution source schema analysis, three Fivetran replication scenarios with cost comparison, and 10 design decisions. Decision taken before review: Scenario C (Hybrid) — daily view for attendance dashboard, raw tables for drill-through.
+Produces the full pipeline architecture document: ProSolution source schema analysis, three Fivetran connectors (ProSolution SQL Server CDC, Focus CDC, MIS Applications for risk weights), and 12 design decisions. The design went through five versions before approval. Key decisions: attendance percentage calculated dynamically in Looker (CR-1, never stored); risk scoring from live `Looker_Risk_Score` table via Fivetran rather than a static seed (CR-3); `focus.users` removed from CDC scope (CR-5). Open question **PD-2** carried forward: confirm the role of `note_type_id = 31` before the dbt review is approved.
 
 ```
 /wire:pipeline_design-validate 01-barton-peveril-live-pastoral → PASS
 /wire:pipeline_design-review 01-barton-peveril-live-pastoral
-→ Approved 2026-02-05; scope addition: Markbook/Assignment data added to D1
+→ Approved v5.0, 2026-02-25 — five rounds incorporating CR-1 through CR-6
 ```
 
 ### Data model — auto-delegated to `data-designer`
@@ -120,13 +290,16 @@ Produces the full pipeline architecture document: ProSolution source schema anal
 → [auto-delegated to data-designer agent]
 ```
 
-Produces `_sources.yml` for both source schemas with freshness thresholds, 4 staging models, 5 warehouse models, a physical ERD, and cross-system join key documentation.
+Produces `_sources.yml` for all three Fivetran connectors, a physical ERD, and a full model inventory across six versions:
+- 9 staging models, 1 integration model (`int__student_xref` — cross-system student identity resolution), 7 warehouse models: `attendance_fct`, `pastoral_notes_fct`, `spa_alerts_fct`, `assignment_marks_fct`, `student_risk_score_fct`, `student_risk_summary`, `student_risk_history`
+- 3 seeds: `grade_ordering.csv`, `focus_note_type_mapping.csv`, `tracked_assignment_titles.csv`
+- All facts use incremental (`merge`) materialisation
 
 ```
 /wire:data_model-validate 01-barton-peveril-live-pastoral → PASS
 /wire:data_model-review 01-barton-peveril-live-pastoral
-→ Approved 2026-02-06 after one iteration
-→ student_risk_summary grain changed: daily → current-state snapshot
+→ Approved v6.0, 2026-02-25 — six rounds
+→ student_risk_history added in v5 to accumulate snapshots over time
 ```
 
 ### Mockups
@@ -189,7 +362,7 @@ semantic-layer-developer → semantic_layer-generate, semantic_layer-validate
 
 **`pipeline-engineer`** — Fivetran connector config for ProSolution (SQL Server CDC) and Focus (REST API), plus a Cloud Function for Focus auth token refresh. Error handling: dead-letter queue to `pipeline_errors` BigQuery table, Slack alerting on consecutive failures.
 
-**`dbt-developer`** — 9 dbt models (4 staging views, 5 warehouse tables), surrogate keys via `dbt_utils.generate_surrogate_key()`, 47 tests (not_null + unique on every PK, relationship tests on every FK). Adds to `decisions.md`:
+**`dbt-developer`** — 19 SQL models (9 staging, 1 integration, 7 warehouse, 2 utility) plus 3 seeds and 34 static-analysis tests. Surrogate keys via `dbt_utils.generate_surrogate_key()`; all facts incremental with `merge` strategy. Static analysis PASS with two findings the team must fix before requesting review: `ref()` calls inside transformation CTEs in two models (must move to source CTEs at the top of the file); missing `s_` prefixes on source CTEs across several warehouse models. Both corrected before the review is requested. Adds to `decisions.md`:
 
 - Used `BashOperator` not `PythonVirtualenvOperator` for dbt tasks — college Airflow already has dbt-core installed; a virtual env would add 90s per run for no isolation benefit
 - `student_risk_summary` materialised as table with `full_refresh=false` — model accumulates historical snapshots; incremental would require a unique_key that changes the grain
@@ -216,7 +389,7 @@ with DAG(
 
 Also produces `airflow_connections.md` and `airflow_variables.md`. Adds to `decisions.md`: set schedule to `*/30` to match the 30-minute freshness SLA in NFR-3; sensors ensure the cadence is a ceiling not a guarantee.
 
-**`semantic-layer-developer`** — LookML views for all 5 warehouse models, risk signal measures (`attendance_deterioration_flag`, `pastoral_note_spike_flag`, `unanswered_alert_flag`), and the `pastoral_risk` explore. Includes `days_since_last_spa_contact` (fulfils the mockups change request).
+**`semantic-layer-developer`** — LookML views for all 7 warehouse models and 5 explores: `student_risk_summary`, `pastoral_notes`, `attendance`, `assignment_marks`, `student_risk_score`. `attendance_percentage` calculated dynamically as `SUM(sessions_present) / (SUM(sessions_present) + SUM(sessions_absent))` — never stored (CR-1). Risk signal measures: `attendance_deterioration_flag`, `pastoral_note_spike_flag`, `unanswered_alert_flag`, `days_since_last_spa_contact`.
 
 ### Development reviews (Days 6–8)
 
