@@ -311,6 +311,7 @@ A VS Code extension (`wire-vscode/`) is in early development. The intention is t
 
 ## Documentation
 
+- [Documentation site](https://wire-plugin.readthedocs.io/en/latest/) — full documentation with search, covering all release types, commands, skills, and MCP servers
 - [User Guide](USER_GUIDE.md) — full operational guide covering all release types, worked examples, Wire Studio, Autopilot, and troubleshooting
 - [Droughty Integration Guide](USER_GUIDE_droughty.md) — for existing Droughty users: CLI-to-Wire command mapping, configuration, and worked examples across release types
 - [Command Registry](wire/COMMANDS.md) — all 89 commands with descriptions
