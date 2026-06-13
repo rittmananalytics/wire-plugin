@@ -337,6 +337,8 @@ Dashboard Mockups Generated
 
 A self-contained interactive HTML prototype — no build step, no server. SPAs and pastoral leads review it in a browser before any Looker work begins.
 
+![SPA Operational Dashboard mock — Daily Caseload tab](/img/dashboard_mock.png)
+
 ```
 /wire:mockups-review 01-barton-peveril-live-pastoral
 → Approved 2026-02-06
