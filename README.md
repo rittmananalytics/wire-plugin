@@ -20,11 +20,12 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 
 ## Key Features
 
-- **242 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
+- **250 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
 - **13 release types** matching common engagement shapes: Shape Up discovery, SOP / Canonical discovery (sponsor-facing Findings Playback), full platform builds, pipeline-only, dbt development, dashboard extensions, dashboard-first rapid dev, enablement, agentic commerce storefronts, platform migration (BigQuery ↔ Snowflake), agentic data stack (governed self-service analytics with eval suite), droughty (schema introspection and base-layer generation from live warehouses), and custom (bespoke deliverables defined from SoW documents)
 - **Two-tier engagement structure** separating long-running client context from individual scoped releases
 - **Generate / validate / review lifecycle** for every artifact: structured generation, automated checks, stakeholder sign-off
 - **27 ad-hoc development skills** that activate automatically during coding work (dbt, LookML, Dagster, Python, Fivetran, Airbyte, Coupler.io, RudderStack, Segment, Looker, Snowflake, Hightouch, BigQuery, Cloud Run, gcloud) without any explicit invocation, plus **26 Amplitude product-analytics skills** for working with an Amplitude instance
+- **Wire Agents** — 12 specialist subagents (dbt developer, semantic layer developer, pipeline engineer, migration specialist, and 8 others) dispatched automatically on every generate and validate command. `/wire:delegate` computes a full parallel/sequential execution plan across all pending work, with fan-out parallelism for large model sets (layers stay sequential; agents within each layer run in parallel)
 - **Autopilot mode** for autonomous end-to-end delivery
 - **Jira and Linear integration** for issue tracking synced to the artifact lifecycle
 - **Confluence and Notion integration** for client-facing document review
@@ -37,7 +38,7 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 
 Wire is distributed as a Claude Code plugin and a Gemini CLI extension. Installing the plugin embeds every Wire command inline — no framework files need to exist in your project repository.
 
-**Plugins** provide the 233 `/wire:*` commands. Each command file contains its full workflow specification, so the AI receives complete instructions as context at invocation time.
+**Plugins** provide the 250 `/wire:*` commands. Each command file contains its full workflow specification, so the AI receives complete instructions as context at invocation time.
 
 **Skills** sit alongside commands but work differently. They activate automatically during ad-hoc coding work without any explicit invocation. When you start writing a dbt model, the dbt development skill provides naming conventions, SQL style rules, and testing patterns as background context. The following skills are included:
 
