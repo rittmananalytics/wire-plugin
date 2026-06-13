@@ -52,6 +52,9 @@ const sidebars = {
       type: 'category',
       label: 'Reference',
       items: [
+        'reference/commands',
+        'reference/skills',
+        'reference/mcp-servers',
         'reference/faq',
         'reference/troubleshooting',
         'reference/management-commands',
