@@ -58,6 +58,7 @@ const sidebars = {
         'reference/faq',
         'reference/troubleshooting',
         'reference/management-commands',
+        'reference/release-notes',
       ],
     },
   ],
