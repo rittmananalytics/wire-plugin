@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.9.0\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.9.1\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"orchestration-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.9.0\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"orchestration-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.9.1\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -76,7 +76,7 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: Generate orchestration layer — choose Dagster or dbt Cloud to schedule and run the data pipeline
+description: Generate orchestration layer — choose Dagster, dbt Cloud, or Apache Airflow to schedule and run the data pipeline
 argument-hint: <project-folder>
 ---
 
@@ -84,10 +84,11 @@ argument-hint: <project-folder>
 
 ## Purpose
 
-Generate the orchestration layer for the data platform. This step determines how dbt models and data pipeline code are scheduled and executed in production. Supports two approaches:
+Generate the orchestration layer for the data platform. This step determines how dbt models and data pipeline code are scheduled and executed in production. Supports three approaches:
 
 - **Dagster** — open-source, Python-native, assets-first orchestrator; wraps dbt models as Dagster assets and ingestion scripts as software-defined assets
 - **dbt Cloud** — managed service for scheduling dbt jobs; simpler setup, best when the project is dbt-only or already committed to dbt Cloud
+- **Apache Airflow** — industry-standard DAG-based orchestrator; generates a Python DAG with a `DbtTaskGroup` and upstream sensor tasks per source; best when the client already runs Airflow infrastructure
 
 ## Prerequisites
 
@@ -130,10 +131,13 @@ Which orchestration tool should be used for this project?
 
 2. dbt Cloud — Managed dbt scheduling service. No additional infrastructure required.
    Best for: dbt-only or dbt-heavy projects where the team already uses dbt Cloud, or wants minimal ops overhead.
+
+3. Apache Airflow — DAG-based orchestrator with a DbtTaskGroup and sensor tasks per source.
+   Best for: clients who already run Airflow infrastructure and want to add the dbt pipeline to an existing environment.
 ```
 
 Wait for the user's selection. Store the choice:
-1. Write `orchestration_tool: "dagster"` or `orchestration_tool: "dbt_cloud"` into the `artifacts.orchestration` section of status.md immediately, before generating any files.
+1. Write `orchestration_tool: "dagster"`, `orchestration_tool: "dbt_cloud"`, or `orchestration_tool: "airflow"` into the `artifacts.orchestration` section of status.md immediately, before generating any files.
 
 ### Step 3a: Generate Dagster Orchestration (if Dagster chosen)
 
@@ -412,6 +416,165 @@ DBT_CLOUD_ENVIRONMENT_ID_PROD=
 DBT_CLOUD_ENVIRONMENT_ID_DEV=
 ```
 
+### Step 3c: Generate Airflow Orchestration (if Airflow chosen)
+
+#### 3c.1 — Scaffold DAG file
+
+Create `dags/<project_name>_pipeline.py` at the repo root (or inside an existing `dags/` directory if one is present). The DAG uses the Astronomer Cosmos `DbtTaskGroup` pattern to wrap all dbt models as Airflow tasks, preserving the dbt dependency graph.
+
+```python
+from datetime import datetime, timedelta
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from airflow.providers.google.cloud.sensors.bigquery import BigQueryTableExistenceSensor
+# If Cosmos is available:
+# from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig
+
+default_args = {
+    "owner": "<project_name>",
+    "depends_on_past": False,
+    "retries": 1,
+    "retry_delay": timedelta(minutes=5),
+    "email_on_failure": True,
+    "email": ["<data-team-email>"],
+}
+
+with DAG(
+    dag_id="<project_name>_pipeline",
+    default_args=default_args,
+    description="<project_name> data pipeline: ingestion → dbt staging → integration → warehouse",
+    schedule_interval="<cron_expression>",  # from pipeline_design cadence
+    start_date=datetime(<year>, <month>, <day>),
+    catchup=False,
+    tags=["<project_name>", "dbt", "pipeline"],
+) as dag:
+
+    # --- Source readiness sensors (one per source system) ---
+    # Replace with appropriate sensor for each source
+    <source_name>_sensor = BigQueryTableExistenceSensor(
+        task_id="check_<source_name>_loaded",
+        project_id="<gcp_project>",
+        dataset_id="<fivetran_dataset>",
+        table_id="<source_table>",
+        timeout=3600,
+        poke_interval=60,
+    )
+
+    # --- dbt run: all models in dependency order ---
+    dbt_run = BashOperator(
+        task_id="dbt_run",
+        bash_command=(
+            "cd <dbt_project_path> && "
+            "dbt run --profiles-dir . --target prod --select '*'"
+        ),
+        env={"DBT_PROFILES_DIR": "<dbt_project_path>"},
+    )
+
+    dbt_test = BashOperator(
+        task_id="dbt_test",
+        bash_command=(
+            "cd <dbt_project_path> && "
+            "dbt test --profiles-dir . --target prod --select '*'"
+        ),
+    )
+
+    # --- Task dependencies ---
+    <source_name>_sensor >> dbt_run >> dbt_test
+```
+
+Generate one sensor task per source system from `pipeline_design.md`. If the client has Astronomer Cosmos installed, add a `DbtTaskGroup` block as an inline comment alternative that preserves per-model Airflow tasks.
+
+#### 3c.2 — Generate Airflow connection IDs reference
+
+Write `.wire/<project_id>/development/orchestration/airflow_connections.md`:
+
+```markdown
+# Airflow Connection Configuration
+
+These connections must be configured in the Airflow UI (Admin → Connections) or via environment variables before the DAG runs.
+
+| Connection ID | Type | Used by | Notes |
+|---|---|---|---|
+| `google_cloud_default` | Google Cloud | BigQuery sensors, dbt run | Service account with BigQuery Data Editor + Job User |
+| `<source_name>_conn` | HTTP / custom | <source_name>_sensor | Connection details from pipeline_design |
+
+## Environment variables (alternative to UI connections)
+
+```bash
+AIRFLOW__CORE__SQL_ALCHEMY_CONN=<airflow-db-url>
+AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT=google-cloud-platform://?key_path=%2Fpath%2Fto%2Fkey.json
+```
+```
+
+#### 3c.3 — Generate Airflow variables reference
+
+Write `.wire/<project_id>/development/orchestration/airflow_variables.md`:
+
+```markdown
+# Airflow Variable Configuration
+
+Set these via the Airflow UI (Admin → Variables) or with `airflow variables set`.
+
+| Variable | Example value | Description |
+|---|---|---|
+| `<project_name>_dbt_project_path` | `/opt/airflow/dags/<project_name>` | Absolute path to dbt project root on the Airflow worker |
+| `<project_name>_gcp_project` | `my-gcp-project` | GCP project for BigQuery |
+| `<project_name>_dbt_target` | `prod` | dbt target profile to use in production |
+```
+
+#### 3c.4 — Generate setup documentation
+
+Write `.wire/<project_id>/development/orchestration/airflow_setup.md`:
+
+```markdown
+# Airflow Orchestration Setup
+
+**Project**: <project_name>
+**Generated**: <date>
+**Approach**: Apache Airflow DAG with BashOperator dbt tasks and source sensors
+
+## Overview
+
+[Summary of the orchestration approach based on pipeline_design]
+
+## DAG
+
+| Property | Value |
+|---|---|
+| DAG ID | `<project_name>_pipeline` |
+| Schedule | `<cron_expression>` (<human cadence>) |
+| Timezone | <timezone> |
+| Catchup | False |
+
+## Tasks
+
+| Task ID | Type | Upstream | Description |
+|---|---|---|---|
+[one row per task]
+
+## Connections required
+
+[From airflow_connections.md summary]
+
+## Deployment
+
+1. Copy `dags/<project_name>_pipeline.py` to the Airflow DAGs folder (or ensure the repo is synced via Git Sync)
+2. Configure connections in the Airflow UI
+3. Set variables in the Airflow UI
+4. Enable the DAG in the Airflow UI
+5. Trigger a manual run to verify
+
+## Local testing
+
+```bash
+# Parse check
+python -c "from dags.<project_name>_pipeline import dag; print(dag.task_ids)"
+
+# List tasks
+airflow tasks list <project_name>_pipeline
+```
+```
+
 ### Step 4: Update Status
 
 Read `.wire/<project_id>/status.md` and update the `orchestration` artifact section:
@@ -424,8 +587,13 @@ orchestration:
   review: not_started
   generated_date: <today>
   generated_files:
-    - development/orchestration/dagster_setup.md   # or dbt_cloud_config.md
+    - development/orchestration/dagster_setup.md      # Dagster
+    - development/orchestration/dbt_cloud_config.md   # dbt Cloud
+    - development/orchestration/airflow_setup.md       # Airflow
+    - development/orchestration/airflow_connections.md # Airflow
+    - development/orchestration/airflow_variables.md   # Airflow
     - dagster_orchestration/  # (Dagster only)
+    - dags/  # (Airflow only)
   revision_history:
     - date: <today>
       action: generate
@@ -460,13 +628,14 @@ If docstore sync fails, log the error and continue — do not block the generate
 
 ### Next Steps
 
-1. **Validate orchestration**: `/wire:orchestration:validate <project>`
+1. **Validate orchestration**: `/wire:orchestration-validate <project>`
    - Dagster: runs `dg check defs` and verifies all dbt models have corresponding assets
    - dbt Cloud: validates job configs reference correct environments and model selectors
+   - Airflow: parse-checks the DAG, verifies all dbt models are covered as tasks, checks cron expression
 
 2. Review and customise generated asset/job definitions to match your infrastructure
 
-3. After validation, review with the team: `/wire:orchestration:review <project>`
+3. After validation, review with the team: `/wire:orchestration-review <project>`
 ```
 
 Execute the complete workflow as specified above.

@@ -154,6 +154,78 @@ Also update if applicable:
 If any new commands were added or removed, update `wire/skills/QUICK-REFERENCE.md` (and the root
 `QUICK-REFERENCE.md` if it exists) to reflect the current command list.
 
+### 3e. Docusaurus doc pages (docs-site/)
+
+The `docs-site/docs/` directory contains 29 Markdown pages derived from `USER_GUIDE.md`. These are
+served as the Wire Framework documentation site via Read the Docs from `rittmananalytics/wire-plugin`.
+They must be kept in sync with `USER_GUIDE.md` on every release where the guide changes.
+
+**Mapping — USER_GUIDE.md section → doc page:**
+
+| Section | Doc page |
+|---------|----------|
+| 1–2: What Is Wire / The Problem It Solves | `docs-site/docs/intro.md` |
+| 3: Engagements and Releases | `docs-site/docs/getting-started/engagements-releases.md` |
+| 4: Release Types | `docs-site/docs/getting-started/release-types.md` |
+| 5: Installation | `docs-site/docs/getting-started/installation.md` |
+| 6: Core Concepts | `docs-site/docs/getting-started/core-concepts.md` |
+| 7: Discovery (Shape Up) | `docs-site/docs/release-types/discovery-shape-up.md` |
+| 8: Discovery (SOP) | `docs-site/docs/release-types/discovery-sop.md` |
+| 9: Kick-off Deck | `docs-site/docs/release-types/kickoff-deck.md` |
+| 10: Full Platform | `docs-site/docs/release-types/full-platform.md` |
+| 11: Pipeline / dbt | `docs-site/docs/release-types/pipeline-dbt.md` |
+| 12: dbt Development | `docs-site/docs/release-types/dbt-development.md` |
+| 13: Dashboard Extension | `docs-site/docs/release-types/dashboard-extension.md` |
+| 14: Dashboard First | `docs-site/docs/release-types/dashboard-first.md` |
+| 15: Enablement | `docs-site/docs/release-types/enablement.md` |
+| 16: Agentic Commerce | `docs-site/docs/release-types/agentic-commerce.md` |
+| 17: Platform Migration | `docs-site/docs/release-types/platform-migration.md` |
+| 18: Agentic Data Stack | `docs-site/docs/release-types/agentic-data-stack.md` |
+| 19: Droughty | `docs-site/docs/release-types/droughty.md` |
+| 20: Custom | `docs-site/docs/release-types/custom.md` |
+| 21: Worked Example | `docs-site/docs/advanced/worked-example.md` |
+| 22: Wire Autopilot | `docs-site/docs/advanced/autopilot.md` |
+| 23: Wire Studio | `docs-site/docs/advanced/wire-studio.md` |
+| 24: VS Code Extension | `docs-site/docs/advanced/vscode-extension.md` |
+| 25: Issue Tracking | `docs-site/docs/advanced/issue-tracking.md` |
+| 26: Document Store | `docs-site/docs/advanced/document-store.md` |
+| 27: Extending Wire | `docs-site/docs/advanced/extending.md` |
+| 28: FAQ | `docs-site/docs/reference/faq.md` |
+| 29: Troubleshooting | `docs-site/docs/reference/troubleshooting.md` |
+| 30: Management Commands | `docs-site/docs/reference/management-commands.md` |
+
+**Process:**
+
+1. Run `git diff HEAD -- USER_GUIDE.md` (or compare to the previous release tag) to identify which
+   sections changed.
+
+2. For each changed section, update the corresponding doc page(s) listed above. Match the existing
+   style of that page — plain prose, no comment blocks, mermaid diagrams preserved.
+
+3. If a **new section** was added to USER_GUIDE.md (e.g. a new release type):
+   - Create a new doc page under the appropriate subdirectory
+   - Add a frontmatter block: `---\nsidebar_position: N\ntitle: Page Title\n---`
+   - Add the page to `docs-site/sidebars.js` in the correct category and position
+   - Update `docs-site/docs/getting-started/release-types.md` to include the new type in the
+     comparison table
+
+4. If a **section was removed**, delete the corresponding doc page and remove it from `sidebars.js`.
+
+5. Verify the site still builds:
+   ```bash
+   cd docs-site && npm run build
+   ```
+   Fix any broken sidebar references or mermaid syntax errors before proceeding.
+
+6. Sync the updated `docs-site/` to the wire-plugin repo:
+   ```bash
+   rsync -av --exclude='node_modules' --exclude='.docusaurus' --exclude='build' \
+     docs-site/ /path/to/wire-plugin/docs-site/
+   ```
+   Replace `/path/to/wire-plugin` with the actual local path to the `rittmananalytics/wire-plugin`
+   clone. The wire-plugin repo already contains the `docs-site/` directory and `.readthedocs.yaml`.
+   The rsync is sufficient — Read the Docs rebuilds automatically on the next push to wire-plugin.
+
 ---
 
 ## Step 4 — Wire Studio Updates (wire-web-ui)
@@ -370,6 +442,10 @@ Documentation
 [ ] wire/README.md — # Wire Framework vX.Y.Z heading updated
 [ ] wire-web-ui/README.md — # Wire Studio vX.Y.Z heading updated
 [ ] QUICK-REFERENCE.md updated (if commands added/removed)
+[ ] docs-site/ doc pages updated for all changed USER_GUIDE.md sections
+[ ] New doc page created and added to sidebars.js (if new release type added)
+[ ] docs-site/ builds without errors (npm run build)
+[ ] docs-site/ synced to wire-plugin repo (rsync)
 
 Wire Studio
 [ ] artifacts.ts updated for new release types (if applicable)
@@ -400,6 +476,7 @@ Post-release
 [ ] wire-web-ui/README.md # Wire Studio heading matches new version
 [ ] wire-plugin repo has non-empty README.md
 [ ] wire-plugin USER_GUIDE.md logo path is docs/images/wire_logo_transparent.png (not wire/docs/images/...)
+[ ] wire-plugin docs-site/ updated (rsync completed, all changed sections reflected)
 [ ] Remote plugin repos confirmed updated
 [ ] CHANGELOG top entry correct
 ```

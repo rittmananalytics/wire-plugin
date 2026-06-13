@@ -1,10 +1,10 @@
-<img src="wire/docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
+<img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
 # The Wire Framework: User Guide
 
 **Rittman Analytics**
 
-**Version**: 3.9.0 | **Date**: June 2026
+**Version**: 3.9.1 | **Date**: June 2026
 
 ---
 
@@ -403,7 +403,7 @@ Use `/wire:session-plan [release-folder]` for an optional structured planning ri
 
 ### Specialist agents
 
-As of v3.9.0, Wire commands auto-delegate to one of twelve specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`. See [Section 23](#23-wire-agents-specialist-subagents) for the full agent roster and how delegation works.
+As of v3.9.1, Wire commands auto-delegate to one of twelve specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`. See [Section 23](#23-wire-agents-specialist-subagents) for the full agent roster and how delegation works.
 
 ### Research persistence
 
@@ -3874,7 +3874,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ## 23. Wire Agents: Specialist Subagents
 
-> **Introduced**: v3.8.6 (orchestrate command) → v3.9.0 (12 specialists + `/wire:delegate`)
+> **Introduced**: v3.8.6 (orchestrate command) → v3.9.1 (12 specialists + `/wire:delegate`)
 
 Wire Agents replaces the single-agent pattern with twelve named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
 
@@ -4117,11 +4117,11 @@ Click **Create**. Wire Studio creates the environment, provisions a workspace, a
 
 When no project is open, Wire Studio shows the welcome screen with **Open Project** and **New Project** buttons:
 
-![Wire Studio — Open Project screen](wire-web-ui/docs/images/wire_studio_open_project.png)
+![Wire Studio — Open Project screen](docs/images/wire_studio_open_project.png)
 
 Clicking **Open Project** opens the project selection dialog:
 
-![Wire Studio — Select Project dialog](wire-web-ui/docs/images/wire_studio_select_project.png)
+![Wire Studio — Select Project dialog](docs/images/wire_studio_select_project.png)
 
 #### 2. Viewing the artifact graph
 
@@ -4143,11 +4143,11 @@ Right-click any artifact node to see the context menu:
 - **Refresh Document** — reloads the content (useful after running a Generate command)
 - **Close Document** — closes the tab
 
-![Wire Studio — Right-click context menu on artifact node](wire-web-ui/docs/images/wire_studio_open_diagram.png)
+![Wire Studio — Right-click context menu on artifact node](docs/images/wire_studio_open_diagram.png)
 
 For example, right-clicking the **Data Model** node and selecting "View Document" opens a tab showing the ER diagram rendered from the mermaid code in the data model specification:
 
-![Wire Studio — Viewing a rendered pipeline design diagram in a tab](wire-web-ui/docs/images/wire_studio_view_diagram.png)
+![Wire Studio — Viewing a rendered pipeline design diagram in a tab](docs/images/wire_studio_view_diagram.png)
 
 #### 4. Running commands from the artifact graph
 
@@ -4175,7 +4175,7 @@ This is useful for reading requirements specifications, design documents, traini
 
 When a file in the file explorer corresponds to a Wire artifact (matched by filename keywords and output directory), the right-click context menu also shows **Generate**, **Validate**, and **Review** actions:
 
-![Wire Studio — Right-click context menu on file with Generate/Validate/Review](wire-web-ui/docs/images/wire_studio_validate_requirements.png)
+![Wire Studio — Right-click context menu on file with Generate/Validate/Review](docs/images/wire_studio_validate_requirements.png)
 
 This provides a second way to trigger Wire commands — directly from the file tree rather than the artifact graph. The same command is executed either way, and output streams to the Execution Log.
 
@@ -4486,31 +4486,31 @@ The Wire Framework VS Code extension brings the delivery lifecycle directly into
 
 Search for **Wire Framework** in the VS Code Extensions marketplace (`⌘⇧X` / `Ctrl⇧X`), then click **Install**.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_0_install_extension.png" alt="Search for Wire Framework in Extensions marketplace" width="50%">
+<img src="docs/images/wire_plugin_ss_0_install_extension.png" alt="Search for Wire Framework in Extensions marketplace" width="50%">
 
 If this is your first install from Rittman Analytics, VS Code will show a **Trust Publisher & Install** dialog — click through to confirm.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_00_choose_install.png" alt="Trust Publisher & Install dialog" width="50%">
+<img src="docs/images/wire_plugin_ss_00_choose_install.png" alt="Trust Publisher & Install dialog" width="50%">
 
 Once installed, click the **W** icon in the activity bar. For a new project with no `.wire/` folder you'll see a prompt to start a new engagement.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_000_new_wire_engagement.png" alt="Wire sidebar open on a new project" width="50%">
+<img src="docs/images/wire_plugin_ss_000_new_wire_engagement.png" alt="Wire sidebar open on a new project" width="50%">
 
 Run `/wire:new` in Claude Code to scaffold the engagement, create your first release, and configure MCP servers. Wire asks for the client name, project type, and scope before generating the structure.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_0000_run_wire_new.png" alt="Running /wire:new in Claude Code" width="50%">
+<img src="docs/images/wire_plugin_ss_0000_run_wire_new.png" alt="Running /wire:new in Claude Code" width="50%">
 
 ### Installing the Wire Plugin
 
 The extension activates automatically in any workspace. Before running Wire commands you need the Wire Claude Code plugin installed. Open the **MCP Servers** panel in the Wire sidebar, click the cloud-download button in the title bar, and choose **Install from marketplace**. The picker sends `/plugin marketplace add rittmananalytics/wire-plugin` to Claude Code and copies the follow-up `/plugin install wire@rittman-analytics` command to your clipboard. After install completes, run `/reload-plugins` in Claude Code to activate the plugin in the current session.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_4_plugin_install.png" alt="Plugin install picker" width="50%">
+<img src="docs/images/wire_plugin_ss_4_plugin_install.png" alt="Plugin install picker" width="50%">
 
 ### The Releases Panel
 
 The Releases panel is the primary navigation surface. Click the **W** icon in the activity bar to open it.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_1_releases_panel.png" alt="Releases panel" width="50%">
+<img src="docs/images/wire_plugin_ss_1_releases_panel.png" alt="Releases panel" width="50%">
 
 The panel reads `.wire/releases/*/status.md` and renders one collapsible section per release, organised by delivery phase. Green filled icons (✅) indicate all steps for that artifact are complete; yellow outlines show work in progress; grey outlines are not started. Clicking a completed artifact opens its generated file. Clicking an un-generated artifact triggers the generate command in Claude Code. Inline ✨ / ✓ / 💬 buttons appear on hover to generate, validate, or review without opening a menu.
 
@@ -4518,7 +4518,7 @@ The panel reads `.wire/releases/*/status.md` and renders one collapsible section
 
 The Status panel gives a compact at-a-glance view across all releases using a G (Generate) / V (Validate) / R (Review) dot grid.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_2_statuses_panel.png" alt="Status panel" width="50%">
+<img src="docs/images/wire_plugin_ss_2_statuses_panel.png" alt="Status panel" width="50%">
 
 The most recently modified release shows an **ACTIVE** badge and expands by default. A teal progress bar shows overall completion. Teal dots are complete, yellow are in progress, grey are not started, and `–` means that step is not applicable to the artifact.
 
@@ -4526,7 +4526,7 @@ The most recently modified release shows an **ACTIVE** badge and expands by defa
 
 Wire uses MCP servers to give Claude Code access to Jira, Confluence, Fathom, Linear, and other external services. The MCP Servers panel reads all four config locations (`~/.claude.json`, `~/.claude/settings.json`, `.mcp.json`, `.claude/settings.json`) and shows a live status indicator for each server.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_3_mcp_servers_panel.png" alt="MCP Servers panel" width="50%">
+<img src="docs/images/wire_plugin_ss_3_mcp_servers_panel.png" alt="MCP Servers panel" width="50%">
 
 Green dots indicate the server URL is responding; red means unreachable; grey means not yet checked (stdio servers are never pinged). Use the `+` button in the panel title bar to add a new server to the project `.mcp.json`.
 
@@ -4534,7 +4534,7 @@ Green dots indicate the server URL is responding; red means unreachable; grey me
 
 Right-click a release in the Releases tree and select **Show Workflow Graph** (or click the ⎇ icon in the title bar) to open a visual map of every artifact, arranged by phase with connecting arrows.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_5_workflow_panel.png" alt="Workflow graph" width="50%">
+<img src="docs/images/wire_plugin_ss_5_workflow_panel.png" alt="Workflow graph" width="50%">
 
 Each card shows the artifact name, G/V/R dot status, and the filename of the primary generated file. Drag the canvas to pan; scroll to zoom; click **Reset view** to return to 100%.
 
@@ -4542,23 +4542,23 @@ Each card shows the artifact name, G/V/R dot status, and the filename of the pri
 
 Right-click any artifact card to open its action menu.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_6_workflow_generate_menu_item.png" alt="Generate context menu" width="50%">
+<img src="docs/images/wire_plugin_ss_6_workflow_generate_menu_item.png" alt="Generate context menu" width="50%">
 
 Choose **Generate**, **Validate**, or **Review** to send the corresponding `/wire:*` command to Claude Code. **Preview file** opens a rendered markdown view beside your editor:
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_7_preview_document_menu_item.png" alt="Preview file menu" width="50%">
+<img src="docs/images/wire_plugin_ss_7_preview_document_menu_item.png" alt="Preview file menu" width="50%">
 
 ### Previewing Generated Artifacts
 
 Selecting **Preview file** from any context menu opens the artifact in VS Code's built-in markdown renderer — formatted headings, tables, and code blocks exactly as a client would read it.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_8_preview_document_panel.png" alt="Document preview" width="50%">
+<img src="docs/images/wire_plugin_ss_8_preview_document_panel.png" alt="Document preview" width="50%">
 
 ### How Commands Reach Claude Code
 
 When you trigger any Wire action from the sidebar, the extension sends the `/wire:<artifact>-<action> <release>` command to Claude Code's chat panel and Claude Code begins execution immediately.
 
-<img src="wire-vscode/resources/images/wire_plugin_ss_9_generate_command_chat_panel.png" alt="Claude Code receiving a command" width="50%">
+<img src="docs/images/wire_plugin_ss_9_generate_command_chat_panel.png" alt="Claude Code receiving a command" width="50%">
 
 ### The Command Picker
 
@@ -5272,7 +5272,7 @@ Recent release history for the Wire Framework. Full changelog from v3.0.0 onward
 
 ---
 
-### v3.9.0 — Wire Agents Phase 1: 12 Specialists + `/wire:delegate` (June 2026)
+### v3.9.1 — Wire Agents Phase 1: 12 Specialists + `/wire:delegate` (June 2026)
 
 The agent taxonomy is expanded to 12 specialists covering every Wire release type, and the orchestration command is rewritten for local execution — no managed agents API required.
 
@@ -5288,7 +5288,7 @@ The agent taxonomy is expanded to 12 specialists covering every Wire release typ
 
 ### v3.8.6 — Wire Agents Phase 1: Initial Eight Agents (June 2026)
 
-First cut of the specialist agent system: eight agents and the `/wire:orchestrate` command (later replaced by `/wire:delegate` in v3.9.0).
+First cut of the specialist agent system: eight agents and the `/wire:orchestrate` command (later replaced by `/wire:delegate` in v3.9.1).
 
 - Agents: `dbt-developer`, `lookml-developer`, `dashboard-prototyper`, `migration-auditor`, `qa-agent`, `data-quality-agent`, `stakeholder-interviewer`, `playbook-generator`
 - `status.md` gains an agents block tracking mode, active sessions, and completed sessions

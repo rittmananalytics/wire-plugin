@@ -153,11 +153,39 @@ The kick-off uses the existing `/wire:kickoff-*` commands — release-type aware
 /wire:requirements-review <release>     — Stakeholder review
 
 /wire:conceptual_model-generate <release>
+/wire:conceptual_model-validate <release>
+/wire:conceptual_model-review <release>
+
+/wire:pipeline_design-generate <release>
+/wire:pipeline_design-validate <release>
+/wire:pipeline_design-review <release>
+
 /wire:data_model-generate <release>
+/wire:data_model-validate <release>
+/wire:data_model-review <release>
+
+/wire:mockups-generate <release>
+/wire:mockups-review <release>
+
+/wire:pipeline-generate <release>
+/wire:pipeline-validate <release>
+/wire:pipeline-review <release>
+
 /wire:dbt-generate <release>
+/wire:dbt-validate <release>
+/wire:dbt-review <release>
+
+/wire:orchestration-generate <release>   — Generate orchestration layer; choose Dagster, dbt Cloud, or Airflow
+/wire:orchestration-validate <release>   — Validate DAG/job config and dbt model coverage
+/wire:orchestration-review <release>     — Review orchestration design with technical lead
+
 /wire:semantic_layer-generate <release>
+/wire:semantic_layer-validate <release>
+/wire:semantic_layer-review <release>
+
 /wire:dashboards-generate <release>
-... (and -validate/-review for each)
+/wire:dashboards-validate <release>
+/wire:dashboards-review <release>
 ```
 
 ### Agentic Commerce commands

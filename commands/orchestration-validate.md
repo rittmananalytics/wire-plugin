@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.9.0\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.9.1\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"orchestration-validate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.9.0\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"orchestration-validate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.9.1\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -99,7 +99,7 @@ Validate the generated orchestration layer. The validation checks differ by tool
 ### Step 1: Read Configuration
 
 1. Read `.wire/<project_id>/status.md` to determine `orchestration_tool`
-2. If `orchestration_tool` is not set, stop with: "Run `/wire:orchestration:generate <project>` first to set up the orchestration layer."
+2. If `orchestration_tool` is not set, stop with: "Run `/wire:orchestration-generate <project>` first to set up the orchestration layer."
 
 ### Step 2a: Validate Dagster (if tool = dagster)
 
@@ -225,6 +225,71 @@ Write `.wire/<project_id>/development/orchestration/.orchestration_validation.md
 [List any warnings or required fixes]
 ```
 
+### Step 2c: Validate Airflow (if tool = airflow)
+
+#### 2c.1 — DAG parse check
+
+Run from the repo root:
+
+```bash
+python -c "from dags.<project_name>_pipeline import dag; print('DAG tasks:', dag.task_ids)"
+```
+
+If the import raises any error, report it in full and stop. A clean parse is a hard requirement before proceeding.
+
+#### 2c.2 — Verify dbt model task coverage
+
+List dbt models:
+```bash
+cd <dbt_project_path> && dbt ls --select "*" --output name
+```
+
+Inspect the DAG file and confirm every model has either:
+- A corresponding `BashOperator` or `PythonOperator` task running `dbt run --select <model>`, or
+- Is covered by a `DbtTaskGroup` that runs all models
+
+Report any models not covered as validation findings.
+
+#### 2c.3 — Verify source sensor coverage
+
+Read `pipeline_design.md` source system list. Confirm there is at least one sensor task per source (e.g. `BigQueryTableExistenceSensor`, `HttpSensor`, or equivalent). Report any source systems with no upstream sensor.
+
+#### 2c.4 — Verify cron expression
+
+Extract the `schedule_interval` from the DAG file. Confirm:
+- The cron expression is syntactically valid (parseable by a standard cron library)
+- It matches the run cadence stated in `pipeline_design.md`
+
+#### 2c.5 — Verify connection IDs documented
+
+Check that `airflow_connections.md` exists and lists at least one connection per source system and one for the warehouse target.
+
+#### 2c.6 — Compile validation report
+
+Write `.wire/<project_id>/development/orchestration/.orchestration_validation.md`:
+
+```markdown
+# Orchestration Validation Report
+
+**Date**: <date>
+**Tool**: Airflow
+**Result**: PASS | FAIL
+
+## Checks
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| DAG parse check | PASS/FAIL | [error if failed] |
+| dbt model task coverage | PASS/FAIL | [N of M models covered] |
+| Source sensor coverage | PASS/FAIL | [missing sources if any] |
+| Cron expression valid | PASS/FAIL | [expression and matched cadence] |
+| Connection IDs documented | PASS/FAIL | |
+
+## Findings
+
+[List any warnings or required fixes]
+```
+
 ### Step 3: Update Status
 
 Update `.wire/<project_id>/status.md`:
@@ -251,7 +316,7 @@ If PASS:
 
 All checks passed. Ready for review.
 
-Next step: `/wire:orchestration:review <project>`
+Next step: `/wire:orchestration-review <project>`
 ```
 
 If FAIL:
@@ -260,7 +325,7 @@ If FAIL:
 
 [List failing checks and required fixes]
 
-Fix the issues above and re-run: `/wire:orchestration:validate <project>`
+Fix the issues above and re-run: `/wire:orchestration-validate <project>`
 ```
 
 Execute the complete workflow as specified above.
