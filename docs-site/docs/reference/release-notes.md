@@ -9,6 +9,28 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.9.2 — `dashboard-mock-developer` and `mock-data-developer` agents
+
+**Released**: June 2026
+
+Two new specialist agents activate exclusively for `dashboard_first` releases, bringing the total to 14.
+
+**`dashboard-mock-developer`** owns the interactive mockup phase. It generates an HTML mock immediately from requirements, iterates with you until approved, then produces three derived artifacts atomically: `dashboard_visualization_catalog.csv`, `dashboard_spec.md`, and `data_model_requirements.md`. The last file is the primary input for `data-designer` and `mock-data-developer`.
+
+**`mock-data-developer`** handles seed data and data refactor — two time-separated phases. Phase 1: CSV seed files with referential integrity and domain-realistic distributions, allowing `dbt seed && dbt run` before any client data access. Phase 2: repoints staging models from seeds to real client sources once access is confirmed, with a written refactor plan before any code changes.
+
+See [Wire Agents](../advanced/wire-agents) and [Dashboard-First](../release-types/dashboard-first) for full details.
+
+---
+
+## v3.9.1 — Fan-out parallelism for large dbt model sets
+
+**Released**: June 2026
+
+`/wire:delegate` gains fan-out parallelism: when a dbt layer has more than 5 models, it splits the layer into batches of 5 and runs one `dbt-developer` agent per batch in parallel. Layers remain sequential (staging → integration → warehouse); agents within each layer wave run concurrently. The same fan-out applies to `semantic-layer-developer` (by explore) and `migration-specialist` (by source system).
+
+---
+
 ## v3.9.0 — Wire Agents Phase 1: 12 Specialists + `/wire:delegate`
 
 **Released**: June 2026
