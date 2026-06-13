@@ -12,7 +12,7 @@ const config = {
   },
 
   url: 'https://wire-plugin.readthedocs.io',
-  baseUrl: '/',
+  baseUrl: '/en/latest/',
 
   organizationName: 'rittmananalytics',
   projectName: 'wire-plugin',
