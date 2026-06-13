@@ -2979,10 +2979,33 @@ The `data-designer` agent produces the complete dbt-layer data model specificati
 → [main session — no specialist agent for wireframes]
 ```
 
-Dashboard wireframes for the SPA Operational Dashboard:
-- At-risk student list (attendance + pastoral note indicators)
-- Unanswered SPA alert tracker
-- Student detail drillthrough panel
+```
+Dashboard Mockups Generated
+
+  File: design/mockups/spa-operational-dashboard.html — open in any browser
+
+  What's in it:
+
+  - Daily Caseload — 4 KPI tiles (Active Risk 12, Monitoring 8, Unanswered
+    Alerts 3, No Concerns 45), 6-week at-risk trend line, caseload doughnut,
+    8-row student priority table with risk signals. Click any row to drill
+    to Student Detail.
+  - Student Detail — example student; KPIs for attendance (76%), open alerts,
+    notes, CAP below target; stacked attendance bar (8 weeks), horizontal bar
+    grades vs MEG, pastoral notes table, SPA alerts table with wellbeing flag
+    footer.
+  - Note Volume Monitor — college-wide note volumes by department, stacked
+    horizontal bar (4 note types × 7 departments), breakdown table with WoW
+    % change.
+  - High-Risk Cohort — dual-risk cohort (wellbeing + att<90%), unanswered
+    alerts, risk score ranking bar chart, alert age chart, two tables for the
+    two cohort cuts.
+
+  All charts are Chart.js 4.4.1, fully interactive. Sidebar collapses, tabs
+  switch without page load, filter pills are styled correctly.
+```
+
+The file is a self-contained interactive HTML prototype — no build step, no server. SPAs and pastoral leads review it directly in a browser before any Looker work begins.
 
 ```
 /wire:mockups-review 01-barton-peveril-live-pastoral
