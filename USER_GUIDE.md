@@ -5296,6 +5296,36 @@ Supports alias forms (`/wire:help new`, `/wire:help wire:new`, `/wire:help /wire
 
 ---
 
+## 33. Tutorials
+
+The Wire Framework documentation includes a full set of scenario-based tutorials, one per release type plus three supplementary guides covering installation, mid-release handovers, and release upgrades. They live in `docs-site/docs/tutorials/` and are published alongside the reference documentation at the project docs site.
+
+Each tutorial traces a complete engagement from `/wire:new` through final artifact review, using a fictional client scenario designed to surface the parts of the release type most likely to be misread from the reference pages alone. They show realistic command output, agent delegation sequences, MCP integrations that activate at each gate, and the decision-making context that shapes what gets generated. The supplementary tutorials cover operational mechanics — how to install and keep the plugin current, how to recover state when joining a release you did not start, and how to upgrade an existing release folder after a new plugin version is installed.
+
+| Tutorial | Release Type | Scenario | Page |
+|---|---|---|---|
+| Full Platform | `full_platform` | Eversholt Brewing Co — Shopify, BrewMan ERP, HubSpot into BigQuery + Looker | `tutorials/full-platform` |
+| dbt Development | `dbt_development` | Vantage Financial Reporting — Stripe, Salesforce, PostgreSQL into Snowflake | `tutorials/dbt-development` |
+| Pipeline and dbt | `pipeline_only` | Meridian Logistics Group — multi-source ingestion with bespoke SFTP connector | `tutorials/pipeline-dbt` |
+| Discovery (Shape Up) | `discovery_shape_up` | Hallmark Property Partners — real estate go/no-go scoping, two days | `tutorials/discovery-shape-up` |
+| Discovery (SOP) | `sop_discovery` | Thornfield Private Healthcare — four-clinic GDPR-sensitive assessment | `tutorials/discovery-sop` |
+| Kickoff Deck | `kickoff_deck` | Pennant Advisory Partners — 10-week data platform onboarding | `tutorials/kickoff-deck` |
+| Dashboard Extension | `dashboard_extension` | Foxwood Commerce Ltd — marketing dashboards on an existing Looker instance | `tutorials/dashboard-extension` |
+| Dashboard First | `dashboard_first` | Claybrook Media Group — interactive HTML mockup before any data layer is committed | `tutorials/dashboard-first` |
+| Enablement | `enablement` | Hargreave Insurance Ltd — platform enablement and technical handover | `tutorials/enablement` |
+| Agentic Commerce | `agentic_commerce` | Thornwick Outdoor Ltd — semantic search, conversational assistant, visual similarity on Shopify | `tutorials/agentic-commerce` |
+| Platform Migration | `platform_migration` | Gatwick Data Partners — Snowflake to BigQuery migration with equivalency validation | `tutorials/platform-migration` |
+| Agentic Data Stack | `agentic_data_stack` | Boutique consultancy — canonical model audit before AI agent configuration | `tutorials/agentic-data-stack` |
+| Droughty | `droughty` | Birchfield Capital Management — 240-table Snowflake warehouse, no dbt project | `tutorials/droughty` |
+| Custom Release | `custom` | Summit Digital Media — content analytics advisory across BigQuery, Looker, and Vertex AI | `tutorials/custom` |
+| Installing and Upgrading | — | Claude Code and Gemini CLI installation from scratch | `tutorials/installing-and-upgrading` |
+| Joining Mid-Release | — | Aldgate Financial Services — consultant handover at Phase 3 | `tutorials/joining-mid-release` |
+| Upgrading Your Release | — | Pennant Capital Management — dormant release resuming after a six-week pause | `tutorials/upgrading-your-release` |
+
+The detailed content — command sequences, scenario background, deliverable tables, annotated output, and Mermaid process diagrams — is in the docs-site pages. This section is the index.
+
+---
+
 ## 32. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
