@@ -174,7 +174,7 @@ Copy the client's existing LookML view and model files into `.wire/releases/01-f
 → semantic_layer artifacts written to .wire/releases/01-foxwood-marketing-dashboards/semantic_layer/
 ```
 
-:::info Auto-delegation
+:::info[Auto-delegation]
 
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
 

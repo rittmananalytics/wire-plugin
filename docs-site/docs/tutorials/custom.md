@@ -200,7 +200,7 @@ Artifacts — 6 total, 6 at not_started
 → content_performance_audit.md written
 ```
 
-:::info Auto-delegation
+:::info[Auto-delegation]
 
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
 

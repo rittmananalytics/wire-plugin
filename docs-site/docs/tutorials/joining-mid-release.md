@@ -196,7 +196,7 @@ Four steps, clearly scoped. Marcus approves the plan and is ready for his first 
 -> Output: .wire/releases/02-aldgate-financial-platform/artifacts/semantic_layer/
 ```
 
-:::info Auto-delegation
+:::info[Auto-delegation]
 
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
 
