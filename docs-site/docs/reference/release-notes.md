@@ -9,6 +9,24 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.9.5 — Auto-delegation for all generate commands + docs expansion
+
+**Released**: June 2026
+
+Every generate command now auto-delegates to its specialist agent — not just migration commands. v3.9.5 extends the delegation protocol to all 44 remaining generate specs across requirements, discovery, design, development, testing, deployment, and enablement.
+
+**Key changes**:
+- 11 new shared utility specs (`specs/utils/*_delegate.md`) — same 4-step protocol as the migration delegate: check agent definition, re-entrancy guard, dispatch to specialist, inline fallback
+- Auto-delegation preamble added to all 44 non-migration generate specs
+- Docs site: [How Wire Works](../getting-started/how-wire-works) page added to Getting Started
+- Docs site: mermaid diagrams now centred sitewide
+- Docs site: "First release?" info admonition added before `/wire:new` block in all 12 release-type tutorials
+- Docs site: [Platform Migration](../release-types/platform-migration) `## MCP server connections` section — Snowflake, BigQuery, Fivetran, RudderStack, Coupler.io, Segment, Airbyte, Hightouch, VPC tunnel
+- Homepage colour updated to `#4F60FF`, feature highlights corrected to 50+ slash commands
+- `LICENSE` now included in the wire-plugin dist package
+
+---
+
 ## v3.9.4 — Docs cleanup and bundling fix
 
 **Released**: June 2026

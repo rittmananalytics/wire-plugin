@@ -90,13 +90,13 @@ argument-hint: <project-folder>
 
 ### 2. User Input
 
-```markdown
+````markdown
 ## User Input
 
-\`\`\`text
+```text
 $ARGUMENTS
-\`\`\`
 ```
+````
 
 `$ARGUMENTS` is replaced at runtime with whatever you typed after the command name. The command file can reference it anywhere below to know which project folder to operate on.
 
@@ -132,7 +132,24 @@ The section instructs Claude to:
 
 **It never blocks**: the curl runs in a background subshell (`&`) with all output suppressed. If there's no network, no curl, or any other failure, the workflow continues without interruption.
 
-### 5. Workflow Specification
+### 5. Auto-delegation preamble
+
+Generate commands include one additional section that does not appear in validate or review commands: an auto-delegation preamble. It sits between Telemetry and the Workflow Specification and routes the command to a specialist subagent when one is available.
+
+```markdown
+Follow `specs/utils/dbt_developer_delegate.md` before executing the workflow below.
+```
+
+That single line references a shared utility spec that implements a 4-step protocol:
+
+1. **Check for the agent definition** — look for `agents/dbt-developer/AGENT.md` in the installed plugin
+2. **Re-entrancy guard** — if the current context is already running as a `wire:dbt-developer` subagent, skip delegation to avoid an infinite loop
+3. **Dispatch** — spawn the specialist subagent via Claude Code's Agent tool with the release folder and key input paths; return immediately and let the subagent complete the work
+4. **Inline fallback** — if the agent definition was not found or delegation was skipped, execute the workflow steps directly
+
+This means the same command file works in two modes: full agentic delegation when the plugin is installed with agents, and direct inline execution in environments where the agent definitions are not present.
+
+### 6. Workflow Specification
 
 This is the main content — the step-by-step instructions the model executes. For `dbt-generate.md`, the workflow spec begins:
 
@@ -359,7 +376,7 @@ gh api repos/rittmananalytics/wire-plugin/contents/commands/dbt-generate.md \
   --jq '.content' | base64 -d | less
 
 # From the local plugin cache
-less ~/.claude/plugins/cache/rittman-analytics/wire/3.9.4/commands/dbt-generate.md
+less ~/.claude/plugins/cache/rittman-analytics/wire/3.9.5/commands/dbt-generate.md
 ```
 
 Every command in the plugin can be read this way. If a command behaves unexpectedly, reading the source is the fastest way to understand why — there is no other layer to dig into.
@@ -370,7 +387,7 @@ Every command in the plugin can be read this way. If a command behaves unexpecte
 
 Wire's approach has a few concrete implications:
 
-**The behaviour is pinned to a version.** Plugin version 3.9.4 installs version 3.9.4 of every command file. If RA ships a new naming convention in 3.9.5, your project stays on the 3.9.4 rules until you explicitly upgrade with `/wire:upgrade`.
+**The behaviour is pinned to a version.** Plugin version 3.9.5 installs version 3.9.5 of every command file. If RA ships a new naming convention in 3.9.6, your project stays on the 3.9.5 rules until you explicitly upgrade with `/wire:upgrade`.
 
 **You can override it.** Drop a `.dbt-conventions.md` in your project root and both generate and validate will pick it up. No fork, no plugin modification required.
 
