@@ -1,0 +1,101 @@
+Functional Source License, Version 1.1, Apache 2.0 Future License
+
+Copyright (c) 2026 Rittman Analytics Ltd
+
+Parameters
+
+Licensor:             Rittman Analytics Ltd
+Licensed Work:        Wire Framework v3.4.17 and later versions of the Work made
+                      available by the Licensor.
+Change Date:          2028-05-04
+Change License:       Apache License, Version 2.0
+
+For information about alternative licensing arrangements, contact
+info@rittmananalytics.com.
+
+---
+
+Definitions
+
+"Competing Use" means using the Licensed Work, in whole or in part, to provide
+data platform consulting, analytics engineering delivery, or technology advisory
+services to third parties where the Licensed Work is used as a delivery
+methodology framework — whether or not a fee is charged for those services.
+
+This includes, but is not limited to: using Wire to structure or deliver client
+engagements, offering Wire-based delivery packages or accelerators, bundling Wire
+within a consulting service offering, or distributing the Licensed Work as part
+of a commercial delivery methodology.
+
+This does not include:
+
+  (a) An organisation using the Licensed Work to manage and deliver its own
+      internal data platform work, provided that organisation does not offer
+      data platform consulting services to third parties as a primary business
+      activity.
+
+  (b) Individual contributors submitting bug reports, documentation
+      improvements, or code contributions to this repository.
+
+  (c) Academic research, non-commercial education, or evaluation for the
+      purpose of determining whether to engage Rittman Analytics Ltd.
+
+---
+
+Grant of Rights
+
+The Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make non-production use of the Licensed Work. The
+Licensor further grants you the right to make production use of the Licensed
+Work, provided your use does not constitute Competing Use.
+
+---
+
+Conditions
+
+If your use of the Licensed Work does not constitute Competing Use, you may use
+it freely subject to the following conditions:
+
+  1. You must retain this licence notice in all copies or substantial portions
+     of the Licensed Work.
+
+  2. You may not misrepresent the origin of the Licensed Work. You may not
+     claim that you created it, and you may not remove or alter any copyright
+     notices.
+
+  3. If you distribute a modified version of the Licensed Work, you must
+     include a prominent notice stating that you have modified it.
+
+---
+
+Competing Use
+
+If your use constitutes Competing Use, you may not use the Licensed Work unless
+you have obtained a separate commercial licence from the Licensor. Contact
+info@rittmananalytics.com to discuss licensing terms.
+
+---
+
+Change Date
+
+Effective on the Change Date, the Licensor grants you rights under the terms of
+the Change License. Those rights are granted in addition to, and do not affect,
+the rights granted above.
+
+On and after the Change Date (2028-05-04), the Licensed Work is also made
+available under the Apache License, Version 2.0. You may obtain a copy of the
+Apache License at:
+
+  https://www.apache.org/licenses/LICENSE-2.0
+
+---
+
+Disclaimer of Warranties and Limitation of Liability
+
+THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE LICENSED WORK OR THE USE OR OTHER DEALINGS IN THE LICENSED
+WORK.
