@@ -68,6 +68,13 @@ The agentic_data_stack release type addresses this directly. It does not start w
 
 The eval suite is the most important artifact in the release. Every domain gets a YAML question-answer file — minimum ten questions each — and a CI runner script that checks accuracy against every schema change. Anthropic documented accuracy falling from 95% to 65% within a month without active eval maintenance. The eval suite, wired into CI, is what prevents that slide. The audit and design phases are auto-delegated to the `agentic-data-stack-developer` specialist agent. Review commands stay in the main session.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    AUDIT["Platform Audit"] --> CM["Canonical Model"] --> BUILD["Skills and Configs"] --> EVAL["Eval Suite"] --> DEPLOY["Deploy"]
+```
+
 ## Engagement overview
 
 | | |
@@ -92,7 +99,9 @@ Croftmere's financial services clients are asking for natural language querying 
 | Agent configuration | System prompt, tool definitions, guardrails |
 | Eval suite | 40 test queries, expected results, CI runner script |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

@@ -55,6 +55,13 @@ Droughty is the bottom-up complement to Wire's top-down, document-driven approac
 
 Wire wraps Droughty in two modes. **Discovery/audit mode** maps an existing warehouse with no upstream transformation layer — the target for this tutorial. **Post-dbt mode** assumes a deployed dbt project and generates the base LookML and test layer from already-built models, feeding directly into [`/wire:semantic_layer-generate`](../reference/commands#development--semantic-layer-and-orchestration). Python 3.9–3.12 is required on the consultant's machine for both modes. This tutorial uses the pinned version of Droughty that ships with Wire: **v0.20.1**.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    SETUP["Setup"] --> INTRO["Schema Introspection"] --> ENRICH["Docs and Diagrams"] --> OUT["LookML and dbt Tests"]
+```
+
 ## Engagement overview
 
 | | |
@@ -78,7 +85,9 @@ Birchfield built their Snowflake warehouse 18 months ago without a transformatio
 | Base LookML views (one per table) | 240 `.view.lkml` files | `lookml/views/generated/` |
 | dbt schema test stubs | `schema.yml` entries | `.wire/releases/01-birchfield-droughty-audit/artifacts/dbt_stubs/` |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

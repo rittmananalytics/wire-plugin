@@ -61,6 +61,28 @@ A Shape Up discovery release is a structured, time-boxed scoping exercise — ty
 
 The appetite document is the centrepiece. Shape Up uses the concept of an appetite — how much time a problem is *worth*, not how long it will *take* — to drive scope decisions rather than letting scope drive time. Wire's `/wire:appetite-generate` command produces a structured recommendation that separates Phase 1 scope from deferred work, tied to a time-and-materials estimate the client can accept or challenge. Everything produced in this release feeds directly into the SOW for a subsequent build engagement: the requirements brief becomes the functional specification, the scope story map becomes the delivery backlog, and the risk catalogue becomes the assumptions and exclusions register.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    PD["Problem Definition"]
+    PI["Pitch"]
+    RB["Release Brief"]
+    SP["Sprint Plan"]
+    DR["Delivery Releases"]
+
+    PD -->|"shapes"| PI
+    PI -->|"formalises"| RB
+    RB -->|"decomposes"| SP
+    SP -->|"spawns"| DR
+
+    style PD fill:#e8f0ff,stroke:#5b8dee
+    style PI fill:#e8f0ff,stroke:#5b8dee
+    style RB fill:#e8f5e9,stroke:#4caf50
+    style SP fill:#e8f5e9,stroke:#4caf50
+    style DR fill:#fff3e0,stroke:#f5a623
+```
+
 ## Engagement overview
 
 | | |
@@ -84,7 +106,9 @@ Hallmark's investment team tracks deal pipeline, asset performance, and portfoli
 | Scope story map | 3 swim lanes, 14 user stories across Phase 1 |
 | Risk catalogue | Identified risks with severity ratings and mitigations |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

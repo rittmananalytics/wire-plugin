@@ -66,6 +66,38 @@ The mechanism that makes this practical is the `dashboard-mock-developer` agent.
 
 The second specialist, `mock-data-developer`, takes `data_model_requirements.md` and generates CSV seed files with referential integrity and domain-realistic values. Those seeds power a working dbt project — `dbt seed && dbt run` succeeds — before the client has provided a single database credential. Real source data arrives later. When it does, `/wire:mock_data-refactor` (handled by the same agent) rewrites the staging layer from `ref('seed')` calls to `source()` calls, producing a written migration plan before touching any code. The seed-based prototype is disposable; it exists to validate the design, not to become the production model.
 
+### High-Level Process
+
+```mermaid
+flowchart TB
+    subgraph s1["Design"]
+        REQ["requirements"]
+        MK["mockups — HTML interactive"]
+        VIZ["viz_catalog"]
+        DM["data_model"]
+    end
+    subgraph s2["Prototype"]
+        SD["seed_data"]
+        DBT["dbt — seed-based"]
+        SL["semantic_layer"]
+        DASH["dashboards"]
+    end
+    subgraph s3["Build"]
+        DR["data_refactor — seeds to real data"]
+        DQ["data_quality"]
+        UAT["uat"]
+    end
+    subgraph s4["Deploy"]
+        DEP["deployment"]
+        TR["training"]
+        DOC["documentation"]
+    end
+    REQ --> MK --> VIZ --> DM
+    DM --> SD --> DBT --> SL --> DASH
+    DASH --> DR --> DQ --> UAT
+    UAT --> DEP --> TR --> DOC
+```
+
 ## Scenario
 
 | | |
@@ -96,7 +128,9 @@ Rather than building speculatively, the engagement begins with interactive mocku
 | Looker dashboards | Published to production |
 | Phase 2 refactor plan | `data_refactor_plan.md` — seeds to GAM + GA4 Fivetran sources |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

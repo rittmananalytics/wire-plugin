@@ -64,6 +64,13 @@ A `pipeline_only` release covers ingestion and the dbt staging layer — nothing
 
 This split makes sense when the sources are complex enough to deserve focused engineering attention before any modelling decisions are made. Three new connectors with different latency profiles, a bespoke SFTP system that needs a custom Cloud Function, and a client data team that wants to validate raw data quality before committing to a warehouse design — all of these are reasons to deliver the pipeline and staging layer first and treat the warehouse layer as phase two. You get clean, tested, freshness-monitored raw data into the warehouse on a predictable schedule, and the downstream modelling work starts from a solid foundation rather than a moving target.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    REQ["Requirements"] --> PD["Pipeline Design"] --> DM["Data Model"] --> PIPE["Pipeline"] --> DBT["dbt Models"] --> DQ["Data Quality"] --> DEPLOY["Deployment"]
+```
+
 ## Scenario
 
 | | |
@@ -90,7 +97,9 @@ The scope for this release is deliberate: Fivetran connectors where standard con
 | Schema tests | 24 tests: `not_null` and `unique` on PKs, `relationships` on FKs |
 | Source freshness checks | Configured with alerting thresholds per source |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

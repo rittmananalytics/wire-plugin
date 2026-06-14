@@ -80,6 +80,13 @@ The `kickoff_deck` release type is a rapid standalone release with no technical 
 
 No pipeline design, data model, or dbt work is in scope. The release exists purely to give the client a polished, accurate first artefact within 48 hours of signature — one that demonstrates the delivery team has read the contract and understood the engagement before walking into the room.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    SOW["SOW and Discovery Artifacts"] --> KO["Kickoff Deck"] --> PRESENT["Client Presentation"]
+```
+
 ## Engagement overview
 
 | | |
@@ -102,7 +109,9 @@ Pennant Advisory Partners is a 30-person UK management consultancy with an opera
 | RACI matrix | Roles × activities table | Embedded in deck outline |
 | Assumptions and open questions log | Numbered log with owners | `.wire/releases/01-pennant-kickoff/assumptions.md` |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

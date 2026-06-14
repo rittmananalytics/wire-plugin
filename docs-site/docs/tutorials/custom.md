@@ -54,7 +54,14 @@ Summit Digital Media operates a subscription VOD service with 150,000 active sub
 
 Most Wire engagements map cleanly to a standard release type: `full_platform` for end-to-end data platform builds, `dbt_development` for transformation-only work, `droughty` for schema-first audits. Some do not. When the SoW defines a specific set of deliverables that cuts across those categories — or where the deliverables are fundamentally advisory rather than structural — the `custom` release type gives you the Wire infrastructure without forcing the work into the wrong shape. You define the artifacts. Wire provides status tracking, the `decisions.md` log, agent delegation, Jira/Linear integration, and the standard generate/validate/review lifecycle for each artifact you name.
 
-The key distinction from simply working without Wire: every custom artifact still passes through the same three-gate sequence. A generate step produces the artifact, a validate step runs automated checks against it, and a review step surfaces it to a named stakeholder for approval before work continues downstream. The discipline holds regardless of how bespoke the deliverable is.
+Every custom artifact passes through the same three-gate sequence as any standard Wire release. A generate step produces the artifact, a validate step runs automated checks against it, and a review step surfaces it to a named stakeholder for approval before work continues downstream. The discipline holds regardless of how bespoke the deliverable is.
+
+### High-Level Process
+
+```mermaid
+graph LR
+    DEFINE["Define Artifacts"] --> GEN["Generate"] --> VALID["Validate"] --> APPROVE["Review and Approve"] --> DELIVER["Deliver"]
+```
 
 ## Engagement overview
 
@@ -80,7 +87,9 @@ Summit operates a subscription VOD service with 150,000 active subscribers. Over
 | `looker_dashboards` | Content performance and subscriber health dashboards |
 | `deployment_runbook` | Step-by-step runbook for the full stack: BigQuery, dbt Cloud, Vertex AI pipeline, Braze segment sync |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

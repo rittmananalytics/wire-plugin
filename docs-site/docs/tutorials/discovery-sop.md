@@ -67,6 +67,23 @@ The SOP discovery release is the formal alternative to Shape Up. Where Shape Up 
 
 Wire's Atlassian MCP integration runs automatically during [`/wire:new`](../reference/commands#session-and-management-commands) for SOP discovery releases. It creates a Jira Epic and one Task issue per planned artifact — so from the moment the release is set up, the delivery team and client stakeholders can track progress against a structured issue hierarchy without any manual Jira configuration. Review commands sync artifact status back to Jira as each gate is passed, giving the engagement sponsor a real-time view of what has been completed and what is pending their input.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    EB["Engagement Brief"]
+    SM["Stakeholder Map"]
+    KO["Kick-off"]
+    SI["Stakeholder Interviews"]
+    RM["Requirements Matrix"]
+    DA["Discovery Analyses"]
+    FP["Findings Playback"]
+    DR["Delivery Roadmap"]
+    RS["Spawn Release 1"]
+
+    EB --> SM --> KO --> SI --> RM --> DA --> FP --> DR --> RS
+```
+
 ## Engagement overview
 
 | | |
@@ -90,7 +107,9 @@ Thornfield's clinical operations director wants to understand data flows, report
 | Capability assessment | Current vs target state gap analysis across 5 dimensions |
 | Recommendations report | Prioritised recommendations with rationale and proposed sequencing |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

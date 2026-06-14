@@ -69,7 +69,16 @@ The `full_platform` release type is the most comprehensive Wire engagement, span
 
 Choose `full_platform` when the client has no functioning analytics stack, or when they have disparate data sources with no reliable single view and the engagement SOW covers the full journey. It is a poor fit when the client already has deployed dbt models and a working warehouse — in that case, reach for `semantic_layer` or `dbt_development` and save the full sequence for a future phase. The typical two-week cadence puts requirements and design in Week 1, development and testing across Days 4–9, and deployment plus enablement in the final two days.
 
-Wire Agents changes how this type of engagement runs in practice. Every `-generate` command automatically delegates to the appropriate specialist subagent — the `data-designer` handles conceptual models and data models, the `pipeline-engineer` handles connector configuration, the `dbt-developer` fans out across multiple parallel agents during Phase 3, one per layer or batch of models. Review gates — every `-review` command — always stay in the main session because they require a named human stakeholder to approve before the next phase begins. You will not write a line of SQL or LookML by hand unless you choose to.
+### High-Level Process
+
+```mermaid
+graph LR
+    REQ["Phase 1<br/>Requirements"] --> DESIGN["Phase 2<br/>Design"]
+    DESIGN --> DEV["Phase 3<br/>Development"]
+    DEV --> TEST["Phase 4<br/>Testing"]
+    TEST --> DEPLOY["Phase 5<br/>Deployment"]
+    DEPLOY --> ENABLE["Phase 6<br/>Enablement"]
+```
 
 ## The scenario
 
@@ -106,7 +115,9 @@ Eversholt brews six core SKUs — a pale, a session IPA, a porter, a stout, a wh
 | Technical documentation | Architecture, dbt model reference, LookML field catalogue | `delivery-lead` |
 | `decisions.md` | 9 architectural decisions across the engagement | All agents |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

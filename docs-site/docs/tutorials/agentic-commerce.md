@@ -67,6 +67,13 @@ Supabase provides the backend layer. pgvector handles embedding storage for sema
 
 All `ac_*` generate commands are auto-delegated to the `agentic-commerce-developer` specialist agent. Review commands stay in the main session — they require your direct input and a named stakeholder sign-off. The `agentic-commerce-developer` agent writes only production code and integration configuration. It does not produce mock data or placeholder UI.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    SF["Storefront"] --> FEAT["AI Features"] --> UCP["UCP Server"] --> DEMO["Demo Orchestration"]
+```
+
 ## Engagement overview
 
 | | |
@@ -93,7 +100,9 @@ Thornwick already has a functioning Shopify store with 847 SKUs across 14 produc
 | LLM tool definitions | Packaged tool specs for external consumption via UCP server |
 | Demo orchestration | 5 set-piece scenarios, seeded dataset with 30 customer journeys |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

@@ -64,6 +64,13 @@ A `full_platform` engagement ends when the dashboards are live and the data qual
 
 The release can follow a `full_platform` engagement (the most common case) or be commissioned independently against a platform built by another team. In either case the `delivery-lead` agent owns the entire release — reading the approved build-phase artifacts and `decisions.md` to extract the knowledge the training materials need, then producing an agenda and supporting materials calibrated to the audience's technical level. Two sessions are standard: a two-hour technical session for the data engineering and analytics team, and a 90-minute business session for end users. Both are generated, reviewed, and approved before delivery. The documentation package — architecture overview, model reference, job reference, field catalogue, operational runbook — follows the same generate-validate-review cycle and is handed over at engagement close.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    REQ["Requirements"] --> TRAIN["Training Materials"] --> DOC["Documentation"] --> HAND["Handover"]
+```
+
 ## Scenario
 
 | | |
@@ -90,7 +97,9 @@ Hargreave's platform was delivered six weeks ago: Fivetran connectors from Polic
 | LookML field catalogue | All 87 measures and dimensions, alphabetical |
 | Operational runbook | Monitoring alerts, on-call steps, rollback procedure |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

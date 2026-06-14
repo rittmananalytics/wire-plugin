@@ -64,6 +64,13 @@ A `dbt_development` release covers the transformation layer only. Data is alread
 
 Choose this release type when the ingestion problem is already solved and the BI team is blocked on clean models. You skip the pipeline design, pipeline implementation, semantic layer, and dashboard phases entirely. The result is a full dbt project — staging models, warehouse models, schema tests, and documentation YAML — that a downstream LookML or Tableau developer can build against with confidence. If you also need to wire up new connectors or author LookML, use a `full_platform` release instead.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    REQ["Requirements"] --> CM["Conceptual Model"] --> DM["Data Model"] --> DBT["dbt Models"] --> DQ["Data Quality"] --> DEPLOY["Deployment"]
+```
+
 ## Scenario
 
 | | |
@@ -89,7 +96,9 @@ Vantage has three data sources landing in Snowflake via Fivetran: Stripe (paymen
 | Documentation YAML | `description:` fields for every model and column |
 | `decisions.md` | Agent-recorded grain choices, modelling trade-offs, and rationale |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

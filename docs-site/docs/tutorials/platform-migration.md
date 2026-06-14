@@ -74,7 +74,12 @@ The **migration zone** writes to the target. It begins with the migration strate
 
 The **equivalency validation loop** sits between orchestration migration and cutover. It runs five check types — row count, schema, value, freshness, and dbt tests — against both platforms simultaneously. When checks fail, you run `equivalency-investigate` to diagnose and `equivalency-fix` to repair. `cutover-generate` is blocked until `checks_failing: 0`. There is no way to skip this gate programmatically.
 
-From v3.9.3, every migration generate command auto-delegates to the `migration-specialist` agent. This is the same specialist routing that backs the dbt and semantic layer agents in standard releases, applied to the full migration lifecycle. Review commands, as always, stay in the main session.
+### High-Level Process
+
+```mermaid
+graph LR
+    AUDIT["Audit Zone"] --> INV["Migration Inventory"] --> STRAT["Migration Strategy"] --> MIG["Migration Zone"] --> EQUIV["Equivalency Checks"] --> CUT["Cutover"]
+```
 
 ## The scenario
 
@@ -117,7 +122,9 @@ The 8-week deadline is driven by a board-mandated cloud consolidation onto GCP, 
 | Cutover runbook | `artifacts/cutover/` |
 | Migration report | `artifacts/migration_report/` |
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD

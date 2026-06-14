@@ -63,6 +63,13 @@ The `dashboard_extension` release type augments an existing Looker instance with
 
 Use this release type when the client already has a functioning platform but needs new dashboard coverage over data that has already landed in the warehouse. The existing dbt models are deployed, the Fivetran connectors are running, and the only gap is LookML and the dashboards on top of it. Starting from `semantic_layer-generate` rather than `requirements-generate` reflects that scope precisely.
 
+### High-Level Process
+
+```mermaid
+graph LR
+    REQ["Requirements"] --> MK["Mockups"] --> DASH["Dashboard Development"] --> UAT["UAT"]
+```
+
 ## Engagement overview
 
 | | |
@@ -87,7 +94,9 @@ Foxwood Commerce is a UK direct-to-consumer fashion brand with online-only retai
 
 dbt models are not in scope. Fivetran connector configuration is not in scope. The release touches only the Looker layer.
 
-## Process overview
+## Tutorial Playbook
+
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
