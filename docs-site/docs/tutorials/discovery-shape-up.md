@@ -5,6 +5,56 @@ title: "Tutorial: Discovery (Shape Up)"
 
 # Tutorial: Discovery (Shape Up)
 
+## Discovery Engagement Brief
+
+**Rittman Analytics × Hallmark Property Partners**  
+**Engagement**: Hallmark Shape Up Discovery Sprint  
+**Date**: June 2026  
+**Type**: Time & materials
+
+### Engagement overview
+
+Hallmark Property Partners is engaging Rittman Analytics for a two-day AI-assisted discovery sprint ahead of any decision to build a data platform. The CFO requires a structured go/no-go recommendation — covering what Phase 1 should contain, what should be deferred, and what the key risks are — before committing budget to a build engagement. This brief defines the deliverables, timeline, and acceptance criteria for that sprint.
+
+### In scope
+
+- Stakeholder interview guide covering 4 named stakeholders (CFO, Investment Team Lead, Data Administrator, IT Manager)
+- Requirements brief drawing functional and non-functional requirements from pre-engagement Fathom call recordings
+- Appetite document presenting a recommended Phase 1 scope with time-and-materials estimate and explicit Phase 2 deferrals
+- Scope story map covering 3 swim lanes (Data Ingestion, Data Modelling, Dashboards) and up to 20 Phase 1 user stories
+- Risk catalogue with severity ratings and proposed mitigations for all identified risks
+
+### Out of scope
+
+- Any technical build work — no connectors, dbt models, or dashboards will be produced during this sprint
+- Data access or schema analysis of Hallmark's CRM systems or Excel workbooks
+- Tool procurement or vendor evaluation (BI tooling, data warehouse, pipeline tooling)
+- Legal or data governance review
+
+### Timeline
+
+**Day 1 — Requirements and interview preparation**  
+Generate requirements brief from Fathom discovery call transcripts. Run [`/wire:requirements-generate`](../reference/commands#discovery--sop--canonical) to extract functional and non-functional requirements. Generate stakeholder interview guides for all 4 stakeholders using [`/wire:workshops-generate`](../reference/commands#discovery--sop--canonical).
+
+**Day 2 — Appetite, scope, risk, and sign-off**  
+Generate appetite document with Phase 1 recommendation and Phase 2 deferrals using `/wire:appetite-generate`. Generate scope story map using `/wire:scope-generate`. Generate risk catalogue using `/wire:risk-generate`. Present outputs for CFO review and sign-off via `/wire:requirements-review`. Incorporate feedback and close.
+
+### Key assumptions
+
+- Client provides access to at least 2 pre-engagement discovery call recordings in Fathom prior to Day 1
+- 4 named stakeholders are confirmed available for 30–45 minute interviews following delivery of the interview guides
+- No existing data systems documentation is required prior to the sprint start; source material is the Fathom recordings only
+- Output from this sprint is advisory only and does not constitute a committed delivery plan or contractual specification
+- This sprint feeds directly into an SOW for a subsequent build engagement; no build work begins until that SOW is separately agreed
+
+### Acceptance criteria
+
+- Requirements brief approved by CFO, with all functional and non-functional requirements confirmed or amended
+- Appetite document presents at least 2 distinct phasing options (Phase 1 recommendation and at least one alternative deferral scenario) with effort estimates for each
+- Risk catalogue reviewed and accepted by IT Manager, with severity ratings confirmed for all items
+
+---
+
 ## What is a Shape Up discovery release?
 
 A Shape Up discovery release is a structured, time-boxed scoping exercise — typically one to two days of consultant time — that answers a single question before any build commitment is made: what is this engagement actually worth, and what should Phase 1 contain? The output is not code. It is a set of documents: a requirements brief drawn from stakeholder interviews, an appetite and scope recommendation, a risk catalogue, and a clear go/no-go framing that the client sponsor can sign off on. Wire automates the generation of each of these artifacts and surfaces relevant meeting context from Fathom automatically, so the consultant spends their time on judgement rather than document structure.
@@ -125,6 +175,10 @@ Drop any existing materials into `releases/01-hallmark-shape-up-discovery/requir
 → Requirements brief written to:
   .wire/releases/01-hallmark-shape-up-discovery/artifacts/requirements/requirements.md
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The agent surfaces four functional and three non-functional requirements directly from the Fathom transcripts, without the consultant having to manually review and extract them. FR-4 — fund-level performance tracking — emerges from the CFO call as a strong constraint: it is the number one pain point and must appear in Phase 1 scope.
 
@@ -287,4 +341,4 @@ The Fathom context surfaces the follow-up call automatically, and the single sco
 
 ## Next steps
 
-The outputs from this release feed directly into `/wire:new` for a `full_platform` or `dbt_development` engagement. Copy the approved requirements brief and appetite document into the new release's `requirements/` folder — the requirements generate command in the build engagement will read them automatically as upstream context. The appetite document doubles as the SOW template: the Phase 1 scope recommendation, the six-week estimate, and the Phase 2 deferrals map directly onto the commercial structure of a standard Rittman Analytics T&M statement of work. The risk catalogue becomes the assumptions and exclusions register, which is the section of an SOW that saves the most time when a client later asks "why wasn't X included?"
+The outputs from this release feed directly into [`/wire:new`](../reference/commands#session-and-management-commands) for a `full_platform` or `dbt_development` engagement. Copy the approved requirements brief and appetite document into the new release's `requirements/` folder — the requirements generate command in the build engagement will read them automatically as upstream context. The appetite document doubles as the SOW template: the Phase 1 scope recommendation, the six-week estimate, and the Phase 2 deferrals map directly onto the commercial structure of a standard Rittman Analytics T&M statement of work. The risk catalogue becomes the assumptions and exclusions register, which is the section of an SOW that saves the most time when a client later asks "why wasn't X included?"

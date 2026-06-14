@@ -7,6 +7,58 @@ title: "Tutorial: Agentic Commerce"
 
 This walkthrough traces an `agentic_commerce` release from initial setup through demo-ready delivery. The client is Thornwick Outdoor Ltd, a UK direct-to-consumer outdoor equipment brand running entirely on Shopify, with three AI features to add: semantic product search, a conversational shopping assistant, and visual similarity browsing.
 
+## Statement of Work
+
+**Rittman Analytics × Thornwick Outdoor Ltd**  
+**Engagement**: AI storefront features — semantic search, conversational assistant, visual similarity  
+**Date**: June 2026  
+**Type**: Time & materials
+
+### Engagement overview
+
+Thornwick Outdoor Ltd operates a Shopify store with 847 SKUs across 14 product categories. The existing storefront and checkout are functional; the brief is to add AI-powered discovery features that Shopify's native search cannot provide. Rittman Analytics will generate a React 18 storefront via Lovable as the host for these features, then build three AI capabilities against that codebase using the Wire `agentic_commerce` release type.
+
+### In scope
+
+- Lovable-generated React 18 + Vite + Tailwind storefront connected to the Shopify Storefront API (products, collections, cart, checkout redirect)
+- Bidirectional GitHub sync between Lovable project and `thornwick-storefront` repository
+- Supabase project provisioned on client's GCP organisation, with `product_embeddings` (pgvector, vector 1536) and `image_embeddings` (pgvector, vector 512) schemas
+- Semantic product search: Anthropic embeddings pipeline across all 847 products, pgvector RPC (`search_products`), search UI replacing native Shopify search
+- Conversational shopping assistant: Claude-powered, basket-aware, with three tool definitions (`get_product_details`, `check_stock_availability`, `get_return_policy`)
+- Visual similarity browsing: CLIP embeddings on product image catalogue, drag-and-drop and camera-upload UI, 8-result similarity grid
+- LLM tool definitions packaged for UCP server (5 tools: `get_product_details`, `check_stock_availability`, `get_return_policy`, `search_products`, `add_to_cart`)
+- Demo orchestration: 5 scripted demo scenarios with seeded dataset of 30 customer journeys
+
+### Out of scope
+
+- Virtual try-on feature — deferred to Phase 2; requires AR capability assessment not yet completed
+- Personalisation engine — deferred; depends on subscriber behavioural data not yet collected
+- Shopify admin or backend integration — Storefront API only; no changes to product catalogue, pricing, or fulfilment configuration
+- Any modifications to the existing Shopify theme or native storefront
+
+### Timeline
+
+| Week | Work |
+|------|------|
+| Week 1 | Storefront generation (Lovable), Shopify API wiring, GitHub sync, Supabase provisioning, semantic search embedding pipeline and UI |
+| Week 2 | Conversational shopping assistant (3 tool definitions, system prompt, basket integration), visual similarity (CLIP pipeline, drag-and-drop UI) |
+| Week 3 | LLM tool packaging for UCP server, demo orchestration (5 scenarios, seeded journeys), UAT against agreed acceptance criteria, handover |
+
+### Key assumptions
+
+- Thornwick's Shopify store is on Shopify Plus; Storefront API access is available and the API token will be provided before Week 1 starts
+- Anthropic API key provided by client for embeddings pipeline and conversational assistant
+- Supabase project can be provisioned within client's GCP organisation (eu-west-2 region)
+- Product catalogue is exported as a structured JSON file and delivered to Rittman Analytics before the start of Week 1
+- Client provides at least one subject-matter expert for conversational assistant knowledge review during Week 2
+
+### Acceptance criteria
+
+- Semantic search returns relevant results for 10 test queries agreed with client before UAT
+- Conversational assistant passes 20 scripted dialogue tests covering product recommendation, stock enquiry, and returns policy scenarios
+- Visual similarity returns at least 6 visually relevant products for each of 10 agreed test images
+- Demo environment runs 5 scripted scenarios continuously for 30 minutes without errors or failed API calls
+
 ## What is an Agentic Commerce release?
 
 The agentic_commerce release type solves a specific sequencing problem: AI features in a storefront context need a working frontend before they can be built, tested, or demonstrated — but scaffolding a production-quality React storefront from scratch is slow enough to consume most of a short engagement. Lovable eliminates that bottleneck. It generates a React 18 + Vite + Tailwind storefront from a structured prompt sequence, connected to the Shopify Storefront API, in under an hour. GitHub bidirectional sync is configured immediately after generation, so the code is in version control and available to Claude Code before the first AI feature starts.
@@ -98,6 +150,10 @@ After `ac_storefront` is approved, the three AI feature commands (`ac_semantic_s
 /wire:ac_storefront-generate 01-thornwick-agentic-commerce
 → [auto-delegated to agentic-commerce-developer]
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The `agentic-commerce-developer` agent runs a five-phase Lovable prompt sequence: brand foundation (Thornwick colour palette, typography, outdoor photography treatment), product grid layout, Shopify Storefront API wiring, cart and checkout flow, then GitHub sync. The Shopify Storefront API token is passed via a Supabase Edge Function — never exposed in the frontend bundle.
 

@@ -196,6 +196,10 @@ Four steps, clearly scoped. Marcus approves the plan and is ready for his first 
 -> Output: .wire/releases/02-aldgate-financial-platform/artifacts/semantic_layer/
 ```
 
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
+
 The agent reads `decisions.md` before generating — this is standard behaviour for all Wire agents. The compliance decision Marcus found in the Fathom transcript surfaces immediately because it was already in `decisions.md`. The field never appears in any generated LookML view. Marcus did not need to brief the agent explicitly; the decision log did it automatically.
 
 ## Key lesson

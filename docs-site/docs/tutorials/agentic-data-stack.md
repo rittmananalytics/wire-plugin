@@ -7,6 +7,59 @@ title: "Tutorial: Agentic Data Stack"
 
 This walkthrough traces an `agentic_data_stack` release for a boutique analytics consultancy with an existing, well-built dbt platform. The problem is not the platform — it is the size of the semantic layer, and what that does to an AI agent's ability to answer questions accurately.
 
+## Statement of Work
+
+**Rittman Analytics × Croftmere Analytics Ltd**  
+**Engagement**: Canonical model design and AI agent knowledge layer  
+**Date**: June 2026  
+**Type**: Time & materials
+
+### Engagement overview
+
+Croftmere Analytics Ltd has a functioning dbt + BigQuery platform with 47 warehouse models and a Looker semantic layer spanning 312 dimensions and 94 measures. The platform is well-built; the problem is breadth. Financial services metrics such as AUM and period return have multiple conflicting definitions across the model graph, making the platform unreliable for LLM navigation. Rittman Analytics will audit the existing model layer, design a canonical consolidation, build and test 12 replacement models, author knowledge skill YAML files for three primary domains, configure a Claude agent, and run a 40-query eval suite to verify accuracy before handover.
+
+### In scope
+
+- Data audit report: model sprawl analysis across all 47 warehouse models, query pattern analysis from BigQuery query history (90 days) and Looker usage logs, canonical model recommendations
+- 12 canonical model designs consolidating the 47 warehouse models, resolving conflicting metric definitions (including three competing AUM definitions and two period return definitions)
+- 12 dbt canonical models (SQL + YAML), each with a grain statement and authoritative measure definitions, passing all dbt schema tests
+- 3 knowledge skill YAML files: `fund_performance`, `portfolio_attribution`, and `client_retention` — each with grain statement, canonical measures, and 3 example queries
+- Claude agent configuration: system prompt, tool definitions, financial services guardrails (source citation, domain boundary enforcement)
+- Eval suite: 40 test queries with expected results and tolerance definitions, plus CI runner script wired to dbt Cloud PR job
+- Eval run report: pass rate, failure analysis, documented remediation for any failures
+
+### Out of scope
+
+- Changes to existing warehouse models — canonical models are additive; no existing models are modified or retired as part of this engagement
+- Looker dashboard development or LookML changes
+- Real-time or streaming data infrastructure
+- Any client-facing AI product or interface — the knowledge layer and agent configuration are internal tooling
+
+### Timeline
+
+| Days | Work |
+|------|------|
+| Days 1–3 | Data audit: dataset audit, metric audit, query audit (3 parallel agents); audit review with client data engineering lead |
+| Days 4–6 | Canonical model design (47 → 12 consolidation); design review with data engineering lead and head of analytics |
+| Days 7–9 | dbt canonical model build (12 models + YAML); knowledge skill YAML files for 3 domains |
+| Day 10 | Agent configuration (system prompt, tool definitions, guardrails); eval suite generation (40 queries) |
+| Days 11–12 | Eval suite run; failure analysis and remediation; handover documentation |
+
+### Key assumptions
+
+- BigQuery query history is available and accessible for at least the preceding 90 days
+- Looker usage analytics are accessible to Rittman Analytics during the audit phase
+- Croftmere's lead analytics engineer is available for a minimum 2-hour working session during the canonical model design review (Days 4–6)
+- Anthropic API key is provided by client before Day 10
+- Client accepts that up to 2 failing eval queries at delivery is within acceptable tolerance, provided root causes are documented and remediation is specified
+
+### Acceptance criteria
+
+- All 12 canonical dbt models pass dbt schema tests on first submission to the client's dbt Cloud environment
+- Eval suite achieves a minimum pass rate of 38/40 (95%) on the final run
+- All 3 knowledge skill YAML files reviewed and approved by the client's lead analytics engineer before handover
+- Agent configuration produces correct, cited output for all 5 acceptance test queries agreed with the client at engagement start
+
 ## What is an Agentic Data Stack release?
 
 Accuracy failures in AI analytics agents almost always have the same root cause: model sprawl and conflicting metric definitions. When a warehouse has 47 models with 3 different implementations of the same metric — "assets under management", say, computed slightly differently in three places for three historical reasons — a language model has no reliable way to know which to use. It will pick one. Sometimes it picks correctly. Often it does not, and the error is invisible unless someone checks the SQL by hand.
@@ -102,6 +155,10 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 /wire:ads-audit-all 01-croftmere-ads
 → [auto-delegated to agentic-data-stack-developer — 3 parallel audit agents]
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The command dispatches three concurrent audit agents: dataset audit, metric audit, and query audit. Each reads the BigQuery information schema, the dbt manifest JSON, and Looker query history for the preceding 90 days. The combined findings surface a clear picture of the platform's governance state.
 

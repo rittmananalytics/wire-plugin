@@ -5,6 +5,59 @@ title: "Tutorial: Pipeline and dbt"
 
 # Tutorial: Pipeline and dbt
 
+## Statement of Work
+
+**Rittman Analytics × Meridian Logistics Group**
+**Engagement**: `01-meridian-pipeline-staging`
+**Date**: June 2026
+**Type**: Time and materials
+
+### Engagement overview
+
+Meridian Logistics Group operates across three disconnected systems — Salesforce (CRM and contracts), NetSuite (finance and ERP), and a bespoke fleet management application with no existing integration. The commercial team needs a unified view of shipment revenue, cost, and on-time delivery in Looker, but no data pipeline exists to bring these sources together. Rittman Analytics is engaged to deliver the ingestion layer and dbt staging models, establishing clean, tested, freshness-monitored raw data in BigQuery as the foundation for a subsequent warehouse modelling engagement.
+
+### In scope
+
+- Fivetran Salesforce REST API connector — `Account`, `Opportunity`, `Contract`, `ContractLineItem` objects, CDC enabled, syncing to `raw_salesforce` BigQuery dataset
+- Fivetran NetSuite REST API connector — `Transaction`, `TransactionLine`, `Item`, `Vendor` records, CDC enabled, syncing to `raw_netsuite` BigQuery dataset
+- Custom fleet ingest pipeline: Cloud Function (Python) triggered every 15 minutes by Cloud Scheduler, polling SFTP for delivery and route export files, staging raw CSVs to GCS, loading to `raw_fleet` BigQuery dataset via the Storage Write API
+- `sources.yml` dbt source definitions for all three raw BigQuery schemas
+- Six dbt staging models: `stg_salesforce__accounts`, `stg_salesforce__contracts`, `stg_netsuite__invoices`, `stg_netsuite__items`, `stg_fleet__deliveries`, `stg_fleet__routes`
+- 24 schema tests: `not_null` and `unique` on primary keys, `relationships` on foreign keys
+- Source freshness checks: Salesforce warn 24h/error 48h, NetSuite warn 24h/error 48h, fleet warn 30min/error 1h — with Slack alerting to `#data-alerts` on any error-level breach
+- Deployment runbook covering Fivetran activation sequence, Cloud Function deployment, and dbt Core scheduling via Cloud Scheduler
+
+### Out of scope
+
+- Integration models (`int__` layer) and warehouse models (`_dim`/`_fct` layer) — deferred to a follow-on `dbt_development` engagement
+- LookML authoring or any work within the existing Looker instance
+- Dashboard creation
+- End-user training
+
+### Timeline
+
+| Day(s) | Activity |
+|--------|----------|
+| Day 1 | Pipeline design: architecture document, source-by-source design decisions, MAR estimates, review and approval |
+| Days 2–3 | Connector configuration and testing: Fivetran connectors for Salesforce and NetSuite, Cloud Function for fleet SFTP, first successful loads verified |
+| Day 4 | dbt staging models: all 6 SQL files, 24 schema tests, documentation YAML, dbt run and validation |
+| Day 5 | Data quality checks, freshness configuration, deployment runbook, handover |
+
+### Key assumptions
+
+- Salesforce and NetSuite API credentials (OAuth client ID and secret, or service account details) provided before Day 1
+- Fleet system SFTP credentials (host, username, SSH key) and file format specification provided before Day 1 — the Cloud Function design depends on knowing the export schema
+- GCP project exists with BigQuery and Cloud Functions APIs enabled; Rittman Analytics granted sufficient IAM permissions to deploy Cloud Functions and create BigQuery datasets
+- Meridian's data engineer is available during Days 2–3 to review connector configs and validate that raw data matches expectations in source systems
+- The 15-minute micro-batch frequency for the fleet function is sufficient to meet the on-time delivery freshness SLA — if a tighter SLA is identified during design, scope and timeline will need to be revised
+
+### Acceptance criteria
+
+- All three sources — Salesforce, NetSuite, and fleet SFTP — loading into BigQuery raw schemas without errors, with no data loss or duplication observable in the `raw_fleet.ingest_log` control table
+- All 6 dbt staging models built successfully and all 24 schema tests passing in the BigQuery environment
+- Source freshness checks alerting correctly in Slack — verified by manually delaying a test load and confirming the alert fires within the expected window
+- Cloud Scheduler job for the fleet Cloud Function confirmed running on 15-minute cadence for 24 hours prior to handover, with no unhandled errors in Cloud Logging
+
 ## What is a Pipeline and dbt release?
 
 A `pipeline_only` release covers ingestion and the dbt staging layer — nothing further. You configure and activate the connectors, define the raw landing schemas in the warehouse, and build staging models that normalise and document what arrived. Warehouse models, semantic layer authoring, and dashboards are explicitly out of scope. They follow in a subsequent `dbt_development` release, or in a `full_platform` release if the BI layer is also in scope.
@@ -121,6 +174,10 @@ Before running any generate commands, copy the Salesforce and NetSuite field exp
 /wire:pipeline_design-generate 01-meridian-pipeline-staging
 → [auto-delegated to pipeline-engineer agent]
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The agent produces a full pipeline architecture document covering all three sources. Key design decisions:
 

@@ -5,6 +5,59 @@ title: "Tutorial: Enablement"
 
 # Tutorial: Enablement
 
+## Statement of Work
+
+**Rittman Analytics × Hargreave Insurance Ltd**
+**Engagement**: Platform Enablement and Technical Handover
+**Date**: June 2026
+**Type**: Time and materials
+
+### Engagement overview
+
+Hargreave Insurance Ltd's data platform — delivered under engagement `01-hargreave-platform` six weeks prior — is in production. The data engineering and analyst teams are using it but remain dependent on Rittman Analytics for operational questions and platform changes. This engagement transfers that knowledge formally: structured training sessions for two distinct audiences, and a complete technical documentation pack covering all 19 dbt models, 87 LookML fields, and the operational runbook.
+
+### In scope
+
+- Data team enablement session: 2 hours, 2 attendees (data engineer and analytics engineer), covering dbt Cloud job operations, LookML extension, and the documentation system
+- End-user training session: 90 minutes, up to 8 attendees (analysts and business stakeholders), covering dashboard navigation, data freshness interpretation, and the change request process
+- Technical documentation pack:
+  - Architecture overview (data flow diagram, source-to-dashboard narrative)
+  - dbt model reference covering all 19 models: grain, key measures, upstream dependencies, and design decision references
+  - dbt Cloud job reference for both `hargreave_scheduled_run` and `hargreave_ci`
+  - LookML field catalogue for all 87 measures and dimensions across 5 views
+  - Operational runbook: monitoring alerts, on-call steps, rollback procedure, maintenance schedule
+- Handover sign-off by the data engineering lead
+
+### Out of scope
+
+- Any changes to deployed dbt models or LookML code
+- New dashboard development or metric additions
+- Ongoing support retainer (a separate support agreement is recommended following handover)
+
+### Timeline
+
+| Day | Activity |
+|---|---|
+| Day 1 | Training material generation ([`/wire:training-generate`](../reference/commands#testing-and-deployment)), internal review, and approval |
+| Day 2 (morning) | Data team enablement session — 2 hours |
+| Day 2 (afternoon) | End-user training session — 90 minutes |
+| Day 3 | Documentation pack review ([`/wire:documentation-review`](../reference/commands#testing-and-deployment)), sign-off, engagement close |
+
+### Key assumptions
+
+- The prior full platform build (`01-hargreave-platform`) is complete and in production before this engagement begins
+- All approved artifacts and `decisions.md` from `01-hargreave-platform` are accessible to the `delivery-lead` agent
+- The data engineering lead and up to 8 end users are available for the full day on Day 2
+- Client accepts that all documentation reflects the system as delivered — not a hypothetical future state
+- No platform changes are requested during this engagement; any such requests will be handled under a separate scope
+
+### Acceptance criteria
+
+- Data team lead signs off training materials before any sessions run
+- Documentation pack reviewed and approved by the data engineering lead within 48 hours of delivery
+- Post-session feedback collected from all attendees via survey
+- Engagement close confirmed in writing by the data engineering lead
+
 ## What is an Enablement release?
 
 A `full_platform` engagement ends when the dashboards are live and the data quality tests pass. The platform is working. What is often not working is the client team's ability to operate it independently. Data engineers who watched the dbt project being built do not necessarily know how to triage a failed job, extend an explore, or interpret a freshness alert at 7am before anyone else is online. An `enablement` release addresses that gap directly — structured training for two distinct audiences, plus the reference documentation that makes the training durable.
@@ -110,6 +163,10 @@ The prior release reference tells Wire where to find the approved build-phase ar
 → Reading: requirements/decisions.md (9 decisions from the build phase)
 → Stakeholder list: 2 data engineers, 3 analysts, 1 operations director, 11 end users
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The agent reads the full build-phase artifact set and produces two distinct training packs calibrated to their respective audiences.
 

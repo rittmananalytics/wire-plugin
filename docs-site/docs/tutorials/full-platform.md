@@ -5,6 +5,64 @@ title: "Tutorial: Full Platform"
 
 # Tutorial: Full Platform Release — Eversholt Brewing Co
 
+## Statement of Work
+
+**Rittman Analytics × Eversholt Brewing Co**
+**Engagement**: Full Analytics Platform Build
+**Date**: June 2026
+**Type**: Fixed price
+
+### Engagement overview
+
+Eversholt Brewing Co operates three disconnected data systems — a Shopify DTC store, a BrewMan ERP, and a HubSpot CRM — with no automated integration between them. The finance director currently produces margin and revenue reports by exporting from all three systems manually every Monday morning. Rittman Analytics will design and deliver a complete analytics platform on BigQuery, dbt Cloud, and Looker that makes margin by SKU and channel revenue available daily without manual intervention.
+
+### In scope
+
+- Three Fivetran connectors: Shopify REST API, BrewMan PostgreSQL CDC (via Cloud SQL Auth Proxy), HubSpot REST API
+- Seven dbt staging models: `stg_shopify__orders`, `stg_shopify__order_lines`, `stg_shopify__products`, `stg_brewman__production_batches`, `stg_brewman__stock_movements`, `stg_brewman__ingredient_costs`, `stg_hubspot__deals`
+- One dbt integration model: `int__product_unified` (cross-system SKU identity resolution via `product_crosswalk.csv` seed)
+- Five dbt warehouse models: `sku_dim`, `channel_dim`, `sales_fct`, `production_cost_fct`, `margin_summary`
+- dbt Cloud orchestration: daily production job (06:00 UTC) and CI/PR job
+- LookML semantic layer: four explores (`sku_performance`, `channel_revenue`, `production_margin`, `wholesale_accounts`) with views for all warehouse models
+- Three Looker dashboards: Margin by SKU, Channel Revenue, Production Cost
+- Data quality tests (freshness, row count reconciliation, cross-system FK validation) beyond the embedded dbt test layer
+- Two UAT sessions (ops team and finance director)
+- Deployment runbook covering all layers
+- Data team enablement session (2 hours) and end-user training session (90 minutes)
+- Technical documentation: architecture overview, dbt model reference, LookML field catalogue, operational runbook
+
+### Out of scope
+
+- Financial forecasting and demand planning models
+- BrewMan write-back or any reverse ETL from BigQuery to BrewMan
+- AWS or GCP infrastructure management outside the specific resources created during deployment
+- Duty drawback adjustment on exported wholesale volume (deferred to a subsequent phase; noted in `decisions.md`)
+
+### Timeline
+
+| Period | Activity |
+|---|---|
+| Week 1, Days 1–3 | Requirements capture, conceptual model, pipeline design, data model, dashboard mockups — all approved before development begins |
+| Week 1, Days 4–7 | Fivetran connector configuration, dbt development (5 parallel agents across 3 waves), dbt Cloud orchestration, LookML semantic layer |
+| Week 2, Days 8–9 | Data quality tests, two UAT sessions, defect remediation |
+| Week 2, Day 10 | Deployment to production (dev validation first, then production go-live) |
+| Week 2, Days 11–12 | Data team and end-user training, technical documentation, engagement archive |
+
+### Key assumptions
+
+- Shopify API credentials are confirmed and accessible before Day 1
+- The BrewMan on-premises PostgreSQL server is reachable from GCP via the existing VPN, and the Cloud SQL Auth Proxy service account pattern is already approved by Eversholt IT
+- HubSpot API key is provided before pipeline design begins
+- The Looker instance is already provisioned; Rittman Analytics is not responsible for Looker licensing or initial setup
+- Client data team (Tom Barnard) is available for two-hour review sessions on Days 2, 3, and 4, and for UAT co-ordination on Days 8 and 9
+
+### Acceptance criteria
+
+- All 41 dbt tests passing in the dbt Cloud production environment with no errors
+- `margin_summary` refreshing daily by 07:00 UTC and query time under 3 seconds in Looker production
+- All three Looker dashboards live in the production Looker environment and accessible to named end users
+- Written UAT sign-off received from the finance director (Laura Hennessy) and ops team lead before deployment to production
+
 ## What is a Full Platform release?
 
 The `full_platform` release type is the most comprehensive Wire engagement, spanning all six phases from requirements capture through trained users. Every artifact type is in scope: the requirements specification, conceptual entity model, pipeline design, physical data model, dbt project, dbt Cloud orchestration config, LookML semantic layer, Looker dashboards, data quality tests, UAT plan, deployment runbook, training materials, and technical documentation. Where a narrower release type — `dbt_development`, `semantic_layer`, or `dashboard_first` — starts at a later phase or omits an entire layer, `full_platform` assumes you are building something that does not yet exist: new sources, new models, new analytics.
@@ -162,7 +220,7 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 ### Phase 1 — Setup and requirements (Day 1)
 
-Start by creating the release. The `/wire:new` command scaffolds the folder structure and status tracker:
+Start by creating the release. The [`/wire:new`](../reference/commands#session-and-management-commands) command scaffolds the folder structure and status tracker:
 
 ```
 /wire:new
@@ -187,6 +245,10 @@ Copy the SOW PDF, Shopify export schema, BrewMan PostgreSQL schema dump, and Hub
   confirmed as primary driver. Ops manager flagged BrewMan's API as PostgreSQL CDC
   only, no REST endpoint. Wholesale channel uses HubSpot deals, not Shopify.
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The agent produces a 10-section requirements specification: FR-1 through FR-7 (functional requirements with acceptance criteria), NFR-1 through NFR-4 (freshness SLA of daily by 7am, row-level security by brewery role, sub-3-second dashboard load, 99.5% pipeline uptime), and a deliverable-to-artifact mapping. It writes two entries immediately to `decisions.md`:
 
@@ -299,7 +361,7 @@ The agent produces `_sources.yml` for all three Fivetran connectors, a physical 
 
 ```
 /wire:mockups-generate 01-eversholt-brewing-platform
-→ [main session — no specialist agent for wireframes]
+→ [auto-delegated to dashboard-mock-developer agent]
 ```
 
 ```
@@ -334,7 +396,7 @@ Dashboard Mockups Generated
 
 #### Batch dispatch
 
-With all four design artifacts approved, open a new session and run `/wire:delegate`:
+With all four design artifacts approved, open a new session and run [`/wire:delegate`](../reference/commands#session-and-management-commands). It reads `status.md`, identifies every pending artifact in the development phase, computes a parallel/sequential execution plan based on Wire's artifact dependency graph, and presents it for your approval before spawning any subagents. Running commands individually is also valid — `/wire:delegate` is most useful when several development artifacts are pending simultaneously and you want a single reviewed plan before agents start. See [Wire Agents — Batch delegation](../advanced/wire-agents#batch-delegation-with-wiredelegate).
 
 ```
 /wire:delegate 01-eversholt-brewing-platform

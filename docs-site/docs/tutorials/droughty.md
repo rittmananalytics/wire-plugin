@@ -5,11 +5,55 @@ title: "Tutorial: Droughty"
 
 # Tutorial: Droughty Release — Birchfield Capital Management Schema Audit
 
+## Statement of Work
+
+**Rittman Analytics × Birchfield Capital Management**
+**Engagement**: Snowflake Schema Audit and LookML Generation
+**Date**: June 2026
+**Type**: Fixed price
+
+### Engagement overview
+Birchfield Capital Management operates a 240-table Snowflake warehouse across six schemas — `fund_admin`, `portfolio`, `risk`, `compliance`, `reporting`, and `staging` — with no transformation layer, no column descriptions, and no documented relationships. Rittman Analytics is engaged to produce a complete schema inventory, infer and document entity relationships, generate AI-authored field descriptions for all 1,847 columns, and deliver 240 base LookML views and dbt schema test stubs for the 40 highest-traffic tables. The engagement uses Wire's `droughty` release type in discovery/audit mode — no dbt project is required or in scope.
+
+### In scope
+- Schema inventory covering all 240 tables across `fund_admin`, `portfolio`, `risk`, `compliance`, `reporting`, and `staging` — with column counts, estimated row counts, and PK/FK coverage per schema (`schema_inventory.md`)
+- DBML entity-relationship diagram with all 186 inferred relationships across all 6 schemas, rendered as `birchfield_dw.dbml`
+- AI-generated field descriptions for all 1,847 columns via GPT-4o, with manual review flags (`-- REVIEW REQUIRED`) for the 24 ambiguous columns where column name alone is insufficient
+- 240 base LookML view files (one per table) written to `lookml/views/generated/`, with type inference (timestamp, yesno, number, string) and snake_case label generation
+- dbt schema test stubs for the 40 highest-traffic tables, identified from Snowflake query history, written to `artifacts/dbt_stubs/schema.yml`
+
+### Out of scope
+- dbt project initialisation or deployment — test stubs are ready but not executable without a dbt project; that work belongs to a subsequent `dbt_development` engagement
+- LookML explore authoring — base views are generated; explore definitions and joins are the data team's responsibility
+- Looker dashboard creation
+- Any writes to or modifications of the Snowflake warehouse — this engagement is read-only throughout
+- Data quality remediation — issues surfaced by the schema audit (e.g. zero FK declarations in the compliance schema) are documented, not resolved
+
+### Timeline
+**Day 1** — Setup (`/wire:droughty-setup`), schema introspection (`/wire:droughty-introspect`), DBML entity-relationship diagram (`/wire:droughty-dbml`). Snowflake service account access must be confirmed before work begins.
+
+**Day 2** — AI field descriptions for all 1,847 columns (`/wire:droughty-docs`, requires OpenAI API key); base LookML view generation for all 240 tables (`/wire:droughty-lookml`).
+
+**Day 3** — dbt schema test stubs for the 40 highest-traffic tables (`/wire:droughty-dbt-tests`); internal review of all artefacts; handover session with Birchfield data team and Looker team lead.
+
+### Key assumptions
+- Snowflake service account with `USAGE` on all 6 schemas and `SELECT` on all tables is provided to Rittman Analytics before Day 1; delays in access provision will push the timeline accordingly
+- OpenAI API key is provided by Birchfield (or Rittman Analytics can use its own, with costs passed through at cost); without it, the field descriptions step (`/wire:droughty-docs`) cannot run
+- Python 3.11 is available on the delivery environment; Droughty v0.20.1 (the Wire-pinned version) is the runtime for all commands
+- Birchfield's Looker admin confirms that `lookml/views/generated/` is the correct import target before Day 2 ends, so the LookML step writes to the right location
+- Client accepts that dbt test stubs require a dbt project to be initialised before they are executable; no such project is in scope for this engagement
+
+### Acceptance criteria
+- Schema inventory covers all 240 tables with no gaps — verified by cross-referencing the `schema_inventory.md` table count against `INFORMATION_SCHEMA.TABLES` for all 6 schemas
+- DBML diagram reviewed and accepted by Birchfield's data team lead, with the 31 inferred compliance-schema relationships explicitly acknowledged as unverified
+- Sample of 20 LookML views successfully imported into Looker without validation errors (Looker admin to confirm)
+- dbt schema test stubs confirmed syntactically valid via a dry-run `dbt parse` on a minimal dbt project scaffolded for the purpose
+
 ## What is a Droughty release?
 
 Droughty is the bottom-up complement to Wire's top-down, document-driven approach. Where a standard Wire release starts from requirements and drives toward dbt models, Droughty starts from the live warehouse schema and works outward — generating a DBML entity-relationship diagram, AI-authored field descriptions, base LookML views, and dbt schema test stubs directly from `INFORMATION_SCHEMA`. No dbt project is required. The toolkit reads what is actually in the warehouse, not what you intended to put there.
 
-Wire wraps Droughty in two modes. **Discovery/audit mode** maps an existing warehouse with no upstream transformation layer — the target for this tutorial. **Post-dbt mode** assumes a deployed dbt project and generates the base LookML and test layer from already-built models, feeding directly into `/wire:semantic_layer-generate`. Python 3.9–3.12 is required on the consultant's machine for both modes. This tutorial uses the pinned version of Droughty that ships with Wire: **v0.20.1**.
+Wire wraps Droughty in two modes. **Discovery/audit mode** maps an existing warehouse with no upstream transformation layer — the target for this tutorial. **Post-dbt mode** assumes a deployed dbt project and generates the base LookML and test layer from already-built models, feeding directly into [`/wire:semantic_layer-generate`](../reference/commands#development--semantic-layer-and-orchestration). Python 3.9–3.12 is required on the consultant's machine for both modes. This tutorial uses the pinned version of Droughty that ships with Wire: **v0.20.1**.
 
 ## Engagement overview
 
@@ -268,6 +312,6 @@ models:
 
 ## Next steps
 
-The generated LookML views in `lookml/views/generated/` give the Birchfield Looker team a working starting point for every table in the warehouse. The practical next move is to run `/wire:new` with release type `dbt_development` to begin a proper transformation layer on top of the Snowflake schema — at which point the generated LookML base views feed directly into `/wire:semantic_layer-generate` as the view layer, replacing the hand-written views the team has been maintaining.
+The generated LookML views in `lookml/views/generated/` give the Birchfield Looker team a working starting point for every table in the warehouse. The practical next move is to run [`/wire:new`](../reference/commands#session-and-management-commands) with release type `dbt_development` to begin a proper transformation layer on top of the Snowflake schema — at which point the generated LookML base views feed directly into `/wire:semantic_layer-generate` as the view layer, replacing the hand-written views the team has been maintaining.
 
 The 24 columns flagged as ambiguous by the docs step warrant a short working session with the compliance team before that transition. The schema test stubs for the top-40 tables are ready to drop into a dbt project the moment one is initialised.

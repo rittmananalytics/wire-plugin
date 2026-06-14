@@ -5,6 +5,75 @@ title: "Tutorial: Kickoff Deck"
 
 # Tutorial: Kickoff Deck
 
+## Statement of Work
+
+**Rittman Analytics × Pennant Advisory Partners**
+**Engagement**: Data Platform Build
+**Date**: March 2026
+**Type**: Fixed price
+
+### Engagement overview
+
+Pennant Advisory Partners is a 30-person UK management consultancy whose board MI reporting is currently produced manually in Excel — a two-day monthly effort that caused a reporting error at board level in Q3 2025. Rittman Analytics is engaged to replace this process with a managed data platform on BigQuery, dbt, and Looker, drawing from Salesforce CRM, Sage accounting, and a bespoke project management system. The platform will deliver automated weekly refresh and self-serve dashboard access for senior partners.
+
+### In scope
+
+- Fivetran connectors: Salesforce (CRM), Sage (accounting), bespoke project management system → BigQuery
+- dbt staging models for all three sources (`stg_salesforce_*`, `stg_sage_*`, `stg_pms_*`)
+- dbt integration and warehouse models: pipeline performance, revenue by practice, utilisation
+- LookML semantic layer covering all warehouse models
+- Looker dashboards: pipeline performance, revenue by practice, utilisation
+- Deployment to BigQuery production and Looker production
+- Training: one session for the data team, one session for end users (senior partners)
+- Kickoff deck (this release) — first deliverable, produced within 48 hours of SOW signature
+
+### Out of scope
+
+- CRM data cleansing or deduplication within Salesforce
+- Sage accounting system migration or reconfiguration
+- Real-time or near-real-time data streaming
+- Historical data backfill beyond what Fivetran retrieves on initial sync
+
+### Timeline
+
+| Week | Phase | Key milestones |
+|------|-------|----------------|
+| Week 1 | Requirements | Requirements specification drafted; source system access confirmed |
+| Weeks 2–3 | Design | Data model and pipeline design approved; steering group review gate Week 3 |
+| Weeks 4–7 | Development | Fivetran connectors live; dbt models deployed; LookML and dashboards built |
+| Weeks 8–9 | Testing and UAT | Data quality checks; UAT with senior partners; UAT sign-off |
+| Week 10 | Deployment and enablement | Production deployment; training sessions; handover |
+
+The kickoff deck is produced in Week 1, Day 1–2 — before requirements work begins.
+
+### Key assumptions
+
+- Salesforce API credentials and edition details confirmed by Pennant before Week 1 commences
+- Sage accounting export format agreed and sample data provided before design begins (Week 2)
+- Bespoke project management system API documentation provided before Week 4 development starts
+- Client steering group meets fortnightly; all review gates are scheduled around this cadence
+- James Hartley (COO) acts as sponsor and approver; Priya Mehta is the data access point of contact
+
+### Acceptance criteria
+
+- All dbt models pass `dbt test` with zero failures in the staging and warehouse layers
+- Looker dashboards (pipeline performance, revenue by practice, utilisation) are live in Looker production and accessible to the three named senior partners
+- UAT sign-off obtained from Priya Mehta by end of Week 9
+- Training sessions completed and recorded; end users able to access dashboards without RA assistance
+
+---
+
+## Kickoff deck brief
+
+The kickoff deck is a sub-task of the engagement above, scoped to one day's effort.
+
+- Must be produced and approved within 48 hours of SOW signature — it is the first client-facing artefact
+- Must reference the approved delivery timeline above (4 phases, 10 weeks, fortnightly steering group cadence)
+- Must include a RACI matrix covering the key delivery activities and roles
+- Must include an open questions log seeded from the two pre-engagement discovery call transcripts (Fathom), with owners and due dates assigned
+
+---
+
 ## What is a Kickoff Deck release?
 
 The `kickoff_deck` release type is a rapid standalone release with no technical deliverables. It produces a structured slide deck outline in Markdown — covering the engagement overview, the Wire delivery approach, team roles, the phased timeline, the artifact schedule with review gates, the first session agenda, and a log of key assumptions and open questions. Completed in one to two hours once the SOW is loaded, it is delegated automatically to the `delivery-lead` agent, which reads the SOW and any available meeting transcripts before generating anything.
@@ -83,7 +152,7 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
   All at not_started
 ```
 
-For a `kickoff_deck` release, `/wire:new` asks only for client name, engagement name, start date, and delivery lead name. No source system details, no stack selection. Drop the signed SOW PDF into `.wire/releases/01-pennant-kickoff/requirements/` before running the next command — that is the primary input. The agent reads nothing else if no discovery artifacts exist yet.
+For a `kickoff_deck` release, [`/wire:new`](../reference/commands#session-and-management-commands) asks only for client name, engagement name, start date, and delivery lead name. No source system details, no stack selection. Drop the signed SOW PDF into `.wire/releases/01-pennant-kickoff/requirements/` before running the next command — that is the primary input. The agent reads nothing else if no discovery artifacts exist yet.
 
 ### Step 2 — Generate the deck
 
@@ -113,6 +182,10 @@ For a `kickoff_deck` release, `/wire:new` asks only for client name, engagement 
 → kickoff_deck.md written to .wire/releases/01-pennant-kickoff/
 → assumptions.md written (7 items, 3 open questions)
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The agent pulls the two discovery call transcripts via the Fathom MCP server and uses them to populate the deck with specifics that would otherwise require a separate briefing call — the board incident, the Kimble PSA source system, the budget governance threshold. The SOW provides the timeline and deliverable structure. Together they produce a deck outline that reads as if the delivery team has already spent time with the client. Which, via the transcripts, they have.
 

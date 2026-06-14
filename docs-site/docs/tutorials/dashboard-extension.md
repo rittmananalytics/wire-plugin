@@ -5,6 +5,58 @@ title: "Tutorial: Dashboard Extension"
 
 # Tutorial: Dashboard Extension
 
+## Statement of Work
+
+**Rittman Analytics × Foxwood Commerce Ltd**
+**Engagement**: Marketing Dashboard Expansion
+**Date**: May 2026
+**Type**: Time and materials
+
+### Engagement overview
+
+Foxwood Commerce Ltd has a functioning BigQuery + dbt + Looker platform, with Fivetran connectors for Google Ads, Meta Ads, Klaviyo, and GA4 running for over a year. The marketing team currently reconciles performance data from each platform separately in spreadsheets. Rittman Analytics is engaged to build three new LookML explores and corresponding Looker dashboards — paid acquisition, email performance, and organic channel performance — over data already in the warehouse. No new connectors or dbt models are required.
+
+### In scope
+
+- Three new LookML explores:
+  - `paid_acquisition` — unified Google Ads and Meta Ads spend data, including a `cross_channel_roas` measure
+  - `email_performance` — Klaviyo campaigns and flows: `open_rate`, `click_rate`, `revenue_per_email`, `unsubscribe_rate`
+  - `organic_performance` — GA4 sessions and engagement: `count_sessions`, `engagement_rate`, `sum_goal_completions` by channel grouping
+- LookML views for each underlying dbt model referenced by the three explores
+- Three Looker dashboard definition files (one per explore), in LookML dashboard format
+- Deployment runbook: promotion to the Looker production branch and share settings for the marketing group
+- All new LookML consistent with naming conventions detected in the existing Looker project
+
+### Out of scope
+
+- New Fivetran connectors of any kind
+- Changes to existing dbt staging, integration, or warehouse models
+- Looker administration setup (groups, user provisioning, permission settings)
+- Historical data backfill beyond what is already in BigQuery
+
+### Timeline
+
+| Day | Activity |
+|-----|----------|
+| Day 1 | Review existing LookML project; generate and validate three new explores ([`/wire:semantic_layer-generate`](../reference/commands#development--semantic-layer-and-orchestration), [`/wire:semantic_layer-validate`](../reference/commands#development--semantic-layer-and-orchestration)) |
+| Day 2 | Generate three dashboard definitions; review session with marketing analyst ([`/wire:dashboards-generate`](../reference/commands#development--semantic-layer-and-orchestration), [`/wire:dashboards-review`](../reference/commands#development--semantic-layer-and-orchestration)) |
+| Day 3 | Incorporate review feedback; promote to Looker production branch; share dashboards with marketing group |
+
+### Key assumptions
+
+- Existing Looker instance is on Looker 23.x or later; LookML validation runs cleanly against the current production branch before work starts
+- Existing LookML uses standard naming conventions with no custom framework; any deviations will be flagged at the start of Day 1
+- Marketing analyst (Dani Okafor) is available for a 1-hour review session on Day 2
+- Google Ads, Meta Ads, Klaviyo, and GA4 Fivetran connectors are confirmed running with at least 90 days of history in BigQuery
+
+### Acceptance criteria
+
+- All three explores pass `/wire:semantic_layer-validate` with no errors (zero findings across field naming, measure completeness, `${TABLE}.column` references, `value_format_name` usage, and `drill_fields` on count measures)
+- The `cross_channel_roas` measure is verified against a known test period by the marketing analyst before production deployment
+- All three dashboards are visible in Looker production and shared with the `marketing_team` Looker group
+
+---
+
 ## What is a Dashboard Extension release?
 
 The `dashboard_extension` release type augments an existing Looker instance with new LookML explores and dashboards. No pipeline connectors, no dbt models, no warehouse changes — the semantic layer and dashboards are the entire scope. The `semantic-layer-developer` agent reads the existing LookML project before generating anything new, establishing what naming conventions, explore patterns, and measure definitions are already in use. New work must be consistent with what is there.
@@ -109,6 +161,10 @@ Copy the client's existing LookML view and model files into `.wire/releases/01-f
 → Generating 3 new explores...
 → semantic_layer artifacts written to .wire/releases/01-foxwood-marketing-dashboards/semantic_layer/
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The agent's first action is to read the existing LookML, not to write anything. Naming conventions extracted from the existing project are applied to all new work. This is what keeps a dashboard extension coherent with the platform the client already has — a new explore that uses different naming patterns or misses a `value_format_name` stands out immediately in Looker's field picker and creates maintenance confusion downstream.
 

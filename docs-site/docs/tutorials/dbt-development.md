@@ -5,6 +5,59 @@ title: "Tutorial: dbt Development"
 
 # Tutorial: dbt Development
 
+## Statement of Work
+
+**Rittman Analytics × Vantage Financial Reporting Ltd**
+**Engagement**: `01-vantage-dbt-foundation`
+**Date**: June 2026
+**Type**: Time and materials
+
+### Engagement overview
+
+Vantage Financial Reporting Ltd has three data sources landing in Snowflake via Fivetran — Stripe payments, Salesforce CRM, and a PostgreSQL product database — but no transformation layer. The analytics team writes ad-hoc SQL directly against raw tables, with no agreed grain, no tests, and no shared customer definition across systems. Rittman Analytics is engaged to deliver the dbt staging, integration, and warehouse models that resolve these issues and provide a tested, documented foundation for downstream Looker development.
+
+### In scope
+
+- `_sources.yml` source definitions for `stripe_raw`, `salesforce_raw`, and `product_raw` Snowflake schemas
+- Six staging models: `stg_stripe__charges`, `stg_stripe__customers`, `stg_stripe__refunds`, `stg_salesforce__accounts`, `stg_salesforce__opportunities`, `stg_product__users`
+- One integration model: `int__customer_unified` — cross-system customer identity resolution via email matching with surrogate fallback
+- Four warehouse models: `customer_dim`, `opportunity_fct`, `charge_fct`, `subscription_mrr_fct`
+- 38 dbt schema tests covering `not_null`, `unique`, `relationships`, and accepted values across all models
+- Documentation YAML (`description:` fields) for every model and column
+- dbt Cloud production job (`vantage_daily_run`) — daily at 04:00 UTC, running `dbt run` then `dbt test`
+- dbt Cloud CI/PR job (`vantage_ci`) — triggers on pull request, runs `dbt build --select state:modified+`
+- `decisions.md` recording grain choices and modelling trade-offs made during the engagement
+
+### Out of scope
+
+- Fivetran connector changes or new source connections — existing connectors are assumed to be running correctly
+- LookML authoring or any work within the existing Looker instance
+- Dashboard creation or any BI layer deliverables
+- End-user or data team training — Vantage's data team is self-sufficient on dbt
+
+### Timeline
+
+| Day(s) | Activity |
+|--------|----------|
+| Days 1–2 | Data model design: raw schema review, model inventory, `_sources.yml`, review and approval |
+| Days 3–4 | dbt model generation: all 11 SQL files, 38 schema tests, documentation YAML, dbt run and validation |
+| Day 5 | Data quality checks, freshness configuration, dbt Cloud job setup, deployment runbook, handover |
+
+### Key assumptions
+
+- Fivetran connectors for Stripe, Salesforce, and the product PostgreSQL database are active and tables are available in the Snowflake raw schema before Day 1
+- Vantage's analytics engineering lead is available to review and approve the data model spec within 24 hours of delivery (end of Day 2)
+- A dbt Cloud account is already provisioned and the project repository is accessible
+- Vantage provides Snowflake service account credentials and information schema exports for the three raw schemas before engagement start
+- The `subscription_mrr_fct` model will be built at monthly snapshot grain — intra-month MRR movement is out of scope unless the finance team raises a specific requirement during the data model review
+
+### Acceptance criteria
+
+- All 38 dbt schema tests pass in the production Snowflake environment with zero failures
+- `subscription_mrr_fct` grain confirmed correct by the finance team (monthly snapshot per customer) before sign-off
+- `vantage_daily_run` dbt Cloud job completes without errors for three consecutive days prior to handover
+- All 11 models have `description:` fields populated in schema YAML — `dbt docs generate` produces a complete project documentation site
+
 ## What is a dbt Development release?
 
 A `dbt_development` release covers the transformation layer only. Data is already landing in the warehouse — via Fivetran, Stitch, a manual load process, or a pipeline that was delivered in an earlier engagement — and the work is building the dbt staging, integration, and warehouse models that turn raw tables into reliable, tested, documented facts and dimensions.
@@ -125,6 +178,10 @@ Before running any generate commands, drop the Snowflake information schema expo
 /wire:data_model-generate 01-vantage-dbt-foundation
 → [auto-delegated to data-designer agent]
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The agent reads the raw schema exports and the SOW, then produces a full model inventory and `_sources.yml`. Six staging models, one integration model, and four warehouse models:
 

@@ -7,6 +7,63 @@ title: "Tutorial: Platform Migration"
 
 This walkthrough traces a complete platform migration engagement from audit through cutover, using a fictional B2B data services client moving their analytics stack from Snowflake to BigQuery. It covers every command in the migration sequence, shows how the two-zone model keeps the audit phase safe, and demonstrates the equivalency validation loop that gates cutover.
 
+## Statement of Work
+
+**Rittman Analytics × Gatwick Data Partners**
+**Engagement**: Snowflake to BigQuery Platform Migration
+**Date**: March 2026
+**Type**: Fixed price
+
+### Engagement overview
+
+Gatwick Data Partners operates a Snowflake-based analytics platform that must migrate to BigQuery before a fixed board-mandated GCP consolidation deadline. The Snowflake contract renewal window cannot slip. Rittman Analytics will execute a full platform migration — 180 dbt models, four Fivetran connectors, Dagster orchestration, and the Looker semantic layer — using Wire's two-zone model to keep the audit phase entirely read-only and gate every write to the target platform behind a safety review.
+
+### In scope
+
+- Full audit of the existing Snowflake platform: all four Fivetran connectors (Salesforce, NetSuite, Intercom, SFTP), all Snowflake database objects, security roles and grants, 180 dbt models (classified by migration complexity), and 11 Dagster DAGs
+- Migration inventory and risk matrix derived from the five audits
+- Migration strategy document covering all Snowflake-to-BigQuery translation decisions
+- Target BigQuery environment setup: four datasets (`gdp_raw`, `gdp_staging`, `gdp_integration`, `gdp_warehouse`), IAM bindings, service account provisioning
+- Fivetran connector reconfiguration to BigQuery destinations for all four connectors (two native BQ destinations; two requiring manual reconfiguration via HVR and custom connector update)
+- Translation of all 180 dbt models across seven batches (132 auto-translated, 45 guided-translate, 3 full rewrites for Snowflake VARIANT handling)
+- Dagster orchestration migration: 11 DAGs rewritten for BigQuery, secrets migrated from Dagster's built-in SecretsManager to GCP Secret Manager
+- Equivalency validation loop: row count, schema, value, freshness, and dbt tests run against both platforms until `checks_failing: 0`
+- Structured cutover with a 72-hour Snowflake rollback window
+- Migration report documenting all decisions and outcomes
+
+### Out of scope
+
+- Looker dashboard redesign or LookML rewrites beyond the minimum required to make existing explores work against BigQuery (the `netsuite_explore` PDT patch is in scope; broader LookML refactoring is not)
+- New source connections not already active in the Snowflake environment
+- Post-migration feature development, new dbt models, or analytics layer extensions
+- AWS infrastructure or any GCP services outside the BigQuery and Secret Manager resources created during target setup
+
+### Timeline
+
+| Period | Activity |
+|---|---|
+| Weeks 1–2 | Audit zone: five parallel audits (ingestion, DB objects, security, dbt, orchestration), all approved before any migration work begins |
+| Week 3 | Migration inventory synthesis and migration strategy document; both approved before target setup |
+| Weeks 4–6 | Target setup (safety gate), Fivetran connector reconfiguration (safety gate), dbt migration batches 1–7 |
+| Week 7 | Dagster orchestration migration (safety gate), equivalency validation loop — investigate and fix cycles until `checks_failing: 0` |
+| Week 8 | Two-week parallel run window; final equivalency validation; cutover (safety gate); migration report |
+
+### Key assumptions
+
+- The existing Snowflake account remains live and accessible throughout the engagement; Rittman Analytics requires read credentials for all schemas in scope
+- Gatwick Data Partners provides a GCP project (`gdp-analytics-prod`) with billing active and sufficient IAM permissions for Rittman Analytics to create datasets, service accounts, and Secret Manager secrets
+- All four Fivetran connectors support BigQuery as a destination (Salesforce and NetSuite confirmed native; Intercom and SFTP compatibility to be confirmed in the ingestion audit — any gaps are a scope risk)
+- The two-week parallel run window (weeks 7–8) is agreed with the client's operations team before the engagement begins; no production Snowflake workloads will be decommissioned within this window without the client's written sign-off
+- Looker PDT rebuild is scheduled outside business hours; the client's retail data customers will experience a brief dashboard unavailability during the PDT rebuild at cutover
+
+### Acceptance criteria
+
+- All 180 dbt models producing equivalent output in BigQuery with `checks_failing: 0` across all five equivalency check types (row count ±2%, schema match, value spot-check, freshness, dbt tests)
+- All four Fivetran connectors active and syncing to BigQuery destinations
+- All 11 Dagster DAGs running on GCP with no sensor failures
+- Looker connected to BigQuery; all 12 production dashboards verified by the client and confirmed undisrupted
+- Written cutover sign-off on record in `decisions.md` from an authorised Gatwick Data Partners stakeholder before the Snowflake read access window closes
+
 ## What is a Platform Migration release?
 
 The Platform Migration release type is built around one structural insight: the moment you start writing to the target platform, the risk profile changes entirely. To reflect this, Wire divides all migration work into two zones.
@@ -279,6 +336,10 @@ Migration Inventory — Risk Summary
     Wave 4 (weeks 7–8): Blocked models redesign (3 models)
                         + equivalency loop + cutover
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 ### 5c. Migration strategy
 

@@ -5,6 +5,51 @@ title: "Tutorial: Custom Release"
 
 # Tutorial: Custom Release — Summit Digital Media Content Analytics
 
+## Statement of Work
+
+**Rittman Analytics × Summit Digital Media**
+**Engagement**: Content Analytics, Audience Segmentation, and Churn Prediction
+**Date**: June 2026
+**Type**: Fixed price
+
+### Engagement overview
+Summit Digital Media operates a subscription VOD service with 150,000 active subscribers. Monthly churn has risen from 2.1% to 3.4% over two quarters, and the business has no analytics on which content drives retention — audience segmentation is done manually in spreadsheets each month. Rittman Analytics is engaged to deliver a content performance audit, an RFM-based audience segmentation model, a Vertex AI churn prediction model with Braze CRM integration, and Looker dashboards covering content performance and subscriber health. The work spans advisory analysis, dbt development, and ML model deployment — no single Wire release type covers the full scope, so this engagement uses the `custom` release type.
+
+### In scope
+- Content performance audit: analysis of title-level watch completion, retention correlation, and churn drivers from BigQuery event data; findings report with top 5 actionable recommendations
+- Audience segmentation model: RFM-based framework with 5 named segments (Champions, Loyal, At-Risk, Hibernating, Lost); dbt models `stg_subscriptions__events`, `subscriber_rfm_fct`, `subscriber_segment_current` in the client's existing dbt Cloud project
+- Churn prediction model: Vertex AI AutoML tabular model trained on 90-day subscriber behaviour; daily batch scoring writing `churn_probability_score` to BigQuery; Braze "Win-Back" segment populated via REST API for subscribers with `churn_probability_score > 0.70`
+- Looker dashboards: Content Performance dashboard and Churn Risk Monitor dashboard
+- Deployment runbook covering BigQuery, dbt Cloud, Vertex AI pipeline, and Braze segment sync
+
+### Out of scope
+- Email campaign creation or management in Braze — the integration delivers subscribers into the Win-Back segment; campaign content is the client's responsibility
+- A/B testing framework for content or campaign variants
+- Content recommendation engine — this requires separate ML infrastructure and is explicitly deferred
+- Real-time or near-real-time streaming — daily batch scoring is the agreed model for the churn use case
+
+### Timeline
+**Week 1** — Content performance audit (generate, validate, review with Head of Content and VP Engineering); audience segmentation design (generate, validate, review); dbt segmentation models (`stg_subscriptions__events`, `subscriber_rfm_fct`, `subscriber_segment_current`) generated, tested, and approved.
+
+**Week 2** — Churn prediction model: Vertex AI AutoML training dataset view, model training, evaluation against held-out test set (AUC target ≥ 0.78); Braze integration spec and Cloud Scheduler pipeline; model review with VP Engineering and Head of Data.
+
+**Week 3** — Looker dashboards (Content Performance, Churn Risk Monitor); deployment runbook; UAT with product analyst; handover.
+
+### Key assumptions
+- BigQuery viewing history is available for a minimum of 12 months — shorter history will reduce churn model feature quality and may affect AUC
+- Braze API access (REST API key with `/users/track` write permission) is confirmed before Week 2 begins
+- Vertex AI APIs are enabled on Summit's GCP project; Rittman Analytics has sufficient IAM permissions to create and train AutoML tabular models
+- Summit's product analyst is available for a 2-hour content audit review in Week 1 and a final UAT session in Week 3
+- The churn probability threshold of 0.70 for Braze Win-Back targeting is agreed upfront; it can be adjusted post-delivery but reconfiguring the Cloud Scheduler pipeline after handover is out of scope
+- Client accepts that ML model performance (AUC ≥ 0.78 on test set) is reported at handover; ongoing model degradation monitoring is not in scope
+
+### Acceptance criteria
+- Content audit findings reviewed and accepted by commercial director, with the top 5 recommendations explicitly acknowledged
+- Segmentation model produces the expected 5-segment distribution on a holdout dataset, with no subscribers assigned to "Unclassified" above 2% of the active subscriber base
+- Churn model AUC ≥ 0.78 on the held-out test set (threshold agreed upfront; result reported at handover)
+- Braze Win-Back segment populated with the correct subscriber cohort and confirmed by a Braze admin
+- All Looker dashboards reviewed and approved by the product analyst with no outstanding data accuracy issues
+
 ## What is a Custom release?
 
 Most Wire engagements map cleanly to a standard release type: `full_platform` for end-to-end data platform builds, `dbt_development` for transformation-only work, `droughty` for schema-first audits. Some do not. When the SoW defines a specific set of deliverables that cuts across those categories — or where the deliverables are fundamentally advisory rather than structural — the `custom` release type gives you the Wire infrastructure without forcing the work into the wrong shape. You define the artifacts. Wire provides status tracking, the `decisions.md` log, agent delegation, Jira/Linear integration, and the standard generate/validate/review lifecycle for each artifact you name.
@@ -100,7 +145,7 @@ flowchart TD
 → Extracting deliverables...
 ```
 
-With `release_type: custom`, `/wire:new` immediately invokes `/wire:custom-release-define`. Wire reads the SoW and kick-off notes, extracts six deliverables, and presents a proposal table before writing anything:
+With `release_type: custom`, [`/wire:new`](../reference/commands#session-and-management-commands) immediately invokes `/wire:custom-release-define`. Wire reads the SoW and kick-off notes, extracts six deliverables, and presents a proposal table before writing anything:
 
 ```
 Custom release proposal — 01-summit-content-analytics
@@ -142,6 +187,10 @@ Artifacts — 6 total, 6 at not_started
 → Analysing BigQuery event data, Looker usage logs, dbt test results
 → content_performance_audit.md written
 ```
+
+:::info Auto-delegation
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+:::
 
 The `data-quality-engineer` agent is the best fit for an audit task — its remit covers data investigation, metric validation, and surface-level statistical analysis. It queries the BigQuery events table for watch completion rates, cross-references Looker usage data for dashboard query patterns, and produces a structured audit report.
 
@@ -254,7 +303,7 @@ The Braze connection: subscribers with `churn_probability_score > 0.70` are adde
 
 ### Step 6 — Status check mid-engagement
 
-With five of six artifacts in progress, `/wire:status` gives a clean picture of where the engagement stands:
+With five of six artifacts in progress, [`/wire:status`](../reference/commands#session-and-management-commands) gives a clean picture of where the engagement stands:
 
 ```
 /wire:status 01-summit-content-analytics
