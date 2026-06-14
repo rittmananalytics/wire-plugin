@@ -249,6 +249,24 @@ Platform Migration — additional questions:
   migration_pair: snowflake_to_bigquery
 ```
 
+:::info[Issue tracking and document sync]
+
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+
+:::
+
+
+:::info[MCP server connections for migration commands]
+
+The audit and migration commands reach beyond Wire's standard integrations — they connect directly to your source platform, target platform, ingestion service, and orchestration layer to read schema, inspect pipeline state, and run equivalency checks. Configure the relevant connections in `.claude/settings.json` before running the first audit command. See [MCP Servers](../reference/mcp-servers) for the full list of supported servers and connection setup.
+
+:::
+
+
 With the release created, run all five audits simultaneously:
 
 ```

@@ -138,6 +138,17 @@ flowchart TD
 → Setup complete — 6 schemas in scope
 ```
 
+:::info[Issue tracking and document sync]
+
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+
+:::
+
+
 The setup command writes two configuration files. `~/.droughty/profile.yaml` holds the Snowflake connection: account identifier, role (`TRANSFORMER`), warehouse (`COMPUTE_WH`), database (`BIRCHFIELD_DW`), and the six schemas in scope — `fund_admin`, `portfolio`, `risk`, `compliance`, `reporting`, `staging`. The `droughty_project.yaml` at the git root records the project name, warehouse type, and an OpenAI API key reference for the docs step. Without the API key, `/wire:droughty-docs` will fail — it is the one step that calls an external LLM.
 
 ### Step 2 — Introspect

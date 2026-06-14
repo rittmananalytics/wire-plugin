@@ -164,6 +164,17 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
   4 artifacts: training, documentation — each with generate/validate/review
 ```
 
+:::info[Issue tracking and document sync]
+
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+
+:::
+
+
 The prior release reference tells Wire where to find the approved build-phase artifacts. Before generating anything, copy the `decisions.md` from `01-hargreave-platform` into `01-hargreave-enablement/requirements/` — the agent uses the 9 logged decisions to explain rationale in the training materials.
 
 ### Generating training materials
