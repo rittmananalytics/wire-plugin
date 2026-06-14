@@ -20,7 +20,6 @@ const sidebars = {
       items: [
         'release-types/discovery-shape-up',
         'release-types/discovery-sop',
-        'release-types/kickoff-deck',
         'release-types/full-platform',
         'release-types/pipeline-dbt',
         'release-types/dbt-development',
@@ -58,7 +57,6 @@ const sidebars = {
         'tutorials/pipeline-dbt',
         'tutorials/discovery-shape-up',
         'tutorials/discovery-sop',
-        'tutorials/kickoff-deck',
         'tutorials/dashboard-extension',
         'tutorials/dashboard-first',
         'tutorials/enablement',

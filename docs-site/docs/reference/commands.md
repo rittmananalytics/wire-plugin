@@ -89,20 +89,6 @@ SOP discovery follows Rittman Analytics' canonical discovery methodology: struct
 
 ---
 
-## Kick-off deck
-
-| Artifact | Commands | What it produces |
-|---|---|---|
-| `kickoff` | `generate` `validate` `review` | Client kick-off presentation — slide-by-slide content sourced from approved discovery artifacts, with optional PDF export |
-
-```
-/wire:kickoff-generate 20240115_acme_full_platform
-/wire:kickoff-validate 20240115_acme_full_platform
-/wire:kickoff-review   20240115_acme_full_platform
-```
-
----
-
 ## Design artifacts
 
 Design artifacts are shared across `full_platform`, `pipeline_only`, `dbt_development`, and `dashboard_first` release types.
