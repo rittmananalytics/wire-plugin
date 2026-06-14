@@ -1,9 +1,9 @@
 ---
-description: DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:plan for optional structured planning
-argument-hint: (optional: release-folder)
+description: Auto-delegation protocol for migration generate commands — dispatch to migration-specialist subagent when available
+argument-hint: (internal — called by migration generate commands)
 ---
 
-# DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:plan for optional structured planning
+# Auto-delegation protocol for migration generate commands — dispatch to migration-specialist subagent when available
 
 ## User Input
 
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"session-start\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.9.4\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"utils-migration-agent-delegate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.9.4\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -76,30 +76,39 @@ WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X
 ## Workflow Specification
 
 ---
-description: "DEPRECATED — session:start has been replaced by the engagement-context skill and /wire:plan"
-deprecated: true
-replaced_by: "engagement-context skill (auto-fires) + /wire:plan (optional planning ritual)"
-since: "3.4.20"
+description: Auto-delegation protocol for migration generate commands — dispatch to migration-specialist subagent when available
 ---
 
-# ⚠️ Deprecated: /wire:session:start
+# Migration Agent Auto-Delegation
 
-This command has been deprecated in Wire v3.4.20.
+Before executing any migration generate command inline, check whether the `wire:migration-specialist` agent definition is available.
 
-## Why it was removed
+## Protocol
 
-Telemetry analysis across six Wire engagements showed that session:start was rarely run consistently — consultants would begin work without invoking it, losing the planning benefit it was designed to provide. The root problem is that placing session lifecycle management in explicit commands puts the burden on the user to remember to run them. In practice, people just start working.
+### Step 1: Check for agent definition
 
-## What replaces it
+Look for `agents/migration-specialist/AGENT.md` in the Wire plugin directory. The typical paths to check:
+- `.claude/plugins/wire/agents/migration-specialist/AGENT.md`
+- `agents/migration-specialist/AGENT.md`
 
-**Context loading** is now handled by the **engagement-context skill**, which activates automatically whenever Claude detects a `.wire/` directory and has not yet established engagement context in the current conversation. No invocation required.
+### Step 2: Check execution context
 
-**Structured session planning** is available on demand via `/wire:plan`, for consultants who want the 3–5 step session plan before starting work. This is optional, not mandatory.
+Skip delegation if any of the following are true:
+- The agent definition file is not found
+- This instance is already running as a `wire:migration-specialist` subagent (check the system prompt or context for this indicator — if in doubt, proceed inline to avoid infinite loops)
+- The `--inline` flag was passed as part of the command arguments
 
-## Migration
+### Step 3: Dispatch to specialist agent
 
-- Remove any `/wire:session:start` invocations from your workflow
-- Context will be loaded automatically when you begin work in a Wire engagement
-- Run `/wire:plan` at the start of a session if you want an explicit plan before proceeding
+If the agent definition exists and the above skip conditions are not met, spawn a `wire:migration-specialist` subagent using the Agent tool with:
+- `subagent_type`: `wire:migration-specialist:AGENT`
+- Prompt: include the release folder argument (`$ARGUMENTS`), the specific command being run, and the key input file paths from this spec's **Inputs** section
+- Do not execute the workflow steps below — the subagent handles them
+
+Then return immediately. The subagent will complete the work and update `status.md`.
+
+### Step 4: Inline fallback
+
+If delegation was skipped (agent not found or already in a subagent context), proceed with the workflow steps below as normal.
 
 Execute the complete workflow as specified above.

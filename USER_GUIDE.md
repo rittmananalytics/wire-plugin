@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.9.2 | **Date**: June 2026
+**Version**: 3.9.4 | **Date**: June 2026
 
 ---
 
@@ -403,7 +403,7 @@ Use `/wire:session-plan [release-folder]` for an optional structured planning ri
 
 ### Specialist agents
 
-As of v3.9.2, Wire commands auto-delegate to one of twelve specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`. See [Section 23](#23-wire-agents-specialist-subagents) for the full agent roster and how delegation works.
+As of v3.9.4, Wire commands auto-delegate to one of twelve specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`. See [Section 23](#23-wire-agents-specialist-subagents) for the full agent roster and how delegation works.
 
 ### Research persistence
 
@@ -2311,7 +2311,7 @@ Droughty is a bottom-up schema-introspection toolkit. It reads the live warehous
 
 ### Prerequisites
 
-- Python 3.9–3.12.3 on the consultant's machine
+- Python 3.9.4.12.3 on the consultant's machine
 - Access to the target warehouse (BigQuery project and dataset, or Snowflake account credentials)
 - OpenAI API key (required for `/wire:droughty-docs` and `/wire:droughty-qa` only)
 - For post-dbt mode: a successfully deployed dbt project
@@ -2466,7 +2466,7 @@ Consultants then pull the updated repo and re-run `/wire:droughty-setup --force`
 
 ### Common Issues
 
-**`droughty: command not found`** — run `/wire:droughty-setup <release>` first. Python 3.9–3.12.3 is required.
+**`droughty: command not found`** — run `/wire:droughty-setup <release>` first. Python 3.9.4.12.3 is required.
 
 **`No tables found`** — check that the `schemas:` list in `~/.droughty/profile.yaml` matches the actual schema names in the warehouse. BigQuery schema names are case-sensitive.
 
@@ -3902,7 +3902,7 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ## 23. Wire Agents: Specialist Subagents
 
-> **Introduced**: v3.8.6 (orchestrate command) → v3.9.2 (12 specialists + `/wire:delegate`) → v3.9.2 (14 specialists, adds `dashboard-mock-developer` and `mock-data-developer`)
+> **Introduced**: v3.8.6 (orchestrate command) → v3.9.2 (12 specialists + `/wire:delegate`) → v3.9.2 (14 specialists, adds `dashboard-mock-developer` and `mock-data-developer`) → v3.9.4 (migration generate commands auto-delegate to `migration-specialist`)
 
 Wire Agents replaces the single-agent pattern with fourteen named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
 
@@ -5299,6 +5299,17 @@ Supports alias forms (`/wire:help new`, `/wire:help wire:new`, `/wire:help /wire
 ## 32. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v3.9.4 — Migration Generate Commands Auto-Delegate (June 2026)
+
+All 16 migration `generate` commands now check for the `wire:migration-specialist` agent definition and dispatch to it automatically, rather than executing inline. Fixes the gap where `delegate.md` documented per-command auto-delegation but no individual migration spec implemented it.
+
+**Key changes**:
+- New shared utility spec `specs/utils/migration_agent_delegate.md` — 4-step delegation protocol with re-entrancy guard and inline fallback
+- All 16 migration generate specs (`target-setup`, `dbt-migration`, `ingestion-migration`, `migration-strategy`, `cutover`, and 11 others) reference the shared protocol
+- Compiled as `utils/migration-agent-delegate` in the plugin so installed instances can resolve the spec reference
 
 ---
 
