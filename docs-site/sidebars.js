@@ -12,6 +12,7 @@ const sidebars = {
         'getting-started/release-types',
         'getting-started/installation',
         'getting-started/core-concepts',
+        'getting-started/how-wire-works',
       ],
     },
     {
