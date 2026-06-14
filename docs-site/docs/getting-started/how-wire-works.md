@@ -1,9 +1,9 @@
 ---
 sidebar_position: 5
-title: How Wire Works Under the Covers
+title: How Wire Works
 ---
 
-# How Wire Works Under the Covers
+# How Wire Works
 
 Wire is not a black box. Every `/wire:*` command is a plain Markdown file — open, inspectable, and version-controlled on GitHub. When you run `/wire:dbt-generate`, Claude Code reads that file as a set of natural-language instructions and executes the steps exactly as written. No hidden logic, no compiled binary, no server call. Just structured prose that the model treats as a workflow specification.
 
