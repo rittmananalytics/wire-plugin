@@ -229,6 +229,12 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 ### 5a. Setup and audit zone
 
+:::info[First release in this repository?]
+
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+
+:::
+
 ```
 /wire:new
 → Client: Gatwick Data Partners

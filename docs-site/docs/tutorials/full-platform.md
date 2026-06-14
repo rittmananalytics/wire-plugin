@@ -236,6 +236,12 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 Start by creating the release. The [`/wire:new`](../reference/commands#session-and-management-commands) command scaffolds the folder structure and status tracker:
 
+:::info[First release in this repository?]
+
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+
+:::
+
 ```
 /wire:new
 → Client: Eversholt Brewing Co
