@@ -7,6 +7,7 @@ title: "Tutorial: Dashboard First"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Claybrook Media Group**
 **Engagement**: Campaign Performance and Audience Engagement Dashboards — Phase 1
 **Date**: June 2026
@@ -57,6 +58,8 @@ Claybrook Media Group requires campaign performance and audience engagement dash
 - `dbt seed && dbt run` completes with zero errors and all 18 dbt tests pass
 - All Looker dashboards render correctly with seed data and match the approved mockup structure
 - Phase 2 scope and timeline agreed and documented before Phase 1 engagement closes
+```
+
 
 ## What is a Dashboard First release?
 
@@ -204,7 +207,9 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The agent reads the requirements and produces an interactive HTML file — `design/mockups/claybrook-campaign-dashboard.html` — on the first pass. No iteration prompt needed to get a working prototype; the first version is complete and navigable.

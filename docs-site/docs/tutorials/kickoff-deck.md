@@ -7,6 +7,7 @@ title: "Tutorial: Kickoff Deck"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Pennant Advisory Partners**
 **Engagement**: Data Platform Build
 **Date**: March 2026
@@ -62,6 +63,8 @@ The kickoff deck is produced in Week 1, Day 1–2 — before requirements work b
 - Training sessions completed and recorded; end users able to access dashboards without RA assistance
 
 ---
+```
+
 
 ## Kickoff deck brief
 
@@ -193,7 +196,9 @@ For a `kickoff_deck` release, [`/wire:new`](../reference/commands#session-and-ma
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The agent pulls the two discovery call transcripts via the Fathom MCP server and uses them to populate the deck with specifics that would otherwise require a separate briefing call — the board incident, the Kimble PSA source system, the budget governance threshold. The SOW provides the timeline and deliverable structure. Together they produce a deck outline that reads as if the delivery team has already spent time with the client. Which, via the transcripts, they have.

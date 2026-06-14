@@ -7,6 +7,7 @@ title: "Tutorial: Discovery (SOP)"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Thornfield Private Healthcare**  
 **Engagement**: Thornfield SOP Discovery  
 **Date**: June 2026  
@@ -60,6 +61,8 @@ Generate recommendations report via `/wire:recommendations-generate`. Present fo
 - Recommendations report accepted by the CEO within 3 working days of delivery, with all 3 primary recommendations either accepted, modified, or formally deferred with stated rationale
 
 ---
+```
+
 
 ## What is a Discovery (SOP) release?
 
@@ -215,7 +218,9 @@ From this point, the Jira hierarchy is live. The clinical ops director's team ca
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The GDPR constraint emerges from the transcript without the consultant needing to flag it manually. CON-1 — pseudonymised patient identifiers only, Cliniko as the master — is recorded as a hard constraint in the requirements specification and will propagate as context into every subsequent artifact in the release.

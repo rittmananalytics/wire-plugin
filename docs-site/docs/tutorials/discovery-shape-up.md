@@ -7,6 +7,7 @@ title: "Tutorial: Discovery (Shape Up)"
 
 ## Discovery Engagement Brief
 
+```
 **Rittman Analytics × Hallmark Property Partners**  
 **Engagement**: Hallmark Shape Up Discovery Sprint  
 **Date**: June 2026  
@@ -54,6 +55,8 @@ Generate appetite document with Phase 1 recommendation and Phase 2 deferrals usi
 - Risk catalogue reviewed and accepted by IT Manager, with severity ratings confirmed for all items
 
 ---
+```
+
 
 ## What is a Shape Up discovery release?
 
@@ -201,7 +204,9 @@ Drop any existing materials into `releases/01-hallmark-shape-up-discovery/requir
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The agent surfaces four functional and three non-functional requirements directly from the Fathom transcripts, without the consultant having to manually review and extract them. FR-4 — fund-level performance tracking — emerges from the CFO call as a strong constraint: it is the number one pain point and must appear in Phase 1 scope.

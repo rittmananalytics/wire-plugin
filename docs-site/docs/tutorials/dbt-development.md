@@ -7,6 +7,7 @@ title: "Tutorial: dbt Development"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Vantage Financial Reporting Ltd**
 **Engagement**: `01-vantage-dbt-foundation`
 **Date**: June 2026
@@ -57,6 +58,8 @@ Vantage Financial Reporting Ltd has three data sources landing in Snowflake via 
 - `subscription_mrr_fct` grain confirmed correct by the finance team (monthly snapshot per customer) before sign-off
 - `vantage_daily_run` dbt Cloud job completes without errors for three consecutive days prior to handover
 - All 11 models have `description:` fields populated in schema YAML — `dbt docs generate` produces a complete project documentation site
+```
+
 
 ## What is a dbt Development release?
 
@@ -189,7 +192,9 @@ Before running any generate commands, drop the Snowflake information schema expo
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The agent reads the raw schema exports and the SOW, then produces a full model inventory and `_sources.yml`. Six staging models, one integration model, and four warehouse models:

@@ -9,6 +9,7 @@ This walkthrough traces a complete platform migration engagement from audit thro
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Gatwick Data Partners**
 **Engagement**: Snowflake to BigQuery Platform Migration
 **Date**: March 2026
@@ -63,6 +64,8 @@ Gatwick Data Partners operates a Snowflake-based analytics platform that must mi
 - All 11 Dagster DAGs running on GCP with no sensor failures
 - Looker connected to BigQuery; all 12 production dashboards verified by the client and confirmed undisrupted
 - Written cutover sign-off on record in `decisions.md` from an authorised Gatwick Data Partners stakeholder before the Snowflake read access window closes
+```
+
 
 ## What is a Platform Migration release?
 
@@ -345,7 +348,9 @@ Migration Inventory — Risk Summary
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 ### 5c. Migration strategy

@@ -7,6 +7,7 @@ title: "Tutorial: Droughty"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Birchfield Capital Management**
 **Engagement**: Snowflake Schema Audit and LookML Generation
 **Date**: June 2026
@@ -48,6 +49,8 @@ Birchfield Capital Management operates a 240-table Snowflake warehouse across si
 - DBML diagram reviewed and accepted by Birchfield's data team lead, with the 31 inferred compliance-schema relationships explicitly acknowledged as unverified
 - Sample of 20 LookML views successfully imported into Looker without validation errors (Looker admin to confirm)
 - dbt schema test stubs confirmed syntactically valid via a dry-run `dbt parse` on a minimal dbt project scaffolded for the purpose
+```
+
 
 ## What is a Droughty release?
 

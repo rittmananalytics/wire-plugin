@@ -7,6 +7,7 @@ title: "Tutorial: Full Platform"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Eversholt Brewing Co**
 **Engagement**: Full Analytics Platform Build
 **Date**: June 2026
@@ -62,6 +63,8 @@ Eversholt Brewing Co operates three disconnected data systems — a Shopify DTC 
 - `margin_summary` refreshing daily by 07:00 UTC and query time under 3 seconds in Looker production
 - All three Looker dashboards live in the production Looker environment and accessible to named end users
 - Written UAT sign-off received from the finance director (Laura Hennessy) and ops team lead before deployment to production
+```
+
 
 ## What is a Full Platform release?
 
@@ -258,7 +261,9 @@ Copy the SOW PDF, Shopify export schema, BrewMan PostgreSQL schema dump, and Hub
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The agent produces a 10-section requirements specification: FR-1 through FR-7 (functional requirements with acceptance criteria), NFR-1 through NFR-4 (freshness SLA of daily by 7am, row-level security by brewery role, sub-3-second dashboard load, 99.5% pipeline uptime), and a deliverable-to-artifact mapping. It writes two entries immediately to `decisions.md`:

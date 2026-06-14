@@ -7,6 +7,7 @@ title: "Tutorial: Pipeline and dbt"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Meridian Logistics Group**
 **Engagement**: `01-meridian-pipeline-staging`
 **Date**: June 2026
@@ -57,6 +58,8 @@ Meridian Logistics Group operates across three disconnected systems — Salesfor
 - All 6 dbt staging models built successfully and all 24 schema tests passing in the BigQuery environment
 - Source freshness checks alerting correctly in Slack — verified by manually delaying a test load and confirming the alert fires within the expected window
 - Cloud Scheduler job for the fleet Cloud Function confirmed running on 15-minute cadence for 24 hours prior to handover, with no unhandled errors in Cloud Logging
+```
+
 
 ## What is a Pipeline and dbt release?
 
@@ -185,7 +188,9 @@ Before running any generate commands, copy the Salesforce and NetSuite field exp
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The agent produces a full pipeline architecture document covering all three sources. Key design decisions:

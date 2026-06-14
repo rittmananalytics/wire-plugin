@@ -32,5 +32,7 @@ The supplementary tutorials at the bottom of the table cover the operational mec
 | [Upgrading Your Release](./upgrading-your-release) | — | Pennant Capital Management — dormant release resuming after a six-week pause | What `/wire:upgrade` changes and preserves; spec version delta; post-upgrade verification; re-entrancy with in-progress artifacts |
 
 :::note
+
 The original worked example at [Advanced → Worked Example](../advanced/worked-example) uses a real RA client engagement (Barton Peveril Sixth Form College). These tutorials use fictional scenarios specifically designed to illustrate each release type.
+
 :::

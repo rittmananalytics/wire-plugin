@@ -9,6 +9,7 @@ This walkthrough traces an `agentic_commerce` release from initial setup through
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Thornwick Outdoor Ltd**  
 **Engagement**: AI storefront features — semantic search, conversational assistant, visual similarity  
 **Date**: June 2026  
@@ -58,6 +59,8 @@ Thornwick Outdoor Ltd operates a Shopify store with 847 SKUs across 14 product c
 - Conversational assistant passes 20 scripted dialogue tests covering product recommendation, stock enquiry, and returns policy scenarios
 - Visual similarity returns at least 6 visually relevant products for each of 10 agreed test images
 - Demo environment runs 5 scripted scenarios continuously for 30 minutes without errors or failed API calls
+```
+
 
 ## What is an Agentic Commerce release?
 
@@ -161,7 +164,9 @@ After `ac_storefront` is approved, the three AI feature commands (`ac_semantic_s
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The `agentic-commerce-developer` agent runs a five-phase Lovable prompt sequence: brand foundation (Thornwick colour palette, typography, outdoor photography treatment), product grid layout, Shopify Storefront API wiring, cart and checkout flow, then GitHub sync. The Shopify Storefront API token is passed via a Supabase Edge Function — never exposed in the frontend bundle.

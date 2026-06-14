@@ -7,6 +7,7 @@ title: "Tutorial: Enablement"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Hargreave Insurance Ltd**
 **Engagement**: Platform Enablement and Technical Handover
 **Date**: June 2026
@@ -57,6 +58,8 @@ Hargreave Insurance Ltd's data platform — delivered under engagement `01-hargr
 - Documentation pack reviewed and approved by the data engineering lead within 48 hours of delivery
 - Post-session feedback collected from all attendees via survey
 - Engagement close confirmed in writing by the data engineering lead
+```
+
 
 ## What is an Enablement release?
 
@@ -174,7 +177,9 @@ The prior release reference tells Wire where to find the approved build-phase ar
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The agent reads the full build-phase artifact set and produces two distinct training packs calibrated to their respective audiences.

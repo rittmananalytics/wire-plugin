@@ -9,6 +9,7 @@ This walkthrough traces an `agentic_data_stack` release for a boutique analytics
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Croftmere Analytics Ltd**  
 **Engagement**: Canonical model design and AI agent knowledge layer  
 **Date**: June 2026  
@@ -59,6 +60,8 @@ Croftmere Analytics Ltd has a functioning dbt + BigQuery platform with 47 wareho
 - Eval suite achieves a minimum pass rate of 38/40 (95%) on the final run
 - All 3 knowledge skill YAML files reviewed and approved by the client's lead analytics engineer before handover
 - Agent configuration produces correct, cited output for all 5 acceptance test queries agreed with the client at engagement start
+```
+
 
 ## What is an Agentic Data Stack release?
 
@@ -166,7 +169,9 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The command dispatches three concurrent audit agents: dataset audit, metric audit, and query audit. Each reads the BigQuery information schema, the dbt manifest JSON, and Looker query history for the preceding 90 days. The combined findings surface a clear picture of the platform's governance state.

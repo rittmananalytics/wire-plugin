@@ -7,6 +7,7 @@ title: "Tutorial: Dashboard Extension"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Foxwood Commerce Ltd**
 **Engagement**: Marketing Dashboard Expansion
 **Date**: May 2026
@@ -56,6 +57,8 @@ Foxwood Commerce Ltd has a functioning BigQuery + dbt + Looker platform, with Fi
 - All three dashboards are visible in Looker production and shared with the `marketing_team` Looker group
 
 ---
+```
+
 
 ## What is a Dashboard Extension release?
 
@@ -172,7 +175,9 @@ Copy the client's existing LookML view and model files into `.wire/releases/01-f
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The agent's first action is to read the existing LookML, not to write anything. Naming conventions extracted from the existing project are applied to all new work. This is what keeps a dashboard extension coherent with the platform the client already has — a new explore that uses different naming patterns or misses a `value_format_name` stands out immediately in Looker's field picker and creates maintenance confusion downstream.

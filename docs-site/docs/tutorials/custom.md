@@ -7,6 +7,7 @@ title: "Tutorial: Custom Release"
 
 ## Statement of Work
 
+```
 **Rittman Analytics × Summit Digital Media**
 **Engagement**: Content Analytics, Audience Segmentation, and Churn Prediction
 **Date**: June 2026
@@ -49,6 +50,8 @@ Summit Digital Media operates a subscription VOD service with 150,000 active sub
 - Churn model AUC ≥ 0.78 on the held-out test set (threshold agreed upfront; result reported at handover)
 - Braze Win-Back segment populated with the correct subscriber cohort and confirmed by a Braze admin
 - All Looker dashboards reviewed and approved by the product analyst with no outstanding data accuracy issues
+```
+
 
 ## What is a Custom release?
 
@@ -198,7 +201,9 @@ Artifacts — 6 total, 6 at not_started
 ```
 
 :::info Auto-delegation
+
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
 :::
 
 The `data-quality-engineer` agent is the best fit for an audit task — its remit covers data investigation, metric validation, and surface-level statistical analysis. It queries the BigQuery events table for watch completion rates, cross-references Looker usage data for dashboard query patterns, and produces a structured audit report.
