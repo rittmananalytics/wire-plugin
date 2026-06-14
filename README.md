@@ -6,6 +6,8 @@ Wire is a structured delivery system for data platform engagements, built on top
 
 Instead of prompting an AI to write a dbt model and hoping it follows your conventions, you run `/wire:dbt-generate` and the AI receives a specification that tells it exactly which upstream design decisions to read, which naming patterns to apply, which tests to include, and how to update the project status tracker when it's done.
 
+**[Full documentation at docs.rittmananalytics.com](https://docs.rittmananalytics.com)**
+
 ---
 
 ## The Problem It Solves
@@ -312,7 +314,7 @@ A VS Code extension (`wire-vscode/`) is in early development. The intention is t
 
 ## Documentation
 
-- [Documentation site](https://wire-plugin.readthedocs.io/en/latest/) — full documentation with search, covering all release types, commands, skills, and MCP servers
+- [Documentation site](https://docs.rittmananalytics.com) — full documentation with search, covering all release types, commands, skills, and MCP servers
 - [User Guide](USER_GUIDE.md) — full operational guide covering all release types, worked examples, Wire Studio, Autopilot, and troubleshooting
 - [Droughty Integration Guide](USER_GUIDE_droughty.md) — for existing Droughty users: CLI-to-Wire command mapping, configuration, and worked examples across release types
 - [Command Registry](wire/COMMANDS.md) — all 89 commands with descriptions
