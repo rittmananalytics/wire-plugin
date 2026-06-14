@@ -17,6 +17,12 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
+.docusaurus-mermaid-container {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
 [data-theme='dark'] {
   --ifm-color-primary: #7988ff;
   --ifm-color-primary-dark: #6171ff;
