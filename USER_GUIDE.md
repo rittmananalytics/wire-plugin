@@ -2311,7 +2311,7 @@ Droughty is a bottom-up schema-introspection toolkit. It reads the live warehous
 
 ### Prerequisites
 
-- Python 3.9.4.12.3 on the consultant's machine
+- Python 3.9–3.12.3 on the consultant's machine
 - Access to the target warehouse (BigQuery project and dataset, or Snowflake account credentials)
 - OpenAI API key (required for `/wire:droughty-docs` and `/wire:droughty-qa` only)
 - For post-dbt mode: a successfully deployed dbt project
@@ -2466,7 +2466,7 @@ Consultants then pull the updated repo and re-run `/wire:droughty-setup --force`
 
 ### Common Issues
 
-**`droughty: command not found`** — run `/wire:droughty-setup <release>` first. Python 3.9.4.12.3 is required.
+**`droughty: command not found`** — run `/wire:droughty-setup <release>` first. Python 3.9–3.12.3 is required.
 
 **`No tables found`** — check that the `schemas:` list in `~/.droughty/profile.yaml` matches the actual schema names in the warehouse. BigQuery schema names are case-sensitive.
 

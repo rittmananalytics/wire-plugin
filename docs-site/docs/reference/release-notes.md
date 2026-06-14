@@ -9,6 +9,29 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.9.4 — Docs cleanup and bundling fix
+
+**Released**: June 2026
+
+Version strings and documentation pages updated to reflect v3.9.3/v3.9.4 changes. Docusaurus docs-site bundled into the plugin release via `build-packages.sh`. No spec or behaviour changes beyond v3.9.3.
+
+---
+
+## v3.9.3 — Migration generate commands auto-delegate to `migration-specialist`
+
+**Released**: June 2026
+
+All 16 migration `generate` commands now check for the `wire:migration-specialist` agent definition and dispatch to it automatically — closing the gap where `delegate.md` documented per-command auto-delegation but no individual migration spec implemented it.
+
+**Key changes**:
+- New shared utility spec `specs/utils/migration_agent_delegate.md` — 4-step delegation protocol: check for agent definition, re-entrancy guard, dispatch to `wire:migration-specialist`, inline fallback
+- Auto-delegation preamble added to all 16 migration generate specs: `target-setup`, `dbt-migration`, `ingestion-migration`, `migration-strategy`, `migration-inventory`, `cutover`, `db-object-audit`, `dbt-audit`, `ingestion-audit`, `orchestration-audit`, `orchestration-migration`, `reverse-etl-audit`, `reverse-etl-migration`, `security-audit`, `migration-report`, `lineage`
+- `utils/migration-agent-delegate` compiled as a registered command in the plugin so installed instances resolve the spec reference at runtime
+
+See [Wire Agents](../advanced/wire-agents) and [Platform Migration](../release-types/platform-migration) for full details.
+
+---
+
 ## v3.9.2 — `dashboard-mock-developer` and `mock-data-developer` agents
 
 **Released**: June 2026

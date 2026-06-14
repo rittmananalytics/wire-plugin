@@ -106,7 +106,7 @@ graph LR
 
 ## Specialist agents
 
-As of v3.9.2, Wire commands auto-delegate to one of fourteen specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`.
+As of v3.9.4, Wire commands auto-delegate to one of fourteen specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`.
 
 See [Wire Agents](../advanced/wire-agents) for the full agent roster and how delegation works.
 
