@@ -69,6 +69,13 @@ graph LR
 /wire:release:spawn 01-discovery
 ```
 
+:::info[Tutorial available]
+
+A worked example of a Discovery (Shape Up) engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Discovery (Shape Up)](../tutorials/discovery-shape-up).
+
+:::
+
+
 ## Step 1: Problem Definition
 
 ```

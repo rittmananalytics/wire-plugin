@@ -96,4 +96,11 @@ Every theme bullet on every stakeholder interview write-up carries one tag from 
 /wire:release-spawn 01-discovery
 ```
 
+:::info[Tutorial available]
+
+A worked example of a Discovery (SOP) engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Discovery (SOP)](../tutorials/discovery-sop).
+
+:::
+
+
 > **Tip**: Run `/wire:playbook-generate 01-discovery` after the engagement brief is approved to generate a BPMN-style diagram of the full SOP discovery flow.

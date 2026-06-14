@@ -91,6 +91,13 @@ graph LR
 /wire:archive <release-folder>
 ```
 
+:::info[Tutorial available]
+
+A worked example of a Full Platform engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Full Platform](../tutorials/full-platform).
+
+:::
+
+
 ## Phase 1: Requirements (Day 1)
 
 After `/wire:new` completes, copy the SOW PDF and any source materials into the release's `requirements/` directory. Ensure `engagement/sow.md` and `engagement/context.md` are populated.

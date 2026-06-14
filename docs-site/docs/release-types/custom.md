@@ -46,6 +46,13 @@ When you select "Custom" in `/wire:new`, Wire immediately invokes `/wire:custom-
 /wire:archive <release-folder>
 ```
 
+:::info[Tutorial available]
+
+A worked example of a Custom engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Custom](../tutorials/custom).
+
+:::
+
+
 ## Standalone document analysis
 
 You can analyse source documents before running `/wire:new`:

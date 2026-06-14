@@ -38,6 +38,13 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 /wire:archive <release-folder>
 ```
 
+:::info[Tutorial available]
+
+A worked example of a dbt Development engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: dbt Development](../tutorials/dbt-development).
+
+:::
+
+
 **Tips for dbt-only releases**:
 - Add any existing dbt project files (existing `schema.yml`, source definitions, SQL examples) to `requirements/` before running `data_model:generate` — the AI will use them to understand the existing model structure and extend it correctly
 - Store SQL examples from the source database (schema introspection results, sample queries) so the AI understands actual column names and types

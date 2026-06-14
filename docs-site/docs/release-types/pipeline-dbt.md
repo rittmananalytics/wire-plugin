@@ -62,4 +62,11 @@ The chosen tool is recorded as `pipeline_tool` in `status.md`. All downstream `/
 /wire:archive <release-folder>
 ```
 
+:::info[Tutorial available]
+
+A worked example of a Pipeline and dbt engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Pipeline and dbt](../tutorials/pipeline-dbt).
+
+:::
+
+
 > **Tip**: Run `/wire:playbook-generate <release-folder>` after the pipeline design is approved to generate a visual delivery plan.

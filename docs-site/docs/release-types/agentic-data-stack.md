@@ -88,6 +88,13 @@ This is not a platform build. If a client's warehouse and dbt project don't yet 
 /wire:ads_analytics-enablement-review YYYYMMDD_client_agentic_data_stack
 ```
 
+:::info[Tutorial available]
+
+A worked example of a Agentic Data Stack engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Agentic Data Stack](../tutorials/agentic-data-stack).
+
+:::
+
+
 ## The eval suite and launch gate
 
 The eval suite is the most important artifact in the release. It produces:

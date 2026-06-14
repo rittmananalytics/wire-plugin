@@ -169,3 +169,10 @@ Four commands require explicit confirmation before proceeding:
 
 /wire:archive <release>
 ```
+
+:::info[Tutorial available]
+
+A worked example of a Platform Migration engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Platform Migration](../tutorials/platform-migration).
+
+:::
+

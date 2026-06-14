@@ -133,3 +133,10 @@ Modes:
 **`No tables found`** — check that the `schemas:` list in `~/.droughty/profile.yaml` matches the actual schema names. BigQuery schema names are case-sensitive.
 
 **`droughty qa` runs for a very long time** — narrow the `schemas:` list in `profile.yaml` to the most relevant schemas.
+
+
+:::info[Tutorial available]
+
+A worked example of a Droughty engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Droughty](../tutorials/droughty).
+
+:::

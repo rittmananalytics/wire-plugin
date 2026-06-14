@@ -171,33 +171,6 @@ Design artifacts are shared across `full_platform`, `pipeline_only`, `dbt_develo
 
 ---
 
-## Agentic Commerce
-
-All commands are prefixed `ac_` and require the `agentic_commerce` release type. `ac_storefront` must reach Approved before any other feature begins.
-
-| Artifact | What it produces |
-|---|---|
-| `ac_storefront` | Base Lovable storefront: brand, product grid, Shopify API wiring, cart, GitHub sync |
-| `ac_semantic_search` | AI-powered product search via Google Cloud Retail API |
-| `ac_conversational_assistant` | Multi-turn shopping assistant via Conversational Search |
-| `ac_virtual_tryon` | "Try it on" button using Gemini Flash composite image generation |
-| `ac_visual_similarity` | "Find similar" on product cards using Gemini multimodal embeddings |
-| `ac_llm_tools` | Gemini function-calling tools: search_products, add_to_cart, get_recommendations |
-| `ac_personalisation` | Anonymous user profiles in Supabase, event tracking, dynamic UX |
-| `ac_ucp_server` | Universal Commerce Protocol merchant server with Stripe integration |
-| `ac_demo_orchestration` | Floating demo control panel with 5-phase state machine |
-
-```
-/wire:ac_storefront-generate              20240115_acme_agentic_commerce
-/wire:ac_storefront-validate              20240115_acme_agentic_commerce
-/wire:ac_storefront-review                20240115_acme_agentic_commerce
-/wire:ac_semantic_search-generate         20240115_acme_agentic_commerce
-# ... remaining features in dependency order
-/wire:ac_demo_orchestration-generate      20240115_acme_agentic_commerce
-```
-
----
-
 ## Utility commands
 
 Utility commands are prefixed `utils-` and handle integrations and supporting operations.

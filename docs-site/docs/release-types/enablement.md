@@ -27,6 +27,13 @@ Use this when an existing platform needs training and documentation — either a
 /wire:archive <release-folder>
 ```
 
+:::info[Tutorial available]
+
+A worked example of a Enablement engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Enablement](../tutorials/enablement).
+
+:::
+
+
 **Tips**:
 - Add any existing technical documentation, data dictionaries, or architecture diagrams to `requirements/` — the AI will use them as the basis for generated materials
 - Add the client stakeholder list (names, roles, technical levels) so training materials can be calibrated appropriately

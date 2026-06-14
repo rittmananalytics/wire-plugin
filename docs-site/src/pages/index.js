@@ -34,14 +34,14 @@ function HomepageHeader() {
 
 const features = [
   {
-    title: '66 slash commands',
+    title: '50+ slash commands',
     description:
       'A complete command set covering every phase of a data platform engagement — from problem definition through to enablement. No command runs without the previous one completing.',
   },
   {
     title: '12 release types',
     description:
-      'Discovery, dbt development, full platform, platform migration, agentic commerce, droughty, and more. Each release type encodes the right workflow for the job.',
+      'Discovery, dbt development, full platform, platform migration, droughty, and more. Each release type encodes the right workflow for the job.',
   },
   {
     title: 'Works in Claude Code and Gemini CLI',

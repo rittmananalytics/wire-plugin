@@ -110,6 +110,13 @@ flowchart TB
 /wire:archive <release-folder>
 ```
 
+:::info[Tutorial available]
+
+A worked example of a Dashboard First engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Dashboard First](../tutorials/dashboard-first).
+
+:::
+
+
 ## Phase 2: Interactive Dashboard Mockups
 
 This is the key differentiator. The mockups command for `dashboard_first` projects generates **pixel-accurate, interactive HTML Looker mockups** directly inside Claude Code — no external tools required.

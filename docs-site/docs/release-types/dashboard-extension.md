@@ -31,6 +31,13 @@ Use this when the semantic layer already has the data, and you're adding new das
 /wire:archive <release-folder>
 ```
 
+:::info[Tutorial available]
+
+A worked example of a Dashboard Extension engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Dashboard Extension](../tutorials/dashboard-extension).
+
+:::
+
+
 **Tips**:
 - Add existing LookML view files to `requirements/` before generating dashboards — the AI needs to know which dimensions and measures are available
 - Screenshots of existing Looker explores also help
