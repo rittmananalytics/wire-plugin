@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # Semantic Layer (LookML) Generate Command
 
+Follow `specs/utils/semantic_layer_developer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate LookML views, explores, and model configurations based on the project's data model design, dbt schema files, and requirements. Creates properly formatted, validated LookML files following best practices and project conventions.

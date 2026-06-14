@@ -81,6 +81,8 @@ description: Generate the three analyses — Hierarchy of Needs, PPT, and Maturi
 
 # Discovery Analyses — Generate
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Produces the three analyses applied to the consolidated requirements:

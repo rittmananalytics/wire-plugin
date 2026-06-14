@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Metric Audit Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Map every metric definition that exists across the client's semantic layer, BI tool, and ad-hoc SQL — then identify definition conflicts, coverage gaps against the most common analytical questions, and which metrics are safe to promote as first-class semantic layer citizens.

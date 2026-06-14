@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Droughty Generate Command
 
+Follow `specs/utils/dbt_developer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Orchestrate all Droughty commands in the correct sequence for the current engagement context. Skips commands that are already complete and commands that are not applicable (e.g. `lookml` when no LookML project is configured, `stage` when warehouse is Snowflake).

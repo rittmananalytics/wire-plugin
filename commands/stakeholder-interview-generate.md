@@ -82,6 +82,8 @@ argument-hint: "[release-folder] --stakeholder <slug>"
 
 # Stakeholder Interview — Generate
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Creates **one** stakeholder interview write-up for a specific stakeholder from the stakeholder map. This command is **repeatable per stakeholder** — call it once per interview, ideally within 24 hours of the call, while the conversation is fresh.

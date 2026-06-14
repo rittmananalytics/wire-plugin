@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # documentation Generate Command
 
+Follow `specs/utils/delivery_lead_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate documentation based on requirements and design specifications.

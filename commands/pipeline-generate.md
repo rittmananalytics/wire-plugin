@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # Pipeline Generate Command
 
+Follow `specs/utils/pipeline_engineer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Create and configure data pipeline connections based on the approved pipeline architecture. Routes to the appropriate tool-specific spec based on `pipeline_tool` recorded in `status.md` during pipeline design.

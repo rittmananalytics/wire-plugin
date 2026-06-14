@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Governance Design Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Convert the dataset audit findings into a concrete governance model: one canonical table per entity, a deprecation schedule, ownership assignments, and a tiering policy that the agent_config will enforce. This document is the authority that makes concept-entity ambiguity resolvable.

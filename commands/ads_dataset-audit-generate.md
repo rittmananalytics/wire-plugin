@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Dataset Audit Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Produce a complete inventory of tables in the client's warehouse, identify near-duplicate and redundant definitions, classify each table by governance tier, and grade the overall governance maturity per domain. This is the foundation for every downstream decision in the release — if the audit is shallow, the canonical model will be wrong.

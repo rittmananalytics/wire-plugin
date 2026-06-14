@@ -81,6 +81,8 @@ description: Generate structured problem definition for a discovery release
 
 # Problem Definition Generate Command
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generates a structured problem definition document that frames the business problem, current state, desired outcome, and constraints before any solution is proposed. This is the first artifact in a discovery release and feeds directly into the pitch document.

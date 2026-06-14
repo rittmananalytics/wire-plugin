@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # Data Model Generate Command
 
+Follow `specs/utils/data_designer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate the full dbt-layer data model specification — covering staging, integration, and warehouse layers — together with a **Physical Entity-Relationship Diagram (ERD)** as a Mermaid erDiagram showing every model with its columns, primary keys, foreign keys, and relationships. This is the primary input for dbt code generation.

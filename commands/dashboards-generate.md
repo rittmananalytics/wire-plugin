@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # dashuoards Generate Command
 
+Follow `specs/utils/semantic_layer_developer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate dashuoards based on requirements and design specifications.

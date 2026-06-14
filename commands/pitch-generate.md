@@ -81,6 +81,8 @@ description: Generate a Shape Up pitch document from the approved problem defini
 
 # Pitch Generate Command
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generates a 10-section Shape Up pitch document from the approved problem definition. The pitch is the core planning artefact of a discovery release — it frames the problem, proposes a shaped (rough but solved) solution, defines the appetite, identifies rabbit holes to avoid, and makes the case for why this is worth betting on now.

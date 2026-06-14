@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — LookML Views Generate
 
+Follow `specs/utils/semantic_layer_developer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 For every canonical model that was created or structurally changed during the `canonical_models` phase, create or update the corresponding LookML view file so the model is correctly exposed in Looker before `ads_semantic-layer-generate` adds metrics on top.

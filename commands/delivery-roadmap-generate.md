@@ -81,6 +81,8 @@ description: Generate the delivery roadmap with Build / Pair / Coach options
 
 # Delivery Roadmap — Generate
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Translates the validated playback into a delivery plan. Produces the Delivery Roadmap document — the Phase 5 exit artefact — and prepares Release 1 for spawning. The roadmap is sponsor-facing.

@@ -81,6 +81,8 @@ description: Generate sprint plan with epics, stories, and point estimates from 
 
 # Sprint Plan Generate Command
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generates a detailed sprint plan from the signed-off release brief. Breaks deliverables into epics, stories, and tasks with Fibonacci point estimates (1/2/3/5/8 — no 13-point stories allowed). Produces a plan that is specific enough to start work but not so granular it becomes a Gantt chart.

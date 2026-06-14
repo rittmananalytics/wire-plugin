@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Semantic Layer Design Generate
 
+Follow `specs/utils/semantic_layer_developer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Produce the complete metric and dimension specification for the semantic layer build — covering new metrics to add, existing metrics to rename or consolidate, and the dimension model that supports them. This document is the input to `semantic_layer-generate`.

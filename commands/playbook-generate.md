@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Playbook Generate
 
+Follow `specs/utils/delivery_lead_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate a step-by-step delivery playbook for any Wire release. The playbook has two parts: a BPMN-style Mermaid control-flow diagram, followed by a narrative step-by-step guide. It is a planning utility — it does not create a tracked artifact in `status.md` but it does sync to the release's Confluence page if one is configured.

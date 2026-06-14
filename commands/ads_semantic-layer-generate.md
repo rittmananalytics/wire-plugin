@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Semantic Layer Generate
 
+Follow `specs/utils/semantic_layer_developer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Implement the metric and dimension definitions from `semantic_layer_design.md` in the client's semantic layer — either as MetricFlow/dbt Semantic Layer YAML, LookML measures and explores, or both where dual-layer configuration is in use.

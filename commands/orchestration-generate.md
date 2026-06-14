@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # Orchestration Generate Command
 
+Follow `specs/utils/orchestration_engineer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate the orchestration layer for the data platform. This step determines how dbt models and data pipeline code are scheduled and executed in production. Supports three approaches:

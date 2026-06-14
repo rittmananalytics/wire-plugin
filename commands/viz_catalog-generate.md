@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # Visualization Catalog Generate Command
 
+Follow `specs/utils/data_designer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Parse the visualization catalog CSV and dashboard specification markdown files produced by `/wire:mockups-generate` into a structured visualization catalog. This catalog serves as the primary input for downstream data modeling, dbt generation, and LookML dashboard creation.

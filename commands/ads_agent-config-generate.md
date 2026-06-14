@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Agent Config Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Produce the agentic data stack as an installable Wire skill (`SKILL.md`) that the client's Claude Code instance can use. The skill encodes the complete query workflow: check the semantic layer first, consult the knowledge skill index if no metric applies, fall back to curated SQL, and attach a provenance footer to every response. This is what the client's data consumers will use after the engagement closes.

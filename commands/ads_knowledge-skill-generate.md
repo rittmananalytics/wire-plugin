@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Knowledge Skill Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Produce per-domain `DOMAIN_REFERENCE.md` files and colocate them with the dbt mart models they describe. These files are the agent's knowledge base — they narrow the search space from hundreds of tables to the specific entities, metrics, and query patterns relevant to a given domain. They live in the dbt repo and update when models change.

@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # Seed Data Generate Command
 
+Follow `specs/utils/mock_data_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate internally consistent CSV seed data files that enable the dbt project to run immediately without client data access. The seed data must be realistic enough to produce meaningful dashboard visualizations and internally consistent (all foreign key values exist in dimension seeds, dates are coherent, distributions are sensible).

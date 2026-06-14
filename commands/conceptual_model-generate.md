@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # Conceptual Model Generate Command
 
+Follow `specs/utils/data_designer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate a business-level conceptual entity model showing the core domain entities, their high-level attributes, and their relationships — without implementation detail such as column names, data types, or dbt layering. This model is presented to business stakeholders for approval before pipeline architecture and detailed data modelling begins.

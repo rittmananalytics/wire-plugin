@@ -81,6 +81,8 @@ description: Generate formal release brief from the approved pitch
 
 # Release Brief Generate Command
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generates a formal release brief from the approved pitch. The release brief is the commitment document — it specifies exactly what will be delivered, what the team will do, the timeline, the constraints, and the sign-off requirements. It is more precise than the pitch and is used to formally begin work.

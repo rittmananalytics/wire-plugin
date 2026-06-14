@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # Data Refactor Generate Command
 
+Follow `specs/utils/mock_data_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Refactor the seed-based dbt project to use real client data sources. This command generates a refactoring plan, compares the seed-based source schema against the actual client data sources, and executes the necessary changes to staging models, source definitions, and dbt configuration.

@@ -81,6 +81,8 @@ description: Generate the stakeholder map for a SOP discovery release
 
 # Stakeholder Map — Generate
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Builds the stakeholder map: the list of people RA needs to interview in this discovery, with priority, influence/interest, sentiment, booking owner, and recommended interviewer. The map drives the interview backlog in Phase 2 of the canonical playbook.

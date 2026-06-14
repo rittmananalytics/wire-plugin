@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Query Audit Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Mine the warehouse query logs to find the real questions the business is asking — not what stakeholders say they need, but what they actually run. Classify each pattern by whether the semantic layer can answer it today, needs extension, or requires raw SQL. This drives the semantic_layer_design phase toward the highest-value metric additions.

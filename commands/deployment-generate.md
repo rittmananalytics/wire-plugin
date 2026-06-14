@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # deployment Generate Command
 
+Follow `specs/utils/delivery_lead_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate deployment based on requirements and design specifications.

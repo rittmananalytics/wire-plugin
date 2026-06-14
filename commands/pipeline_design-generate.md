@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # Pipeline Design Generate Command
 
+Follow `specs/utils/data_designer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate a comprehensive data pipeline architecture document covering: source system analysis, replication strategy, data flow, error handling, scheduling, and monitoring approach. Also produces a **Data Flow Diagram (DFD)** as a Mermaid flowchart showing the end-to-end movement of data from source systems through to the BI layer.

@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Canonical Models Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Implement the canonical dataset model from governance_design in the client's dbt project — renaming, consolidating, or creating mart models so every domain has one unambiguous canonical table. Apply dbt documentation and deprecation notices to tables being sunset.

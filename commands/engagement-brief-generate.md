@@ -81,6 +81,8 @@ description: Generate the engagement brief for a SOP discovery release
 
 # Engagement Brief — Generate
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Drafts the internal RA Engagement Brief at the start of a SOP discovery release. The brief is a two-page internal document that captures the commercial and scope context the consultant must walk into the kick-off already knowing. It is not a sponsor deliverable — it exists so that pre-discovery work is grounded in what the deal record and SoW already say, before any of the sponsor's time is spent.

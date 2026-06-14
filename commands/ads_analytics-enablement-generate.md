@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Enablement Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Produce the user-facing documentation and data team handover materials for the agentic data stack. Users need to know what to ask, what the agent's limitations are, and how to interpret the provenance footer. The data team needs to know how to maintain the skill files as models evolve.

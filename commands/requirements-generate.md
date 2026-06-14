@@ -81,6 +81,8 @@ description: Generate requirements specification from SOW, artifacts, and stakeh
 
 # Requirements Generate Command
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Extract and structure requirements from Statement of Work (SOW), requirements documents, and other artifacts. Creates a comprehensive requirements specification that serves as the foundation for design and development.

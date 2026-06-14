@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # mockups Generate Command
 
+Follow `specs/utils/dashboard_mock_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate dashboard mockups based on requirements. Supports two modes:

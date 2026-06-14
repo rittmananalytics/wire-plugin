@@ -81,6 +81,8 @@ description: Generate the Findings Playback slide deck — the canonical sponsor
 
 # Findings Playback Deck — Generate
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generates the **Findings Playback slide deck** — the canonical, sponsor-facing exit deliverable of a SOP discovery release. The deck is a 30–55 slide HTML presentation structured around the three analyses (Hierarchy of Needs, PPT, Maturity Curve), the Vision Statement, and the Solution Initiatives, populated from the approved `discovery_analyses.md` and `requirements_matrix.md`.

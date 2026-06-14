@@ -82,6 +82,8 @@ argument-hint: <project-folder>
 
 # data quality Generate Command
 
+Follow `specs/utils/data_quality_engineer_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Generate data quality based on requirements and design specifications.

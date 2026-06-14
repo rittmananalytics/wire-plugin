@@ -81,6 +81,8 @@ description: Generate the Discovery Requirements Matrix from tagged interview wr
 
 # Requirements Matrix — Generate
 
+Follow `specs/utils/discovery_analyst_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Harvests every tagged theme from every stakeholder interview write-up, de-duplicates near-identical themes, and produces the **Discovery Requirements Matrix** — the structured single source of truth for the three analyses in `discovery_analyses`.

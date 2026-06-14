@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Adversarial Config Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Configure, calibrate, and test the adversarial review sub-agent — the Claude instance that challenges every answer before it reaches the user. Anthropic measured a 6% accuracy gain from this step (at 32% higher token cost and 72% higher latency). This command documents the trade-off for the client and configures it to their latency and cost tolerance.

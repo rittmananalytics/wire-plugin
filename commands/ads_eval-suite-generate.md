@@ -82,6 +82,8 @@ argument-hint: <release-folder>
 
 # Agentic Data Stack — Eval Suite Generate
 
+Follow `specs/utils/agentic_data_stack_delegate.md` before executing the workflow below.
+
 ## Purpose
 
 Build the evaluation suite that measures agent accuracy — the most important validation artifact in this release. Without evals, accuracy degrades silently. With them, every schema change that breaks an answer gets caught in CI before it reaches users.
