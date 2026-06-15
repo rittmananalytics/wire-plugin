@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.9.6 — MCP-driven ingestion migration, parallel dbt agents, Looker mockup refinements
+
+**Released**: June 2026
+
+**Ingestion migration is now MCP-driven.** `/wire:ingestion-migration-generate` probes the relevant ingestion tool's MCP server (Fivetran, Airbyte, etc.), creates new connectors on the target destination, and generates connect card URLs for credential entry — no manual UI steps beyond opening each link. Wire always creates new connectors; it never edits or re-points a source connector mid-parallel-run. The runbook fallback applies when the MCP server is unreachable.
+
+**dbt migration now uses parallel agents within each batch.** Models are split into groups of ~5 and one `wire:migration-specialist` agent is spawned per group simultaneously — a 20-model batch runs as 4 agents in parallel. Translated models preserve the source project's folder structure (`models/staging/stripe/stg_x.sql` → `migration/dbt/staging/stripe/stg_x.sql`).
+
+**Looker dashboard mockup** visual refinements: PNG image assets replace SVG placeholders for the logo, Create button, and toolbar strip; chart colours use the Google standard palette (`#4285F4`, `#EA4335`, `#FBBC04`, `#34A853`, `#FF6D00`, `#7E57C2`); font weight 400 globally on labels, tabs, table headers, and chart axes; KPI tile accent bars removed; tiles centred; no freshness label; no filter count badges.
+
+---
+
 ## v3.9.5 — Auto-delegation for all generate commands + docs expansion
 
 **Released**: June 2026
