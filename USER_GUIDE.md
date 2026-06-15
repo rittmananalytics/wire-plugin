@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.9.5 | **Date**: June 2026
+**Version**: 3.9.6 | **Date**: June 2026
 
 ---
 
@@ -1864,7 +1864,7 @@ The Platform Migration release type (`release_type: platform_migration`) covers 
 |---|---|---|---|
 | `migration_strategy` | `/wire:migration-strategy-*` | No | Platform-pair translation decisions, phasing, rollback, equivalency success criteria |
 | `target_setup` | `/wire:target-setup-*` | **Yes** | Target warehouse config, schemas, roles, service accounts |
-| `ingestion_migration` | `/wire:ingestion-migration-*` | **Yes** | Reconfigure/replicate Fivetran connectors to land in target platform |
+| `ingestion_migration` | `/wire:ingestion-migration-*` | **Yes** | Migrate connectors to target platform via MCP (creates new connectors + connect cards); runbook fallback if MCP unavailable |
 | `dbt_migration` | `/wire:dbt-migration-*` | No | Translate dbt models batch by batch to target dialect |
 | `orchestration_migration` | `/wire:orchestration-migration-*` | **Yes** | Recreate orchestration jobs on target platform |
 | `equivalency_validation` | `/wire:equivalency-*` | No (loop) | Iterative row-count, schema, value, freshness comparison |
@@ -1934,6 +1934,23 @@ For large engagements (e.g. 134 connectors), prepare the CSV before running the 
 
 ---
 
+### Ingestion migration: MCP-driven execution
+
+`ingestion-migration-generate` does not just write a runbook — when the relevant ingestion tool's MCP server is reachable, Wire executes the migration directly:
+
+1. **Probes the MCP server** for the ingestion tool identified in the audit (Fivetran → `mcp__fivetran__`, Airbyte → `mcp__airbyte__`, etc.)
+2. **Creates a new connector** on the target destination for each in-scope connector — never edits or re-points the existing source connector, which stays active for the parallel-run window
+3. **Generates a connect card** (or equivalent setup URL) for each new connector and presents it immediately: *"Open this link to enter credentials for `<connector_name>`"*
+4. **Tracks completion** — polls connector state and reports which connectors have reached `connected` status
+
+This approach means Wire handles the mechanical connector setup. You only need to open each connect card URL and enter credentials. The connect cards open to a Fivetran (or Airbyte) credential form pre-scoped to the correct connector — no navigating the UI, no selecting destinations, no configuring schemas.
+
+If the MCP server is not reachable, Wire falls back to generating a step-by-step runbook. In the runbook, all connector steps describe new connector creation — Wire never instructs you to edit an existing connector's destination.
+
+The validate step adapts automatically: for the MCP path it verifies connector state via API; for the runbook path it checks the runbook document for completeness.
+
+---
+
 ### dbt audit and complexity classification
 
 `dbt-audit-generate` reads every `.sql` model file and applies feature detection patterns from `wire/platform_pairs/<pair>/feature_detection.md`. Each model is tagged with the platform-specific SQL constructs it uses and assigned a complexity rating:
@@ -1989,22 +2006,27 @@ See `wire/platform_pairs/README.md` for the full structure and PR guidance.
 
 ---
 
-### dbt migration: batched processing
+### dbt migration: parallel agents, batches, and folder structure
 
-`dbt-migration-generate` processes models in batches defined by the migration inventory's phased plan. Each invocation processes the next pending batch, or a specific batch or model:
+`dbt-migration-generate` processes models in batches defined by the migration inventory's phased plan. Flags:
 
 ```
-/wire:dbt-migration-generate <release-folder>            # next pending batch
-/wire:dbt-migration-generate <release-folder> --batch 3  # specific batch
-/wire:dbt-migration-generate <release-folder> --model stg_salesforce__accounts  # single model
+/wire:dbt-migration-generate <release-folder>                      # all pending batches
+/wire:dbt-migration-generate <release-folder> --batch 3            # specific batch
+/wire:dbt-migration-generate <release-folder> --model stg_x        # single model
+/wire:dbt-migration-generate <release-folder> --models stg_x,stg_y # named subset
 ```
+
+**Parallel agents within each batch** — Wire splits each batch into groups of ~5 models and spawns one `wire:migration-specialist` agent per group simultaneously. A batch of 20 models runs as 4 agents in parallel; 3 pending batches of 20 models each launches 12 agents at once. Each agent operates on a distinct file set with no write conflicts.
+
+**Folder structure preserved** — translated models land at the same relative path as the source. A model at `models/staging/stripe/stg_stripe_charges.sql` in the source project produces `migration/dbt/staging/stripe/stg_stripe_charges.sql` in the release folder — not a flat dump in `migration/dbt/`. Companion schema YAML files follow the same structure.
 
 Each model gets one of three translation treatments:
 - **auto-translate**: Mechanical syntax substitution applied with high confidence — no human review needed per model
 - **guided-translate**: Non-trivial dialect difference requiring review — translated then flagged with `-- WIRE:REVIEW` at the specific lines
 - **rewrite**: Logic tightly coupled to source platform features — structural skeleton generated with `-- WIRE:REWRITE` marker
 
-Translated models land in `models_target/` mirroring the source `models/` directory. Flagged models are listed in `migration/flagged_models.md`.
+Flagged models are listed in `migration/dbt/batch_{N}_summary.md` after each batch completes.
 
 ---
 

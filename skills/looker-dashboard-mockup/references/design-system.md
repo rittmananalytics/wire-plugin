@@ -29,12 +29,12 @@ Copy verbatim — do not improvise colours or class names.
   --sidebar-accent: hsl(195,45%,28%);
   --sidebar-border: hsl(195,40%,30%);
   --sidebar-active: hsl(22,80%,58%);
-  --chart-1: hsl(210,45%,51%);   /* blue */
-  --chart-2: hsl(254,26%,46%);   /* purple */
-  --chart-3: hsl(46,87%,57%);    /* yellow */
-  --chart-4: hsl(349,63%,51%);   /* red */
-  --chart-5: hsl(29,80%,51%);    /* orange */
-  --chart-6: hsl(185,60%,64%);   /* teal */
+  --chart-1: #4285F4;   /* Google blue */
+  --chart-2: #EA4335;   /* Google red */
+  --chart-3: #FBBC04;   /* Google yellow */
+  --chart-4: #34A853;   /* Google green */
+  --chart-5: #FF6D00;   /* Google orange */
+  --chart-6: #7E57C2;   /* Google purple */
   --chart-7: hsl(49,68%,61%);    /* gold */
   --chart-8: hsl(30,50%,61%);    /* tan */
   --chart-9: hsl(73,68%,61%);    /* lime */
@@ -83,31 +83,12 @@ button { cursor: pointer; background: none; font-family: inherit; }
       </svg>
     </button>
     <div class="looker-logo">
-      <!-- Looker logo mark: teal circle with white ring + orange dot -->
-      <svg viewBox="0 0 28 28" fill="none">
-        <circle cx="14" cy="14" r="14" fill="hsl(195,55%,22%)"/>
-        <circle cx="14" cy="14" r="6" fill="none" stroke="white" stroke-width="2.5"/>
-        <circle cx="20.5" cy="20.5" r="3.5" fill="hsl(22,80%,53%)"/>
-      </svg>
+      <img src="looker_logo.png" alt="Looker" style="width:35px;height:35px;object-fit:contain">
       Looker
     </div>
   </div>
   <div class="header-right">
-    <!-- Help icon button -->
-    <button class="icon-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-    </button>
-    <!-- Settings icon button -->
-    <button class="icon-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </button>
+    <img src="toolbar_icons.png" alt="" style="width:35px;height:35px;object-fit:contain">
     <!-- Avatar: use initials from user's name -->
     <div class="avatar">AB</div>
   </div>
@@ -135,7 +116,7 @@ Header CSS:
   display: flex; align-items: center; gap: 6px;
   font-size: 17px; font-weight: 500; color: var(--primary); letter-spacing: -0.3px;
 }
-.looker-logo svg { width: 28px; height: 28px; }
+.looker-logo img { width: 35px; height: 35px; }
 .avatar {
   width: 28px; height: 28px; border-radius: 50%;
   background: linear-gradient(135deg, hsl(210,60%,55%), hsl(195,55%,40%));
@@ -150,16 +131,9 @@ Header CSS:
 
 ```html
 <aside class="sidebar" id="sidebar">
-  <!-- Create button with rainbow icon -->
+  <!-- Create button image -->
   <button class="sidebar-create">
-    <svg class="rainbow-icon" viewBox="0 0 18 18" fill="none">
-      <circle cx="5" cy="5" r="3" fill="hsl(210,70%,55%)"/>
-      <circle cx="13" cy="5" r="3" fill="hsl(46,87%,57%)"/>
-      <circle cx="5" cy="13" r="3" fill="hsl(22,80%,53%)"/>
-      <circle cx="13" cy="13" r="3" fill="hsl(165,60%,45%)"/>
-      <circle cx="9" cy="9" r="3" fill="white" stroke="hsl(200,15%,88%)" stroke-width="0.5"/>
-    </svg>
-    <span>Create</span>
+    <img src="create_button.png" alt="Create" style="width:70%;height:auto;display:block;margin:0 auto">
   </button>
 
   <!-- Section 1: Core nav -->
@@ -248,7 +222,6 @@ Sidebar CSS:
   <div class="title-row">
     <div><h1>[Dashboard Title]</h1></div>
     <div class="title-actions">
-      <span style="font-size:11px;color:var(--muted-fg);margin-right:8px;">Last updated 3 min ago</span>
       <!-- heart, folder+, refresh, more-vertical buttons -->
       <button class="title-icon-btn">…</button>
     </div>
@@ -293,11 +266,10 @@ Title bar CSS:
     </div>
   </div>
   <!-- Repeat .filter-pill-wrap for each filter dimension -->
-  <!-- For multi-select with selections, show count badge: -->
+  <!-- For multi-select with selections, show values only — no count badge -->
   <div class="filter-pill-wrap">
     <div class="filter-pill-label">Status</div>
     <div class="filter-pill">
-      <span style="background:hsl(210,70%,40%);color:white;border-radius:10px;padding:0 5px;font-size:9px;font-weight:700">3</span>
       Active, Proposed, …
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
@@ -319,7 +291,7 @@ Filter CSS:
 }
 .filter-pill-wrap { display: flex; flex-direction: column; gap: 3px; }
 .filter-pill-label {
-  font-size: 10px; font-weight: 600; color: var(--muted-fg);
+  font-size: 10px; font-weight: 400; color: var(--muted-fg);
   text-transform: uppercase; letter-spacing: 0.5px;
 }
 .filter-pill {
@@ -359,7 +331,7 @@ Tab CSS:
   background: var(--card); padding: 0 16px;
 }
 .tab {
-  padding: 8px 14px; font-size: 12px; font-weight: 500;
+  padding: 8px 14px; font-size: 12px; font-weight: 400;
   color: var(--muted-fg); border-bottom: 2px solid transparent; cursor: pointer;
 }
 .tab.active { color: hsl(210,70%,40%); border-bottom-color: hsl(210,70%,40%); }
@@ -391,16 +363,11 @@ Stat card CSS:
   background: var(--card); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 14px 16px;
   box-shadow: var(--shadow-sm); transition: box-shadow 0.2s, border-color 0.2s;
-  position: relative; overflow: hidden;
-}
-.stat-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: var(--card-accent, var(--chart-1));
-  border-radius: var(--radius) var(--radius) 0 0;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
 }
 .stat-card:hover { box-shadow: var(--shadow-md); border-color: hsla(195,55%,22%,0.2); }
 .metric-label {
-  font-size: 10px; font-weight: 700; color: var(--muted-fg);
+  font-size: 10px; font-weight: 400; color: var(--muted-fg);
   text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 6px;
 }
 .metric-value { font-size: 24px; font-weight: 700; color: var(--fg); letter-spacing: -0.5px; line-height: 1.1; }
@@ -488,16 +455,17 @@ Chart card CSS:
 ```js
 Chart.defaults.font.family = "'Google Sans', system-ui, sans-serif";
 Chart.defaults.font.size = 11;
+Chart.defaults.font.weight = 400;
 Chart.defaults.color = 'hsl(200,15%,45%)';
 const gridColor = 'hsla(195,15%,88%,0.6)';
 ```
 
-### Colour palette array (use in order):
+### Colour palette array (Google standard — use in order):
 ```js
 const chartColors = [
-  'hsl(210,45%,51%)', 'hsl(254,26%,46%)', 'hsl(46,87%,57%)',
-  'hsl(349,63%,51%)', 'hsl(29,80%,51%)',  'hsl(185,60%,64%)',
-  'hsl(49,68%,61%)',  'hsl(30,50%,61%)',  'hsl(97,55%,50%)',
+  '#4285F4', '#EA4335', '#FBBC04',
+  '#34A853', '#FF6D00', '#7E57C2',
+  'hsl(49,68%,61%)', 'hsl(30,50%,61%)', 'hsl(97,55%,50%)',
   'hsl(350,44%,58%)'
 ];
 ```
@@ -511,13 +479,13 @@ new Chart(document.getElementById('myChart'), {
     datasets: [{
       label: 'Actual',
       data: [42, 58, 51, 68, 74, 65],
-      borderColor: 'hsl(210,45%,51%)',
-      backgroundColor: 'hsla(210,45%,51%,0.08)',
+      borderColor: '#4285F4',
+      backgroundColor: 'rgba(66,133,244,0.08)',
       borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, tension: 0.3, fill: true
     }, {
       label: 'Target',
       data: [50, 55, 60, 65, 70, 75],
-      borderColor: 'hsl(22,80%,53%)',
+      borderColor: '#FF6D00',
       backgroundColor: 'transparent',
       borderWidth: 1.5, borderDash: [3,4], pointRadius: 0, tension: 0.3
     }]
@@ -568,9 +536,9 @@ new Chart(document.getElementById('myChart'), {
       data: [88, 72, 91, 65, 79],
       backgroundColor: ctx => {
         const v = ctx.raw;
-        if (v >= 80) return 'hsl(165,60%,40%)';
-        if (v >= 65) return 'hsl(46,87%,57%)';
-        return 'hsl(0,72%,51%)';
+        if (v >= 80) return '#34A853';
+        if (v >= 65) return '#FBBC04';
+        return '#EA4335';
       },
       borderRadius: 3, barThickness: 14
     }]
@@ -684,7 +652,7 @@ Table CSS:
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 thead tr { background: hsl(200,20%,97%); }
 th {
-  text-align: left; font-size: 10px; font-weight: 700;
+  text-align: left; font-size: 10px; font-weight: 400;
   color: var(--muted-fg); text-transform: uppercase; letter-spacing: 0.6px;
   padding: 8px 12px; border-bottom: 1px solid var(--border);
   white-space: nowrap; cursor: pointer; user-select: none;

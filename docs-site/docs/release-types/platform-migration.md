@@ -28,7 +28,7 @@ The Platform Migration release type covers the full lifecycle of migrating a dat
 |---|---|---|
 | `migration_strategy` | No | Platform-pair translation decisions, phasing, rollback |
 | `target_setup` | **Yes** | Target warehouse config, schemas, roles, service accounts |
-| `ingestion_migration` | **Yes** | Reconfigure/replicate Fivetran connectors to target platform |
+| `ingestion_migration` | **Yes** | Migrate connectors to target platform via MCP (creates new connectors + connect cards); runbook fallback if MCP unavailable |
 | `dbt_migration` | No | Translate dbt models batch by batch to target dialect |
 | `orchestration_migration` | **Yes** | Recreate orchestration jobs on target platform |
 | `equivalency_validation` | No (loop) | Iterative row-count, schema, value, freshness comparison |
@@ -102,13 +102,29 @@ This fans out five subagents simultaneously. Before launching, you will see a to
 | `high` | Nested/repeated field logic, complex incremental strategies |
 | `blocked` | Depends on an out-of-scope object, OR uses a feature with no known target equivalent |
 
-## dbt migration: batched processing
+## Ingestion migration: MCP-driven execution
+
+When the relevant ingestion tool's MCP server is reachable, `ingestion-migration-generate` executes the migration directly rather than writing a runbook:
+
+1. Probes the MCP server for the ingestion tool in the audit (Fivetran, Airbyte, etc.)
+2. Creates a **new connector** on the target destination for each in-scope connector — the source connector stays active throughout the parallel-run window
+3. Generates a **connect card** (or equivalent setup URL) per connector and presents it immediately for credential entry
+4. Polls connector state and reports which connectors have reached `connected` status
+
+Wire never edits or re-points an existing source connector. If the MCP server is unavailable, Wire falls back to a step-by-step runbook — which also describes new connector creation only. The validate step adapts: MCP path verifies connector state via API; runbook path checks document completeness.
+
+## dbt migration: parallel agents, batches, and folder structure
 
 ```
-/wire:dbt-migration-generate <release-folder>            # next pending batch
-/wire:dbt-migration-generate <release-folder> --batch 3  # specific batch
-/wire:dbt-migration-generate <release-folder> --model stg_salesforce__accounts  # single model
+/wire:dbt-migration-generate <release-folder>                      # all pending batches
+/wire:dbt-migration-generate <release-folder> --batch 3            # specific batch
+/wire:dbt-migration-generate <release-folder> --model stg_x        # single model
+/wire:dbt-migration-generate <release-folder> --models stg_x,stg_y # named subset
 ```
+
+Wire splits each batch into groups of ~5 models and spawns one `wire:migration-specialist` agent per group simultaneously — a 20-model batch runs as 4 parallel agents; 3 batches of 20 launches 12 agents at once.
+
+Translated models preserve the source project's folder structure. A model at `models/staging/stripe/stg_stripe_charges.sql` produces `migration/dbt/staging/stripe/stg_stripe_charges.sql` in the release folder. Companion YAML files follow the same structure.
 
 Each model gets one of three translation treatments:
 - **auto-translate**: Mechanical syntax substitution applied with high confidence

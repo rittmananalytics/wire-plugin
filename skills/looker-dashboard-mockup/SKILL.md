@@ -28,7 +28,7 @@ If `.wire/execution_log.md` does not exist, create it with the standard header f
 
 Generates a single self-contained HTML file that looks and behaves like a real Looker dashboard.
 The output uses the official Looker design system (Google Sans, teal sidebar, blue filter pills,
-stat cards with coloured top bars, Chart.js charts) and includes all Looker UI chrome.
+centred KPI tiles, Google-standard chart colours, Chart.js charts) and includes all Looker UI chrome.
 
 ## Step 1 — Gather the Specification
 
@@ -77,9 +77,9 @@ Produce **one complete, self-contained HTML file** following this structure:
 </style>
 
 <body>
-  <header>        — Looker logo mark SVG, hamburger, icon buttons, avatar initials
+  <header>        — looker_logo.png (35px), hamburger, toolbar_icons.png (35px), avatar initials
   <div.body>
-    <aside.sidebar> — Create button, nav sections, active state on current tab
+    <aside.sidebar> — create_button.png (70% width), nav sections, active state on current tab
     <main.main>
       <div.titlebar>   — Breadcrumb + h1 + action icons (heart, folder, refresh, more)
       <div.filter-bar> — One .filter-pill-wrap per filter dimension + Run button
@@ -130,6 +130,13 @@ Cycle through `--chart-1` through `--chart-6` for `--card-accent`:
 
 Write the complete HTML to the path specified by the caller (e.g. `.wire/<project-folder>/design/mockups/<dashboard-slug>.html`),
 where `<dashboard-slug>` is a lowercase-hyphenated version of the dashboard title.
+
+After writing the HTML, copy the three image assets into the **same directory** as the HTML file:
+- `wire/skills/looker-dashboard-mockup/references/looker_logo.png`
+- `wire/skills/looker-dashboard-mockup/references/create_button.png`
+- `wire/skills/looker-dashboard-mockup/references/toolbar_icons.png`
+
+The HTML references these by filename only (`src="looker_logo.png"` etc.), so they must sit alongside the HTML for the images to load when opened in a browser.
 
 Follow up with a brief summary (3–5 bullet points) of what was generated — tile names, chart types,
 table columns — so the user can quickly verify it matches their intent without opening the file.
