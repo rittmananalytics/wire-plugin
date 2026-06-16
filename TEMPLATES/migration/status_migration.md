@@ -15,8 +15,21 @@ migration:
   orchestration_tool: "{{ORCHESTRATION_TOOL}}" # dagster | dbt_cloud | airflow | none
   ingestion_tool: "{{INGESTION_TOOL}}"     # fivetran | rudderstack | coupler-io | segment | airbyte | other
   connectivity: "{{CONNECTIVITY}}"         # public_endpoint | private_network_mcp_tunnel
+  target_project: null      # BigQuery: GCP project ID for the target environment
+  target_dataset: null      # BigQuery: default dataset / schema on the target
+  target_location: "EU"     # BigQuery: data location (default: EU)
+  target_account: null      # Snowflake: account identifier (e.g. xy12345.us-east-1)
+  target_database: null     # Snowflake: target database name
+  target_schema: null       # Snowflake: default schema on target database
+  service_account_key_path: null  # BigQuery: local path to service account JSON key file
   status: not_started                      # not_started | in_progress | complete
   completed_date: null
+
+data_safety:
+  source_readonly: true     # ALWAYS true — source platform is never written to during migration
+  target_project: null      # Designated target project/account — all writes go here only
+  production_projects: []   # Client production project IDs to treat as off-limits for writes
+                            # e.g. ["carwow-prod", "carwow-analytics-prod"]
 
   equivalency_validation:
     checks_total: null

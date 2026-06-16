@@ -9,6 +9,24 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.9.7 — Migration reliability: post-execution hooks, stale artifact detection, Data Safety blocks, ingestion pre-flight
+
+**Released**: June 2026
+
+Post-execution hooks are now on every migration spec. All 16 migration generate and 16 migration validate commands run execution log → Jira sync → docstore sync → auto-commit after every run, bringing them into line with non-migration commands. A new `specs/utils/commit.md` utility handles the git commit step.
+
+**Stale artifact detection** — all 16 migration generate commands now prompt before overwriting an already-complete artifact. If `generate: complete` is set in `status.md` or the output file already exists, the command asks for confirmation. First-time runs see no friction.
+
+**Data Safety blocks** — `/wire:dbt-migration-generate`, `/wire:ingestion-migration-generate`, `/wire:equivalency-validate`, and `/wire:reverse-etl-migration-generate` now emit a named READ ONLY reminder before starting, listing blocked production project IDs from `data_safety.production_projects`. Production project IDs are collected during `/wire:new` setup for `platform_migration` releases.
+
+**Ingestion pre-flight expanded** — `/wire:ingestion-migration-generate` now probes all ingestion tools in scope before starting, not just Fivetran. It reads the audit for every distinct tool with `include_in_migration: true` connectors and checks each one's MCP server or API credentials. Coverage: Fivetran, RudderStack, Coupler.io (MCP); Airbyte, Segment (API env vars); Stitch/other (runbook-only). Auth failures halt the run; unconfigured tools fall to the runbook path.
+
+**`/wire:mcp` simplified** — `update` and `auth` subcommands removed (wrappers around `claude mcp` with no Wire-specific value). Now `list`, `view`, and `check` only. New `check [release-folder]` subcommand probes all MCP servers required by a release and reports CONNECTED / AUTH_REQUIRED / UNAVAILABLE / NOT_CONFIGURED per server. The platform_migration playbook session start sequence is now: `/wire:start` → `/wire:mcp check` → next command.
+
+Other improvements: `/wire:start` adds a Recent Activity table from `execution_log.md`; `/wire:new` detects duplicate releases before creating; `/wire:target-setup-generate` outputs a `~/.dbt/profiles.yml` block to the console; Jira `state_mapping` in `status.md` overrides default workflow transition labels.
+
+---
+
 ## v3.9.6 — MCP-driven ingestion migration, parallel dbt agents, Looker mockup refinements
 
 **Released**: June 2026

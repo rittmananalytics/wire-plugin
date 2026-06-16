@@ -50,7 +50,7 @@ cat ~/.wire/telemetry_id 2>/dev/null
 Run this single Bash command to create the identity file and send an identify call. Execute it exactly as written — do not split it, do not inspect the output, and proceed immediately after:
 
 ```bash
-mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.9.6\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
+mkdir -p ~/.wire && WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]') && echo "$WIRE_UID" > ~/.wire/telemetry_id && curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.9.7\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1 &
 ```
 
 ### If the file exists:
@@ -62,7 +62,7 @@ The identity is already established. Proceed to Step 2.
 Run this single Bash command. Execute it exactly as written — do not split it, do not wait for output, and proceed immediately to the Workflow Specification:
 
 ```bash
-WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"playbook-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.9.6\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
+WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"playbook-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.9.7\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -145,6 +145,25 @@ Use this canonical mapping to determine phases and whether the release type has 
 | `dashboard_extension` | Requirements → Mockups → Development → Review | No |
 | `dashboard_first` | Mockups → Data Model → Development → Review | No |
 | `enablement` | Content → Delivery | No |
+| `platform_migration` | Phase 1: Audit (parallel) → Phase 2: Inventory & Strategy → Phase 3: Target Setup → Phase 4: Migration (parallel batches) → Phase 5: Equivalency → Phase 6: Cutover | Yes: Phase 1 audits run in parallel; Phase 4 dbt batches run in parallel per batch group |
+
+For `platform_migration` the canonical Phase 2 step sequence is:
+
+1. `/wire:migration-audit-all` (or individual audit commands in parallel)
+2. `/wire:lineage-generate` — generates an interactive HTML dependency explorer showing the full migration scope from ingestion sources through to warehouse objects. Run immediately after the inventory is complete; the lineage map is the primary tool for scoping batches and communicating migration complexity to the client.
+3. `/wire:migration-inventory-generate`
+4. `/wire:migration-strategy-generate`
+
+Include `/wire:lineage-generate` explicitly in the Phase 2 section of every `platform_migration` playbook, between the audit phase and the inventory step.
+
+For `platform_migration` playbooks, also include a **Session Start** section at the top of the narrative as the recommended sequence to run at the beginning of every working session:
+
+```
+Session start sequence (run at the start of every session):
+  1. /wire:start [release-folder]       — reorient, see current state and next action
+  2. /wire:mcp check [release-folder]   — verify all required MCP servers are reachable
+  3. [continue with the next audit or migration command]
+```
 
 For `sop_discovery` and any release type with parallel streams: the diagram will include parallel fork and join gateways. For all others: linear sequence.
 

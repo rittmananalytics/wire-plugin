@@ -5,7 +5,7 @@ title: Wire Agents
 
 # Wire Agents: Specialist Subagents
 
-**Introduced**: v3.8.6 (orchestrate command) → v3.9.2 (12 specialists + `/wire:delegate`) → v3.9.2 (14 specialists, adds `dashboard-mock-developer` and `mock-data-developer`) → v3.9.3 (migration generate commands auto-delegate to `migration-specialist`) → v3.9.5 (all 44 non-migration generate commands auto-delegate) → v3.9.6 (intra-batch parallelism for dbt migration — groups of ~5 models per agent)
+**Introduced**: v3.8.6 (orchestrate command) → v3.9.2 (12 specialists + `/wire:delegate`) → v3.9.2 (14 specialists, adds `dashboard-mock-developer` and `mock-data-developer`) → v3.9.3 (migration generate commands auto-delegate to `migration-specialist`) → v3.9.5 (all 44 non-migration generate commands auto-delegate) → v3.9.6 (intra-batch parallelism for dbt migration — groups of ~5 models per agent) → v3.9.7 (post-execution hooks, stale artifact detection, Data Safety blocks on all migration specs)
 
 Wire Agents replaces the single-agent pattern with fourteen named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
 
@@ -135,7 +135,7 @@ Wire Agents runs entirely on your workstation. Subagents are spawned using Claud
 
 | Phase | Version | What ships |
 |---|---|---|
-| Phase 1 | v3.9–v3.9.6 (current) | 14 specialist agent definitions + local batch orchestration via `/wire:delegate`; all generate commands auto-delegate as of v3.9.5; intra-batch parallel agents for dbt migration in v3.9.6 |
+| Phase 1 | v3.9–v3.9.7 (current) | 14 specialist agent definitions + local batch orchestration via `/wire:delegate`; all generate commands auto-delegate as of v3.9.5; intra-batch parallel agents for dbt migration in v3.9.6; migration reliability hooks and safety blocks in v3.9.7 |
 | Phase 2 | v4.0 | Ticket-driven pull model — agents watch Jira/Linear for `ready_for_agent` issues and execute autonomously |
 | Phase 3 | v4.1 | Agent-to-agent coordination via child tickets |
 | Phase 4 | v4.2 | Named persistent agents with engagement-level expertise; a delivery-coordinator that takes a SoW and generates the full project plan autonomously |
