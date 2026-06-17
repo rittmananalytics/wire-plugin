@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.9.7 | **Date**: June 2026
+**Version**: 3.9.8 | **Date**: June 2026
 
 ---
 
@@ -2016,6 +2016,30 @@ See `wire/platform_pairs/README.md` for the full structure and PR guidance.
 /wire:dbt-migration-generate <release-folder> --model stg_x        # single model
 /wire:dbt-migration-generate <release-folder> --models stg_x,stg_y # named subset
 ```
+
+#### Scoping translation with node selectors
+
+`--select` scopes the translation set by graph relationship instead of by batch or name, using dbt's node-selection grammar. `--exclude` is its companion. Both are resolved by Wire over the source project's dependency graph — **no dbt binary is needed**. Wire reads the graph from the source project's `target/manifest.json` (a plain JSON artifact, no warehouse connection), falling back to parsing `ref()`/`source()` and YAML config when no manifest exists.
+
+```
+/wire:dbt-migration-generate <release-folder> --select +vehicles            # vehicles and all upstream models
+/wire:dbt-migration-generate <release-folder> --select vehicles+            # vehicles and all downstream models
+/wire:dbt-migration-generate <release-folder> --select "+vehicles+"         # full subgraph, ancestors and descendants
+/wire:dbt-migration-generate <release-folder> --select "vehicles customers" # union — both subgraphs
+/wire:dbt-migration-generate <release-folder> --select "+vehicles+" --exclude "tag:deprecated"
+```
+
+| Pattern | Meaning |
+| :---- | :---- |
+| `vehicles` | That model only (same as `--model vehicles`) |
+| `+vehicles` / `vehicles+` | Plus all ancestors / all descendants |
+| `2+vehicles` / `vehicles+1` | Ancestors up to 2 degrees / descendants down to 1 |
+| `@vehicles` | Model, descendants, and ancestors of those descendants |
+| `a b` (space) | Union — match either |
+| `tag:x,config.materialized:y` (comma) | Intersection — match all |
+| `tag:pilot`, `path:models/staging` | Set selectors by tag, config, or path |
+
+A bare `--select vehicles` is identical to `--model vehicles`. `--select` cannot be combined with `--batch`, `--model`, or `--models` (each names the set a different way) — Wire aborts if you mix them. Before translating, Wire prints the resolved model list for confirmation and aborts if the selector matches nothing. Full grammar and resolution algorithm: `wire/docs/specs/dbt-node-selection.md`.
 
 **Parallel agents within each batch** — Wire splits each batch into groups of ~5 models and spawns one `wire:migration-specialist` agent per group simultaneously. A batch of 20 models runs as 4 agents in parallel; 3 pending batches of 20 models each launches 12 agents at once. Each agent operates on a distinct file set with no write conflicts.
 

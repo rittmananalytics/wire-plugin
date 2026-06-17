@@ -9,6 +9,14 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## Unreleased — dbt node selectors for migration translation
+
+`/wire:dbt-migration-generate` gains `--select` and `--exclude` flags accepting dbt's full node-selection grammar — graph operators (`+vehicles`, `vehicles+`, `+vehicles+`, `2+vehicles`, `@vehicles`), space-separated unions, comma-separated intersections, and `tag:` / `config.materialized:` / `path:` set selectors. This scopes which models a migration translates by their graph relationships — for example `--select +vehicles` translates `vehicles` plus everything upstream of it, the natural shape for a lift-and-shift pilot slice.
+
+Wire resolves the selector itself over the source project's dependency graph — **no dbt binary is required**. The graph is read from the source project's `target/manifest.json` (a plain JSON artifact, no warehouse connection), with a fallback that parses `ref()`/`source()` and YAML config when no manifest is present. Before translating, Wire prints the resolved model list for confirmation and aborts if the selector matches nothing. `--select` cannot be combined with `--batch`/`--model`/`--models`; a bare `--select vehicles` behaves exactly like `--model vehicles`.
+
+---
+
 ## v3.9.7 — Migration reliability: post-execution hooks, stale artifact detection, Data Safety blocks, ingestion pre-flight
 
 **Released**: June 2026

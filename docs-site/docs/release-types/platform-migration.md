@@ -122,6 +122,30 @@ Wire never edits or re-points an existing source connector. If the MCP server is
 /wire:dbt-migration-generate <release-folder> --models stg_x,stg_y # named subset
 ```
 
+### Scoping translation with node selectors
+
+`--select` scopes the translation set by graph relationship using dbt's node-selection grammar, with `--exclude` as its companion. Both are resolved by Wire over the source project's dependency graph — **no dbt binary is required**. Wire reads the graph from the source project's `target/manifest.json` (a plain JSON artifact; no warehouse connection), and falls back to parsing `ref()`/`source()` and YAML config when no manifest is present.
+
+```
+/wire:dbt-migration-generate <release-folder> --select +vehicles            # vehicles and all upstream models
+/wire:dbt-migration-generate <release-folder> --select vehicles+            # vehicles and all downstream models
+/wire:dbt-migration-generate <release-folder> --select "+vehicles+"         # full subgraph
+/wire:dbt-migration-generate <release-folder> --select "vehicles customers" # union — both subgraphs
+/wire:dbt-migration-generate <release-folder> --select "+vehicles+" --exclude "tag:deprecated"
+```
+
+| Pattern | Meaning |
+| :---- | :---- |
+| `vehicles` | That model only (same as `--model vehicles`) |
+| `+vehicles` / `vehicles+` | Plus all ancestors / all descendants |
+| `2+vehicles` / `vehicles+1` | Ancestors up to 2 degrees / descendants down to 1 |
+| `@vehicles` | Model, descendants, and ancestors of those descendants |
+| `a b` (space) | Union — match either |
+| `tag:x,config.materialized:y` (comma) | Intersection — match all |
+| `tag:pilot`, `path:models/staging` | Set selectors by tag, config, or path |
+
+A bare `--select vehicles` is identical to `--model vehicles`. `--select` cannot be combined with `--batch`, `--model`, or `--models`. Before translating, Wire prints the resolved model list and aborts if the selector matches nothing.
+
 Wire splits each batch into groups of ~5 models and spawns one `wire:migration-specialist` agent per group simultaneously — a 20-model batch runs as 4 parallel agents; 3 batches of 20 launches 12 agents at once.
 
 Translated models preserve the source project's folder structure. A model at `models/staging/stripe/stg_stripe_charges.sql` produces `migration/dbt/staging/stripe/stg_stripe_charges.sql` in the release folder. Companion YAML files follow the same structure.
