@@ -263,6 +263,116 @@ Commands for `project_type: droughty` releases and for the optional Droughty pha
 
 **Droughty as an optional phase in delivery releases**: Add a Droughty release to any `full_platform` or `dbt_development` engagement by running `/wire:new` and selecting "Droughty" as the release type, or invoke the commands directly within any release after `dbt run`.
 
+### Platform Migration release commands
+
+Commands for `release_type: platform_migration` — full lifecycle migration of a data platform from one warehouse stack to another (BigQuery ↔ Snowflake).
+
+**Source repository management** (new in v3.9.9):
+
+```
+/wire:migration-source-register <release> <source_type> <github_url>
+    — Register a source repo by type (dbt | ingestion | reverse_etl | orchestration | security)
+      and GitHub URL (repo root or /tree/<branch>/<subfolder> path); multiple types can be
+      registered independently, including subfolders of a shared monorepo.
+
+/wire:migration-source-refresh <release> [source_type]
+    — Refresh local snapshot(s); omit source_type to refresh all registered sources.
+```
+
+**Audit zone** (read-only — no writes to any external system):
+
+```
+/wire:migration-audit-all <release>              — Fan out all five audit commands as parallel subagents
+
+/wire:ingestion-audit-generate <release>         — Catalog Fivetran/Airbyte connectors (MCP or CSV fallback)
+/wire:ingestion-audit-validate <release>
+/wire:ingestion-audit-review <release>
+
+/wire:db-object-audit-generate <release>         — Enumerate databases, schemas, tables, views, procedures
+/wire:db-object-audit-validate <release>
+/wire:db-object-audit-review <release>
+
+/wire:security-audit-generate <release>          — Catalog roles, permissions, users, service accounts
+/wire:security-audit-validate <release>
+/wire:security-audit-review <release>
+
+/wire:dbt-audit-generate <release>               — Catalog dbt models, classify by migration complexity
+/wire:dbt-audit-validate <release>
+/wire:dbt-audit-review <release>
+
+/wire:orchestration-audit-generate <release>     — Catalog orchestration jobs, schedules, dependencies
+/wire:orchestration-audit-validate <release>
+/wire:orchestration-audit-review <release>
+
+/wire:reverse-etl-audit-generate <release>       — Catalog reverse ETL syncs (Hightouch, Census, etc.)
+/wire:reverse-etl-audit-validate <release>
+/wire:reverse-etl-audit-review <release>
+
+/wire:migration-inventory-generate <release>     — Synthesise all audits into phased migration catalogue
+/wire:migration-inventory-validate <release>
+/wire:migration-inventory-review <release>
+```
+
+**Migration zone** (writes to target platform; ⚠ = safety gate requiring explicit confirmation):
+
+```
+/wire:migration-strategy-generate <release>      — Translation approach, phases, Mermaid batch DAGs, rollback plan
+/wire:migration-strategy-validate <release>
+/wire:migration-strategy-review <release>
+
+/wire:target-setup-generate <release>            — ⚠ Target warehouse DDL, schemas, roles, service accounts
+/wire:target-setup-validate <release>
+/wire:target-setup-review <release>
+
+/wire:ingestion-migration-generate <release>     — ⚠ Migrate connectors to target via MCP (new connectors only)
+/wire:ingestion-migration-validate <release>
+/wire:ingestion-migration-review <release>
+
+/wire:dbt-migration-generate <release> [--batch N] [--model name] [--select selector] [--exclude selector]
+                                                 — Iterative per-model loop: translate → compile → run →
+                                                   3-check equivalency (row count, schema, value sample) →
+                                                   auto-fix → repeat up to 5× per model. Both platform MCPs
+                                                   mandatory. Generates Mermaid batch DAG + acceptance pack.
+/wire:dbt-migration-validate <release>
+/wire:dbt-migration-review <release>
+
+/wire:migration-acceptance-pack-review <release> [--batch N]
+                                                 — Present batch acceptance pack for stakeholder sign-off.
+                                                   Human-in-the-loop gate between batches.
+
+/wire:orchestration-migration-generate <release> — ⚠ Recreate orchestration jobs on target platform
+/wire:orchestration-migration-validate <release>
+/wire:orchestration-migration-review <release>
+
+/wire:reverse-etl-migration-generate <release>   — Migrate reverse ETL syncs to target platform
+/wire:reverse-etl-migration-validate <release>
+/wire:reverse-etl-migration-review <release>
+
+/wire:lineage-generate <release>                 — Cross-platform lineage view (source → target mapping)
+
+/wire:equivalency-validate <release>             — Full equivalency loop: 7 check types across all tables
+/wire:equivalency-investigate <release> --object <name>
+/wire:equivalency-fix <release> --object <name> --approach <description>
+
+/wire:cutover-generate <release>                 — ⚠ Go-live runbook (point of no return)
+/wire:cutover-validate <release>
+/wire:cutover-review <release>
+
+/wire:migration-report-generate <release>        — Post-migration record
+/wire:migration-report-validate <release>
+/wire:migration-report-review <release>
+```
+
+**Spec location**: `wire/specs/migration/`
+
+**Dependency order**: all audit zone artifacts must be approved before `migration-inventory-generate`. All inventory → strategy → target-setup → ingestion-migration (with safety gate reviews) before `dbt-migration-generate`. `cutover-review` blocked until `equivalency_validation.checks_failing == 0`.
+
+**Source repo setup** (recommended before running the first `dbt-migration-generate`): register each source type with `/wire:migration-source-register <release> <source_type> <github_url>` (e.g. `dbt`, `orchestration`, `ingestion` — each can be a different repo or a different subfolder of the same monorepo). Then run `/wire:migration-source-refresh <release>` to pull all snapshots at once, or `/wire:migration-source-refresh <release> dbt` to refresh a single type. The `dbt-migration-generate` command checks `migration_sources.dbt.last_refreshed` at Step 0b and warns if older than 24 hours.
+
+**Iterative translation+equivalency loop** (v3.9.9+): each model in a batch goes through up to 5 translate-run-test iterations automatically with no mid-loop manual review prompts. Both source and target platform MCPs must be connected. After all models in a batch reach terminal state (PASSED or FAILED), an acceptance pack is generated and the `migration-acceptance-pack-review` gate activates.
+
+**Mermaid batch DAGs** (v3.9.9+): `migration-strategy-generate` creates one Mermaid DAG file per batch in `artifacts/migration_strategy/`. Each DAG shows model states: grey = not started, orange = translated/in-progress, green = passed, red = failed. States update in-place as `dbt-migration-generate` processes each model.
+
 ### Migration
 
 ```

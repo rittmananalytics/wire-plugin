@@ -22,7 +22,7 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Translate dbt models batch by batch to target dialect
+description: Translate dbt models batch by batch to target dialect with inline equivalency validation
 argument-hint: <release-folder> [--batch N] [--model name] [--select selector] [--exclude selector]
 ---
 
@@ -59,12 +59,16 @@ If the current working context or tool calls would write to a source platform or
 
 ## Purpose
 
-Translates dbt models from the source platform dialect to the target platform dialect — both the model `.sql` **and the companion schema/properties YAML** (`schema.yml` / `_models.yml` / `sources.yml`). Works in batches as defined in the dbt audit. Normally the auto-delegation layer handles splitting a batch into parallel groups and spawning one agent per group — this spec executes on whatever scope it is handed. Supports `--batch N` to process a specific batch, `--model <name>` to process a single model, and `--models <name1,name2,...>` to process a specific subset (used by parallel agents within a batch).
+Translates dbt models from the source platform dialect to the target platform dialect — both the model `.sql` **and the companion schema/properties YAML** (`schema.yml` / `_models.yml` / `sources.yml`). Each model goes through an inline translation-and-equivalency loop: translate → compile → run on target → three-check equivalency test → auto-fix on failure → iterate up to 5 times before flagging for manual review. Both the source platform MCP and the target platform MCP are mandatory — this command cannot run without live connections to both.
+
+Works in batches as defined in the dbt audit. Normally the auto-delegation layer handles splitting a batch into parallel groups and spawning one agent per group — this spec executes on whatever scope it is handed. Supports `--batch N` to process a specific batch, `--model <name>` to process a single model, and `--models <name1,name2,...>` to process a specific subset (used by parallel agents within a batch).
 
 ## Prerequisites
 
 - `ingestion_migration review: approved`
 - `audit/dbt_audit.csv` exists with batch assignments
+- Source platform MCP connected and readable
+- Target platform MCP connected and writable to the test project
 
 ## Flags
 
@@ -83,7 +87,7 @@ Full grammar and resolution algorithm: `wire/docs/specs/dbt-node-selection.md`.
 
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.csv`
 - `.wire/releases/$ARGUMENTS/status.md` — dbt_migration.current_batch
-- Source dbt model SQL files **and their companion schema/properties YAML** (`schema.yml` / `_models.yml` / `sources.yml`) at `migration.dbt_project_path`
+- Source dbt model SQL files **and their companion schema/properties YAML** (`schema.yml` / `_models.yml` / `sources.yml`) at `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if registered)
 - Canonical platform pair files:
   - `wire/platform_pairs/{pair}/translation_guide.md` — pattern table
   - `wire/platform_pairs/{pair}/translation_reference.md` — exhaustive deep reference, if present (snowflake → bigquery has one). Consult it when a model trips a silent-behaviour-change case (timezone defaults, `DATEDIFF` boundary semantics, day-of-week numbering, regex engine, hash-key mismatch, NaN/NULL sort) or uses a construct the pattern table doesn't list. Where it disagrees with the quick guide, it wins.
@@ -94,13 +98,46 @@ Full grammar and resolution algorithm: `wire/docs/specs/dbt-node-selection.md`.
 - **Engagement-level overrides (optional)**: `.wire/engagement/platform_pair_overrides/{pair}/`
   - `translation_guide.md` — extra rows or rules that override the canonical guide for this engagement
   - `examples/` — engagement-specific worked examples (e.g. patterns unique to this client's data shapes)
-  - Used in addition to (and prioritised over) the canonical files. Overrides exist so teams can carry forward bespoke translations from one engagement to the next at the same client without modifying the framework.
+  - Used in addition to (and prioritised over) the canonical files.
 
 ## Workflow
 
+### Step 0: Verify MCP connectivity
+
+Both platform connections are mandatory. Check before doing any translation work:
+
+1. **Source platform MCP** — query a known system table or run a trivial SELECT against the source. For Snowflake: `SELECT CURRENT_TIMESTAMP()`. For BigQuery (as source): `SELECT CURRENT_DATE()`. If this fails, abort:
+   ```
+   [wire] ERROR: Source platform MCP is not connected or not responding.
+   Connect the [source_platform] MCP server and retry.
+   /mcp — to check connection status
+   ```
+
+2. **Target platform MCP** — run a trivial write-safe query against the test project. For BigQuery: `SELECT 1 AS test`. If this fails, abort:
+   ```
+   [wire] ERROR: Target platform MCP is not connected or not responding.
+   Connect the [target_platform] MCP server (test project: [target_project]) and retry.
+   ```
+
+Both must be confirmed live before proceeding to Step 0b.
+
+### Step 0b: Check source snapshot freshness
+
+Read `migration_sources.dbt` from status.md (if the block exists):
+
+- If `last_refreshed` is null or the block is absent: warn but continue — the source files will be read from `migration.dbt_project_path` directly.
+- If `last_refreshed` is set and is more than 24 hours ago:
+  ```
+  ⚠️  Source snapshot is [N] hours old (last refreshed: [timestamp]).
+  The local snapshot at [local_snapshot_path] may not reflect recent upstream changes.
+  Run /wire:migration-source-refresh $ARGUMENTS dbt to update it, then retry.
+  Proceeding anyway — use your judgement.
+  ```
+  Do not block. Continue after the warning.
+
 ### Step 1: Determine scope
 
-1. Read `migration.dbt_project_path` and `migration.source_platform` from status.md
+1. Read `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if set) and `migration.source_platform` from status.md.
 2. Determine which models to translate:
    - If `--select <selector>` (optionally with `--exclude`) provided: resolve the model set per **Step 1a**.
    - If `--model <name>` provided: process that single model
@@ -151,51 +188,153 @@ out to dbt** and do not reimplement graph traversal over `dbt_audit.csv` (it sto
 
    If the resolved set is empty, abort: `[wire] No models matched selector "<selector>". Aborting.`
 
-The resolved model list then flows into Step 3 (Translate each model) unchanged.
+The resolved model list then flows into Step 3 unchanged.
 
 ### Step 2: Load translation context
 
 Read the translation guide for the active platform pair. For the models in this batch, identify which feature tags are present and load the corresponding translation patterns.
 
-### Step 3: Translate each model
+### Step 3: Translate and validate each model (iterative loop)
 
-For each model in the batch:
+For each model in the batch, run an iterative translation-and-equivalency loop. The loop has a maximum of **5 iterations**. No manual review prompts are issued mid-loop — the loop runs to completion automatically for every model before any human interaction.
 
-1. Read the source SQL from the dbt project
-2. Record the model's **relative path within the source dbt project** (e.g. `models/staging/stripe/stg_stripe_charges.sql`). This path will be mirrored in the output.
+**Before the loop**, initialise per-model tracking:
+```
+model_name: <name>
+status: not_started
+iteration: 0
+loop_history: []
+```
+
+**Each iteration** (iterations 1 through 5):
+
+#### 3.1 Translate or auto-fix
+
+**Iteration 1 — initial translation:**
+
+1. Read the source SQL from the dbt project (or local snapshot).
+2. Record the model's **relative path within the source dbt project** (e.g. `models/staging/stripe/stg_stripe_charges.sql`). This path is mirrored in the output.
 3. Apply translations in this order:
    a. Data type references (inline casts, SAFE_CAST equivalents)
    b. SQL function translations (per the translation guide)
    c. Configuration block updates (adapter profile, materialisation config)
    d. Jinja macro calls that need dispatch overrides
-4. Write the translated SQL to `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path_from_models_root}` — preserving the exact subdirectory structure from the source project. For example, a source model at `models/staging/stripe/stg_stripe_charges.sql` becomes `.wire/releases/$ARGUMENTS/migration/dbt/staging/stripe/stg_stripe_charges.sql`. Do **not** flatten all models into a single directory.
-5. Write a side-by-side diff to `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path_from_models_root_without_extension}.diff.md` showing source → target changes
+4. Assign a confidence rating: `high` = only simple, table-driven replacements. `medium` = engagement-specific nuance. `low` = no clean equivalent or a construct the guide marks "manual".
 
-For Complex models: add inline comments explaining each non-trivial translation decision.
+**Iterations 2–5 — auto-fix:**
 
-**Optional automated first pass (snowflake → bigquery only)**: for mechanical, function-heavy models, translating the model's *compiled* SQL through the BigQuery Migration Service first can surface the dialect changes quickly — then port those changes back into the dbt model by hand, applying macros and config per the translation guide. Never feed raw Jinja to BQMS; it cannot parse `ref()`, `source()`, or macro calls. See `wire/platform_pairs/snowflake_to_bigquery/bqms_first_pass.md`. For small or macro-heavy projects, hand translation against the guide is usually faster than wiring up the service.
+Read the failure recorded from the previous iteration. Diagnose the root cause:
+- Compilation failure: identify the offending construct and apply a targeted syntax fix.
+- Run failure: identify the runtime error (type mismatch, unsupported function, missing reference) and fix the translated SQL.
+- Equivalency failure: identify which check failed and what it indicates (row loss, schema drift, value drift), then apply a targeted correction to the model logic or type handling.
 
-**Translation safeguards** — apply to every model, automated pass or not:
+Apply the fix to the translated SQL. Record what was changed and why in `loop_history`.
 
-- **Confidence rating**: assign each translated model a confidence of `high`, `medium`, or `low`. `high` = only simple, table-driven replacements applied. `medium` = a pattern was applied that has engagement-specific nuance. `low` = a construct with no clean equivalent, a lossless-conversion flag, or a translation the guide marks "manual". Record it in the model's diff file and the batch summary.
-- **Mandatory human review**: every `low` confidence model is flagged `-- MANUAL REVIEW` regardless of whether it compiles. Compiling is not the same as being correct.
-- **Guard against silent record loss**: a translation must never quietly drop or duplicate rows. Watch the known traps — `JOIN` semantics where NULL handling differs, `QUALIFY`/window changes, implicit `DISTINCT`, and filters that behave differently on NULLs. Flag any model where row-affecting logic changed.
-- **Guard against silent value drift**: do not introduce timezone assumptions, currency conversions, or precision changes that were not in the source. These are the classic hallucinated "helpful" edits. If a timestamp's timezone or a numeric's precision is ambiguous, flag `low` and leave a `-- MANUAL REVIEW` note rather than guessing.
-- **Wide schemas**: for models with very large schemas or long SQL, translate in sections rather than one pass — truncation mid-model produces plausible-looking but incomplete output. Confirm the translated model has the same column count and CTE structure as the source.
+**Translation safeguards** — apply on every iteration:
+- **Guard against silent record loss**: never quietly drop or duplicate rows. Watch JOIN semantics, `QUALIFY`/window changes, implicit `DISTINCT`, and NULL-handling in filters.
+- **Guard against silent value drift**: do not introduce timezone assumptions, currency conversions, or precision changes not present in the source. If a construct is ambiguous, flag `low` and leave `-- MANUAL REVIEW`.
+- **Wide schemas**: translate in sections if needed to avoid truncation. Confirm same column count and CTE structure.
+
+#### 3.2 Write translated SQL
+
+Write the translated SQL to `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path_from_models_root}` — preserving the exact subdirectory structure from the source project. Also write a side-by-side diff to `{same_path_without_extension}.diff.md`.
+
+#### 3.3 Compile check (target BigQuery/Snowflake MCP)
+
+Validate the translated SQL will compile against the target platform without materialising data. Use the target platform MCP to run the compiled SQL with `LIMIT 0` appended (or equivalent). For Jinja-templated models, compile against the target profile's `LIMIT 0` pattern.
+
+If compile fails:
+- Record: `{ iteration: N, stage: "compile", error: "<message>", action: "auto-fix" }`
+- Update DAG state for this model to `migrated` (orange — in progress)
+- Go to next iteration (3.1 auto-fix)
+
+If compile succeeds: proceed to 3.4.
+
+#### 3.4 Run on target
+
+Execute the full model SQL as a materialisation against the test project using the target platform MCP's write tool. For BigQuery: `execute_sql` (not readonly). The target dataset/schema is read from `data_safety.target_project` and `migration.target_schema` in status.md.
+
+Run only against the test project — never against production. If the write tool would target a project listed in `data_safety.production_projects`, stop immediately and report the conflict.
+
+If run fails:
+- Record: `{ iteration: N, stage: "run", error: "<message>", action: "auto-fix" }`
+- Go to next iteration (3.1 auto-fix)
+
+If run succeeds: proceed to 3.5.
+
+#### 3.5 Three-check equivalency
+
+Run these three checks using both the source platform MCP (read-only) and the target platform MCP (read-only). Do not run any write queries here.
+
+**Check A — Row count** (tolerance ±0.5%):
+```sql
+-- Source
+SELECT COUNT(*) AS row_count FROM {source_db}.{source_schema}.{table_name};
+-- Target
+SELECT COUNT(*) AS row_count FROM {target_project}.{target_schema}.{table_name};
+```
+PASS: `|source_count - target_count| / source_count ≤ 0.005`
+FAIL: count outside tolerance — record source count, target count, and deviation.
+
+**Check B — Schema**:
+Compare column names, data types (per `type_mapping.md`), and nullability between source and target by querying `INFORMATION_SCHEMA.COLUMNS` on both platforms.
+PASS: all columns present with expected types (modulo documented type translations).
+FAIL: missing columns, extra columns, unexpected type changes, or nullability mismatches — record the specific column differences.
+
+**Check C — Column value sampling** (1000 rows):
+For a deterministic 1000-row sample (e.g. `ORDER BY 1 LIMIT 1000` or `TABLESAMPLE`), compare:
+- Numeric columns: mean, min, max, null percentage. PASS: all within ±1%.
+- String columns: distinct count, null percentage. PASS: distinct count within ±2%, null% within ±1%.
+
+For the sample to be comparable, use the same filter or row-limiting method on both platforms. Document the sampling approach used.
+PASS: all column statistics within thresholds.
+FAIL: record which columns deviated and by how much.
+
+#### 3.6 Assess iteration result
+
+If checks A, B, and C all PASS:
+- `status = PASSED`
+- Update DAG state for this model to `complete` (green)
+- Exit the loop for this model
+
+If any check fails AND `iteration < 5`:
+- Record the failure details in `loop_history`
+- Increment `iteration`
+- Go to 3.1 (auto-fix)
+
+If any check fails AND `iteration == 5`:
+- `status = FAILED`
+- Update DAG state for this model to `failed` (red)
+- Add `-- MANUAL REVIEW` comment to the translated SQL
+- Record the final failure in `loop_history`
+- Exit the loop for this model
+
+**No manual review prompts are issued between iterations.** The loop runs automatically for all models in the batch. Flagging for manual review happens only after all 5 iterations are exhausted.
+
+After the loop, record for this model:
+```
+model_name: <name>
+final_status: PASSED | FAILED
+iterations_taken: N
+loop_history: [{ iteration, stage, result, error, action }]
+confidence: high | medium | low
+```
 
 ### Step 3b: Translate the companion schema / properties YAML
 
-Model `.sql` is only half the model. For each model in the batch, also migrate its schema/properties YAML — most of it is dialect-neutral and carries over unchanged, but three parts need handling and are easy to miss because they don't live in the `.sql`:
+For each model in the batch, also translate its schema/properties YAML. Integrate this into the loop at iteration 1 (initial translation) and carry it through subsequent iterations — YAML schema fixes are part of the same auto-fix process as SQL fixes when schema check B fails.
+
+Three parts to handle:
 
 1. **Column definitions and descriptions** — dialect-neutral; copy across unchanged. Confirm the column list still matches the translated model (a dropped column in either place is a defect).
 
-2. **`sources.yml`** — the source `database`/`schema` must resolve to the target platform's namespace (for BigQuery, `database` → GCP project, `schema` → dataset). Prefer parameterising both through `vars` so one `sources.yml` resolves on either platform during a parallel run, rather than duplicating the file per target. This is real migration work, not a copy.
+2. **`sources.yml`** — the source `database`/`schema` must resolve to the target platform's namespace. Prefer parameterising through `vars`. This is real migration work.
 
-3. **Tests** — generic tests (`not_null`, `unique`, `accepted_values`, `relationships`) are portable and need no change. **Singular/custom tests, `where:` filters, and `dbt_utils`/`dbt_expectations` test arguments that contain source-dialect SQL get the same translation as model bodies** (Step 3, per the translation guide). Translate them with their model — they are a common silent gap because the batch loop is "model-shaped" and these hide in YAML and in `tests/`.
+3. **Tests** — generic tests (`not_null`, `unique`, `accepted_values`, `relationships`) are portable. Custom tests, `where:` filters, and `dbt_utils`/`dbt_expectations` arguments containing source-dialect SQL get the same translation as model bodies.
 
-4. **PII / column policy tags and `meta`** — if the engagement applies column-level protection through dbt rather than warehouse DDL (e.g. BigQuery `policy_tags` on a column, or a `meta` masking flag), that config lives in the schema YAML. When the security/target-setup workstream provisions the tag taxonomy and IDs, author the `policy_tags` references into the column YAML here so dbt applies and re-asserts them on every build. **Confirm ownership with the security-migration scope first** — column tagging is either dbt-managed (this step authors it into YAML) or warehouse-side (DDL/Terraform owns it); do not apply it in both. Where the source platform's masking has no portable YAML form, flag it `-- MANUAL REVIEW` and leave it to the security workstream.
+4. **PII / column policy tags and `meta`** — if column-level protection is applied through dbt (e.g. BigQuery `policy_tags`), author the `policy_tags` references into the column YAML here. Confirm ownership with the security-migration scope first — do not apply tags in both dbt YAML and warehouse DDL.
 
-Write the translated YAML alongside the model, preserving the same relative path: `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path_from_models_root_without_extension}.yml` (or the shared `sources.yml` / `_models.yml` in the same subdirectory as the source project). The translated output directory structure must mirror the source project exactly — not a flat dump. Note any `sources.yml` repoint, custom-test translation, or `policy_tags` authored in the model's diff file and the batch summary.
+Write the translated YAML alongside the model, preserving the same relative path: `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path_from_models_root_without_extension}.yml`. Note any `sources.yml` repoint, custom-test translation, or `policy_tags` in the model's diff file.
 
 ### Step 4: Generate batch summary
 
@@ -203,9 +342,78 @@ Write `.wire/releases/$ARGUMENTS/migration/dbt/batch_{N}_summary.md`:
 - Models translated in this batch
 - Translation patterns applied (counts by type)
 - Confidence breakdown (count of high / medium / low)
-- Models requiring manual review (every `low` confidence model, plus anything flagged with `-- MANUAL REVIEW` in the SQL)
-- **Companion YAML changes**: `sources.yml` repoints, custom/singular tests translated, and any `policy_tags`/`meta` authored (or deferred to the security workstream)
-- Recommended test commands
+- Per-model loop results: iterations taken, which checks failed, final status
+- Models requiring manual review (every `FAILED` model and every `low` confidence model)
+- **Companion YAML changes**: `sources.yml` repoints, custom/singular tests translated, `policy_tags` authored or deferred
+- Recommended next steps
+
+### Step 4b: Update per-batch DAG
+
+Update the Mermaid batch DAG file at `.wire/releases/$ARGUMENTS/artifacts/migration_strategy/dag_batch_{N}.md` with the final state of each model in this batch. If the file does not exist (e.g. `migration_strategy/generate.md` was not run), create it now with a minimal DAG covering only the models just processed.
+
+DAG state mapping:
+```
+PASSED     → classDef complete fill:#2a2,color:#fff
+FAILED     → classDef failed  fill:#c00,color:#fff
+not_started → classDef notStarted fill:#999,color:#fff
+in_progress → classDef migrated fill:#f90,color:#000
+```
+
+The DAG is a Mermaid flowchart. Each model is a node. Models with upstream `ref()` dependencies are shown downstream of their parents (from the batch scope — cross-batch edges are shown as dashed lines to external nodes). Apply the appropriate `:::class` to each node based on its final status.
+
+Rewrite the full DAG with current states rather than patching individual lines.
+
+### Step 4c: Generate migration acceptance pack (when all batch models are terminal)
+
+If every model in the batch has reached a terminal state (PASSED or FAILED — not still in progress), generate the acceptance pack at `.wire/releases/$ARGUMENTS/migration/dbt/acceptance_pack_batch_{N}.md`.
+
+Use this template:
+
+```markdown
+# Migration Batch {N} — Acceptance Pack
+
+**Generated**: {TODAY}
+**Release**: {ARGUMENTS}
+**Batch**: {N}
+**Models in batch**: {count}
+**Status**: {count_passed} passed · {count_failed} failed
+
+## Results Table
+
+| Model | Iterations | Compile | Run | Row Count | Schema | Value Sample | Status |
+|-------|-----------|---------|-----|-----------|--------|--------------|--------|
+| model_a | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| model_b | 5 | ✅ | ✅ | ❌ | ✅ | ✅ | **FAILED** |
+
+## Confirmation Statements
+
+- All {count} models in batch {N} have been processed through the translation and equivalency loop
+- Models marked PASSED have satisfied: row count ±0.5%, schema match, column value sampling ±1%/±2%
+- Models marked FAILED exhausted 5 iterations without passing all three equivalency checks
+- No writes were made to the source platform ({source_platform}) during this batch
+- All translated models are committed to `.wire/releases/{ARGUMENTS}/migration/dbt/`
+- [If any FAILED models]: The following models require manual remediation before this batch can be considered complete: {list}
+
+## Batch {N} DAG
+
+[Embed the Mermaid DAG from dag_batch_{N}.md here]
+
+## Sign-off
+
+*Pending review by `/wire:migration-acceptance-pack-review $ARGUMENTS --batch {N}`*
+
+---
+*Generated automatically by Wire Framework v3.9.9 · `/wire:dbt-migration-generate {ARGUMENTS}`*
+```
+
+Update status.md to record that the acceptance pack was generated:
+```yaml
+artifacts:
+  migration_acceptance_pack:
+    batch_{N}_generated: true
+    batch_{N}_generated_date: "{{TODAY}}"
+    batch_{N}_review: pending
+```
 
 ### Step 5: Update status
 
@@ -217,16 +425,31 @@ artifacts:
     current_batch: N
     batches_complete: [1, 2, ..., N]
     models_translated: total_count
+    models_passed: passed_count
+    models_failed: failed_count
 ```
 
 If `--model` or `--select` was used, update only the translated models' status. Do not advance `current_batch`.
 
 ### Step 6: Output summary
 
-Print: models translated in this run, count of manual review flags, and next command:
-
+Print a model-by-model results table:
 ```
-/wire:dbt-migration-validate $ARGUMENTS --batch N
+[wire] Batch N — Translation + Equivalency Results
+┌──────────────────────────────────┬────────┬───────────┬─────────┐
+│ Model                            │ Iter.  │ Status    │ Checks  │
+├──────────────────────────────────┼────────┼───────────┼─────────┤
+│ stg_admin_site__leads            │ 1      │ ✅ PASSED  │ A B C   │
+│ stg_admin_site__dealers          │ 3      │ ✅ PASSED  │ A B C   │
+│ stg_admin_site__products         │ 5      │ ❌ FAILED  │ A ✗ C   │
+└──────────────────────────────────┴────────┴───────────┴─────────┘
+N passed · M failed · acceptance pack generated (batch {N})
+```
+
+Then:
+```
+Review and sign off the acceptance pack:
+/wire:migration-acceptance-pack-review $ARGUMENTS --batch N
 ```
 
 If all batches are complete:
@@ -237,10 +460,12 @@ All N batches translated.
 
 ## Output Files
 
-- `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path}/{model_name}.sql` — subdirectory structure mirrors the source dbt project (e.g. `staging/stripe/stg_stripe_charges.sql`)
-- `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path}/{model_name}.yml` — companion schema/properties YAML at the same relative path
+- `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path}/{model_name}.sql` — subdirectory structure mirrors the source dbt project
+- `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path}/{model_name}.yml` — companion schema/properties YAML
 - `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path}/{model_name}.diff.md` — covers `.sql` and `.yml` changes
 - `.wire/releases/$ARGUMENTS/migration/dbt/batch_{N}_summary.md`
+- `.wire/releases/$ARGUMENTS/migration/dbt/acceptance_pack_batch_{N}.md` — generated when all batch models reach terminal state
+- `.wire/releases/$ARGUMENTS/artifacts/migration_strategy/dag_batch_{N}.md` — updated Mermaid DAG with current model states
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 
 

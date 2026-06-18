@@ -255,6 +255,34 @@ Platform Migration — additional questions:
   migration_pair: snowflake_to_bigquery
 ```
 
+### Register the source dbt repository (v3.9.9+)
+
+Before running the first dbt migration batch, register the source dbt project location and create a local snapshot:
+
+```
+/wire:migration-source-register 01-gdp-snowflake-to-bq
+
+[wire] Registering source dbt repository
+────────────────────────────────────────────────────────
+  git_repo:              https://github.com/gdp/analytics-dbt
+  branch:                main
+  models_path:           models/
+  local_snapshot_path:   .wire/releases/01-gdp-snowflake-to-bq/migration/source_snapshot/
+
+Saved to status.md under migration_source. Run /wire:migration-source-refresh to create the local snapshot.
+
+/wire:migration-source-refresh 01-gdp-snowflake-to-bq
+
+[wire] Refreshing source snapshot...
+  Cloning: https://github.com/gdp/analytics-dbt (branch: main)
+  .wire/releases/01-gdp-snowflake-to-bq/migration/source_snapshot/ created
+  180 models found:
+    staging/        82 models
+    integration/    58 models
+    warehouse/      40 models
+  migration_source.last_refreshed: 2026-04-08
+```
+
 :::info[Issue tracking and document sync]
 
 Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
@@ -417,6 +445,28 @@ A sample of the translation decisions from the strategy document:
              a dbt expression with WIRE:REVIEW
 ```
 
+:::info[Batch DAGs generated]
+
+`/wire:migration-strategy-generate` also created one Mermaid progress tracker per batch at `artifacts/migration_strategy/`. Initially all nodes are grey. They update automatically as `dbt-migration-generate` processes each model.
+
+```mermaid
+flowchart TD
+  classDef notStarted fill:#999,color:#fff
+  classDef complete fill:#2a2,color:#fff
+  classDef failed fill:#c00,color:#fff
+
+  stg_sf__accounts[stg_salesforce__accounts]:::notStarted
+  stg_sf__contacts[stg_salesforce__contacts]:::notStarted
+  stg_sf__opportunities[stg_salesforce__opportunities]:::notStarted
+
+  stg_sf__accounts --> stg_sf__opportunities
+  stg_sf__contacts --> stg_sf__opportunities
+```
+
+After batch 1 completes all three nodes would show `:::complete` (green).
+
+:::
+
 ### 5d. Target setup (SAFETY GATE)
 
 ```
@@ -457,11 +507,33 @@ Confirm? Type YES to proceed: YES
 With 180 models across 7 batches, Wire processes them wave by wave:
 
 ```
-/wire:dbt-migration-generate 01-gdp-snowflake-to-bq
+/wire:dbt-migration-generate 01-gdp-snowflake-to-bq --batch 1
 → [auto-delegated to migration-specialist agent]
-→ Processing batch 1 of 7 (trivial/low models, wave 1)
-→ 26 models auto-translated, 0 guided-translate, 0 rewrite
-→ Batch 1 complete. Run /wire:dbt-migration-validate to check.
+
+✅ MCP connectivity verified: Snowflake (source) + BigQuery (target)
+⚡ Source snapshot freshness: 4h old — OK
+
+Processing 26 models in batch 1...
+
+[1/26] stg_salesforce__accounts       iteration 1/5 → PASSED (A✅ B✅ C✅)
+[2/26] stg_salesforce__contacts       iteration 1/5 → PASSED (A✅ B✅ C✅)
+[3/26] stg_salesforce__opportunities  iteration 1/5 → compile fail
+                                      iteration 2/5 → PASSED (A✅ B✅ C✅)
+...
+[26/26] stg_netsuite__transactions    iteration 1/5 → PASSED (A✅ B✅ C✅)
+
+Batch 1 — Translation + Equivalency Results
+┌──────────────────────────────────────┬────────┬───────────┬─────────┐
+│ Model                                │ Iter.  │ Status    │ Checks  │
+├──────────────────────────────────────┼────────┼───────────┼─────────┤
+│ stg_salesforce__accounts             │ 1      │ ✅ PASSED  │ A B C   │
+│ stg_salesforce__opportunities        │ 2      │ ✅ PASSED  │ A B C   │
+│ ... (24 more PASSED)                 │ 1      │ ✅ PASSED  │ A B C   │
+└──────────────────────────────────────┴────────┴───────────┴─────────┘
+26 passed · 0 failed · acceptance pack generated (batch 1)
+
+Review and sign off the acceptance pack:
+/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1
 ```
 
 A guided-translate example from batch 3, flagged for consultant review:
@@ -502,6 +574,81 @@ SELECT
         JSON_EXTRACT_ARRAY(event_props)[SAFE_OFFSET(1)]
     ) AS prop_value,
     ...
+```
+
+### 5e-ii. Acceptance pack sign-off
+
+Each batch generates an acceptance pack — a structured record of every model translated, its iteration count, and its equivalency check results. The pack must be reviewed and signed off before the next batch begins.
+
+```
+/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1
+
+[wire] Migration Batch 1 — Acceptance Pack
+═══════════════════════════════════════════
+
+# Migration Batch 1 — Acceptance Pack
+
+**Generated**: 2026-05-14
+**Release**: 01-gdp-snowflake-to-bq
+**Batch**: 1
+**Models in batch**: 26
+**Status**: 26 passed · 0 failed
+
+## Results Table
+
+| Model | Iterations | Compile | Run | Row Count | Schema | Value Sample | Status |
+|---|---|---|---|---|---|---|---|
+| stg_salesforce__accounts | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_salesforce__opportunities | 2 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_salesforce__contacts | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_netsuite__transactions | 3 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_netsuite__customers | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| ... (21 more models) | 1–2 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+
+## Confirmation Statements
+
+- All 26 models in batch 1 have been processed through the translation and equivalency loop
+- All models marked PASSED have satisfied: row count ±0.5%, schema match, column value sampling ±1%/±2%
+- No models failed. No manual remediation required for this batch.
+- No writes were made to the source platform (Snowflake) during this batch
+- All translated models are committed to `.wire/releases/01-gdp-snowflake-to-bq/migration/dbt/`
+
+## Batch 1 DAG
+
+[Mermaid DAG — all 26 nodes green]
+
+## Sign-off
+
+*Pending review by `/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1`*
+
+---
+*Generated automatically by Wire Framework v3.9.9 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
+
+═══════════════════════════════════════════
+
+Reviewer — please confirm before responding:
+
+  [ ] You have reviewed the model-by-model results table
+  [ ] FAILED models have been noted and escalated, accepted as known
+      gaps, or scheduled for a follow-up batch
+  [ ] You are satisfied that PASSED models meet the equivalency
+      thresholds agreed in the migration strategy
+
+Decision (A=Approve · R=Reject · H=Hold): A
+Reviewer name: Alex Caldwell (Senior Analytics Engineer, GDP)
+
+→ Sign-off recorded. Batch 1 approved.
+
+## Sign-off
+
+| Field | Value |
+|---|---|
+| Decision | APPROVED |
+| Reviewer | Alex Caldwell |
+| Date | 2026-05-14 |
+| Notes | — |
+
+→ Next batch: /wire:dbt-migration-generate 01-gdp-snowflake-to-bq --batch 2
 ```
 
 ### 5f. Equivalency validation loop

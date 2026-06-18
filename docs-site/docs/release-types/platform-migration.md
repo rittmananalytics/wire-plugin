@@ -11,6 +11,15 @@ The Platform Migration release type covers the full lifecycle of migrating a dat
 
 ## Artifact zones
 
+**Pre-audit utilities** — run these before starting the audit zone to register and snapshot the source dbt repository.
+
+| Command | Purpose |
+|---|---|
+| `/wire:migration-source-register <release>` | Register the source dbt git repo (URL or local path, branch, models path) in `status.md` |
+| `/wire:migration-source-refresh <release>` | Refresh or create the local snapshot; updates `migration_source.last_refreshed` |
+
+`dbt-migration-generate` checks `migration_source.last_refreshed` at startup and warns if the snapshot is more than 24 hours old.
+
 **Audit zone** — read-only analysis of the source platform. No writes to any external system.
 
 | Artifact | Command | Purpose |
@@ -26,10 +35,10 @@ The Platform Migration release type covers the full lifecycle of migrating a dat
 
 | Artifact | Safety gate | Purpose |
 |---|---|---|
-| `migration_strategy` | No | Platform-pair translation decisions, phasing, rollback |
+| `migration_strategy` | No | Platform-pair translation decisions, phasing, rollback; generates per-batch Mermaid DAG files |
 | `target_setup` | **Yes** | Target warehouse config, schemas, roles, service accounts |
 | `ingestion_migration` | **Yes** | Migrate connectors to target platform via MCP (creates new connectors + connect cards); runbook fallback if MCP unavailable |
-| `dbt_migration` | No | Translate dbt models batch by batch to target dialect |
+| `dbt_migration` | No | Translate dbt models batch by batch; inline translate→compile→run→equivalency loop per model (up to 5 iterations) |
 | `orchestration_migration` | **Yes** | Recreate orchestration jobs on target platform |
 | `equivalency_validation` | No (loop) | Iterative row-count, schema, value, freshness comparison |
 | `cutover` | **Yes** | Go-live runbook — point of no return |
@@ -113,6 +122,19 @@ When the relevant ingestion tool's MCP server is reachable, `ingestion-migration
 
 Wire never edits or re-points an existing source connector. If the MCP server is unavailable, Wire falls back to a step-by-step runbook — which also describes new connector creation only. The validate step adapts: MCP path verifies connector state via API; runbook path checks document completeness.
 
+## Source repository management
+
+Before running any audit or migration commands, register the source dbt project so Wire knows where to find model SQL files and the manifest.
+
+```
+/wire:migration-source-register <release>
+/wire:migration-source-refresh <release>
+```
+
+`migration-source-register` records the source repository location — a remote git URL or a local path, the branch, and the models directory — in `status.md` under `migration_source`. `migration-source-refresh` checks out or pulls the snapshot and writes the current timestamp to `migration_source.last_refreshed`.
+
+`dbt-migration-generate` reads `last_refreshed` at startup. If it is more than 24 hours old, translation is blocked with a warning until you run `migration-source-refresh` again. This prevents silent drift between the snapshotted SQL and whatever is live in the source warehouse.
+
 ## dbt migration: parallel agents, batches, and folder structure
 
 ```
@@ -155,6 +177,138 @@ Each model gets one of three translation treatments:
 - **guided-translate**: Non-trivial dialect difference — translated then flagged with `-- WIRE:REVIEW`
 - **rewrite**: Logic tightly coupled to source platform features — flagged with `-- WIRE:REWRITE`
 
+### Iterative translation and equivalency loop
+
+Starting in v3.9.9, `dbt-migration-generate` embeds a per-model loop directly inside each translation agent. No manual intervention between iterations. Both the source and target platform MCP servers must be reachable before the command starts — it aborts with a clear error if either is missing.
+
+For each model, the agent runs up to five iterations:
+
+1. Translate source SQL to the target warehouse dialect
+2. Compile-check against the target platform — `LIMIT 0` query, no data read
+3. Run the model on the target test project
+4. Three equivalency checks in sequence: row count (±0.5% tolerance), schema match, 1 000-row column value sampling
+5. If any check fails, auto-fix the translated SQL and repeat from step 2
+
+A model exits the loop as soon as all four checks pass. After five failed iterations it is marked `failed` and the batch continues — no mid-loop prompt to the user. Failures are surfaced in the acceptance pack once the batch completes.
+
+The per-model loop runs inside the same parallel agent structure — a 20-model batch still spawns four agents simultaneously; each agent handles its own loop for the ~5 models assigned to it.
+
+## Batch DAG visualisation
+
+`/wire:migration-strategy-generate` generates a Mermaid DAG file per batch at `artifacts/migration_strategy/dag_batch_N.md`. Each node represents one model; state is colour-coded and updated in-place as `dbt-migration-generate` runs.
+
+| Colour | State |
+|---|---|
+| Grey (`#999`) | Not started |
+| Orange (`#f90`) | Translated / in progress |
+| Green (`#2a2`) | Equivalency passed |
+| Red (`#c00`) | Failed after 5 iterations |
+
+Example batch DAG:
+
+```mermaid
+graph LR
+    stg_stripe_charges:::done --> int_payments:::done
+    stg_stripe_refunds:::done --> int_payments
+    int_payments --> fct_revenue:::inprogress
+    stg_salesforce_accounts:::notstarted --> dim_accounts:::notstarted
+    fct_revenue --> fct_revenue_daily:::notstarted
+
+    classDef notstarted fill:#999,color:#fff
+    classDef inprogress fill:#f90,color:#fff
+    classDef done fill:#2a2,color:#fff
+    classDef failed fill:#c00,color:#fff
+```
+
+Open the DAG file in any Mermaid-capable viewer — GitHub renders it natively in the PR diff.
+
+## Migration acceptance packs
+
+Once all models in a batch reach a terminal state (passed or failed after 5 iterations), `dbt-migration-generate` automatically writes `artifacts/dbt_migration/acceptance_pack_batch_N.md`. The pack contains a per-model results table — translation treatment, iteration count, equivalency check results, and any `-- WIRE:REVIEW` or `-- WIRE:REWRITE` flags — followed by a sign-off block.
+
+Use the review command to present the pack to stakeholders:
+
+```
+/wire:migration-acceptance-pack-review <release> [--batch N]
+```
+
+Omit `--batch` to review the most recently completed batch. The reviewer chooses one of three outcomes:
+
+- **Approve** — batch is accepted; Wire unblocks the next batch
+- **Reject** — batch is sent back; `dbt-migration-generate` re-runs failed models
+- **Hold** — batch is paused pending an external decision; noted in `status.md`
+
+`cutover-generate` remains blocked until all batches are approved.
+
+### What an acceptance pack looks like
+
+`acceptance_pack_batch_1.md` is a structured markdown document written directly to `.wire/releases/<release>/migration/dbt/`. Here is a realistic example for a Snowflake → BigQuery migration batch with 8 models, 6 passed and 2 failed:
+
+```markdown
+# Migration Batch 1 — Acceptance Pack
+
+**Generated**: 2026-05-14
+**Release**: 01-gdp-snowflake-to-bq
+**Batch**: 1
+**Models in batch**: 8
+**Status**: 6 passed · 2 failed
+
+## Results Table
+
+| Model | Iterations | Compile | Run | Row Count | Schema | Value Sample | Status |
+|---|---|---|---|---|---|---|---|
+| stg_salesforce__accounts | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_salesforce__opportunities | 2 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_salesforce__contacts | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_netsuite__transactions | 3 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_netsuite__customers | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_netsuite__revenue_lines | 2 | ✅ | ✅ | ✅ | ✅ | ✅ | **PASSED** |
+| stg_intercom__event_attributes | 5 | ✅ | ✅ | ✅ | ✅ | ❌ | **FAILED** |
+| stg_intercom__session_metadata | 5 | ✅ | ✅ | ❌ | ✅ | ✅ | **FAILED** |
+
+## Confirmation Statements
+
+- All 8 models in batch 1 have been processed through the translation and equivalency loop
+- Models marked PASSED have satisfied: row count ±0.5%, schema match, column value sampling ±1%/±2%
+- Models marked FAILED exhausted 5 iterations without passing all equivalency checks
+- No writes were made to the source platform (Snowflake) during this batch
+- The following models require manual remediation:
+  - `stg_intercom__event_attributes` — WIRE:REWRITE; VARIANT positional access has no direct BigQuery equivalent; value sample check failed on `prop_key` / `prop_value`
+  - `stg_intercom__session_metadata` — row count delta exceeded ±0.5% after 5 iterations; QUALIFY window tie-breaking behaviour differs between Snowflake and BigQuery
+
+## Batch 1 DAG
+
+graph TD
+  stg_salesforce__accounts:::complete
+  stg_salesforce__opportunities:::complete
+  stg_salesforce__contacts:::complete
+  stg_netsuite__transactions:::complete
+  stg_netsuite__customers:::complete
+  stg_netsuite__revenue_lines:::complete
+  stg_intercom__event_attributes:::failed
+  stg_intercom__session_metadata:::failed
+
+  classDef complete fill:#2a2,color:#fff
+  classDef failed fill:#c00,color:#fff
+
+## Sign-off
+
+*Pending review by `/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1`*
+```
+
+After the review command runs and the reviewer decides to hold, the sign-off block is appended to the same file:
+
+```markdown
+## Sign-off
+
+| Field | Value |
+|---|---|
+| Decision | HOLD |
+| Reviewer | Alex Caldwell |
+| Date | 2026-05-14 |
+| Notes | Two Intercom models require manual rewrite. Scheduled for a follow-up batch 1b. Proceeding with batch 2 for remaining model layers. |
+```
+
 ## Equivalency validation loop
 
 Once data is flowing into both platforms:
@@ -185,6 +339,10 @@ Four commands require explicit confirmation before proceeding:
 ```
 /wire:new                                            # release_type: platform_migration
 
+# ── SOURCE REPOSITORY ───────────────────────────────────────────
+/wire:migration-source-register <release>            # register source dbt repo URL/path, branch, models path
+/wire:migration-source-refresh <release>             # snapshot the repo; updates last_refreshed
+
 # ── AUDIT ZONE (read-only) ──────────────────────────────────────
 /wire:migration-audit-all <release>
 
@@ -206,7 +364,7 @@ Four commands require explicit confirmation before proceeding:
 /wire:migration-inventory-review <release>
 
 # ── MIGRATION ZONE ──────────────────────────────────────────────
-/wire:migration-strategy-generate <release>
+/wire:migration-strategy-generate <release>          # also writes dag_batch_N.md per batch
 /wire:migration-strategy-validate <release>
 /wire:migration-strategy-review <release>
 
@@ -221,9 +379,12 @@ Four commands require explicit confirmation before proceeding:
 /wire:ingestion-migration-review <release>
 
 # dbt migration — batched; repeat for each batch
+# each batch runs an inline translate→compile→run→equivalency loop per model (up to 5 iterations)
+# after each batch completes, an acceptance pack is auto-generated
 /wire:dbt-migration-generate <release>
 /wire:dbt-migration-validate <release>
 /wire:dbt-migration-review <release>
+/wire:migration-acceptance-pack-review <release> --batch N
 
 # ⚠ SAFETY GATE
 /wire:orchestration-migration-generate <release>

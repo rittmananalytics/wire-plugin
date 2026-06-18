@@ -66,16 +66,14 @@ This skill should activate when users:
    - Check for `dbt_coding_conventions.md` in project root
    - Check for `docs/dbt_conventions.md` in project
 
-2. **PKM user conventions** (fallback)
-   - Conventions: `/Users/olivierdupois/dev/PKM/4. 🛠️ Craft/Tools/dbt/dbt-conventions.md`
-   - Testing: `/Users/olivierdupois/dev/PKM/4. 🛠️ Craft/Tools/dbt/dbt-testing.md`
-
-**Note:** The skill's supporting files (`conventions-reference.md`, `testing-reference.md`, `examples/`) are embedded reference documentation that guide validation logic, not convention sources.
+2. **Embedded RA conventions** (fallback)
+   - Conventions: `conventions-reference.md` (relative to this skill file)
+   - Testing: `testing-reference.md` (relative to this skill file)
 
 **Detection:**
 - Use `Glob` to search for convention files in project root
 - If found, use `Read` to load project conventions
-- If not found, use PKM conventions as fallback
+- If not found, read `conventions-reference.md` and `testing-reference.md` from this skill's directory
 - Note which source is being used in validation output
 
 ---
@@ -1172,7 +1170,7 @@ When creating a new dbt model from scratch:
 
 **Convention Sources (2-tier system):**
 - Project-specific: `.dbt-conventions.md` (if exists in project)
-- PKM user conventions: `/Users/olivierdupois/dev/PKM/4. 🛠️ Craft/Tools/dbt/dbt-conventions.md` and `dbt-testing.md`
+- Embedded RA conventions: `conventions-reference.md` and `testing-reference.md` (relative to this skill file)
 
 ---
 

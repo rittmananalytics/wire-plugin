@@ -123,6 +123,69 @@ Use the template at `TEMPLATES/migration/migration_strategy.md`. Include:
 - Risk register (top 5 risks with likelihood, impact, mitigation)
 - Go/no-go checklist for cutover
 
+### Step 5b: Generate per-batch migration DAGs
+
+For each batch defined in the migration phases (or from `audit/dbt_audit.csv` if available at this stage), generate a Mermaid batch DAG file.
+
+**Output location per batch**: `.wire/releases/$ARGUMENTS/artifacts/migration_strategy/dag_batch_{N}.md`
+
+Create the directory if it doesn't exist. One file per batch. Each file is a standalone Mermaid flowchart — it will be updated in-place by `/wire:dbt-migration-generate` as models progress through the translation and equivalency loop.
+
+**DAG format**:
+
+```markdown
+# Migration Batch {N} — Model DAG
+
+*Status last updated: {TODAY}*
+*Legend: ⬜ not started · 🟠 translated · ✅ passed · ❌ failed*
+
+```mermaid
+flowchart TD
+  classDef notStarted fill:#999,color:#fff,stroke:#666
+  classDef migrated fill:#f90,color:#000,stroke:#c60
+  classDef complete fill:#2a2,color:#fff,stroke:#1a1
+  classDef failed fill:#c00,color:#fff,stroke:#800
+
+  model_a[stg_admin_site__leads]:::notStarted
+  model_b[stg_admin_site__dealers]:::notStarted
+  model_c[int_leads_with_dealers]:::notStarted
+
+  model_a --> model_c
+  model_b --> model_c
+```
+```
+
+**Building the DAG**:
+
+1. Source the model list for each batch from `audit/dbt_audit.csv` (column `batch_number`). If the audit CSV is not yet available, use the batch groupings defined in the migration phases (Step 3 above) as a placeholder — one node per model listed in the phase work items.
+
+2. Build edges from `ref()` dependencies:
+   - **Preferred**: read `<migration.dbt_project_path>/target/manifest.json` — it contains `depends_on.nodes` edges for every model.
+   - **Fallback**: scan each model `.sql` for `ref(...)` calls to derive edges.
+   - Only show edges where both the parent and child are **in the same batch**. For cross-batch dependencies (parent in batch M, child in batch N > M), add a dashed edge from an external reference node:
+
+     ```
+     ext_batch_M_model_x([model_x · batch M]):::notStarted
+     ext_batch_M_model_x -.-> model_y
+     ```
+
+3. Initial state for all nodes: `:::notStarted` (grey). Do not assign any other state at strategy time — states are updated by `/wire:dbt-migration-generate` as the migration runs.
+
+4. Node labels: use the model name (without schema prefix). Sanitise for Mermaid: replace `__` with `_`, avoid parentheses in node IDs. Use `[label]` (rectangular) for standard models, `([label])` (stadium) for external reference nodes, `{label}` (diamond) for models flagged `low` confidence in the dbt audit.
+
+**Update the strategy document** (`migration_strategy.md`) to include a reference section listing all batch DAG files:
+
+```markdown
+## Migration Batch DAGs
+
+Visual progress tracker for each migration batch. Updated automatically by `/wire:dbt-migration-generate`.
+
+| Batch | File | Models |
+|-------|------|--------|
+| 1 | `artifacts/migration_strategy/dag_batch_1.md` | N models |
+| 2 | `artifacts/migration_strategy/dag_batch_2.md` | N models |
+```
+
 ### Step 6: Update status
 
 ```yaml

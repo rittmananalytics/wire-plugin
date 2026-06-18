@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.9.9 — Iterative migration loop, source registration, batch DAGs, acceptance packs
+
+**Released**: June 2026
+
+Four improvements to the platform migration release type, driven by observations from a live engagement pilot.
+
+**Iterative translation+equivalency loop** — `/wire:dbt-migration-generate` now embeds a per-model closed loop directly. For each model: translate → compile-check (LIMIT 0) → run on target → three equivalency checks (row count ±0.5%, schema, 1000-row column value sampling) → auto-diagnose and fix on failure → repeat up to 5 iterations. Both source and target platform MCPs must be connected before the command starts. No mid-loop manual review prompts — the loop runs autonomously for all models in the batch, then prints a results table.
+
+**Source repository management** — two new commands manage the source dbt project snapshot: `/wire:migration-source-register <release>` records the git repo URL (or local path), branch, and models path in `status.md`. `/wire:migration-source-refresh <release>` pulls or clones the repo into a local cache. `dbt-migration-generate` checks `migration_source.last_refreshed` at startup and warns if the snapshot is older than 24 hours.
+
+**Mermaid batch DAGs** — `/wire:migration-strategy-generate` now generates one Mermaid flowchart per batch at `artifacts/migration_strategy/dag_batch_N.md`. Initial state: all nodes grey (not started). As `dbt-migration-generate` processes each model, nodes update in-place: orange = translated/in-progress, green = equivalency passed, red = failed after 5 iterations. DAG files are embedded in the strategy document.
+
+**Migration acceptance packs** — after all models in a batch reach terminal state, `dbt-migration-generate` auto-generates `acceptance_pack_batch_N.md` with a per-model results table, confirmation statements, Mermaid DAG embed, and sign-off block. New command `/wire:migration-acceptance-pack-review <release> [--batch N]` presents the pack for stakeholder sign-off (Approve/Reject/Hold), appends the completed sign-off to the document, and syncs to Jira and the document store.
+
+---
+
 ## v3.9.8 — dbt node selectors for migration translation; quieter telemetry
 
 **Released**: June 2026
