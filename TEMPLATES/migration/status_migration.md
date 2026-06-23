@@ -22,6 +22,8 @@ migration:
   target_database: null     # Snowflake: target database name
   target_schema: null       # Snowflake: default schema on target database
   service_account_key_path: null  # BigQuery: local path to service account JSON key file
+  transformation_log_table: null  # Optional BigQuery audit table for dbt-migration per-model transformation log
+                                   # e.g. "<target-project>.wire_audit.dbt_transformation_log" — unset = logging skipped
   status: not_started                      # not_started | in_progress | complete
   completed_date: null
 

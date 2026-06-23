@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.9.9 | **Date**: June 2026
+**Version**: 3.10.0 | **Date**: June 2026
 
 ---
 
@@ -2192,7 +2192,7 @@ graph TD
 *Pending review by `/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1`*
 
 ---
-*Generated automatically by Wire Framework v3.9.9 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
+*Generated automatically by Wire Framework v3.10.0 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
 ````
 
 After `/wire:migration-acceptance-pack-review` is run, the reviewer's decision is appended to the same file:
@@ -5555,6 +5555,20 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 32. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v3.10.0 — Platform-Migration Hardening (June 2026)
+
+Hardening of the platform-migration commands ahead of a full Snowflake → BigQuery migration. All changes are additive and backward compatible.
+
+- **Reverse-ETL topology** — the default is now additive PR-gated syncs in the existing GitHub-Sync repo, reusing destinations in place. GitHub Sync doesn't carry destinations, so a separate workspace would force re-authenticating every one. RA stages every change as a pull request the client merges; cutover is two client-merged PRs (disable source-origin, enable target-origin). Parallel-workspace and in-place re-point remain documented alternatives.
+- **Decoy destination safety** — destination safety is a decoy ID-mapping table plus a scoped credential, not a "disabled" flag. Test syncs carry decoy destinations of the same type; production IDs are absent until cutover.
+- **Drift-aware translation** — reads a per-release drift manifest and won't apply the generic `VARIANT → JSON` mapping to a column that lands as `STRING` under BigLake Iceberg.
+- **Re-verified audit tags and scope gate** — `repoint` syncs are re-scanned for non-portable constructs (`::`, `FLATTEN`, `QUALIFY`, `IFF`, `NVL`, `CONVERT_TIMEZONE`, variant paths) and reclassified when found; syncs whose source model isn't built on target are deferred.
+- **Reverse-ETL audit coverage** — `table` and `custom` model types now have their source objects resolved (previously ~37% of active syncs had none), with a source-resolution coverage metric and an explicit unresolved list.
+- **dbt-migration transformation log** — a structured per-model record persists to a configurable BigQuery audit table (`migration.transformation_log_table`); the `.diff.md` output is unchanged.
+- **New shared pre-flight gate** — `specs/utils/migration_preflight.md`, referenced by both migration generate commands, confirms a fresh per-batch dbt re-sync, source presence on target, target PII/setup readiness, and the decoy mapping before generating.
 
 ---
 

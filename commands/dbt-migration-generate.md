@@ -30,6 +30,7 @@ argument-hint: <release-folder> [--batch N] [--model name] [--select selector] [
 
 Follow `specs/utils/migration_agent_delegate.md` before executing the workflow below.
 Follow `specs/utils/stale_artifact_check.md` with `artifact_id: dbt_migration` and `artifact_file_path: migration/dbt/batch_1_summary.md` before proceeding.
+Follow `specs/utils/migration_preflight.md` with `caller: dbt_migration` and `batch_ref` set to the batch/scope about to be translated (Checks 1–3); if any fail, output the blockers and stop before generating. This supersedes the soft Step 0b freshness warning below — the gate's Check 1 is the blocking version.
 
 ---
 
@@ -403,7 +404,7 @@ Use this template:
 *Pending review by `/wire:migration-acceptance-pack-review $ARGUMENTS --batch {N}`*
 
 ---
-*Generated automatically by Wire Framework v3.9.9 · `/wire:dbt-migration-generate {ARGUMENTS}`*
+*Generated automatically by Wire Framework v3.10.0 · `/wire:dbt-migration-generate {ARGUMENTS}`*
 ```
 
 Update status.md to record that the acceptance pack was generated:
@@ -414,6 +415,42 @@ artifacts:
     batch_{N}_generated_date: "{{TODAY}}"
     batch_{N}_review: pending
 ```
+
+### Step 4d: Persist per-model transformation log to BigQuery
+
+Carwow asked for a structured, queryable audit trail of what each model's translation changed — not just console output and `.diff.md` files. This step is **additive**: the diff files (Step 3.2) and batch summary (Step 4) are still written. It persists one structured record per migrated object to a BigQuery audit table.
+
+**Configurable target table.** Read the audit table location from status.md:
+
+```yaml
+migration:
+  transformation_log_table: null   # e.g. "carwow-migration.wire_audit.dbt_transformation_log"
+```
+
+- If `transformation_log_table` is null or absent, **skip this step** with a one-line note (`[wire] No transformation_log_table configured — skipping BigQuery transformation log (diff.md still written).`). Do not block.
+- The table must live in the target project, never a source or a `data_safety.production_projects` entry — apply the same write guard as Step 3.4. If it resolves to a blocked project, stop and report.
+
+**Schema** (create with `CREATE TABLE IF NOT EXISTS` on first run, via the target platform MCP write tool):
+
+| Column | Type | Meaning |
+|--------|------|---------|
+| `logged_at` | TIMESTAMP | When the record was written |
+| `release` | STRING | `$ARGUMENTS` |
+| `batch` | INT64 | Batch number (null for `--model`/`--select` scope) |
+| `object_name` | STRING | Model name |
+| `relative_path` | STRING | Path within the source dbt project |
+| `source_dialect` | STRING | `migration.source_platform` |
+| `target_dialect` | STRING | `migration.target_platform` |
+| `dialect_changes` | JSON | Array of `{construct, from, to, category}` — the source→target dialect changes applied (function swaps, type casts, config/macro changes) |
+| `manual_review` | BOOL | True if the model is FAILED or `low` confidence |
+| `manual_review_reasons` | JSON | Array of strings — which checks failed / why review is flagged |
+| `confidence` | STRING | `high` \| `medium` \| `low` |
+| `final_status` | STRING | `PASSED` \| `FAILED` |
+| `iterations_taken` | INT64 | Loop iterations used |
+
+**Write one row per migrated object** in this batch/scope, derived from the per-model record produced by Step 3.6 and the translations applied in Step 3.1 / Step 3b. Use parameterised `INSERT` (or a staged `MERGE` keyed on `release` + `object_name` + `batch` if re-running, so a re-translation updates rather than duplicates).
+
+Record in the batch summary that the transformation log was written (or skipped, with the reason).
 
 ### Step 5: Update status
 
@@ -427,6 +464,8 @@ artifacts:
     models_translated: total_count
     models_passed: passed_count
     models_failed: failed_count
+    transformation_log_written: true | false   # false when transformation_log_table is unconfigured
+    transformation_log_rows: N                  # rows written this run (0 if skipped)
 ```
 
 If `--model` or `--select` was used, update only the translated models' status. Do not advance `current_batch`.
@@ -465,6 +504,7 @@ All N batches translated.
 - `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path}/{model_name}.diff.md` — covers `.sql` and `.yml` changes
 - `.wire/releases/$ARGUMENTS/migration/dbt/batch_{N}_summary.md`
 - `.wire/releases/$ARGUMENTS/migration/dbt/acceptance_pack_batch_{N}.md` — generated when all batch models reach terminal state
+- BigQuery table `migration.transformation_log_table` (when configured) — one structured row per migrated object; not a file
 - `.wire/releases/$ARGUMENTS/artifacts/migration_strategy/dag_batch_{N}.md` — updated Mermaid DAG with current model states
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 

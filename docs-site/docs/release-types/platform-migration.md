@@ -87,6 +87,10 @@ Wire auto-detects which ingestion tool you are using and connects via MCP or API
 
 If the source platform includes reverse ETL syncs, Wire audits them via the Hightouch REST API (`https://api.hightouch.com/api/v1`) using a read-only API key set in the `HIGHTOUCH_TOKEN` env var, or from a copy of the client's Hightouch Git config directory at `audit/hightouch_git/`.
 
+The audit resolves the source warehouse object behind every sync — not just `rawSql` models, but `table` models (the configured source table) and `custom` models (best-effort from their definition) — and reports source-resolution coverage. Any sync whose source can't be resolved is listed explicitly rather than dropped, so its layer and drift exposure stay visible.
+
+The reverse-ETL migration command (v3.10.0+) defaults to an additive topology: when Hightouch is managed by GitHub Sync, it adds a new batch of target-warehouse syncs alongside the existing source-warehouse ones in the same config repo and reuses the existing destination definitions in place, rather than spinning up a parallel workspace. GitHub Sync carries models and syncs but not destinations, so a separate workspace would force re-authenticating every destination. Every change is staged as a pull request the client reviews and merges — RA never enables/disables syncs directly — and cutover is two client-merged PRs (disable source-origin, enable target-origin). Destination safety during validation is a decoy ID-mapping table plus a scoped credential, so test syncs can only ever write to decoy targets; production destination IDs are absent until the cutover PR swaps them back. Translation is type-drift aware: it reads a per-release drift manifest and won't apply the generic `VARIANT → JSON` mapping to a column that lands as `STRING` under BigLake Iceberg.
+
 ### Private network access
 
 If either warehouse is behind a VPC and not publicly reachable, deploy an MCP server tunnel inside the client's network and register it in Claude Console → Settings → MCP Tunnels. Wire outputs the exact tunnel deployment steps during `/wire:new` setup — do not proceed to the audit zone until the tunnel is confirmed active.
@@ -190,6 +194,12 @@ For each model, the agent runs up to five iterations:
 5. If any check fails, auto-fix the translated SQL and repeat from step 2
 
 A model exits the loop as soon as all four checks pass. After five failed iterations it is marked `failed` and the batch continues — no mid-loop prompt to the user. Failures are surfaced in the acceptance pack once the batch completes.
+
+A shared pre-flight gate (v3.10.0+) runs before the batch starts translating: it confirms the source dbt project was freshly re-synced for this batch, every source object the batch depends on exists and has data on target, and the target environment is prepared (PII policy tags and `target_setup` applied — not a playground). Any failure stops the command before generating.
+
+### Per-model transformation log
+
+Starting in v3.10.0, `dbt-migration-generate` can persist a structured record per migrated object to a BigQuery audit table — object name, batch, source → target dialect changes, manual-review flags, and confidence — set `migration.transformation_log_table` in `status.md` to the table (e.g. `<target-project>.wire_audit.dbt_transformation_log`). This gives a queryable per-model audit trail across the whole migration. It is additive: the per-model `.diff.md` files and batch summary are still written, and logging is skipped cleanly when the table isn't configured.
 
 The per-model loop runs inside the same parallel agent structure — a 20-model batch still spawns four agents simultaneously; each agent handles its own loop for the ~5 models assigned to it.
 

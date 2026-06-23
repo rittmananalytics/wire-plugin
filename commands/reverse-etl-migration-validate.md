@@ -38,7 +38,7 @@ Checks the reverse ETL migration runbook for completeness — the migration topo
 ## Validation Checks
 
 **Check 1 — Topology recorded**
-The runbook states the chosen topology (parallel workspace or in-place re-point) with a rationale. For the parallel-workspace path, it documents the repo clone, new workspace, GitHub Sync configuration, and target-warehouse source connection.
+The runbook states the chosen topology (additive PR-gated repo — the default — or parallel workspace, or in-place API re-point) with a rationale. For the default additive path, it documents the repo branch, the additive target-warehouse source connection, the new decoy-bearing test syncs, and PR A. For the parallel-workspace path, it documents the repo clone, new workspace, GitHub Sync configuration, destination re-authentication, and target-warehouse source connection.
 PASS: Topology and its setup steps present. FAIL: Topology not stated or build steps missing.
 
 **Check 2 — All in-scope syncs covered**
@@ -57,9 +57,9 @@ PASS: All verifications present. FAIL: List unverified translations.
 Every `rebuild` sync has a documented schema mapping and step-by-step rebuild plan.
 PASS: All rebuild plans present. FAIL: List missing rebuild plans.
 
-**Check 6 — Validation is preview-based against a frozen baseline, syncs disabled**
-The validation procedure compares model outputs and audience sizes against a frozen source baseline (not live production) and uses sync previews / record inspection with destination connections disabled. It does not enable destination syncs to validate.
-PASS: Validation is preview-based against a baseline with syncs disabled. FAIL: Validation relies on enabling syncs / live runs, or compares against moving production.
+**Check 6 — Validation is preview-based against a frozen baseline, decoy destinations only**
+The validation procedure compares model outputs and audience sizes against a frozen source baseline (not live production) and uses sync previews / record inspection. Test syncs carry decoy destination IDs only — production destination IDs are absent. It does not enable a sync against a production destination to validate.
+PASS: Validation is preview-based against a baseline; test syncs carry decoy IDs only. FAIL: Validation relies on live runs to production destinations, compares against moving production, or test syncs carry production destination IDs.
 
 **Check 7 — Sync-level transformation logic reviewed**
 The runbook records a per-sync review of sync-level logic — field mappings, computed fields, sync filters, match/identity-resolution rules, and audience inclusion/exclusion — separate from model-output comparison.
@@ -70,12 +70,20 @@ If any Lightning syncs are in scope, the runbook includes the `CREATE SCHEMA` an
 PASS: Present, or no Lightning syncs. FAIL: Missing.
 
 **Check 9 — Rollback procedures present**
-The runbook includes a rollback procedure for the chosen topology and each approach type used (parallel: don't enable / disable new-workspace syncs and re-enable the source workspace; in-place: re-apply original `sourceId`).
+The runbook includes a rollback procedure for the chosen topology and each approach type used (additive: revert PR C — disable target syncs / restore decoy IDs — and revert PR B to re-enable source syncs; parallel: don't enable / disable new-workspace syncs and re-enable the source workspace; in-place: re-apply original `sourceId`).
 PASS: Rollbacks present. FAIL: List missing rollbacks.
 
-**Check 10 — Source left active until cutover**
-The runbook does not deactivate the source syncs (or source workspace) during the migration phase — only after cutover, once confidence is established.
-PASS: Source deactivation / workspace decommission is in the cutover/sign-off section only. FAIL: It appears in the migration or validation steps.
+**Check 10 — Source left active until cutover, cutover is two client-merged PRs**
+The runbook does not disable the source syncs (or source workspace) during the migration phase — only at cutover, via a client-merged PR, once confidence is established. For the default additive topology, cutover is two PRs merged together by the client: PR B disables every source-origin sync and PR C enables every target-origin sync (swapping decoy IDs back to production). RA does not enable/disable syncs directly.
+PASS: Source disable / decommission appears only in the cutover/sign-off section, gated behind client-merged PRs; the two-PR cutover is documented (additive topology). FAIL: Source disable appears in the migration or validation steps, or cutover mutates the workspace outside a client-merged PR.
+
+**Check 11 — Decoy destination mapping present**
+For the additive topology, the runbook includes a decoy mapping table (one row per in-scope sync: production destination ID → decoy ID of the same destination type), references a scoped credential with write access to decoy targets only, and confirms production destination IDs are absent from the test syncs until cutover.
+PASS: Mapping table, scoped credential, and the absent-production-IDs statement present (or topology is parallel/in-place). FAIL: Missing for the additive topology.
+
+**Check 12 — Scope gate and approach re-verification recorded**
+The runbook lists any syncs deferred because their source model is not yet built on target ("Deferred — source model not built on target"), and any syncs reclassified from `repoint` to `rewrite_model` by the approach re-verification, with the construct found.
+PASS: Both lists present (empty lists stated explicitly). FAIL: Either omitted.
 
 ### Write validation report
 

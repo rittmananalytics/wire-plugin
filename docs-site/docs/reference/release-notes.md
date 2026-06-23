@@ -9,6 +9,28 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.0 — Platform-migration hardening
+
+**Released**: June 2026
+
+Platform-migration hardening ahead of a full Snowflake → BigQuery migration. A series of pilot calls turned up ways the reverse-ETL and dbt-migration commands would have misfired at estate scale; this release fixes them. All changes are additive and backward compatible.
+
+**Reverse-ETL topology — additive PR-gated syncs in the existing repo** — the default was a parallel workspace, which is wrong when Hightouch is managed by GitHub Sync: GitHub Sync carries models and syncs but not destinations, so a new workspace forces re-authenticating every destination. The default is now additive — branch the existing config repo, add target-warehouse syncs alongside the source-warehouse ones, reuse destinations in place, and stage every change as a pull request the client reviews and merges. RA never enables/disables syncs directly. Cutover is two client-merged PRs (disable source-origin, enable target-origin). Parallel-workspace and in-place re-point remain documented alternatives.
+
+**Decoy destination mapping** — destination safety is now a decoy ID-mapping table plus a scoped credential, not a "disabled" flag. Each test sync carries a decoy destination of the same type; production destination IDs are absent until the cutover PR swaps them back; the credential can write to decoy targets only.
+
+**Drift-aware translation** — the command reads a per-release drift manifest and won't apply the generic `VARIANT → JSON` / `JSON_VALUE` mapping to a column that lands as `STRING` under BigLake Iceberg, mirroring any reconciliation a `dbt_migration` diff already recorded.
+
+**Re-verified audit tags and scope gate** — approach tags are re-checked before translating (re-scanning `repoint` syncs for `::`, `FLATTEN`, `QUALIFY`, `IFF`, `NVL`, `CONVERT_TIMEZONE`, and variant-path access, reclassifying to `rewrite_model` when found), and any sync whose source model isn't built on target is deferred rather than silently included.
+
+**Reverse-ETL audit — table/custom source resolution** — `table` and `custom` model types now have their source objects resolved (previously only some `rawSql` models did, leaving ~37% of active syncs with no recorded object). The audit reports source-resolution coverage and lists unresolved syncs explicitly.
+
+**dbt-migration — per-model transformation log to BigQuery** — a structured record per migrated object (object, batch, dialect changes, manual-review flags, confidence) is persisted to a configurable BigQuery audit table. The `.diff.md` output is unchanged; this is additive.
+
+**New — shared migration pre-flight gate** — a shared spec referenced by both migration generate commands confirms, before a batch starts, that the source dbt project was freshly re-synced for this batch, source objects exist and have data on target, the target environment is prepared (not a playground), and (reverse-etl) the decoy mapping and scoped credential are in place. Any failure stops the command before generating.
+
+---
+
 ## v3.9.9 — Iterative migration loop, source registration, batch DAGs, acceptance packs
 
 **Released**: June 2026

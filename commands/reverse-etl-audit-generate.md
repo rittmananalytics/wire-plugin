@@ -120,7 +120,7 @@ For each sync, capture:
 | `sync_name` | `syncs[].slug` | `syncs/<name>.yaml → name` | CSV column |
 | `model_id` | `syncs[].modelId` | `syncs/<name>.yaml → model_id` | CSV column |
 | `model_name` | `models[id].name` | `models/<name>.yaml → name` | CSV column |
-| `model_type` | `models[id].queryType` (rawSql / dbtModel / table) | `models/<name>.yaml → query_type` | CSV column |
+| `model_type` | `models[id].queryType` (rawSql / dbtModel / table / custom) | `models/<name>.yaml → query_type` | CSV column |
 | `model_sql_summary` | First 200 chars of `models[id].sql`, or dbt model name | Full SQL from `models/<name>.yaml → sql` | CSV column |
 | `destination_name` | `destinations[id].name` | `destinations/<name>.yaml → name` | CSV column |
 | `destination_type` | `destinations[id].type` | `destinations/<name>.yaml → type` | CSV column |
@@ -131,13 +131,31 @@ For each sync, capture:
 | `last_run_at` | `syncs[].lastRunAt` | **n/a (git source)** | CSV column |
 | `last_run_rows` | `syncRuns[0].plannedRows` | **n/a (git source)** | CSV column |
 | `sync_engine` | lightning / basic (infer from config or ask user) | Check `syncs/<name>.yaml` for lightning references; otherwise ask | CSV column |
-| `warehouse_objects` | Extracted from model SQL | Extracted from full SQL in Git model file | Derive from `model_sql_summary` |
+| `warehouse_objects` | Resolved per model type (Step 3 resolution) | Resolved per model type from Git model file | Derive from `model_sql_summary` |
+| `source_resolved` | true if ≥1 object resolved, else false | same | same |
 | `complexity` | Assigned in Step 4 | Assigned in Step 4 | Assigned in Step 4 |
 | `migration_approach` | Assigned in Step 4 | Assigned in Step 4 | Assigned in Step 4 |
 | `include_in_migration` | true (default) unless disabled >90 days | true (default — status unknown from Git; flag for manual review) | CSV column |
 | `migration_notes` | Auto-generated | Auto-generated; note where runtime data is absent | CSV column |
 
-**Warehouse object extraction**: For each `rawSql` model, parse the SQL to extract referenced table and view names (schema-qualified where present). Record as `warehouse_objects` — a comma-separated list. Git files provide the full SQL rather than the 200-character truncated version returned by the API, making this extraction more reliable. If the dbt audit exists, cross-reference `dbtModel` references against the dbt model catalog to confirm the model is in scope for migration.
+**Warehouse object extraction**: Resolve `warehouse_objects` for **every** model type, not just `rawSql`. Leaving `table` and `custom` models with empty `warehouse_objects` is the coverage gap this command must close — in the Carwow audit, 209 of 559 active syncs (37%) had no resolved source object because the extractor only handled some `rawSql` models, leaving their source layer and type-drift exposure unknown.
+
+Resolve by model type:
+
+- **`rawSql`** — parse the SQL to extract referenced table and view names (schema-qualified where present). Git files provide the full SQL rather than the 200-character truncated version returned by the API, making this extraction more reliable.
+- **`dbtModel`** — resolve to the dbt model's relation. If the dbt audit exists, cross-reference `dbtModel` references against the dbt model catalog to confirm the model is in scope for migration.
+- **`table`** — resolve to the configured source table directly (the model's `table` / object configuration names it). This is a reliable resolution, not a parse.
+- **`custom`** — best-effort resolution from the custom model's definition (its query body, configured object, or connection metadata). Where the definition yields a table/view name, record it; where it genuinely cannot be resolved, mark the sync **unresolved** (see below) rather than leaving it silently blank.
+
+Record `warehouse_objects` as a comma-separated list. For any sync where no source object could be resolved, set `warehouse_objects` to empty **and** set `source_resolved: false` so it is counted and listed, never silently dropped.
+
+**Source-resolution coverage metric**: After processing all syncs, compute coverage over **active** syncs:
+- `active_sync_count` — active syncs considered
+- `resolved_sync_count` — active syncs with at least one resolved source object
+- `unresolved_sync_count` — active syncs with no resolved source object
+- `source_resolution_coverage_pct` = `resolved_sync_count / active_sync_count`
+
+Unresolved syncs are listed explicitly in the audit report (see Step 6) — their source layer and drift exposure are unknown until resolved, which is a scope risk the migration must see.
 
 ### Step 4: Classify each sync
 
@@ -167,8 +185,10 @@ List the affected syncs and note that Hightouch provisions these schemas automat
 
 Use the template at `TEMPLATES/migration/reverse_etl_audit.md`. Include:
 - Summary table (total syncs, by destination type, by complexity, by migration approach)
+- **Source-resolution coverage**: `resolved_sync_count` / `active_sync_count` (`source_resolution_coverage_pct`), broken down by model type
 - Full sync catalog table
 - Warehouse object dependency map (which warehouse tables/views each sync depends on)
+- **Unresolved syncs** — every active sync with `source_resolved: false`, listed explicitly with its model type and why it could not be resolved. Layer and drift exposure are unknown for these.
 - Lightning engine syncs and schema requirements
 - dbt model dependencies (syncs that cannot be re-pointed until a dbt migration batch is complete)
 - Excluded / decommission candidates
@@ -186,11 +206,15 @@ artifacts:
     data_source: "hightouch_api" | "git" | "csv"
     lightning_sync_count: N
     decommission_count: N
+    active_sync_count: N
+    resolved_sync_count: N
+    unresolved_sync_count: N
+    source_resolution_coverage_pct: 0.00
 ```
 
 ### Step 8: Output summary
 
-Print: total syncs cataloged, breakdown by complexity and migration approach, Lightning sync count, and next command:
+Print: total syncs cataloged, breakdown by complexity and migration approach, Lightning sync count, **source-resolution coverage** (`resolved_sync_count` / `active_sync_count`, with the unresolved count called out), and next command:
 
 ```
 /wire:reverse-etl-audit-validate $ARGUMENTS

@@ -22,13 +22,14 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Generate Hightouch reverse ETL migration runbook — build a parallel target workspace (or re-point in place), translate models, and validate by preview before enabling syncs
+description: Generate Hightouch reverse ETL migration runbook — add target-warehouse syncs to the existing GitHub-Sync repo as PR-gated changes, reuse destinations in place, translate models drift-aware, and cut over with two client-merged PRs
 ---
 
 ## Auto-Delegation
 
 Follow `specs/utils/migration_agent_delegate.md` before executing the workflow below.
 Follow `specs/utils/stale_artifact_check.md` with `artifact_id: reverse_etl_migration` and `artifact_file_path: migration/reverse_etl_migration_runbook.md` before proceeding.
+Follow `specs/utils/migration_preflight.md` with `caller: reverse_etl_migration` and `batch_ref: reverse_etl` — run Checks 1–3 before generating; if any fail, output the blockers and stop. Check 4 (decoy mapping + scoped credential) is run after Step 4b and again before the cutover PRs are prepared.
 
 ---
 
@@ -41,8 +42,15 @@ Before modifying any Hightouch configuration, read `data_safety` from status.md 
 
 Source platform ([source_platform]): READ ONLY.
   Do NOT modify, disable, or re-point any source-backed Hightouch syncs.
-  The source workspace and its syncs remain active as the rollback path
+  The existing source-warehouse syncs remain active as the rollback path
   throughout this entire phase.
+
+All changes are staged as PULL REQUESTS for the client to review and merge.
+  RA does NOT enable/disable syncs or mutate the workspace directly. The PR
+  gate is the safety control.
+
+New test syncs carry DECOY destination IDs only (see Step 4b). Production
+  destination IDs are ABSENT from the test syncs until the cutover PR.
 
 Target writes go to: [data_safety.target_project or migration.target_project]
 
@@ -51,7 +59,7 @@ BLOCKED production projects (do not create syncs pointing to these):
   [list each production project ID]
 ```
 
-If any action would modify the source Hightouch workspace, disable a live production sync, or create a sync pointing to a production project listed in `data_safety.production_projects`, stop and report the conflict before proceeding.
+If any action would modify a source-backed sync, enable/disable a sync outside a client-merged PR, send a test sync to a production destination ID, or create a sync pointing to a production project listed in `data_safety.production_projects`, stop and report the conflict before proceeding.
 
 ---
 
@@ -59,19 +67,25 @@ If any action would modify the source Hightouch workspace, disable a live produc
 
 ## Purpose
 
-Generates a step-by-step runbook for migrating every in-scope Hightouch sync from the source warehouse to the target warehouse. The preferred topology is a **parallel workspace**: clone the Hightouch config into a new workspace pointed at the target warehouse, validate it with syncs disabled, then enable — leaving the production source-backed workspace untouched until cutover. For plans that do not support multiple workspaces, the runbook falls back to an **in-place re-point** of the existing syncs. Either way the runbook covers model SQL translation, Customer Studio rebuilds, Lightning schema provisioning, sync-level transformation review, and a preview-based validation procedure run against a frozen source baseline before any sync is enabled.
+Generates a step-by-step runbook for migrating every in-scope Hightouch sync from the source warehouse to the target warehouse. The default topology is **additive PR-gated syncs in the existing GitHub-Sync repo**: Hightouch's config (models, syncs, destinations) lives in a Git repository, and GitHub Sync carries models and syncs but **not destinations** — so a separate workspace would force re-creating and re-authenticating every destination. Instead, add a new batch of target-warehouse syncs alongside the existing source-warehouse syncs in that same repo, reusing the existing destination definitions in place. Every change is staged as a pull request for the client to review and merge — the PR gate is the safety control, the same model used for dbt and Fivetran migration. RA never executes enable/disable or mutates the workspace directly. Cutover is two client-merged PRs: one disables every source-origin sync, one enables every target-origin sync. The runbook covers model SQL translation (drift-aware), Customer Studio rebuilds, Lightning schema provisioning, sync-level transformation review, a decoy destination mapping that keeps production destination IDs out of the test syncs until cutover, and a preview-based validation procedure run against a frozen source baseline.
+
+Parallel-workspace and in-place API re-point remain documented as alternatives, no longer the default — see Step 2.
 
 ## Prerequisites
 
 - `target_setup review: approved` — target warehouse schemas and objects exist
 - `reverse_etl_audit review: approved`
 - `dbt_migration: complete` for any batch containing models referenced by Hightouch dbt-type syncs (cannot validate those syncs until their dbt models exist on target)
+- **Per-sync source-model scope check** — each in-scope sync's source object must exist on the target before that sync is translated. Syncs whose source object is not yet built on target are deferred, not included (enforced per-sync in Step 4-pre).
 
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/audit/reverse_etl_audit.md`
 - `.wire/releases/$ARGUMENTS/migration/migration_strategy.md`
 - `.wire/releases/$ARGUMENTS/status.md`
+- `.wire/releases/$ARGUMENTS/audit/ingestion/mds_variant_columns.csv` — per-release **type-drift manifest**: columns whose source type does not carry over to the target landing format (e.g. a Snowflake `VARIANT` that lands as `STRING` under BigLake Iceberg rather than as BigQuery `JSON`). Optional — if absent, treat as empty and proceed, but note in the runbook that no drift manifest was available. Expected columns: `source_object, column_name, source_type, target_landing_type, notes`.
+- `.wire/releases/$ARGUMENTS/migration/dbt/**/*.diff.md` — the dbt_migration per-model diffs. Where a referenced model was already migrated by dbt_migration, mirror any type reconciliation it recorded rather than re-deriving it.
+- Canonical platform pair files at `wire/platform_pairs/<source>_to_<target>/` (translation guide, type mapping) — the generic translation source, overridden by the drift manifest per Step 4c.
 
 ## Workflow
 
@@ -85,30 +99,51 @@ Activate the `hightouch` skill for API connection details and the workspace / Gi
 
 ### Step 2: Choose the migration topology
 
-Decide and record which topology the runbook follows. Default to the parallel workspace.
+Decide and record which topology the runbook follows. **Default to additive syncs in the existing GitHub-Sync repo.**
 
-- **Parallel workspace (preferred).** Available when the Hightouch plan supports multiple workspaces (Business and above). Build a new workspace for the target warehouse and validate there, leaving the production source-backed workspace running and unmodified. This is the safer approach and the one to recommend — production syncs are never touched during build and validation, and rollback is simply "don't enable the new workspace."
-- **In-place re-point (fallback).** Only when the plan does not support a second workspace. The existing syncs' source connection is re-pointed from source to target warehouse within the one workspace. Higher risk: there is no parallel environment, and the production config is mutated. If this path is chosen, record why in the runbook.
+- **Additive syncs in the existing GitHub-Sync repo (default).** Detect — or, where the deployment mechanism cannot be confirmed from the audit, assume — that GitHub Sync is the deployment mechanism: the Hightouch config (models, syncs, destinations) lives in a Git repository and is synced to the one production workspace. Add a **new batch of target-warehouse syncs** in that same repo, each reading from the target warehouse, **alongside** the existing source-warehouse syncs. **Reuse the existing destination definitions in place** — never re-create or re-authenticate them. Every change is staged as a pull request for the client to review and merge; RA does not execute enable/disable or mutate the workspace directly. This is the recommended path: GitHub Sync carries models and syncs but **not destinations**, so a separate workspace would force re-creating and re-authenticating every destination, and the PR gate gives the same review-and-merge safety control already used for dbt and Fivetran.
 
-Confirm the plan tier and chosen topology with the user before continuing.
+- **Parallel workspace (alternative).** Available when the Hightouch plan supports multiple workspaces (Business and above) **and** destinations can be re-authenticated without operational cost. Build a new workspace for the target warehouse and validate there, leaving the production source-backed workspace running and unmodified. **Limitation:** GitHub Sync is per-workspace and does not carry destinations — a new workspace requires re-creating and re-authenticating every destination connection, which is why this is no longer the default. If this path is chosen, record why, and account for the destination re-authentication work.
 
-### Step 3 — Parallel workspace: build the target environment
+- **In-place API re-point (alternative).** Only when neither GitHub Sync nor a second workspace is available. The existing syncs' source connection is re-pointed from source to target warehouse within the one workspace via the API. Highest risk: there is no parallel environment, no PR gate, and the production config is mutated directly. If this path is chosen, record why in the runbook.
 
-(Skip to Step 3b if the in-place fallback was chosen.)
+Confirm the deployment mechanism (GitHub Sync repo present?), the plan tier, and the chosen topology with the user before continuing.
 
-GitHub Sync is configured per workspace — a repository reflects one workspace's configuration, not the whole organisation. Build the parallel environment:
+### Step 3 — Default: prepare the additive PR-gated branch in the existing repo
+
+(Use Step 3-alt-A for the parallel-workspace alternative, or Step 3-alt-B for the in-place API re-point alternative.)
+
+The Hightouch config repo reflects the one production workspace. Work additively inside it — never in a fork or a second workspace:
+
+1. **Branch the existing Hightouch config repository.** Create a working branch off the repo's default branch (e.g. `migration/reverse-etl-target-syncs`). All new syncs and any model changes are committed here and raised as PRs — never committed to the default branch directly.
+2. **Add the target-warehouse source connection** to the workspace config in the repo (the source definition reading from the target warehouse). This is additive — the existing source-warehouse source connection is left in place.
+3. **Author the new batch of target-warehouse syncs** as new config files alongside the existing ones. Each new sync reads from the target-warehouse source (Step 4 translates its model), and points at the **decoy destination ID** for its production destination (Step 4b) — never the production destination ID.
+4. **Reuse the existing destination definitions in place.** Do not create, rename, or re-authenticate any destination. The new test syncs reference the existing destination *type* via their decoy IDs (Step 4b); production destination IDs are swapped in only by the cutover PR.
+5. **Open PR A — "add target-warehouse test syncs"** for the client to review and merge. This PR is purely additive: new source connection + new disabled/decoy test syncs. It touches no existing source-backed sync. Merging it deploys the test syncs via GitHub Sync.
+6. Proceed to Step 4 — model translation is committed to the same working branch and flows through PRs.
+
+The existing source-warehouse syncs are not modified by any PR until cutover (Step 8 sequence).
+
+### Step 3-alt-A — Parallel-workspace alternative: build the target environment
+
+(Only if the parallel-workspace alternative was chosen in Step 2.)
+
+GitHub Sync is configured per workspace — a repository reflects one workspace's configuration, not the whole organisation, and **does not carry destinations**. Build the parallel environment, and budget for destination re-authentication:
 
 1. **Clone the Hightouch config repository** the production workspace syncs to; rename the clone to mark it as the target-warehouse migration workspace.
 2. **Create a new Hightouch workspace** for the target warehouse environment.
 3. **Configure GitHub Sync** in the new workspace to point at the cloned repository.
-4. **Create the target-warehouse source connection** in the new workspace.
-5. Proceed to Step 4 — model translation is committed to the cloned repo and deployed into the new workspace via GitHub Sync (or applied via the API against the new workspace's objects).
+4. **Re-create and re-authenticate every destination connection** in the new workspace — GitHub Sync does not carry these. Record the destinations requiring re-auth.
+5. **Create the target-warehouse source connection** in the new workspace.
+6. Proceed to Step 4 — model translation is committed to the cloned repo and deployed into the new workspace via GitHub Sync (or applied via the API against the new workspace's objects).
 
 The production workspace is not modified at any point in this path.
 
-### Step 3b — In-place fallback: prepare the re-point
+### Step 3-alt-B — In-place API re-point alternative: prepare the re-point
 
-For the in-place fallback only: add the target-warehouse source connection to the existing workspace alongside the source one. Syncs will be re-pointed to it per Step 4, via:
+(Only if the in-place API re-point alternative was chosen in Step 2.)
+
+Add the target-warehouse source connection to the existing workspace alongside the source one. Syncs will be re-pointed to it per Step 4, via:
 
 ```bash
 curl -s -X PATCH \
@@ -122,23 +157,87 @@ Rollback: re-apply the original `sourceId` via the same endpoint. Keep syncs dis
 
 ### Step 4: Translate models by approach
 
-Load all syncs from the audit with `include_in_migration: true` and group by migration approach. Process repoint first (lowest risk), then rewrite_model, then rebuild. In the parallel-workspace path these changes are committed to the cloned repo and deployed via GitHub Sync; in the in-place path they are applied to the existing models.
+Load all syncs from the audit with `include_in_migration: true` and group by migration approach. Process repoint first (lowest risk), then rewrite_model, then rebuild. In the default additive path these changes are committed to the working branch and flow through PRs (deployed via GitHub Sync on merge); in the parallel-workspace alternative they are committed to the cloned repo and deployed via GitHub Sync; in the in-place alternative they are applied to the existing models.
 
-- **repoint** — model SQL is portable; no SQL change. The model resolves against the target-warehouse source. Verify the model SQL returns rows and a non-null primary key on the target; if it fails, downgrade to `rewrite_model`.
-- **rewrite_model** — translate the model SQL using the platform-pair guide (`wire/platform_pairs/<source>_to_<target>/translation_guide.md`) and feature-tag translations. Test the translated SQL on the target warehouse — row count and primary-key integrity match the source model output. Record a before/after SQL diff in the runbook. Update via GitHub commit (parallel) or `PATCH /api/v1/models/<MODEL_ID>` (in-place).
+Before translating any sync, run the scope gate (Step 4-pre) and the approach re-verification (Step 4-verify) below.
+
+#### Step 4-pre: Source-model scope gate
+
+For each in-scope sync, confirm its **source object exists on the target** — i.e. the model (or table) the sync reads from was built on the target warehouse by a completed `dbt_migration` batch (or is otherwise present and populated on target). Resolve the sync's source object from the audit's `warehouse_objects` and check it against the target.
+
+- If the source object **is present** on target → keep the sync in scope.
+- If the source object **is not present** (not yet built, or its `dbt_migration` batch is incomplete — e.g. the `de_leasing_engine_promotions` case) → **exclude the sync** and list it under **"Deferred — source model not built on target"** in the runbook, with the missing object named.
+
+Do not silently include a sync whose source object cannot be validated on target. Roll the excluded count up to `deferred_count` in status.md.
+
+#### Step 4-verify: Re-verify the audit's approach tags
+
+**Do not trust the audit's `approach` / `sf_funcs` tags.** In the Carwow audit, 4 syncs tagged `repoint` actually contained `RRP :: NUMBER` — a `::` cast the audit missed. Re-scan each in-scope sync's model SQL proactively for non-portable source-dialect constructs before deciding it needs no translation. At minimum, scan for:
+
+- the `::` cast operator
+- `FLATTEN`
+- `QUALIFY`
+- `IFF`
+- `NVL`
+- `CONVERT_TIMEZONE`
+- `:`-style variant path access (e.g. `col:field`)
+
+If any appear on a sync tagged `repoint`, **reclassify it to `rewrite_model`** and log the change: `{ sync_id, sync_name, construct_found, old_approach: repoint, new_approach: rewrite_model }`. Roll the count up to `reclassified_count` in status.md and list the reclassifications in the runbook.
+
+Keep the **reactive downgrade** in the `repoint` bullet below as a backstop — if a `repoint` model still fails to return rows / a non-null primary key on target, downgrade it to `rewrite_model` even if this scan passed.
+
+- **repoint** — model SQL is portable (and survived the Step 4-verify scan); no SQL change. The model resolves against the target-warehouse source. Verify the model SQL returns rows and a non-null primary key on the target; if it fails, downgrade to `rewrite_model` (the reactive backstop).
+- **rewrite_model** — translate the model SQL using the platform-pair guide (`wire/platform_pairs/<source>_to_<target>/translation_guide.md`) and feature-tag translations, applying the **drift-aware column translation** in Step 4c before the generic mapping. Test the translated SQL on the target warehouse — row count and primary-key integrity match the source model output. Record a before/after SQL diff in the runbook (noting any drift-adjusted columns). Update via PR on the working branch (additive default / parallel) or `PATCH /api/v1/models/<MODEL_ID>` (in-place).
 - **rebuild** — Customer Studio audiences and Journeys are rebuilt against the target-warehouse source: new schema (parent + related models + events) on the target source, recreated audience filters, recreated Journeys, sync destinations re-mapped to the rebuilt audiences. Capture the existing definitions first via the `schemas`, `audiences`, and `journeys` endpoints.
 
-**Keep all syncs disabled, and keep destination connections present but disabled** throughout Step 4 — see Step 5.
+**Every new test sync carries its decoy destination ID only** (Step 4b) — the production destination IDs must be absent from the test syncs until cutover. Keep all new syncs disabled until validated (Step 5).
 
-### Step 5: Validate by model output and preview — syncs disabled
+### Step 4b: Decoy destination mapping table
 
-Do **not** enable destination syncs to validate. Activating them writes to live downstream systems (Salesforce, HubSpot, Iterable, Braze, ad platforms, Google Sheets). Keep the destination connections present but **disabled** and validate via Hightouch's sync previews and record-level inspection — this confirms what *would* be written without writing it, and gives higher confidence than comparing SQL output alone.
+Destinations are reused in place (the existing definitions are not re-created), so safety cannot rely on a "disabled" flag — a single mistaken enable would write to a live downstream system. Use a structural decoy mechanic instead.
+
+1. **Build the decoy mapping table** — one row per in-scope sync. Generate or consume `migration/reverse_etl_decoy_mapping.csv` with columns:
+
+   ```
+   sync_id, sync_name, production_destination_id, production_destination_type,
+   decoy_destination_id, decoy_destination_type, notes
+   ```
+
+   The decoy must be the **same destination type** as production — a decoy Google Sheet for a Google Sheets destination, a decoy Salesforce sandbox for a Salesforce destination, and so on. If a decoy of the right type does not yet exist, list it as a row with `decoy_destination_id` blank and flag it for the client to provision; do not substitute a different type.
+
+2. **Point every new test sync at its decoy ID only.** The production destination IDs must be **absent** from the test syncs. A test sync that references a production destination ID is a defect — fail the pre-flight gate (below) rather than ship it.
+
+3. **Require a scoped destination credential** — a service account with write access to the decoy targets only and **no permission** on production destinations. Record which credential each decoy destination uses. Validation (Step 5) and any preview run use this credential, so even an accidental live run can only reach a decoy.
+
+4. **At cutover, reverse the mapping.** PR C (Step 8) swaps each `decoy_destination_id` back to its `production_destination_id` and enables the sync. The mapping table is the source of truth for that swap — every row must round-trip.
+
+**Hard pre-flight gates** (also enforced by `specs/utils/migration_preflight.md`):
+- **Production destination IDs absent from test syncs** — scan every new test sync's config; if any references a `production_destination_id` from the mapping table, stop and report before generating.
+- **Test credential has no grant on production destinations** — confirm the scoped credential cannot write to any production destination. If the grant cannot be confirmed, stop.
+
+### Step 4c: Drift-aware column translation
+
+The generic platform-pair mapping assumes a type carries over cleanly — e.g. Snowflake `VARIANT` → BigQuery `JSON`, with `col:field` → `JSON_VALUE(col, '$.field')`. That misfires when a column lands as a different type on the target. Under BigLake Iceberg a `VARIANT` column often lands as plain `STRING`, not `JSON` — applying `JSON_VALUE`/`JSON_QUERY_ARRAY` to it produces wrong results or errors. The pilot is safe by scope, but the estate is not (84 staging + 8 source + 2 raw syncs), so make translation drift-aware rather than assuming.
+
+For each sync about to be translated (`rewrite_model`, and any `repoint` whose model SQL touches a possibly-drifted column):
+
+1. **Resolve the columns the model SQL references** — the set of source columns the sync's model reads, especially those passed through variant/JSON extraction or cast.
+2. **Cross-reference the drift manifest** (`mds_variant_columns.csv`). For each referenced column that appears in the manifest, read its `target_landing_type`.
+3. **Translate to the actual target type, not the generic mapping.** Where a referenced column is drifted (e.g. `target_landing_type = STRING`), do **not** apply the generic `VARIANT → JSON` / `JSON_VALUE` / `JSON_QUERY_ARRAY` mapping. Translate against the type the column actually lands as — for a `STRING` landing, treat it as text (string functions, explicit `SAFE.PARSE_JSON(...)` only if the string genuinely holds JSON and downstream needs it), matching what the target schema exposes.
+4. **Mirror any dbt_migration reconciliation.** If the referenced model was already migrated by dbt_migration, find its `*.diff.md` and reuse the type handling recorded there rather than re-deriving — the two must agree.
+5. **Record per model whether any column was drift-adjusted** — list the adjusted columns and the type used, in the sync's runbook section and its SQL diff. Set the per-model `drift_adjusted` flag accordingly (rolled up to `drift_adjusted_count` in status.md).
+
+If the drift manifest is absent, note that in the runbook and fall back to the generic mapping — but flag every `VARIANT`/variant-path translation as `medium` confidence and call out that drift was not checked.
+
+### Step 5: Validate by model output and preview — decoy destinations only
+
+Do **not** point any test sync at a production destination to validate. Activating a sync writes to whatever destination it carries; live downstream systems (Salesforce, HubSpot, Iterable, Braze, ad platforms, Google Sheets) must never be the target during validation. Test syncs carry **decoy destination IDs only**, written through the scoped decoy credential, and are validated via Hightouch's sync previews and record-level inspection — this confirms what *would* be written without touching production, and gives higher confidence than comparing SQL output alone.
 
 Validate against a **frozen source baseline**, not moving production — the source warehouse keeps ingesting and rebuilding, so a moving comparison surfaces timing differences, not translation differences. Use the baseline defined in the migration strategy's equivalency section (e.g. a zero-copy snapshot of the source models at a fixed cutoff); align any target-side load to the same cutoff. Per in-scope model:
 
 1. **Model output** — compare row count, primary-key uniqueness, aggregates, and representative samples between the target model and the frozen source baseline.
 2. **Audience sizes** — where Customer Studio is in scope, compare audience membership and segment counts against the baseline (default tolerance ±2%).
-3. **Sync preview** — run the sync in preview / dry-run with destinations disabled; confirm the planned record count and field-level payload match expectation. No live run.
+3. **Sync preview** — run the sync in preview / dry-run; the sync carries its decoy destination ID and the scoped decoy credential, so any actual write lands on the decoy, never production. Confirm the planned record count and field-level payload match expectation. No live run against a production destination.
 
 ### Step 6: Review sync-level transformation logic
 
@@ -167,16 +266,21 @@ Note: Hightouch creates the actual tables in these schemas on the first sync run
 **Output location**: `.wire/releases/$ARGUMENTS/migration/reverse_etl_migration_runbook.md`
 
 Structure:
-1. Topology decision (parallel workspace vs in-place re-point) and the rationale
-2. Parallel-workspace build steps (clone repo, new workspace, GitHub Sync, target source) — or in-place re-point prep
-3. Pre-flight checklist (target warehouse ready, dbt batches complete, source baseline frozen, Lightning schemas provisioned)
-4. Per-sync model translation — repoint / rewrite_model (with SQL diff) / rebuild (schema mapping + steps)
-5. Validation procedure — model-output comparison vs frozen baseline, audience-size comparison, sync preview with destinations disabled
-6. Sync-level transformation review — per sync: field mappings, computed fields, filters, match/identity rules, audience include/exclude
-7. **Sign-off and enable sequence**: recreate workspace + GitHub integration → migrate source connection → translate models → validate model outputs → validate audience sizes + sync previews → review sync-level logic → business sign-off → enable syncs → monitor initial runs → decommission the source workspace once confidence is established
-8. Rollback procedures for each approach (parallel: don't enable / disable new-workspace syncs and re-enable source workspace; in-place: re-apply original `sourceId`)
+1. Topology decision (additive PR-gated repo — default — vs parallel workspace vs in-place API re-point) and the rationale
+2. Build steps for the chosen topology (default: branch existing repo, add target source, author decoy test syncs, open PR A — or parallel-workspace build with destination re-auth, or in-place re-point prep)
+3. Pre-flight checklist (target warehouse ready, dbt batches complete, source baseline frozen, Lightning schemas provisioned, decoy mapping table + scoped credential in place, production destination IDs absent from test syncs) — per `specs/utils/migration_preflight.md`
+4. Per-sync model translation — repoint / rewrite_model (with SQL diff, drift adjustments noted) / rebuild (schema mapping + steps), with reclassifications from the approach re-verification (Step 4-verify) and exclusions from the scope gate (Step 4-pre)
+5. Decoy destination mapping table (production ID → decoy ID per in-scope sync) and scoped credential definition
+6. Validation procedure — model-output comparison vs frozen baseline, audience-size comparison, sync preview with destinations set to decoy IDs
+7. Sync-level transformation review — per sync: field mappings, computed fields, filters, match/identity rules, audience include/exclude
+8. **Sign-off and cutover sequence (two client-merged PRs)**: open PR A (add target-warehouse test syncs with decoy IDs) → client merges PR A → translate/validate model outputs → validate audience sizes + sync previews → review sync-level logic → business sign-off → prepare the cutover PRs:
+   - **PR B (disable source)** — disables every sync whose origin is the source warehouse.
+   - **PR C (enable target)** — swaps the decoy destination IDs back to production destination IDs on the new target-warehouse syncs and enables them.
+   The client merges **PR B and PR C together in one cutover window**. → monitor initial runs → decommission the source-warehouse syncs (a later PR) once confidence is established.
+   (Parallel-workspace / in-place alternatives keep their own enable sequences.)
+9. Rollback procedures for the chosen topology and approach types: **additive (default)** — re-merge a revert of PR C (disable target syncs / restore decoy IDs) and revert PR B (re-enable source syncs), by PR; **parallel** — don't enable / disable new-workspace syncs and re-enable source workspace; **in-place** — re-apply original `sourceId`.
 
-Source syncs (or the source workspace) stay active and untouched as the rollback path until cutover — never deactivate them during the migration phase.
+The existing source-warehouse syncs stay active and untouched as the rollback path until cutover — never disable them outside PR B, and never before PR C is ready to merge alongside it.
 
 ### Step 9: Update status
 
@@ -186,10 +290,14 @@ artifacts:
     generate: complete
     file: migration/reverse_etl_migration_runbook.md
     generated_date: "{{TODAY}}"
-    topology: parallel_workspace | in_place_repoint
+    topology: additive_repo | parallel_workspace | in_place_repoint
     repoint_count: N
     rewrite_model_count: N
     rebuild_count: N
+    reclassified_count: N         # syncs moved repoint → rewrite_model by Step 4-verify
+    deferred_count: N             # syncs excluded by the Step 4-pre scope gate
+    drift_adjusted_count: N       # syncs with at least one drift-adjusted column (Step 4c)
+    decoy_mapping_file: migration/reverse_etl_decoy_mapping.csv
 ```
 
 ### Step 10: Output next command
@@ -201,6 +309,7 @@ artifacts:
 ## Output Files
 
 - `.wire/releases/$ARGUMENTS/migration/reverse_etl_migration_runbook.md`
+- `.wire/releases/$ARGUMENTS/migration/reverse_etl_decoy_mapping.csv` — production → decoy destination ID mapping, one row per in-scope sync
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 
 

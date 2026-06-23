@@ -58,10 +58,10 @@ Every row has a value in the `complexity` column (Low / Medium / High).
 PASS: All rows populated.
 FAIL: List syncs missing complexity.
 
-**Check 3 — All rawSql models have warehouse objects extracted**
-Every sync with `model_type: rawSql` has at least one entry in `warehouse_objects`. A blank `warehouse_objects` on a rawSql model means the dependency mapping is incomplete.
-PASS: All rawSql syncs have warehouse objects listed.
-FAIL: List syncs with blank warehouse_objects.
+**Check 3 — Source objects resolved across all model types, coverage reported**
+Source-object resolution is attempted for every model type (`rawSql`, `dbtModel`, `table`, `custom`) — not just `rawSql`. Each sync with a resolvable source has at least one entry in `warehouse_objects`; each sync that genuinely could not be resolved is marked `source_resolved: false` and listed explicitly under "Unresolved syncs". The audit reports the source-resolution coverage metric (`resolved_sync_count` / `active_sync_count`), and status.md carries `resolved_sync_count`, `unresolved_sync_count`, and `source_resolution_coverage_pct`.
+PASS: Resolution attempted for all model types, coverage metric present, and every unresolved sync is listed (none silently blank).
+FAIL: `table`/`custom` syncs left blank without being listed as unresolved, or the coverage metric is missing.
 
 **Check 4 — dbt model syncs cross-referenced**
 Every sync with `model_type: dbtModel` has the dbt model name listed and a note confirming whether that model exists in the dbt audit (or noting it is out of scope).

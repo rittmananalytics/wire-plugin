@@ -622,7 +622,7 @@ Each batch generates an acceptance pack — a structured record of every model t
 *Pending review by `/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1`*
 
 ---
-*Generated automatically by Wire Framework v3.9.9 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
+*Generated automatically by Wire Framework v3.10.0 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
 
 ═══════════════════════════════════════════
 

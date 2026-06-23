@@ -29,7 +29,7 @@ description: Internal RA review of reverse ETL migration runbook
 
 ## Purpose
 
-Internal RA review of the reverse ETL migration runbook before execution. Confirms SQL translations are correct, rebuild plans are feasible, and the parallel-run period and cutover sequence are agreed.
+Internal RA review of the reverse ETL migration runbook before execution. Confirms SQL translations are correct, rebuild plans are feasible, the decoy destination mapping is sound, and the PR-gated cutover sequence (two client-merged PRs) is agreed.
 
 ## Prerequisites
 
@@ -44,20 +44,21 @@ Follow `specs/utils/meeting_context.md`. Search for discussions about Hightouch,
 ### Step 2: Present runbook for review
 
 Summary to present:
-- Total syncs in runbook by approach (repoint / rewrite_model / rebuild)
-- Any SQL translations with non-trivial changes
+- Topology (default: additive PR-gated syncs in the existing repo) and the rationale
+- Total syncs in runbook by approach (repoint / rewrite_model / rebuild), plus any reclassified by the approach re-verification and any deferred by the scope gate
+- Any SQL translations with non-trivial changes, and any drift-adjusted columns
 - Customer Studio rebuilds and their estimated effort
 - Lightning schema requirements and service account permissions
-- Proposed parallel-run period duration
-- Source sync deactivation timing in the cutover plan
+- Decoy destination mapping (production → decoy IDs) and the scoped credential
+- The two-PR cutover plan (PR B disable source-origin, PR C enable target-origin, merged together by the client)
 
 ### Step 3: Gather reviewer feedback
 
-1. Are the SQL translations correct and do they preserve business logic?
+1. Are the SQL translations correct and do they preserve business logic — including any drift-adjusted columns?
 2. Are the Customer Studio rebuild plans complete — are there any trait definitions, related models, or Journey steps that are missing?
-3. Is the service account for the target warehouse set up with the required permissions?
-4. What is the agreed parallel-run period before source syncs are deactivated?
-5. Any destination credentials that need rotating before re-pointing?
+3. Is the warehouse service account scoped correctly, and is the decoy-destination credential restricted to decoy targets only (no production-destination grant)?
+4. Is the decoy mapping complete — one decoy of the same destination type per in-scope sync — and are production destination IDs confirmed absent from the test syncs?
+5. Is the two-PR cutover sequence agreed (PR B disable source-origin, PR C enable target-origin, merged together), and who on the client side owns the merge?
 
 ### Step 4: Apply feedback and record decision
 
