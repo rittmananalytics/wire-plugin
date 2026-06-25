@@ -254,14 +254,25 @@ were made — not required for every framework release.
 
 If this release affects the VSCode extension:
 
+The extension is **data-driven** — it reads the live `.wire/` structure and builds `/wire:<artifact>-<action>` command strings dynamically, so new Wire commands/release types surface automatically with **no code change**. Update the extension only when its own `src/` code changes (tree, command picker, status webview, MCP panel, workflow graph). A framework-only release does not require an extension rebuild; bump it solely for version alignment if you want.
+
+When the extension does change:
+
 1. Bump the version in `wire-vscode/package.json` to match or track the framework version.
 2. Update `wire-vscode/README.md` with any new commands or features.
-3. If the extension has a compiled output (`.vsix`), rebuild it:
+3. Compile and package the `.vsix`:
    ```bash
-   cd wire-vscode && npm run package
+   cd wire-vscode && npm install && npm run compile
+   npx @vscode/vsce package      # → wire-framework-<version>.vsix
    ```
-   This produces a `.vsix` file in `wire-vscode/`. Confirm the file is not committed to the repo
-   (it should be in `.gitignore`); it is distributed separately.
+   Note: there is **no** `npm run package` script — packaging is `vsce`, run via `npx @vscode/vsce` (it is not in `devDependencies`). The `.vsix` is gitignored; it is distributed, not committed.
+4. Test locally: VS Code → "Extensions: Install from VSIX…", or `code --install-extension wire-framework-<version>.vsix`. Reload and check the Releases tree, the `⌘⇧W` command picker, and the status webview.
+5. Publish to the Marketplace (requires a publisher PAT for `rittman-analytics`):
+   ```bash
+   npx @vscode/vsce publish      # vsce login rittman-analytics, or set VSCE_PAT
+   ```
+   If you also list on Open VSX: `npx ovsx publish`.
+6. Commit the `package.json` / `README.md` / `src` changes — not the `.vsix`.
 
 ---
 
