@@ -150,10 +150,25 @@ Replace every hit. Do not skip `wire-web-ui/README.md` because "Wire Studio isn'
 Also update if applicable:
 - `wire-vscode/README.md` — if the VSCode extension version is bumping
 
-### 3d. QUICK-REFERENCE.md
+### 3d. QUICK-REFERENCE.md and the skills reference
 
 If any new commands were added or removed, update `wire/skills/QUICK-REFERENCE.md` (and the root
 `QUICK-REFERENCE.md` if it exists) to reflect the current command list.
+
+**If any skill was added or removed under `wire/skills/`**, update `docs-site/docs/reference/skills.md`
+to match. This page is **hand-maintained** — it is not generated from `wire/skills/` and is not part
+of the Step 3e USER_GUIDE→page mapping, so a new skill silently goes missing from it otherwise (the
+`metabase` skill was missed this way). Add a `### \`<skill-name>\`` entry under the appropriate section
+(matching the existing **Activates when** + description format), and create or rename a section heading
+if the skill doesn't fit an existing one. Cross-check the file list:
+
+```bash
+diff <(ls -d wire/skills/*/ | xargs -n1 basename | sort) \
+     <(grep -oE '^### `[a-z0-9-]+`' docs-site/docs/reference/skills.md | tr -d '#` ' | sort)
+```
+
+Reconcile any skill that appears in one list but not the other (some internal/meta skills may be
+intentionally omitted — confirm rather than blindly adding).
 
 ### 3e. Docusaurus doc pages (docs-site/)
 
@@ -456,6 +471,7 @@ Documentation
 [ ] QUICK-REFERENCE.md updated (if commands added/removed)
 [ ] docs-site/ doc pages updated for all changed USER_GUIDE.md sections
 [ ] docs-site/docs/reference/release-notes.md — new vX.Y.Z block prepended (hand-maintained; release.sh does not touch it)
+[ ] docs-site/docs/reference/skills.md — updated if any skill added/removed (hand-maintained; not generated from wire/skills/)
 [ ] New doc page created and added to sidebars.js (if new release type added)
 [ ] docs-site/ builds without errors (npm run build)
 [ ] docs-site/ synced to wire-plugin repo (rsync)
