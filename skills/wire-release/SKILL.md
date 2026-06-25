@@ -115,6 +115,7 @@ Do not delete anything without confirming with the user when in doubt.
 - Sections: `### Added`, `### Changed`, `### Fixed`, `### Removed` — only include non-empty sections.
 - Mirror the same content to `wire/docs/CHANGELOG.md` and `wire/docs/RELEASE_NOTES.md`.
 - Update the root `RELEASE_NOTES.md` with the same block.
+- **`docs-site/docs/reference/release-notes.md`** — this is the Docusaurus release-history page and is **hand-maintained**; `release.sh` does NOT update it and it is not part of the Step 3e USER_GUIDE→page mapping. On **every** release, prepend a new `## vX.Y.Z — <title>` section at the top (immediately after the intro `---` divider, before the previous top entry), matching the existing style: a `**Released**: <Month Year>` line followed by prose paragraphs with bolded lead-ins per change. Derive the content from the `RELEASE_NOTES.md` overview, but keep it client-neutral — no client or engagement names. Skipping this is the easy step to miss: the page silently falls a version behind.
 
 ### 3b. USER_GUIDE.md
 
@@ -443,6 +444,7 @@ Documentation
 [ ] wire-web-ui/README.md — # Wire Studio vX.Y.Z heading updated
 [ ] QUICK-REFERENCE.md updated (if commands added/removed)
 [ ] docs-site/ doc pages updated for all changed USER_GUIDE.md sections
+[ ] docs-site/docs/reference/release-notes.md — new vX.Y.Z block prepended (hand-maintained; release.sh does not touch it)
 [ ] New doc page created and added to sidebars.js (if new release type added)
 [ ] docs-site/ builds without errors (npm run build)
 [ ] docs-site/ synced to wire-plugin repo (rsync)
