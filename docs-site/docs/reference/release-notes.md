@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.1 — Tenant carve-out variant + Metabase reporting layer
+
+**Released**: June 2026
+
+A tenant carve-out variant for the platform migration release type, plus Metabase reporting-layer support. Both are additive and backward compatible — a full migration with no Metabase behaves exactly as before.
+
+**Tenant carve-out variant** — platform migration now runs in `tenant_carveout` scope as well as the default `full_migration`, set by `migration.scope` with a `migration.tenant_predicate` captured at `/wire:new`. The carve-out reuses the whole migration command set and threads tenant scoping through equivalency — the existing checks gain the predicate on both source and target, with no new check types (min/max already lives in value sampling; checksum and aggregate totals already exist; schema stays structural) — and through the security/IAM chain: tenant-scoped vs shared role classification → a two-project / tenant-scoped IAM model with a row-level security predicate → tenant-scoped GRANTs and the RLS policy in `04_security.sql`, reusing the existing PII policy-tag taxonomy.
+
+**New carve-out commands** — `/wire:region-tagging-*` classifies in-scope items into confident-region / shared-row-level / global-deferred buckets (candidates for adjudication, never a binary include/exclude or auto-removal; `-review` is the human adjudication gate). `/wire:data-residency-assessment-*` produces the GDPR and data-residency assessment including the legal review of the historical data window — RA prepares it as data processor and flags every point needing the client's DPO/legal determination, with `-review` as the client sign-off gate. `/wire:bulk-copy-migration-*` does a Snowflake → BigQuery bulk historical copy (BigQuery Data Transfer Service / GCS-staged) in place of re-ingestion, two-stage with an equivalency gate between pilot partition and remainder, under a scoped service account with a tenant guard. `/wire:logical-access-uat-*` proves region-scoped access isolation — `-validate` requires at least one negative test per IAM boundary in `04_security.sql`, and `-review` is the isolation-proof sign-off before cutover.
+
+**Metabase reporting-layer support** — Wire's reporting-layer support was Looker-only. Set `migration.reporting_tool: metabase` to enable `/wire:metabase-audit-*` and `/wire:metabase-migration-*`, a general capability for any migration where the client uses Metabase, not gated by `migration.scope`. The audit catalogues collections, dashboards, cards (with SQL), database connections, and permission groups; the migration translates card SQL to BigQuery, remaps permission groups, validates on a throwaway decoy collection, and repoints the Metabase database connection from Snowflake to BigQuery in two stages with per-stage rollback (it requires a client-supplied query inventory). Both build on the imported `metabase` skill, wrapping the upstream `metabase/agent-skills`.
+
+---
+
 ## v3.10.0 — Platform-migration hardening
 
 **Released**: June 2026
