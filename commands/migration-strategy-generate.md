@@ -80,6 +80,14 @@ For **snowflake → bigquery** only, decide per layer whether to use the BigQuer
 
 **Security migration**: How source roles/policies translate to target IAM/roles using the security audit's `translate` and `evaluate` objects.
 
+For **tenant carve-out** (`migration.scope == tenant_carveout`), additionally define the tenant-scoped target IAM model from the security audit's `tenant_scoped` vs `shared` classification:
+
+- **Two-project / tenant-scoped model**: place the extracted tenant's data in its own target project (BigQuery) or database (Snowflake), separated from shared/reference data. Shared roles are recreated platform-wide; `tenant_scoped` roles are granted only on the tenant's project/database.
+- **RLS predicate**: for every in-scope table flagged with the tenant key, define the row-level security predicate on that key from `migration.tenant_predicate` (e.g. `tenant_id = 4815`). Record the exact predicate, the tenant-key column, and the IAM principals the policy grants to, so `target-setup-generate` can emit it directly.
+- Reuse the platform pair's security mapping rather than inventing a mechanism. For snowflake → bigquery see `wire/platform_pairs/snowflake_to_bigquery/translation_reference.md` §16 — RLS via `CREATE ROW ACCESS POLICY ... FILTER USING`, column masking via Data Catalog policy tags (the same taxonomy used for PII).
+
+When scope is absent or `full_migration`, this tenant block does not apply — security migration is unchanged.
+
 ### Step 3: Define migration phases
 
 Divide the migration into sequential phases, each with a defined entry criterion, work items, and exit criterion:

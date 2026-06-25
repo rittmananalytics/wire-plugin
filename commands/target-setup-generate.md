@@ -177,6 +177,16 @@ Based on the security audit:
 - Column masking policy creation (where directly translatable)
 - Service account permissions
 
+**Tenant carve-out (`migration.scope == tenant_carveout`)**
+
+When scope is `tenant_carveout`, read `migration.tenant_predicate` and the tenant-scoped IAM model + RLS predicate defined in the migration strategy's Security migration section, and emit into `04_security.sql`:
+
+- **Tenant-scoped GRANTs** — grant `tenant_scoped` roles only on the extracted tenant's target project/dataset (BigQuery) or database/schema (Snowflake); recreate `shared` roles platform-wide exactly as for a full migration.
+- **RLS predicate** — for each in-scope table flagged with the tenant key, emit the row-level security policy that filters on it, reusing the platform pair's mechanism (snowflake → bigquery: `translation_reference.md` §16): BigQuery `CREATE ROW ACCESS POLICY ... ON <table> GRANT TO (<principals>) FILTER USING (<tenant_predicate>)`; Snowflake `CREATE ROW ACCESS POLICY ...` attached via `ALTER TABLE ... ADD ROW ACCESS POLICY`.
+- **Reuse the existing PII policy-tag taxonomy** — do not stand up a parallel masking mechanism. Tenant-sensitive columns attach to the same Data Catalog policy-tag taxonomy already used for PII column masking (the `column_mask` objects from the security audit); add the tenant dimension to that taxonomy rather than creating a new one.
+
+When scope is absent or `full_migration`, emit the security DDL exactly as the four bullets above — no tenant scoping is applied.
+
 Write to: `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/04_security.sql`
 
 ### Step 6: Generate execution manifest

@@ -508,7 +508,7 @@ touch .wire/releases/[release_folder]/enablement/.gitkeep
 
 **For `platform_migration` release type**:
 
-Ask six additional questions (one at a time):
+Ask the following additional questions (one at a time):
 
 1. "What is the **source platform**?" (Options: BigQuery / Snowflake)
 2. "What is the **target platform**?" (Must differ from source — re-ask if same platform selected)
@@ -516,8 +516,10 @@ Ask six additional questions (one at a time):
 4. "What is the **orchestration tool**?" (Options: Dagster / dbt Cloud / Airflow / None)
 5. "What is the **ingestion tool**?" (Options: Fivetran / RudderStack / Coupler.io / Segment / Airbyte / Other). Store as `migration.ingestion_tool` with values `fivetran` / `rudderstack` / `coupler-io` / `segment` / `airbyte` / `other`. Each named tool has a corresponding skill at `wire/skills/<tool>/SKILL.md` and a tool-specific branch in `ingestion-audit-generate`. "Other" covers Stitch, Estuary, and custom-built ingestion — falls back to CSV-driven audit.
 6. "What is the **connectivity mode** to the source platform?" (Options: Public endpoint / Private network with MCP tunnel)
+   - Also ask: "What **reporting / BI tool** does the client use?" (Options: Looker / Metabase / None / Other). Store as `migration.reporting_tool` with values `looker` / `metabase` / `none` / `other`. `metabase` enables the `metabase-audit` and `metabase-migration` commands (reporting-layer migration); `looker` is the Wire default. This is independent of `migration.scope`.
 7. "What is the **target project / account**?" (The GCP project ID for BigQuery, or Snowflake account identifier for the target environment — the place all migration writes will land.)
 8. "Are there any **production project IDs** that should be treated as off-limits for writes?" (Comma-separated list, or press Enter to skip. These are client production environment IDs that Claude will refuse to write to during migration commands.) Store as `data_safety.production_projects` list.
+9. "Is this a **full platform migration** or a **tenant carve-out** (extracting a single tenant's data into the target)?" (Options: Full migration (default) / Tenant carve-out). If **Tenant carve-out** is selected, also ask: "What is the **tenant predicate** that scopes the extracted tenant — the WHERE clause or tenant key? (e.g. `tenant_id = 4815`)". Store as `migration.scope` (`full_migration` | `tenant_carveout`) and `migration.tenant_predicate`. If the user selects Full migration or presses Enter, leave `migration.scope` at its default of `full_migration` and `migration.tenant_predicate` null.
 
 If **Private network with MCP tunnel** is selected, output these setup instructions and wait for confirmation before proceeding:
 
@@ -534,7 +536,7 @@ Confirm when the tunnel is active and accessible. (Type "tunnel ready" to contin
 
 Wait for confirmation before continuing.
 
-Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_tool`, `ingestion_tool`, `connectivity`, `target_project_or_account`, `production_projects`.
+Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_tool`, `ingestion_tool`, `reporting_tool`, `connectivity`, `target_project_or_account`, `production_projects`, `scope`, `tenant_predicate`.
 
 1. Read `TEMPLATES/migration/status_migration.md`
 2. Replace placeholders:
@@ -549,11 +551,16 @@ Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_t
    - `{{DBT_PROJECT_PATH}}` → dbt_project_path
    - `{{ORCHESTRATION_TOOL}}` → orchestration_tool
    - `{{INGESTION_TOOL}}` → ingestion_tool
+   - `migration.reporting_tool` → reporting_tool if captured; otherwise leave the template default `none` unchanged
    - `{{CONNECTIVITY}}` → connectivity
    - `migration.target_project` (BigQuery) or `migration.target_account` (Snowflake) → target_project_or_account
    - `data_safety.target_project` → target_project_or_account (same value — mirrors the migration section)
    - `data_safety.production_projects` → production_projects list (empty list if user skipped)
+   - `migration.scope` → `tenant_carveout` if the user selected tenant carve-out; otherwise leave the template default `full_migration` unchanged
+   - `migration.tenant_predicate` → tenant predicate string if captured; otherwise leave null
 3. Write to `.wire/releases/[release_folder]/status.md`
+
+> When `migration.scope` is left at `full_migration` (the default for any non-carve-out migration), every existing migration command behaves exactly as before — `scope` and `tenant_predicate` carry their default values and no command branches on them. The carve-out steps only activate when `scope` is explicitly `tenant_carveout`.
 
 **For `agentic_data_stack` release type**:
 

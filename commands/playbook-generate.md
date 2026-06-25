@@ -111,6 +111,16 @@ Session start sequence (run at the start of every session):
   3. [continue with the next audit or migration command]
 ```
 
+#### Tenant carve-out variant (`migration.scope == tenant_carveout`)
+
+Read `migration.scope` from `status.md`. When it is absent or `full_migration`, **omit this block entirely** — the standard six-phase `platform_migration` sequence above is unchanged. Only when `migration.scope == tenant_carveout` insert the following carve-out steps into the sequence (both the narrative and the BPMN diagram), at the positions noted, using `migration.tenant_predicate` to scope the extracted tenant. Mark each inserted node clearly as a carve-out-only step.
+
+- **After Phase 1 audits** — region-tagging: tag every in-scope item with the region / tenant boundary it belongs to, scoped by `migration.tenant_predicate`. Run `/wire:region-tagging-generate <release> [--region <code>]` → `/wire:region-tagging-validate` → `/wire:region-tagging-review` (the human adjudication gate).
+- **Alongside Phase 2 strategy** — data-residency-assessment: the GDPR and data-residency assessment, including the legal review of the historical data window being migrated. Run `/wire:data-residency-assessment-generate <release>` → `-validate` → `-review` (the client DPO/legal sign-off gate). RA prepares this as data processor; the lawful-basis and retention determinations are the client's. This is a Stage 1 contractual deliverable with its own gate.
+- **Phase 4 migration** — bulk-copy-migration **in place of the re-ingest assumption**: a tenant-scoped Snowflake→BigQuery bulk copy filtered by `migration.tenant_predicate`, instead of re-running ingestion connectors. Run `/wire:bulk-copy-migration-generate <release>` → `-validate` → `-review` (safety gate before the first copy).
+- **Reporting layer** — Metabase reporting reinstatement: repoint the tenant's Metabase reporting against the target. Run `/wire:metabase-migration-generate <release>` → `-validate` → `-review` (preceded by `/wire:metabase-audit-*` if the Metabase layer has not yet been catalogued). Reporting-layer commands are gated on `migration.reporting_tool: metabase`, not on scope.
+- **Before Phase 6 cutover** — logical-access-uat: verify tenant-scoped logical access (roles, row-level security, masking) on the target before cutover. Run `/wire:logical-access-uat-generate <release> [--region <code>]` → `-validate` → `-review` (the isolation-proof sign-off gate).
+
 For `sop_discovery` and any release type with parallel streams: the diagram will include parallel fork and join gateways. For all others: linear sequence.
 
 ---

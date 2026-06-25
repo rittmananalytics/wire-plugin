@@ -18,7 +18,7 @@ The framework encodes delivery methodology as twelve release types, each definin
 | **Dashboard Extension** | `dashboard_extension` | New dashboards on an existing semantic layer | 3–5 days |
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days |
 | **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront | 1–4 weeks |
-| **Platform Migration** | `platform_migration` | Full lifecycle migration from one warehouse stack to another | 4–16 weeks |
+| **Platform Migration** | `platform_migration` | Full lifecycle migration from one warehouse stack to another. Runs full-platform or as a **tenant carve-out** (extract one tenant into its own target), set by `migration.scope` | 4–16 weeks |
 | **Agentic Data Stack** | `agentic_data_stack` | AI analytics overlay for an existing data platform | 4–6 weeks |
 | **Droughty** | `droughty` | Schema introspection and base-layer generation | 1–3 days |
 | **Custom** | `custom` | Bespoke scope derived from SoW or project documents | Varies |
@@ -34,7 +34,7 @@ The framework encodes delivery methodology as twelve release types, each definin
 - **Semantic layer already has the data; adding new dashboards** → **Dashboard Extension**
 - **Platform exists; engaged to train and document it** → **Enablement**
 - **Building an AI-powered ecommerce storefront** → **Agentic Commerce**
-- **Migrating an existing data platform between warehouses** → **Platform Migration**
+- **Migrating an existing data platform between warehouses** → **Platform Migration** (full-platform, or a tenant carve-out to extract a single tenant)
 - **Client wants an AI that answers business questions reliably from their warehouse** → **Agentic Data Stack**
 - **Need to map an existing warehouse quickly before starting design work** → **Droughty** (discovery mode)
 - **Bespoke deliverables that don't fit any standard type** → **Custom**

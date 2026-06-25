@@ -1,9 +1,9 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: Internal RA review of Metabase migration runbook
+argument-hint: <release-folder>
 ---
 
-# Apply agreed fix and re-run equivalency checks for affected objects
+# Internal RA review of Metabase migration runbook
 
 ## User Input
 
@@ -22,108 +22,85 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
+description: Internal RA review of Metabase migration runbook
 ---
 
-# Equivalency — Fix
+# Metabase Migration — Review
 
 ## Purpose
 
-Applies a specific fix to a failing equivalency object and re-runs the equivalency checks for that object (and any objects that depend on it). Updates the loop history in status.md. This is a targeted repair command — it does not re-run checks for the entire scope.
+Internal RA review of the Metabase migration runbook before execution. Confirms SQL translations are correct, the permission-group remap is sound, validation is decoy-based, and the two-stage connection repoint and its per-stage rollback are agreed.
 
-## Arguments
+## Prerequisites
 
-Required:
-- `--object <name>` — the table or dbt model to fix
-- `--approach <description>` — brief description of the fix being applied
-
-Example:
-```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
-```
+- `migration/metabase_migration_runbook.md` exists with `validate: pass`
 
 ## Workflow
 
-### Step 1: Load context
+### Step 1: Load meeting context
 
-Read the investigation notes for this object from the latest equivalency report. Confirm the `--approach` matches or builds on the proposed fix.
+Follow `specs/utils/meeting_context.md`. Search for discussions about Metabase, reporting cutover, dashboard owners, or BI access requirements.
 
-### Step 2: Apply the fix
+### Step 2: Present runbook for review
 
-Based on the `--approach`:
+Summary to present:
+- Topology (additive target connection + decoy collection) and rationale
+- Cards by approach (repoint / rewrite_sql / rebuild)
+- Any SQL translations with non-trivial changes
+- Permission-group remap table
+- Decoy mapping (production card → decoy test copy; production connection → target connection)
+- The two-stage cutover plan (pilot repoint → full connection repoint) and per-stage rollback
 
-**If SQL translation fix**:
-- Open the translated model at `migration/dbt/{model_name}.sql`
-- Apply the correction
-- Update the diff file
-- Re-run `dbt compile` for the model if target profile available
+### Step 3: Gather reviewer feedback
 
-**If DDL fix**:
-- Open the relevant target_setup_scripts SQL file
-- Apply the correction
-- Note that the DDL change may need to be applied to the target platform manually
+1. Are the SQL translations correct and do they preserve the report's meaning?
+2. Are the `rebuild` plans complete?
+3. Is the permission-group remap correct — does every group land with the access the client expects, and is the before-state captured for rollback?
+4. Is validation genuinely decoy-based — are production cards and dashboards confirmed untouched during validation?
+5. Is the two-stage repoint agreed, and is each stage's rollback (connection details + permission graph + card SQL) workable? Who on the client side owns the cutover window?
 
-**If configuration fix** (Fivetran mapping, type handling):
-- Document the configuration change required
-- If Fivetran MCP available: apply the mapping change via MCP
-- Otherwise: write detailed manual steps for the engineer to apply
+### Step 4: Apply feedback and record decision
 
-**If accepted difference**:
-- Document the business justification
-- Update the equivalency tolerance for this table in migration_strategy.md
-- Mark the object as `accepted_difference` in status.md
+```markdown
+## Review
 
-### Step 3: Re-run checks for affected objects
+**Reviewed by**: {{REVIEWER_NAME}}
+**Review date**: {{TODAY}}
+**Decision**: approved | changes_requested
 
-Identify all objects that depend on the fixed object (using the dependency graph from migration_inventory.md).
+### Reviewer notes
+[Capture corrections, agreed cutover window, rollback ownership]
+```
 
-Re-run all per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for:
-- The fixed object
-- All direct dependents of the fixed object
-
-If the fix touches a column feeding a business invariant, re-run that invariant too.
-
-If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
-
-### Step 4: Update status
-
-Add a `fix` entry to the loop history:
+### Step 5: Update status
 
 ```yaml
-migration:
-  equivalency_validation:
-    loop_history:
-      - run: N
-        date: "{{PREVIOUS_DATE}}"
-        passing: X
-        failing: Y
-      - fix:
-          date: "{{TODAY}}"
-          object: "{{OBJECT_NAME}}"
-          approach: "{{APPROACH}}"
-          result: "passing" | "still_failing"
+artifacts:
+  metabase_migration:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
 ```
 
-Update `checks_failing` with the new total after re-checking affected objects.
+### Step 6: Output next command
 
-### Step 5: Output
-
-If the object now passes:
+If approved:
 ```
-Fix applied successfully. {{OBJECT_NAME}} now passes all equivalency checks.
-Checks failing: N (was N+1)
-
-/wire:equivalency-validate $ARGUMENTS   ← run full check when all fixes applied
+/wire:equivalency-validate $ARGUMENTS
 ```
 
-If the object still fails:
-```
-Fix applied but {{OBJECT_NAME}} still failing.
-Check type still failing: [type]
 
-Re-investigate:
-/wire:equivalency-investigate $ARGUMENTS --object {{OBJECT_NAME}}
-```
+## Post-Execution Hooks
+
+After updating `status.md`, run these in sequence:
+
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
+
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_migration` as artifact, `review` as action.
+
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_migration` as artifact_id, `Metabase Migration` as artifact_name, and the `file` value from `artifacts.metabase_migration` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `metabase_migration` as artifact, `review` as action.
 
 Execute the complete workflow as specified above.
 

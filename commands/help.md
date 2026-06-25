@@ -263,6 +263,24 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:migration-report-generate` | `<release-folder>` | Generate post-migration report |
 | `/wire:migration-report-validate` | `<release-folder>` | Validate migration report completeness |
 | `/wire:migration-report-review` | `<release-folder>` | Final review and archive of migration report |
+| `/wire:data-residency-assessment-generate` | `<release-folder>` | Generate the GDPR and data-residency assessment, including the historical-window legal review (tenant carve-out) |
+| `/wire:data-residency-assessment-validate` | `<release-folder>` | Validate the data residency assessment — all required sections present and non-empty |
+| `/wire:data-residency-assessment-review` | `<release-folder>` | Client DPO/legal sign-off gate for the data residency assessment |
+| `/wire:region-tagging-generate` | `<release-folder> [--region <code>]` | Classify in-scope items into region buckets for a tenant carve-out (candidates, never auto-removal) |
+| `/wire:region-tagging-validate` | `<release-folder>` | Validate region tags — all three buckets populated, every item classified exactly once |
+| `/wire:region-tagging-review` | `<release-folder>` | Human adjudication gate for region tags |
+| `/wire:bulk-copy-migration-generate` | `<release-folder>` | Generate Snowflake→BigQuery bulk copy runbook (tenant carve-out, two-stage with equivalency gate) |
+| `/wire:bulk-copy-migration-validate` | `<release-folder>` | Validate bulk copy runbook — tenant guard, two-stage gate, scoped service account |
+| `/wire:bulk-copy-migration-review` | `<release-folder>` | Safety-gated approval before the first tenant bulk-copy execution |
+| `/wire:logical-access-uat-generate` | `<release-folder> [--region <code>]` | Generate a region-scoped logical-access UAT plan and evidence pack (tenant carve-out) |
+| `/wire:logical-access-uat-validate` | `<release-folder>` | Validate logical-access UAT — at least one negative test per IAM boundary |
+| `/wire:logical-access-uat-review` | `<release-folder>` | Execute and sign off logical-access UAT — the isolation-proof gate before cutover |
+| `/wire:metabase-audit-generate` | `<release-folder>` | Catalog Metabase collections, dashboards, cards/SQL, and permission groups |
+| `/wire:metabase-audit-validate` | `<release-folder>` | Validate Metabase audit completeness and dependency coverage |
+| `/wire:metabase-audit-review` | `<release-folder>` | Internal RA review of Metabase audit |
+| `/wire:metabase-migration-generate` | `<release-folder>` | Generate Metabase migration runbook — translate card SQL, remap permission groups, two-stage connection repoint |
+| `/wire:metabase-migration-validate` | `<release-folder>` | Validate Metabase migration runbook completeness |
+| `/wire:metabase-migration-review` | `<release-folder>` | Internal RA review of Metabase migration runbook |
 
 ### DROUGHTY
 

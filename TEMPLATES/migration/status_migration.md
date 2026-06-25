@@ -11,9 +11,19 @@ current_phase: "audit"
 migration:
   source_platform: "{{SOURCE_PLATFORM}}"   # bigquery | snowflake
   target_platform: "{{TARGET_PLATFORM}}"   # bigquery | snowflake
+  scope: full_migration                    # full_migration (default) | tenant_carveout
+                                           # full_migration = migrate the whole platform (standard six-phase sequence)
+                                           # tenant_carveout = extract a single tenant's data into the target
+  tenant_predicate: null                   # tenant_carveout only: the WHERE clause / tenant key that scopes the
+                                           # extracted tenant, e.g. "tenant_id = 4815". Consumed by the carve-out
+                                           # steps (region-tagging, bulk-copy-migration, logical-access-uat).
+                                           # Leave null for full_migration.
   dbt_project_path: "{{DBT_PROJECT_PATH}}" # default: ./dbt
   orchestration_tool: "{{ORCHESTRATION_TOOL}}" # dagster | dbt_cloud | airflow | none
   ingestion_tool: "{{INGESTION_TOOL}}"     # fivetran | rudderstack | coupler-io | segment | airbyte | other
+  reporting_tool: none                     # looker | metabase | none — the client's reporting/BI layer.
+                                           # metabase enables the metabase_audit / metabase_migration commands;
+                                           # looker is the Wire default. Not gated by migration.scope.
   connectivity: "{{CONNECTIVITY}}"         # public_endpoint | private_network_mcp_tunnel
   target_project: null      # BigQuery: GCP project ID for the target environment
   target_dataset: null      # BigQuery: default dataset / schema on the target

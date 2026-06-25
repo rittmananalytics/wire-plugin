@@ -46,13 +46,17 @@ The Platform Migration release type covers the full lifecycle of migrating a dat
 
 ## Setting up a Platform Migration release
 
-Run `/wire:new` and select **Platform Migration**. You will be asked five additional questions:
+Run `/wire:new` and select **Platform Migration**. You will be asked a set of additional questions:
 
 1. **Source platform** — BigQuery or Snowflake
 2. **Target platform** — must differ from source
 3. **dbt project path** — relative to repo root
 4. **Orchestration tool** — Dagster, dbt Cloud, Airflow, or None
-5. **Connectivity** — public endpoint or private network requiring an MCP tunnel
+5. **Ingestion tool** — Fivetran, RudderStack, Coupler.io, Segment, Airbyte, or Other
+6. **Reporting / BI tool** — Looker, Metabase, None, or Other. `metabase` enables the Metabase reporting-layer commands.
+7. **Connectivity** — public endpoint or private network requiring an MCP tunnel
+8. **Target project / account** and any **production project IDs** to treat as off-limits for writes
+9. **Migration scope** — full migration (default) or a **tenant carve-out**. Choosing carve-out captures a `migration.tenant_predicate` and turns on the carve-out flow described below.
 
 ## MCP server connections
 
@@ -344,6 +348,37 @@ Four commands require explicit confirmation before proceeding:
 - **`orchestration-migration-review`** — confirms all orchestration jobs have been reviewed
 - **`cutover-review`** — the point of no return. Requires all equivalency checks passing, written client sign-off, rollback window agreed
 
+## Tenant carve-out variant
+
+A platform migration runs in one of two scopes, set by `migration.scope` in `status.md`:
+
+- **`full_migration`** (default) — migrate the whole platform. The flow above is unchanged. When `scope` is absent or `full_migration`, every migration command behaves exactly as before.
+- **`tenant_carveout`** — extract a single tenant's data into the target. `/wire:new` asks whether this is a carve-out and captures a `migration.tenant_predicate` (the WHERE clause or tenant key, e.g. `tenant_id = 4815`) that scopes the extraction.
+
+The carve-out is a variant on this release type, not a new one — it reuses the whole command set and adds tenant scoping where it matters. Equivalency threads the predicate through the existing checks on both source and target (no new check types — min/max already lives in value sampling, checksum and aggregate totals already exist; schema stays structural). The security chain narrows with it: the security audit classifies roles/grants as tenant-scoped vs shared and flags the tenant key per table, the strategy maps these to a two-project / tenant-scoped IAM model with a row-level security predicate, and `target_setup` emits tenant-scoped GRANTs and the RLS policy into `04_security.sql`, reusing the existing PII policy-tag taxonomy.
+
+Four commands are specific to the carve-out flow:
+
+| Command | Phase | Purpose |
+|---|---|---|
+| `/wire:region-tagging-*` | After audits | Classify every in-scope item into confident-region / shared-row-level / global-deferred buckets. Produces **candidates** for adjudication — never a binary include/exclude, never auto-removal. Region is a parameter (`--region`, default `de`). `-review` is the human adjudication gate. |
+| `/wire:data-residency-assessment-*` | Alongside strategy | The GDPR and data-residency assessment, including the legal review of the historical data window being migrated. RA prepares it as data processor and flags every point needing the client's DPO/legal determination — lawful basis and retention ruling above all. `-review` is the client DPO/legal sign-off gate. |
+| `/wire:bulk-copy-migration-*` | Migration | Snowflake→BigQuery bulk historical copy (BigQuery Data Transfer Service / GCS-staged) **in place of re-ingestion**. Two-stage copy with an equivalency gate between pilot partition and remainder, run under a scoped service account with a tenant guard. `-review` is a safety gate before the first copy. |
+| `/wire:logical-access-uat-*` | Before cutover | Region-scoped logical-access UAT proving users in the tenant's project reach only that project. Positive and negative tests per role; `-validate` requires at least one negative test per IAM boundary in `04_security.sql`; `-review` is the isolation-proof sign-off gate. |
+
+A worked example of the carve-out flow is in the [Tutorial: Tenant Carve-out](../tutorials/platform-migration-tenant-carveout).
+
+## Metabase reporting-layer migration
+
+Wire's reporting-layer support was Looker-only. Metabase is now a recognised reporting tool, set via `migration.reporting_tool: metabase` in `status.md` (asked at `/wire:new`). It is a general capability — it applies to any migration where the client uses Metabase, full migration or carve-out alike, and is **not gated by `migration.scope`**.
+
+| Command | Purpose |
+|---|---|
+| `/wire:metabase-audit-*` | Catalogue collections, dashboards, cards (with SQL), database connections, and permission groups; map each card's warehouse dependencies. The reporting-layer counterpart to the reverse-ETL audit. |
+| `/wire:metabase-migration-*` | Translate card SQL to BigQuery dialect, remap permission groups, validate on a throwaway decoy collection / non-production connection, then repoint the Metabase database connection from Snowflake to BigQuery in two stages with per-stage rollback. Requires a client-supplied query inventory — it will not proceed without one. |
+
+Both build on the imported Metabase agent skills (`skills/metabase/SKILL.md`, wrapping the upstream `metabase/agent-skills`).
+
 ## Full command sequence
 
 ```
@@ -416,6 +451,36 @@ Four commands require explicit confirmation before proceeding:
 /wire:migration-report-review <release>
 
 /wire:archive <release>
+```
+
+### Carve-out and Metabase additions
+
+For a `tenant_carveout` release, these slot into the sequence: region tagging after the audits, the data-residency assessment alongside strategy, the bulk copy in place of ingestion migration, and logical-access UAT before cutover. Metabase commands run for any migration where `reporting_tool: metabase`.
+
+```
+# ── after audits, before inventory ──────────────────────────────
+/wire:region-tagging-generate <release> [--region de]
+/wire:region-tagging-validate <release>
+/wire:region-tagging-review <release>                # human adjudication gate
+
+# ── alongside strategy (Stage 1 deliverable) ────────────────────
+/wire:data-residency-assessment-generate <release>
+/wire:data-residency-assessment-validate <release>
+/wire:data-residency-assessment-review <release>     # client DPO/legal sign-off
+
+# ── reporting layer (reporting_tool: metabase) ──────────────────
+/wire:metabase-audit-generate <release>              # …-validate / …-review
+/wire:metabase-migration-generate <release>          # …-validate / …-review
+
+# ⚠ SAFETY GATE — in place of ingestion-migration for a carve-out
+/wire:bulk-copy-migration-generate <release>
+/wire:bulk-copy-migration-validate <release>
+/wire:bulk-copy-migration-review <release>           # safety gate before first copy
+
+# ⚠ before cutover — proves tenant isolation
+/wire:logical-access-uat-generate <release> [--region de]
+/wire:logical-access-uat-validate <release>          # ≥1 negative test per IAM boundary
+/wire:logical-access-uat-review <release>            # isolation-proof sign-off
 ```
 
 :::info[Tutorial available]

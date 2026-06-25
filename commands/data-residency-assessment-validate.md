@@ -1,9 +1,9 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: Validate the data residency assessment — all required sections present and non-empty
+argument-hint: <release-folder>
 ---
 
-# Apply agreed fix and re-run equivalency checks for affected objects
+# Validate the data residency assessment — all required sections present and non-empty
 
 ## User Input
 
@@ -22,108 +22,83 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
+description: Validate the data residency assessment — all required sections present and non-empty, processor-not-counsel framing intact
 ---
 
-# Equivalency — Fix
+# Data Residency Assessment — Validate
 
 ## Purpose
 
-Applies a specific fix to a failing equivalency object and re-runs the equivalency checks for that object (and any objects that depend on it). Updates the loop history in status.md. This is a targeted repair command — it does not re-run checks for the entire scope.
+Checks the data residency assessment for completeness: every required section is present and non-empty, the processor-not-counsel framing is intact, and the legal determinations are flagged for the client rather than asserted by RA. Produces a PASS/FAIL report.
 
-## Arguments
+## Prerequisites
 
-Required:
-- `--object <name>` — the table or dbt model to fix
-- `--approach <description>` — brief description of the fix being applied
+- `migration/data_residency_assessment.md` exists (data_residency_assessment generate: complete)
 
-Example:
-```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
-```
+## Validation Checks
 
-## Workflow
+**Check 1 — All required sections present and non-empty**
+The document contains all seven sections, each with substantive content (not a placeholder heading):
+1. Scope and purpose
+2. Data inventory in scope
+3. GDPR scope and lawful basis
+4. Residency constraints for the target region
+5. Historical-window legal review
+6. Processor safeguards
+7. Required client input / open legal questions
+PASS: all seven present and non-empty. FAIL: list missing or empty sections.
 
-### Step 1: Load context
+**Check 2 — Processor-not-counsel framing present**
+The document leads with the banner stating RA prepared it as data processor and that it is not legal advice; the controller/processor split is stated in the GDPR section.
+PASS/FAIL.
 
-Read the investigation notes for this object from the latest equivalency report. Confirm the `--approach` matches or builds on the proposed fix.
+**Check 3 — Legal determinations flagged, not asserted**
+The lawful basis and the historical-window retention ruling are marked **[CLIENT DPO/LEGAL]**, not answered by RA. RA must not state a lawful basis as fact.
+PASS: determinations flagged. FAIL: RA asserts a lawful basis or retention ruling without flagging it as the client's.
 
-### Step 2: Apply the fix
+**Check 4 — Required client input section non-empty**
+Section 7 lists at least the lawful basis and the historical-window retention ruling. It must never be empty.
+PASS/FAIL.
 
-Based on the `--approach`:
+**Check 5 — Target region and historical window stated**
+The document states the target region (and BigQuery location) and the specific historical window (date range) being assessed, matching status.md.
+PASS/FAIL.
 
-**If SQL translation fix**:
-- Open the translated model at `migration/dbt/{model_name}.sql`
-- Apply the correction
-- Update the diff file
-- Re-run `dbt compile` for the model if target profile available
+**Check 6 — Historical-window review is specific**
+Section 5 reviews the actual window being migrated — its date range, retention basis, and minimisation options — not a generic retention statement.
+PASS/FAIL.
 
-**If DDL fix**:
-- Open the relevant target_setup_scripts SQL file
-- Apply the correction
-- Note that the DDL change may need to be applied to the target platform manually
+**Check 7 — Sign-off block present**
+The document contains the sign-off block with both a client DPO/legal line and an RA line.
+PASS/FAIL.
 
-**If configuration fix** (Fivetran mapping, type handling):
-- Document the configuration change required
-- If Fivetran MCP available: apply the mapping change via MCP
-- Otherwise: write detailed manual steps for the engineer to apply
+### Write validation report
 
-**If accepted difference**:
-- Document the business justification
-- Update the equivalency tolerance for this table in migration_strategy.md
-- Mark the object as `accepted_difference` in status.md
+Append a `## Validation` section to `migration/data_residency_assessment.md` with a per-check PASS/FAIL table and a "Gaps to address" list.
 
-### Step 3: Re-run checks for affected objects
-
-Identify all objects that depend on the fixed object (using the dependency graph from migration_inventory.md).
-
-Re-run all per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for:
-- The fixed object
-- All direct dependents of the fixed object
-
-If the fix touches a column feeding a business invariant, re-run that invariant too.
-
-If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
-
-### Step 4: Update status
-
-Add a `fix` entry to the loop history:
-
+Update status:
 ```yaml
-migration:
-  equivalency_validation:
-    loop_history:
-      - run: N
-        date: "{{PREVIOUS_DATE}}"
-        passing: X
-        failing: Y
-      - fix:
-          date: "{{TODAY}}"
-          object: "{{OBJECT_NAME}}"
-          approach: "{{APPROACH}}"
-          result: "passing" | "still_failing"
+artifacts:
+  data_residency_assessment:
+    validate: pass | fail
+    validated_date: "{{TODAY}}"
 ```
 
-Update `checks_failing` with the new total after re-checking affected objects.
+If PASS: `/wire:data-residency-assessment-review $ARGUMENTS`
+If FAIL: fix gaps and re-run validate.
 
-### Step 5: Output
 
-If the object now passes:
-```
-Fix applied successfully. {{OBJECT_NAME}} now passes all equivalency checks.
-Checks failing: N (was N+1)
+## Post-Execution Hooks
 
-/wire:equivalency-validate $ARGUMENTS   ← run full check when all fixes applied
-```
+After updating `status.md`, run these in sequence:
 
-If the object still fails:
-```
-Fix applied but {{OBJECT_NAME}} still failing.
-Check type still failing: [type]
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-Re-investigate:
-/wire:equivalency-investigate $ARGUMENTS --object {{OBJECT_NAME}}
-```
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `data_residency_assessment` as artifact, `validate` as action.
+
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `data_residency_assessment` as artifact_id, `Data Residency Assessment` as artifact_name, and the `file` value from `artifacts.data_residency_assessment` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `data_residency_assessment` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 

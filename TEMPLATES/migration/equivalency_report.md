@@ -5,8 +5,13 @@
 **Run number**: {{RUN_NUMBER}}
 **Source platform**: {{SOURCE_PLATFORM}}
 **Target platform**: {{TARGET_PLATFORM}}
+**Migration scope**: {{MIGRATION_SCOPE}}  <!-- full_migration | tenant_carveout -->
+**Tenant predicate**: {{TENANT_PREDICATE}}  <!-- tenant_carveout only: the WHERE clause applied to every data-bearing check; blank for full_migration -->
 
 ## Summary
+
+<!-- For tenant_carveout runs, every check below was scoped to the tenant predicate above on both source and target. No new check types are added — min/max is part of value sampling, and checksum and aggregate control totals already exist. -->
+
 
 | Metric | Value |
 |--------|-------|

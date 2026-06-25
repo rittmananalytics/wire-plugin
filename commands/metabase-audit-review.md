@@ -1,9 +1,9 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: Internal RA review of Metabase audit
+argument-hint: <release-folder>
 ---
 
-# Apply agreed fix and re-run equivalency checks for affected objects
+# Internal RA review of Metabase audit
 
 ## User Input
 
@@ -22,108 +22,91 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
+description: Internal RA review of Metabase audit
 ---
 
-# Equivalency — Fix
+# Metabase Audit — Review
 
 ## Purpose
 
-Applies a specific fix to a failing equivalency object and re-runs the equivalency checks for that object (and any objects that depend on it). Updates the loop history in status.md. This is a targeted repair command — it does not re-run checks for the entire scope.
+Internal RA review of the Metabase audit before it feeds into the migration inventory. The reviewer confirms card/dashboard coverage, agrees on decommission decisions, checks that warehouse dependency mapping and permission groups are complete, and flags any cards needing deeper investigation before the migration strategy is drafted — particularly `rewrite_sql` cards and any `rebuild` cases.
 
-## Arguments
+## Prerequisites
 
-Required:
-- `--object <name>` — the table or dbt model to fix
-- `--approach <description>` — brief description of the fix being applied
+- `audit/metabase_audit.md` exists with `validate: pass`
 
-Example:
-```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
-```
+## Inputs
+
+- `.wire/releases/$ARGUMENTS/audit/metabase_audit.md`
+- `.wire/releases/$ARGUMENTS/status.md`
 
 ## Workflow
 
-### Step 1: Load context
+### Step 1: Load meeting context
 
-Read the investigation notes for this object from the latest equivalency report. Confirm the `--approach` matches or builds on the proposed fix.
+Follow `specs/utils/meeting_context.md` to retrieve any Fathom recordings relevant to this release. Search for discussions about reporting, dashboards, Metabase, BI access, or specific reports. Surface relevant extracts — particularly mentions of critical dashboards, report owners, or known query issues.
 
-### Step 2: Apply the fix
+### Step 2: Present audit for review
 
-Based on the `--approach`:
+Display a summary:
+- Total cards, dashboards, collections
+- Migration approach distribution (repoint / rewrite_sql / rebuild / decommission)
+- Complexity breakdown (Low / Medium / High)
+- Database connections and the cards per connection
+- Permission groups and their access
+- Source-resolution coverage and the unresolved cards
+- dbt model cards and their migration batch dependencies
+- Cards flagged for decommission with reasons
 
-**If SQL translation fix**:
-- Open the translated model at `migration/dbt/{model_name}.sql`
-- Apply the correction
-- Update the diff file
-- Re-run `dbt compile` for the model if target profile available
+### Step 3: Gather reviewer feedback
 
-**If DDL fix**:
-- Open the relevant target_setup_scripts SQL file
-- Apply the correction
-- Note that the DDL change may need to be applied to the target platform manually
+1. Is the card/dashboard list complete — any collections, personal collections, or reports not captured here?
+2. Do the decommission decisions look right? Any cards that should be kept or cut differently?
+3. Are there any High-complexity cards (`rewrite_sql` or `rebuild`) that need a spike before migration strategy is drafted?
+4. Are the warehouse object dependencies correct — do the listed tables/views match what the team knows about these reports?
+5. Are the permission groups complete, and do they reflect the access the client expects after migration?
 
-**If configuration fix** (Fivetran mapping, type handling):
-- Document the configuration change required
-- If Fivetran MCP available: apply the mapping change via MCP
-- Otherwise: write detailed manual steps for the engineer to apply
+### Step 4: Apply feedback and record decision
 
-**If accepted difference**:
-- Document the business justification
-- Update the equivalency tolerance for this table in migration_strategy.md
-- Mark the object as `accepted_difference` in status.md
+Incorporate corrections into `audit/metabase_audit.md`. Record:
 
-### Step 3: Re-run checks for affected objects
+```markdown
+## Review
 
-Identify all objects that depend on the fixed object (using the dependency graph from migration_inventory.md).
+**Reviewed by**: {{REVIEWER_NAME}}
+**Review date**: {{TODAY}}
+**Decision**: approved | changes_requested
 
-Re-run all per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for:
-- The fixed object
-- All direct dependents of the fixed object
+### Reviewer notes
+[Capture comments, corrections, or follow-up actions]
+```
 
-If the fix touches a column feeding a business invariant, re-run that invariant too.
-
-If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
-
-### Step 4: Update status
-
-Add a `fix` entry to the loop history:
+### Step 5: Update status
 
 ```yaml
-migration:
-  equivalency_validation:
-    loop_history:
-      - run: N
-        date: "{{PREVIOUS_DATE}}"
-        passing: X
-        failing: Y
-      - fix:
-          date: "{{TODAY}}"
-          object: "{{OBJECT_NAME}}"
-          approach: "{{APPROACH}}"
-          result: "passing" | "still_failing"
+artifacts:
+  metabase_audit:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
 ```
 
-Update `checks_failing` with the new total after re-checking affected objects.
+### Step 6: Output next command
 
-### Step 5: Output
-
-If the object now passes:
+If approved and all other audits are also approved:
 ```
-Fix applied successfully. {{OBJECT_NAME}} now passes all equivalency checks.
-Checks failing: N (was N+1)
-
-/wire:equivalency-validate $ARGUMENTS   ← run full check when all fixes applied
+/wire:migration-inventory-generate $ARGUMENTS
 ```
 
-If the object still fails:
+If other audits are still pending:
 ```
-Fix applied but {{OBJECT_NAME}} still failing.
-Check type still failing: [type]
+Continue with remaining audits. When all audits are approved:
+/wire:migration-inventory-generate $ARGUMENTS
+```
 
-Re-investigate:
-/wire:equivalency-investigate $ARGUMENTS --object {{OBJECT_NAME}}
-```
+## Review Gate
+
+The Metabase audit review is an internal RA gate. Approval confirms all reporting content is accounted for, warehouse dependency mapping is complete enough to drive cutover sequencing, permission groups are captured, and no blocking unknowns remain before migration strategy work begins. The output feeds the migration inventory's dependency graph — specifically which warehouse objects must exist on target before each card can be repointed.
 
 Execute the complete workflow as specified above.
 

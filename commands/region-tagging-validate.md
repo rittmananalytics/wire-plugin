@@ -1,9 +1,9 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: Validate region tags — all three buckets populated, every item classified exactly once
+argument-hint: <release-folder>
 ---
 
-# Apply agreed fix and re-run equivalency checks for affected objects
+# Validate region tags — all three buckets populated, every item classified exactly once
 
 ## User Input
 
@@ -22,108 +22,67 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
+description: Validate region tags — all three buckets populated, every in-scope item classified exactly once
 ---
 
-# Equivalency — Fix
+# Region Tagging — Validate
 
-## Purpose
+## Validation Checks
 
-Applies a specific fix to a failing equivalency object and re-runs the equivalency checks for that object (and any objects that depend on it). Updates the loop history in status.md. This is a targeted repair command — it does not re-run checks for the entire scope.
+Read `migration/region_tags.csv`, `migration/region_tagging.md`, and the source audits. Read `target_region` from status.md.
 
-## Arguments
+**Check 1 — All three buckets are populated**
+`region_tags.csv` contains at least one row in each of `confident-region`, `shared-row-level`, and `global-deferred`.
+PASS: all three buckets have ≥1 item.
+FAIL: list any empty bucket.
 
-Required:
-- `--object <name>` — the table or dbt model to fix
-- `--approach <description>` — brief description of the fix being applied
+**Check 2 — Every in-scope item is classified exactly once**
+Build the union of in-scope items from the audits (dbt, reverse_etl/Hightouch, ingestion, security, db_object). Confirm every item appears in `region_tags.csv` exactly once — no item missing, no item in two buckets, no duplicate rows.
+PASS: one-to-one match between in-scope items and CSV rows.
+FAIL: list missing items, duplicates, and any CSV rows that don't correspond to an in-scope item.
 
-Example:
-```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
-```
+**Check 3 — Every row is complete**
+Each row has a non-empty `item_id`, `item_type`, `source_audit`, `bucket`, `signal`, and `confidence_score`.
+PASS/FAIL with rows missing fields.
 
-## Workflow
+**Check 4 — Bucket and score values are valid**
+`bucket` is one of `confident-region | shared-row-level | global-deferred`; `confidence_score` is a number in `[0.0, 1.0]`.
+PASS/FAIL with offending rows.
 
-### Step 1: Load context
+**Check 5 — Candidates only, no decisions**
+`region_tags.csv` carries no include/exclude, keep/remove, or deletion column, and no item is marked as excluded or removed. The artifact is candidates for adjudication, not a scope decision.
+PASS: no decision/removal columns present.
+FAIL: a binary include/exclude or removal field was emitted.
 
-Read the investigation notes for this object from the latest equivalency report. Confirm the `--approach` matches or builds on the proposed fix.
+**Check 6 — Adjudication pile present**
+The summary lists an adjudication pile, and it contains at least every `shared-row-level` row plus any row below the confidence threshold.
+PASS/FAIL.
 
-### Step 2: Apply the fix
+**Check 7 — Target region recorded**
+The summary and status record the `target_region` used (default `de` if no `--region` was passed).
+PASS/FAIL.
 
-Based on the `--approach`:
-
-**If SQL translation fix**:
-- Open the translated model at `migration/dbt/{model_name}.sql`
-- Apply the correction
-- Update the diff file
-- Re-run `dbt compile` for the model if target profile available
-
-**If DDL fix**:
-- Open the relevant target_setup_scripts SQL file
-- Apply the correction
-- Note that the DDL change may need to be applied to the target platform manually
-
-**If configuration fix** (Fivetran mapping, type handling):
-- Document the configuration change required
-- If Fivetran MCP available: apply the mapping change via MCP
-- Otherwise: write detailed manual steps for the engineer to apply
-
-**If accepted difference**:
-- Document the business justification
-- Update the equivalency tolerance for this table in migration_strategy.md
-- Mark the object as `accepted_difference` in status.md
-
-### Step 3: Re-run checks for affected objects
-
-Identify all objects that depend on the fixed object (using the dependency graph from migration_inventory.md).
-
-Re-run all per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for:
-- The fixed object
-- All direct dependents of the fixed object
-
-If the fix touches a column feeding a business invariant, re-run that invariant too.
-
-If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
-
-### Step 4: Update status
-
-Add a `fix` entry to the loop history:
+### Update status
 
 ```yaml
-migration:
-  equivalency_validation:
-    loop_history:
-      - run: N
-        date: "{{PREVIOUS_DATE}}"
-        passing: X
-        failing: Y
-      - fix:
-          date: "{{TODAY}}"
-          object: "{{OBJECT_NAME}}"
-          approach: "{{APPROACH}}"
-          result: "passing" | "still_failing"
+artifacts:
+  region_tagging:
+    validate: pass | fail
+    validated_date: "{{TODAY}}"
 ```
 
-Update `checks_failing` with the new total after re-checking affected objects.
 
-### Step 5: Output
+## Post-Execution Hooks
 
-If the object now passes:
-```
-Fix applied successfully. {{OBJECT_NAME}} now passes all equivalency checks.
-Checks failing: N (was N+1)
+After updating `status.md`, run these in sequence:
 
-/wire:equivalency-validate $ARGUMENTS   ← run full check when all fixes applied
-```
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-If the object still fails:
-```
-Fix applied but {{OBJECT_NAME}} still failing.
-Check type still failing: [type]
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `region_tagging` as artifact, `validate` as action.
 
-Re-investigate:
-/wire:equivalency-investigate $ARGUMENTS --object {{OBJECT_NAME}}
-```
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `region_tagging` as artifact_id, `Region Tagging` as artifact_name, and the `file` value from `artifacts.region_tagging` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `region_tagging` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 

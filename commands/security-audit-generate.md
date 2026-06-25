@@ -110,6 +110,17 @@ For each role / policy, classify:
   - `evaluate` — no direct equivalent (e.g., BQ policy tags → Snowflake dynamic masking)
   - `exclude` — system roles, deprecated users
 
+**Tenant carve-out (`migration.scope == tenant_carveout`)**
+
+Read `migration.scope` and `migration.tenant_predicate` from status.md. When scope is `tenant_carveout`, additionally classify each role and grant by its tenant relationship:
+
+- **tenant_scoped** — exists to give one tenant (or tenant group) access to its own data, or is gated on the tenant key. These map into the carve-out's tenant-scoped IAM model on the target.
+- **shared** — platform-wide roles (admin, analyst, integration service accounts) that span all tenants. These are recreated on the target as-is, not narrowed to the extracted tenant.
+
+Also flag, for every in-scope table, whether it carries the tenant key referenced by `migration.tenant_predicate` (e.g. `tenant_id`). Tables with the tenant key are candidates for a target row-level security policy on that key; tables without it are shared/reference data — note them so the strategy step can decide whether they are copied whole or excluded.
+
+When scope is absent or `full_migration`, skip this classification entirely — the audit is unchanged.
+
 ### Step 4: Write the audit report
 
 **Output location**: `.wire/releases/$ARGUMENTS/audit/security_audit.md`
@@ -122,6 +133,7 @@ Use the template at `TEMPLATES/migration/security_audit.md`. Include:
 - Network policies
 - Migration approach assignments
 - Objects flagged `evaluate` with notes
+- (tenant_carveout only) tenant_scoped vs shared classification for each role/grant, and the tenant-key presence flag per in-scope table
 
 ### Step 5: Update status
 

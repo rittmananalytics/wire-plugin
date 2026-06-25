@@ -46,6 +46,8 @@ Read the most recent equivalency report from `migration/equivalency_report_*.md`
 
 ### Step 2: Diagnose by failure type
 
+If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target in every diagnostic query below — including the partition-level, sample, and freshness queries — so the diagnosis matches the scoped row set `equivalency-validate` checked. When `scope` is `full_migration` or absent, run the queries unscoped as written.
+
 **If failing on Row count**:
 - Run the row count query for both source and target
 - Compare counts at the partition/date level (if partitioned): identify which date ranges have discrepancies

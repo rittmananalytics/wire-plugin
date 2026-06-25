@@ -61,6 +61,7 @@ const sidebars = {
         'tutorials/dashboard-first',
         'tutorials/enablement',
         'tutorials/platform-migration',
+        'tutorials/platform-migration-tenant-carveout',
         'tutorials/agentic-data-stack',
         'tutorials/droughty',
         'tutorials/custom',

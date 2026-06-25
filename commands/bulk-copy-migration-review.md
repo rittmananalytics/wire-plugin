@@ -1,9 +1,9 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: Safety-gated approval before the first tenant bulk-copy execution
+argument-hint: <release-folder>
 ---
 
-# Apply agreed fix and re-run equivalency checks for affected objects
+# Safety-gated approval before the first tenant bulk-copy execution
 
 ## User Input
 
@@ -22,108 +22,109 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
+description: Safety-gated approval before the first tenant bulk-copy execution
 ---
 
-# Equivalency — Fix
+# Bulk Copy Migration — Review
 
 ## Purpose
 
-Applies a specific fix to a failing equivalency object and re-runs the equivalency checks for that object (and any objects that depend on it). Updates the loop history in status.md. This is a targeted repair command — it does not re-run checks for the entire scope.
+Safety-gated review before any data is copied from Snowflake to BigQuery. Approval authorises the migration team to execute the **first copy** — the Stage 1 pilot partition. This is the point at which a misconfigured copy could touch the wrong tenant's data, so it requires explicit written approval.
 
-## Arguments
+## Prerequisites
 
-Required:
-- `--object <name>` — the table or dbt model to fix
-- `--approach <description>` — brief description of the fix being applied
+- `migration/bulk_copy_migration_runbook.md` with `validate: pass`
+- `migration.scope == tenant_carveout`
 
-Example:
+## SAFETY GATE
+
 ```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
+⚠️  SAFETY GATE — First Tenant Bulk-Copy Execution
+
+Approving this review authorises the migration team to execute the Stage 1
+pilot-partition copy from Snowflake to BigQuery for ONE tenant.
+
+  - Source (Snowflake) stays READ ONLY and live — no decommission yet
+  - Every extract is filtered by migration.tenant_predicate: [tenant_predicate]
+  - Writes land only in: [migration.target_project] / [dataset]
+  - The copy runs under a scoped service account, not an admin credential
+  - Stage 2 (remainder) runs only after the equivalency gate passes
+
+Please confirm ALL of:
+[ ] I have reviewed the bulk copy runbook
+[ ] migration.tenant_predicate is correct and scopes exactly the intended tenant
+[ ] The scoped service account is in place and has access ONLY to the target
+    tenant's project/dataset (and dedicated staging bucket, GCS-staged path)
+[ ] The destination is the designated target project — NOT a production project
+[ ] Target schemas exist and have been verified
+[ ] The two-stage gate is understood: pilot partition → equivalency checks 1 and 6
+    → remainder, with Stage 2 blocked until the gate passes
+[ ] The source remains live; decommission is deferred to cutover
+```
+
+Wait for explicit confirmation of all items. If any box is unchecked, stop:
+
+```
+Safety gate not cleared. Address the unchecked items and re-run:
+/wire:bulk-copy-migration-review $ARGUMENTS
 ```
 
 ## Workflow
 
-### Step 1: Load context
+### Step 1: Present runbook summary
 
-Read the investigation notes for this object from the latest equivalency report. Confirm the `--approach` matches or builds on the proposed fix.
+Display: copy mechanism (BQ Data Transfer Service / GCS-staged), tables in scope, tenant predicate, scoped service account identity, target destination, and the pilot-partition chosen for Stage 1.
 
-### Step 2: Apply the fix
+### Step 2: Safety gate confirmation
 
-Based on the `--approach`:
+Present the checklist. Wait for confirmation of every item.
 
-**If SQL translation fix**:
-- Open the translated model at `migration/dbt/{model_name}.sql`
-- Apply the correction
-- Update the diff file
-- Re-run `dbt compile` for the model if target profile available
+### Step 3: Record decision
 
-**If DDL fix**:
-- Open the relevant target_setup_scripts SQL file
-- Apply the correction
-- Note that the DDL change may need to be applied to the target platform manually
+Append a review block to the runbook recording the decision, the reviewer, and the date, with the safety-gate confirmation:
 
-**If configuration fix** (Fivetran mapping, type handling):
-- Document the configuration change required
-- If Fivetran MCP available: apply the mapping change via MCP
-- Otherwise: write detailed manual steps for the engineer to apply
+```markdown
+## Review
 
-**If accepted difference**:
-- Document the business justification
-- Update the equivalency tolerance for this table in migration_strategy.md
-- Mark the object as `accepted_difference` in status.md
+**Reviewed by**: {{REVIEWER_NAME}}
+**Review date**: {{TODAY}}
+**Decision**: approved | changes_requested
 
-### Step 3: Re-run checks for affected objects
-
-Identify all objects that depend on the fixed object (using the dependency graph from migration_inventory.md).
-
-Re-run all per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for:
-- The fixed object
-- All direct dependents of the fixed object
-
-If the fix touches a column feeding a business invariant, re-run that invariant too.
-
-If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
+### Safety gate confirmation
+All checklist items confirmed by: {{REVIEWER_NAME}}
+First copy execution authorised: Stage 1 pilot partition only.
+```
 
 ### Step 4: Update status
 
-Add a `fix` entry to the loop history:
-
 ```yaml
-migration:
-  equivalency_validation:
-    loop_history:
-      - run: N
-        date: "{{PREVIOUS_DATE}}"
-        passing: X
-        failing: Y
-      - fix:
-          date: "{{TODAY}}"
-          object: "{{OBJECT_NAME}}"
-          approach: "{{APPROACH}}"
-          result: "passing" | "still_failing"
+artifacts:
+  bulk_copy_migration:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
 ```
 
-Update `checks_failing` with the new total after re-checking affected objects.
+### Step 5: Output next command
 
-### Step 5: Output
-
-If the object now passes:
+If approved, run the equivalency gate after the pilot partition copy, then continue to the dbt migration:
 ```
-Fix applied successfully. {{OBJECT_NAME}} now passes all equivalency checks.
-Checks failing: N (was N+1)
-
-/wire:equivalency-validate $ARGUMENTS   ← run full check when all fixes applied
+/wire:equivalency-validate $ARGUMENTS
+/wire:dbt-migration-generate $ARGUMENTS
 ```
 
-If the object still fails:
-```
-Fix applied but {{OBJECT_NAME}} still failing.
-Check type still failing: [type]
 
-Re-investigate:
-/wire:equivalency-investigate $ARGUMENTS --object {{OBJECT_NAME}}
-```
+## Post-Execution Hooks
+
+After updating `status.md`, run these in sequence:
+
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
+
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `bulk_copy_migration` as artifact, `review` as action.
+
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `bulk_copy_migration` as artifact_id, `Bulk Copy Migration` as artifact_name, and the `file` value from `artifacts.bulk_copy_migration` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `bulk_copy_migration` as artifact, `review` as action.
 
 Execute the complete workflow as specified above.
 

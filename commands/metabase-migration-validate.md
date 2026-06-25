@@ -1,9 +1,9 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: Validate Metabase migration runbook completeness
+argument-hint: <release-folder>
 ---
 
-# Apply agreed fix and re-run equivalency checks for affected objects
+# Validate Metabase migration runbook completeness
 
 ## User Input
 
@@ -22,108 +22,88 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
+description: Validate Metabase migration runbook completeness — query inventory, SQL translations, permission remap, decoy validation, two-stage repoint with rollback
 ---
 
-# Equivalency — Fix
+# Metabase Migration — Validate
 
 ## Purpose
 
-Applies a specific fix to a failing equivalency object and re-runs the equivalency checks for that object (and any objects that depend on it). Updates the loop history in status.md. This is a targeted repair command — it does not re-run checks for the entire scope.
+Checks the Metabase migration runbook for completeness: the client query inventory is present, every in-scope card has migration steps, `rewrite_sql` cards have verified SQL diffs, permission groups are remapped, validation runs on a decoy collection against a frozen baseline, and the two-stage connection repoint has per-stage rollback. Produces a PASS/FAIL report.
 
-## Arguments
+## Prerequisites
 
-Required:
-- `--object <name>` — the table or dbt model to fix
-- `--approach <description>` — brief description of the fix being applied
+- `migration/metabase_migration_runbook.md` exists
 
-Example:
-```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
-```
+## Validation Checks
 
-## Workflow
+**Check 1 — Client query inventory present**
+The runbook records that it ran against a client-supplied query inventory (approved audit catalog or client export), not inferred SQL. `query_inventory_source` in status.md is set.
+PASS: inventory source recorded. FAIL: no client inventory — the command must not have proceeded.
 
-### Step 1: Load context
+**Check 2 — Topology recorded**
+The runbook states the additive topology (target BigQuery connection added alongside Snowflake, decoy collection for validation) with rationale, and documents the build steps.
+PASS/FAIL.
 
-Read the investigation notes for this object from the latest equivalency report. Confirm the `--approach` matches or builds on the proposed fix.
+**Check 3 — All in-scope cards covered**
+Every card with `include_in_migration: true` in the inventory has a section in the runbook.
+PASS: all present. FAIL: list missing cards.
 
-### Step 2: Apply the fix
+**Check 4 — rewrite_sql cards have SQL diffs**
+Every `rewrite_sql` card includes a before/after SQL diff (source dialect → BigQuery).
+PASS: all diffs present. FAIL: list cards missing a diff.
 
-Based on the `--approach`:
+**Check 5 — Translated SQL verified on target**
+Each `rewrite_sql` card documents the result of running the translated SQL on the target BigQuery connection (row count, result shape) against the frozen baseline.
+PASS/FAIL with unverified translations.
 
-**If SQL translation fix**:
-- Open the translated model at `migration/dbt/{model_name}.sql`
-- Apply the correction
-- Update the diff file
-- Re-run `dbt compile` for the model if target profile available
+**Check 6 — Rebuild plans documented**
+Every `rebuild` card has a documented rebuild plan against the target connection.
+PASS/FAIL.
 
-**If DDL fix**:
-- Open the relevant target_setup_scripts SQL file
-- Apply the correction
-- Note that the DDL change may need to be applied to the target platform manually
+**Check 7 — Permission groups remapped**
+The runbook includes a permission-group remap table mapping each group's source permissions to target BigQuery connection + collection permissions, with the before/after permission graph captured for rollback.
+PASS/FAIL.
 
-**If configuration fix** (Fivetran mapping, type handling):
-- Document the configuration change required
-- If Fivetran MCP available: apply the mapping change via MCP
-- Otherwise: write detailed manual steps for the engineer to apply
+**Check 8 — Validation is decoy-based against a frozen baseline**
+Validation compares card results against a frozen source baseline and runs on the decoy collection / non-production connection only. No production card or dashboard is repointed to validate.
+PASS: decoy-based against a baseline. FAIL: validation repoints production cards, or compares against moving production.
 
-**If accepted difference**:
-- Document the business justification
-- Update the equivalency tolerance for this table in migration_strategy.md
-- Mark the object as `accepted_difference` in status.md
+**Check 9 — Two-stage cutover with per-stage rollback**
+The cutover is two stages — pilot repoint, then full production connection repoint from Snowflake to BigQuery — and each stage has an explicit rollback (revert the database connection details; revert the permission graph; restore card SQL from diffs).
+PASS: both stages and both rollbacks documented. FAIL: single-stage cutover, or a stage missing its rollback.
 
-### Step 3: Re-run checks for affected objects
+**Check 10 — Source connection left live until cutover**
+The runbook does not repoint or delete the production Snowflake connection during the migration phase — only at cutover. The Snowflake connection remains the rollback path through Stage 2.
+PASS: connection repoint appears only in the cutover section. FAIL: production connection repointed/deleted in migration or validation steps.
 
-Identify all objects that depend on the fixed object (using the dependency graph from migration_inventory.md).
+### Write validation report
 
-Re-run all per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for:
-- The fixed object
-- All direct dependents of the fixed object
+Append a `## Validation` section to `migration/metabase_migration_runbook.md` with a per-check PASS/FAIL table and a "Gaps to address" list.
 
-If the fix touches a column feeding a business invariant, re-run that invariant too.
-
-If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
-
-### Step 4: Update status
-
-Add a `fix` entry to the loop history:
-
+Update status:
 ```yaml
-migration:
-  equivalency_validation:
-    loop_history:
-      - run: N
-        date: "{{PREVIOUS_DATE}}"
-        passing: X
-        failing: Y
-      - fix:
-          date: "{{TODAY}}"
-          object: "{{OBJECT_NAME}}"
-          approach: "{{APPROACH}}"
-          result: "passing" | "still_failing"
+artifacts:
+  metabase_migration:
+    validate: pass | fail
+    validated_date: "{{TODAY}}"
 ```
 
-Update `checks_failing` with the new total after re-checking affected objects.
+If PASS: `/wire:metabase-migration-review $ARGUMENTS`
+If FAIL: fix gaps and re-run validate.
 
-### Step 5: Output
 
-If the object now passes:
-```
-Fix applied successfully. {{OBJECT_NAME}} now passes all equivalency checks.
-Checks failing: N (was N+1)
+## Post-Execution Hooks
 
-/wire:equivalency-validate $ARGUMENTS   ← run full check when all fixes applied
-```
+After updating `status.md`, run these in sequence:
 
-If the object still fails:
-```
-Fix applied but {{OBJECT_NAME}} still failing.
-Check type still failing: [type]
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-Re-investigate:
-/wire:equivalency-investigate $ARGUMENTS --object {{OBJECT_NAME}}
-```
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_migration` as artifact, `validate` as action.
+
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_migration` as artifact_id, `Metabase Migration` as artifact_name, and the `file` value from `artifacts.metabase_migration` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `metabase_migration` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 

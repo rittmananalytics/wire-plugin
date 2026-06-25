@@ -1,9 +1,9 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: Execute and sign off logical-access UAT — the isolation-proof gate before cutover
+argument-hint: <release-folder>
 ---
 
-# Apply agreed fix and re-run equivalency checks for affected objects
+# Execute and sign off logical-access UAT — the isolation-proof gate before cutover
 
 ## User Input
 
@@ -22,108 +22,80 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
+description: Execute and sign off region-scoped logical-access UAT — the isolation-proof gate before cutover
 ---
 
-# Equivalency — Fix
+# Logical-Access UAT — Review
 
 ## Purpose
 
-Applies a specific fix to a failing equivalency object and re-runs the equivalency checks for that object (and any objects that depend on it). Updates the loop history in status.md. This is a targeted repair command — it does not re-run checks for the entire scope.
+The sign-off gate where logical-access UAT is executed (or witnessed) and the evidence pack is completed. Approval is the written attestation that the tenant carve-out's access boundaries hold: users in the tenant's project reach only that project and see no other tenant's data. This gate sits before cutover — a failed or unsigned UAT blocks it.
 
-## Arguments
+## Prerequisites
 
-Required:
-- `--object <name>` — the table or dbt model to fix
-- `--approach <description>` — brief description of the fix being applied
-
-Example:
-```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
-```
+- `migration/logical_access_uat_plan.md` with `validate: pass`
 
 ## Workflow
 
-### Step 1: Load context
+### Step 1: Load meeting context
 
-Read the investigation notes for this object from the latest equivalency report. Confirm the `--approach` matches or builds on the proposed fix.
+Follow `specs/utils/meeting_context.md` to surface any Fathom recordings touching data-residency, tenant isolation, or security sign-off requirements.
 
-### Step 2: Apply the fix
+### Step 2: Execute the test matrix and capture evidence
 
-Based on the `--approach`:
+Run each test (or witness the tester run it). For every test ID, fill the evidence block in the plan: actual result, evidence reference (query output, error text, masked value, or screenshot), PASS/FAIL, tester, date.
 
-**If SQL translation fix**:
-- Open the translated model at `migration/dbt/{model_name}.sql`
-- Apply the correction
-- Update the diff file
-- Re-run `dbt compile` for the model if target profile available
+Pay special attention to the negative tests — each must produce a hard denial, zero cross-tenant rows, or a masked value. A negative test that returns another tenant's data is a **fail** and blocks sign-off regardless of how many positive tests pass.
 
-**If DDL fix**:
-- Open the relevant target_setup_scripts SQL file
-- Apply the correction
-- Note that the DDL change may need to be applied to the target platform manually
+### Step 3: Record outcomes and complete sign-off
 
-**If configuration fix** (Fivetran mapping, type handling):
-- Document the configuration change required
-- If Fivetran MCP available: apply the mapping change via MCP
-- Otherwise: write detailed manual steps for the engineer to apply
+Update the evidence blocks, then complete the sign-off block:
 
-**If accepted difference**:
-- Document the business justification
-- Update the equivalency tolerance for this table in migration_strategy.md
-- Mark the object as `accepted_difference` in status.md
+```markdown
+## Sign-off
+- All positive tests passed: ☑ / ☐
+- At least one negative test passed per IAM boundary: ☑ / ☐
+- No cross-tenant data was reachable in any negative test: ☑ / ☐
 
-### Step 3: Re-run checks for affected objects
+**Signed off by**: {{REVIEWER_NAME}}   **Role**: {{ROLE}}   **Date**: {{TODAY}}
+**Decision**: approved | changes_requested
+```
 
-Identify all objects that depend on the fixed object (using the dependency graph from migration_inventory.md).
-
-Re-run all per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for:
-- The fixed object
-- All direct dependents of the fixed object
-
-If the fix touches a column feeding a business invariant, re-run that invariant too.
-
-If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
+Approve only when all three attestations are checked. If any negative test failed, record `changes_requested`, note the boundary that leaked, and route back to `/wire:target-setup-generate` / `/wire:target-setup-review` to fix the IAM boundary before re-testing.
 
 ### Step 4: Update status
 
-Add a `fix` entry to the loop history:
-
 ```yaml
-migration:
-  equivalency_validation:
-    loop_history:
-      - run: N
-        date: "{{PREVIOUS_DATE}}"
-        passing: X
-        failing: Y
-      - fix:
-          date: "{{TODAY}}"
-          object: "{{OBJECT_NAME}}"
-          approach: "{{APPROACH}}"
-          result: "passing" | "still_failing"
+artifacts:
+  logical_access_uat:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
 ```
 
-Update `checks_failing` with the new total after re-checking affected objects.
+### Step 5: Output next command
 
-### Step 5: Output
-
-If the object now passes:
+If approved:
 ```
-Fix applied successfully. {{OBJECT_NAME}} now passes all equivalency checks.
-Checks failing: N (was N+1)
-
-/wire:equivalency-validate $ARGUMENTS   ← run full check when all fixes applied
+/wire:cutover-generate $ARGUMENTS
 ```
 
-If the object still fails:
-```
-Fix applied but {{OBJECT_NAME}} still failing.
-Check type still failing: [type]
+## Review Gate
 
-Re-investigate:
-/wire:equivalency-investigate $ARGUMENTS --object {{OBJECT_NAME}}
-```
+This review proves tenant isolation. Cutover must not proceed until logical-access UAT is `approved` with every negative test passing. Re-running the security DDL after sign-off invalidates the attestation and requires re-execution of the affected tests.
+
+
+## Post-Execution Hooks
+
+After updating `status.md`, run these in sequence:
+
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
+
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `logical_access_uat` as artifact, `review` as action.
+
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `logical_access_uat` as artifact_id, `Logical-Access UAT` as artifact_name, and the `file` value from `artifacts.logical_access_uat` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `logical_access_uat` as artifact, `review` as action.
 
 Execute the complete workflow as specified above.
 

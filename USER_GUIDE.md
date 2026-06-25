@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.10.0 | **Date**: June 2026
+**Version**: 3.10.1 | **Date**: June 2026
 
 ---
 
@@ -2192,7 +2192,7 @@ graph TD
 *Pending review by `/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1`*
 
 ---
-*Generated automatically by Wire Framework v3.10.0 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
+*Generated automatically by Wire Framework v3.10.1 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
 ````
 
 After `/wire:migration-acceptance-pack-review` is run, the reviewer's decision is appended to the same file:

@@ -1,9 +1,9 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: Validate logical-access UAT — at least one negative test per IAM boundary
+argument-hint: <release-folder>
 ---
 
-# Apply agreed fix and re-run equivalency checks for affected objects
+# Validate logical-access UAT — at least one negative test per IAM boundary
 
 ## User Input
 
@@ -22,108 +22,65 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
+description: Validate logical-access UAT — at least one negative test per IAM boundary, positive + negative per role
 ---
 
-# Equivalency — Fix
+# Logical-Access UAT — Validate
 
-## Purpose
+## Validation Checks
 
-Applies a specific fix to a failing equivalency object and re-runs the equivalency checks for that object (and any objects that depend on it). Updates the loop history in status.md. This is a targeted repair command — it does not re-run checks for the entire scope.
+Read `migration/logical_access_uat_plan.md`, `migration/target_setup_scripts/04_security.sql`, and `migration/migration_strategy.md`. Confirm `migration.scope == tenant_carveout`.
 
-## Arguments
+**Check 1 — Every IAM boundary has at least one negative test**
+Enumerate the IAM boundaries defined in `04_security.sql` (tenant-scoped grants, RLS predicate, scoped service account, column masking, shared-role behaviour). For each boundary, confirm the plan contains **at least one negative test**.
+PASS: every boundary has ≥1 negative test.
+FAIL: list each boundary with no negative test. This is the gating check — a boundary tested only positively is not proven.
 
-Required:
-- `--object <name>` — the table or dbt model to fix
-- `--approach <description>` — brief description of the fix being applied
+**Check 2 — Every role has both a positive and a negative test**
+Each role named in the boundaries has at least one positive and at least one negative test.
+PASS/FAIL with roles missing either type.
 
-Example:
-```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
-```
+**Check 3 — Negative tests assert a hard outcome**
+Every negative test's expected result is one of: access denied / permission error, zero rows from another tenant, or a masked value — not a soft pass.
+PASS/FAIL with offending tests.
 
-## Workflow
+**Check 4 — All boundaries from 04_security.sql are covered**
+No boundary in `04_security.sql` is absent from the test matrix. Cross-check the boundary list against the plan.
+PASS/FAIL with uncovered boundaries.
 
-### Step 1: Load context
+**Check 5 — Evidence template present and complete**
+Each test ID has an evidence block with the required fields (boundary, role, type, action, expected, actual, evidence ref, result, tester, date).
+PASS/FAIL.
 
-Read the investigation notes for this object from the latest equivalency report. Confirm the `--approach` matches or builds on the proposed fix.
+**Check 6 — Sign-off block present**
+The plan contains the written sign-off block with the three attestations and a signature line.
+PASS/FAIL.
 
-### Step 2: Apply the fix
+**Check 7 — Scope and region recorded**
+`migration.scope == tenant_carveout` and the target region under test are recorded in the plan and status.
+PASS/FAIL.
 
-Based on the `--approach`:
-
-**If SQL translation fix**:
-- Open the translated model at `migration/dbt/{model_name}.sql`
-- Apply the correction
-- Update the diff file
-- Re-run `dbt compile` for the model if target profile available
-
-**If DDL fix**:
-- Open the relevant target_setup_scripts SQL file
-- Apply the correction
-- Note that the DDL change may need to be applied to the target platform manually
-
-**If configuration fix** (Fivetran mapping, type handling):
-- Document the configuration change required
-- If Fivetran MCP available: apply the mapping change via MCP
-- Otherwise: write detailed manual steps for the engineer to apply
-
-**If accepted difference**:
-- Document the business justification
-- Update the equivalency tolerance for this table in migration_strategy.md
-- Mark the object as `accepted_difference` in status.md
-
-### Step 3: Re-run checks for affected objects
-
-Identify all objects that depend on the fixed object (using the dependency graph from migration_inventory.md).
-
-Re-run all per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for:
-- The fixed object
-- All direct dependents of the fixed object
-
-If the fix touches a column feeding a business invariant, re-run that invariant too.
-
-If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
-
-### Step 4: Update status
-
-Add a `fix` entry to the loop history:
+### Update status
 
 ```yaml
-migration:
-  equivalency_validation:
-    loop_history:
-      - run: N
-        date: "{{PREVIOUS_DATE}}"
-        passing: X
-        failing: Y
-      - fix:
-          date: "{{TODAY}}"
-          object: "{{OBJECT_NAME}}"
-          approach: "{{APPROACH}}"
-          result: "passing" | "still_failing"
+artifacts:
+  logical_access_uat:
+    validate: pass | fail
+    validated_date: "{{TODAY}}"
 ```
 
-Update `checks_failing` with the new total after re-checking affected objects.
 
-### Step 5: Output
+## Post-Execution Hooks
 
-If the object now passes:
-```
-Fix applied successfully. {{OBJECT_NAME}} now passes all equivalency checks.
-Checks failing: N (was N+1)
+After updating `status.md`, run these in sequence:
 
-/wire:equivalency-validate $ARGUMENTS   ← run full check when all fixes applied
-```
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-If the object still fails:
-```
-Fix applied but {{OBJECT_NAME}} still failing.
-Check type still failing: [type]
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `logical_access_uat` as artifact, `validate` as action.
 
-Re-investigate:
-/wire:equivalency-investigate $ARGUMENTS --object {{OBJECT_NAME}}
-```
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `logical_access_uat` as artifact_id, `Logical-Access UAT` as artifact_name, and the `file` value from `artifacts.logical_access_uat` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `logical_access_uat` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 

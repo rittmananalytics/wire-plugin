@@ -1,9 +1,9 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: Human adjudication gate for region tags
+argument-hint: <release-folder>
 ---
 
-# Apply agreed fix and re-run equivalency checks for affected objects
+# Human adjudication gate for region tags
 
 ## User Input
 
@@ -22,108 +22,100 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
+description: Human adjudication gate for region tags — rule on the shared-row-level and low-confidence pile
 ---
 
-# Equivalency — Fix
+# Region Tagging — Review
 
 ## Purpose
 
-Applies a specific fix to a failing equivalency object and re-runs the equivalency checks for that object (and any objects that depend on it). Updates the loop history in status.md. This is a targeted repair command — it does not re-run checks for the entire scope.
+The human adjudication gate for region tagging. `generate` produced candidates; this is where a person rules on them. The reviewer works the adjudication pile — every `shared-row-level` item and every low-confidence candidate — and decides, item by item, how it belongs to the carve-out. The tool never made that call; this gate does.
 
-## Arguments
+Confident-region and global-deferred items at high confidence are confirmed in bulk unless the reviewer flags one. The shared-row-level items are the real work: each needs a lineage trace and row inspection before it can be ruled in, split, or deferred.
 
-Required:
-- `--object <name>` — the table or dbt model to fix
-- `--approach <description>` — brief description of the fix being applied
+## Prerequisites
 
-Example:
-```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
-```
+- `migration/region_tagging.md` with `validate: pass`
 
 ## Workflow
 
-### Step 1: Load context
+### Step 1: Load meeting context
 
-Read the investigation notes for this object from the latest equivalency report. Confirm the `--approach` matches or builds on the proposed fix.
+Follow `specs/utils/meeting_context.md` to surface any Fathom recordings touching the carve-out region, market boundaries, or data-residency scope.
 
-### Step 2: Apply the fix
+### Step 2: Present the tagging summary
 
-Based on the `--approach`:
+Display:
+- Target region and tenant predicate used
+- Bucket counts: confident-region / shared-row-level / global-deferred
+- The adjudication pile, grouped by bucket, each item with its signal and confidence score
 
-**If SQL translation fix**:
-- Open the translated model at `migration/dbt/{model_name}.sql`
-- Apply the correction
-- Update the diff file
-- Re-run `dbt compile` for the model if target profile available
+Reaffirm to the reviewer that nothing has been included, excluded, or removed — these are candidates, and this gate is the first point where a scope decision is made.
 
-**If DDL fix**:
-- Open the relevant target_setup_scripts SQL file
-- Apply the correction
-- Note that the DDL change may need to be applied to the target platform manually
+### Step 3: Adjudicate the pile
 
-**If configuration fix** (Fivetran mapping, type handling):
-- Document the configuration change required
-- If Fivetran MCP available: apply the mapping change via MCP
-- Otherwise: write detailed manual steps for the engineer to apply
+For each **shared-row-level** item: review its lineage and a row sample, then rule:
+- **carve in** — the target region's rows are extracted (record the row-level predicate to apply)
+- **split** — the object is shared; define how the region's slice is separated
+- **defer** — move to global-deferred for a later decision
 
-**If accepted difference**:
-- Document the business justification
-- Update the equivalency tolerance for this table in migration_strategy.md
-- Mark the object as `accepted_difference` in status.md
+For each **low-confidence** confident-region or global-deferred candidate: confirm the bucket or reassign it.
 
-### Step 3: Re-run checks for affected objects
+High-confidence confident-region and global-deferred items: confirm in bulk, or pull any individual item into the pile if the reviewer disagrees.
 
-Identify all objects that depend on the fixed object (using the dependency graph from migration_inventory.md).
+### Step 4: Apply adjudication and record decision
 
-Re-run all per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for:
-- The fixed object
-- All direct dependents of the fixed object
+Update `region_tagging.md` (and the relevant `region_tags.csv` rows, e.g. reassigned buckets) to reflect the adjudicated outcomes. Append:
 
-If the fix touches a column feeding a business invariant, re-run that invariant too.
+```markdown
+## Review — Adjudication
 
-If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
+**Internal reviewer**: {{RA_REVIEWER}}
+**Client attendees**: {{CLIENT_NAMES}}
+**Review date**: {{TODAY}}
+**Target region**: {{REGION}}
+**Decision**: approved | changes_requested
 
-### Step 4: Update status
+### Adjudicated items
+[Per item: id, prior bucket, ruling (carve in / split / defer / reassign), and rationale]
 
-Add a `fix` entry to the loop history:
+### Open items
+[Items still needing lineage/row inspection before strategy can proceed]
+```
+
+### Step 5: Update status
 
 ```yaml
-migration:
-  equivalency_validation:
-    loop_history:
-      - run: N
-        date: "{{PREVIOUS_DATE}}"
-        passing: X
-        failing: Y
-      - fix:
-          date: "{{TODAY}}"
-          object: "{{OBJECT_NAME}}"
-          approach: "{{APPROACH}}"
-          result: "passing" | "still_failing"
+artifacts:
+  region_tagging:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
 ```
 
-Update `checks_failing` with the new total after re-checking affected objects.
+### Step 6: Output next command
 
-### Step 5: Output
-
-If the object now passes:
+If approved:
 ```
-Fix applied successfully. {{OBJECT_NAME}} now passes all equivalency checks.
-Checks failing: N (was N+1)
-
-/wire:equivalency-validate $ARGUMENTS   ← run full check when all fixes applied
+/wire:migration-strategy-generate $ARGUMENTS
 ```
 
-If the object still fails:
-```
-Fix applied but {{OBJECT_NAME}} still failing.
-Check type still failing: [type]
+## Review Gate
 
-Re-investigate:
-/wire:equivalency-investigate $ARGUMENTS --object {{OBJECT_NAME}}
-```
+This review is the point where region candidates become scope decisions. The carve-out strategy and the tenant-scoped bulk copy are built against the adjudicated tags. Re-running `region-tagging-generate` after this gate re-proposes candidates and requires re-adjudication.
+
+
+## Post-Execution Hooks
+
+After updating `status.md`, run these in sequence:
+
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
+
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `region_tagging` as artifact, `review` as action.
+
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `region_tagging` as artifact_id, `Region Tagging` as artifact_name, and the `file` value from `artifacts.region_tagging` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `region_tagging` as artifact, `review` as action.
 
 Execute the complete workflow as specified above.
 

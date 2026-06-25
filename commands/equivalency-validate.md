@@ -72,6 +72,20 @@ Read the list of in-scope tables and dbt models from `migration/migration_invent
 
 For projects with >50 in-scope objects: fan out checks in parallel subagents — one per schema or one per dbt layer. Each subagent runs the per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for its assigned objects and reports back. Business invariants (check type 7) are run once for the release, not per object, since many are cross-table aggregates. This dramatically reduces wall-clock time for large migrations.
 
+**Tenant carve-out scoping**
+
+Read `migration.scope` from status.md. When it is absent or `full_migration`, run every check exactly as specified below — no predicate is applied and behaviour is unchanged.
+
+When `migration.scope == tenant_carveout`, read `migration.tenant_predicate` (e.g. `tenant_id = 4815`) and apply it as a `WHERE` clause on **both** source and target in every data-bearing check, so equivalency validates only the extracted tenant's rows. The parallel fan-out above is unchanged — each subagent threads the same predicate through the checks for its assigned objects.
+
+- **Row count (1)**, **value sampling (3)**, **freshness (4)**, **row-level checksum (6)**, and **business invariants / aggregate control totals (7)** all add the predicate to both sides.
+- **Schema (2)** compares column names, types, and nullability — it is structural, not row-data, so the predicate does not change what it checks; it runs unchanged.
+- **dbt tests (5)** run through dbt against the already tenant-scoped target models, so no predicate is injected into the test SQL.
+
+No new check types are introduced. min/max already lives inside value sampling (check 3); row-level checksum (check 6) and aggregate control totals (check 7) already exist. The carve-out only narrows the row set each existing check sees.
+
+If `migration.tenant_predicate` is null while `scope == tenant_carveout`, stop and report — the predicate is required to scope the carve-out.
+
 ### Step 2: Run all check types
 
 For each in-scope object, run check types 1–6. Run check type 7 (business invariants) once per release. For each object:
@@ -82,6 +96,7 @@ For each in-scope object, run check types 1–6. Run check type 7 (business inva
 SELECT COUNT(*) AS row_count FROM source_project.source_schema.table_name;
 -- Target
 SELECT COUNT(*) AS row_count FROM target_db.target_schema.table_name;
+-- Tenant carve-out (migration.scope == tenant_carveout): add `WHERE {migration.tenant_predicate}` to both queries.
 ```
 PASS: |source_count - target_count| / source_count ≤ tolerance (default 0.1%, configurable per table in migration strategy)
 FAIL: Count outside tolerance
@@ -96,11 +111,14 @@ For numeric columns: compare mean, min, max, null percentage (sample 10K rows if
 For string columns: compare distinct count and null percentage
 PASS: Statistical measures within ±1% (configurable)
 FAIL: Deviation outside threshold
+Min and max are already part of this check — no separate min/max check type is needed.
+Tenant carve-out: compute every statistic over `WHERE {migration.tenant_predicate}` on both source and target (and take the 10K-row sample from within the scoped set).
 
 **Check type 4 — Freshness**
 Compare max(updated_at) or max(loaded_at) between source and target.
 PASS: Target is within max(sync_frequency, 24h) of source
 FAIL: Target data is more than 24 hours stale relative to source
+Tenant carve-out: apply `WHERE {migration.tenant_predicate}` to the max() on both sides. Without it the source max() reflects all tenants and the check would falsely fail against a target holding only the extracted tenant.
 
 **Check type 5 — dbt tests**
 Run `dbt test --profiles-dir ~/.dbt --target target_profile` for the translated dbt models.
@@ -119,6 +137,8 @@ FROM target_db.target_schema.table_name AS t;
 -- Snowflake side
 SELECT COUNT(*) AS n, SUM(HASH(OBJECT_CONSTRUCT(*)::STRING)) AS hash_agg
 FROM source_project.source_schema.table_name;
+-- Tenant carve-out: add `WHERE {migration.tenant_predicate}` to both sides, and apply it inside the deterministic
+-- sampling filter for large tables so the same scoped rows are sampled on each platform.
 ```
 Canonicalise before hashing so the comparison is not defeated by benign representation differences — see the edge-case checklist below. PASS: aggregate hashes match over the same row set. FAIL: mismatch (drill into the differing rows via `equivalency-investigate`).
 
@@ -128,6 +148,7 @@ The checks above confirm the data moved; invariants confirm it still *means* the
 Typical invariants: total revenue (`SUM(amount)` over orders), active customer count, row counts per key dimension (e.g. orders per region), and any control total the client already trusts. These are engagement-specific and come from `migration_strategy.md`.
 
 PASS: each invariant matches within its defined tolerance (default: exact for counts, ±0.01% for monetary sums to allow for float representation). FAIL: list the invariant, source value, target value, and delta.
+Tenant carve-out: add `WHERE {migration.tenant_predicate}` to each aggregate control-total query on both sides so the invariant is computed over the extracted tenant only. These are the same aggregate control totals as for a full migration — only the row set is narrowed.
 
 **Edge cases to canonicalise (checks 3, 6, 7)**
 These cause false mismatches or, worse, false passes. Account for them before comparing:

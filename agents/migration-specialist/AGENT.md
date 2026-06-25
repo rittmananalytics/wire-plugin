@@ -34,6 +34,18 @@ specs:
   - migration/cutover-validate
   - migration/migration_report-generate
   - migration/migration_report-validate
+  - migration/region_tagging-generate
+  - migration/region_tagging-validate
+  - migration/data_residency_assessment-generate
+  - migration/data_residency_assessment-validate
+  - migration/bulk_copy_migration-generate
+  - migration/bulk_copy_migration-validate
+  - migration/logical_access_uat-generate
+  - migration/logical_access_uat-validate
+  - migration/metabase_audit-generate
+  - migration/metabase_audit-validate
+  - migration/metabase_migration-generate
+  - migration/metabase_migration-validate
 skills: []
 mcp_requirements:
   - bigquery
