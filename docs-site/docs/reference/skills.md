@@ -92,7 +92,7 @@ Covers the dbt MCP server's tool set: querying metrics, listing semantic models,
 
 ---
 
-## LookML and Looker
+## BI and reporting
 
 ### `lookml-content-authoring`
 
@@ -114,6 +114,14 @@ Covers both local file editing and the Looker MCP server (read from live Looker 
 **Activates when**: creating or iterating on Looker dashboard mockups in the `dashboard_first` or `full_platform` release types.
 
 Produces interactive HTML mockups with sample data that match Looker's visual conventions — tile layouts, filter bars, dimension/measure chips. Mockups reference the Wire design system (colours, typography, chart types). Used in the `mockups-generate` command to create client-facing wireframes before any real data is connected.
+
+---
+
+### `metabase`
+
+**Activates when**: auditing or migrating a Metabase reporting layer — cataloguing collections, dashboards, cards/questions, database connections, or permission groups, or repointing Metabase from one warehouse to another.
+
+Connects to a Metabase instance (metabase-cli serialization export, the REST API, or a client-supplied query inventory) and maps the collection → dashboard → card hierarchy, each card's SQL and its warehouse dependencies, the database connections, and the permission groups. Used by the `metabase-audit-*` and `metabase-migration-*` platform-migration commands (gated on `migration.reporting_tool: metabase`, not on migration scope). Wraps the upstream `metabase/agent-skills` (metabase-cli, metabase-representation-format, metabase-database-metadata).
 
 ---
 
