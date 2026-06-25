@@ -2248,8 +2248,8 @@ For projects with more than 50 in-scope tables, checks fan out in parallel autom
 When a check fails, investigate and fix before re-running:
 
 ```
-/wire:equivalency-investigate <release-folder> --object carwow_sales.fct_orders
-/wire:equivalency-fix <release-folder> --object carwow_sales.fct_orders --approach "Update TIMESTAMP_DIFF translation"
+/wire:equivalency-investigate <release-folder> --object sales.fct_orders
+/wire:equivalency-fix <release-folder> --object sales.fct_orders --approach "Update TIMESTAMP_DIFF translation"
 ```
 
 `cutover-generate` is blocked until `checks_failing: 0`.

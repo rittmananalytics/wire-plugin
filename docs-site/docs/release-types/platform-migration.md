@@ -334,8 +334,8 @@ Once data is flowing into both platforms:
 Each run performs five check types: row count, schema, value, freshness, and dbt tests. When a check fails:
 
 ```
-/wire:equivalency-investigate <release-folder> --object carwow_sales.fct_orders
-/wire:equivalency-fix <release-folder> --object carwow_sales.fct_orders --approach "Update TIMESTAMP_DIFF translation"
+/wire:equivalency-investigate <release-folder> --object sales.fct_orders
+/wire:equivalency-fix <release-folder> --object sales.fct_orders --approach "Update TIMESTAMP_DIFF translation"
 ```
 
 `cutover-generate` is blocked until `checks_failing: 0`.
@@ -353,7 +353,7 @@ Four commands require explicit confirmation before proceeding:
 A platform migration runs in one of two scopes, set by `migration.scope` in `status.md`:
 
 - **`full_migration`** (default) — migrate the whole platform. The flow above is unchanged. When `scope` is absent or `full_migration`, every migration command behaves exactly as before.
-- **`tenant_carveout`** — extract a single tenant's data into the target. `/wire:new` asks whether this is a carve-out and captures a `migration.tenant_predicate` (the WHERE clause or tenant key, e.g. `tenant_id = 4815`) that scopes the extraction.
+- **`tenant_carveout`** — extract a single tenant's data into the target. `/wire:new` asks whether this is a carve-out and captures a `migration.tenant_predicate` (the WHERE clause or tenant key, e.g. `tenant_id = 1042`) that scopes the extraction.
 
 The carve-out is a variant on this release type, not a new one — it reuses the whole command set and adds tenant scoping where it matters. Equivalency threads the predicate through the existing checks on both source and target (no new check types — min/max already lives in value sampling, checksum and aggregate totals already exist; schema stays structural). The security chain narrows with it: the security audit classifies roles/grants as tenant-scoped vs shared and flags the tenant key per table, the strategy maps these to a two-project / tenant-scoped IAM model with a row-level security predicate, and `target_setup` emits tenant-scoped GRANTs and the RLS policy into `04_security.sql`, reusing the existing PII policy-tag taxonomy.
 
@@ -361,7 +361,7 @@ Four commands are specific to the carve-out flow:
 
 | Command | Phase | Purpose |
 |---|---|---|
-| `/wire:region-tagging-*` | After audits | Classify every in-scope item into confident-region / shared-row-level / global-deferred buckets. Produces **candidates** for adjudication — never a binary include/exclude, never auto-removal. Region is a parameter (`--region`, default `de`). `-review` is the human adjudication gate. |
+| `/wire:region-tagging-*` | After audits | Classify every in-scope item into confident-region / shared-row-level / global-deferred buckets. Produces **candidates** for adjudication — never a binary include/exclude, never auto-removal. Region is a parameter (`--region <code>`). `-review` is the human adjudication gate. |
 | `/wire:data-residency-assessment-*` | Alongside strategy | The GDPR and data-residency assessment, including the legal review of the historical data window being migrated. RA prepares it as data processor and flags every point needing the client's DPO/legal determination — lawful basis and retention ruling above all. `-review` is the client DPO/legal sign-off gate. |
 | `/wire:bulk-copy-migration-*` | Migration | Snowflake→BigQuery bulk historical copy (BigQuery Data Transfer Service / GCS-staged) **in place of re-ingestion**. Two-stage copy with an equivalency gate between pilot partition and remainder, run under a scoped service account with a tenant guard. `-review` is a safety gate before the first copy. |
 | `/wire:logical-access-uat-*` | Before cutover | Region-scoped logical-access UAT proving users in the tenant's project reach only that project. Positive and negative tests per role; `-validate` requires at least one negative test per IAM boundary in `04_security.sql`; `-review` is the isolation-proof sign-off gate. |
@@ -459,7 +459,7 @@ For a `tenant_carveout` release, these slot into the sequence: region tagging af
 
 ```
 # ── after audits, before inventory ──────────────────────────────
-/wire:region-tagging-generate <release> [--region de]
+/wire:region-tagging-generate <release> [--region <code>]
 /wire:region-tagging-validate <release>
 /wire:region-tagging-review <release>                # human adjudication gate
 
@@ -478,7 +478,7 @@ For a `tenant_carveout` release, these slot into the sequence: region tagging af
 /wire:bulk-copy-migration-review <release>           # safety gate before first copy
 
 # ⚠ before cutover — proves tenant isolation
-/wire:logical-access-uat-generate <release> [--region de]
+/wire:logical-access-uat-generate <release> [--region <code>]
 /wire:logical-access-uat-validate <release>          # ≥1 negative test per IAM boundary
 /wire:logical-access-uat-review <release>            # isolation-proof sign-off
 ```
