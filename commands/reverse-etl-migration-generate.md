@@ -172,7 +172,7 @@ Do not silently include a sync whose source object cannot be validated on target
 
 #### Step 4-verify: Re-verify the audit's approach tags
 
-**Do not trust the audit's `approach` / `sf_funcs` tags.** In the Carwow audit, 4 syncs tagged `repoint` actually contained `RRP :: NUMBER` — a `::` cast the audit missed. Re-scan each in-scope sync's model SQL proactively for non-portable source-dialect constructs before deciding it needs no translation. At minimum, scan for:
+**Do not trust the audit's `approach` / `sf_funcs` tags.** In one pilot audit, 4 syncs tagged `repoint` actually contained `RRP :: NUMBER` — a `::` cast the audit missed. Re-scan each in-scope sync's model SQL proactively for non-portable source-dialect constructs before deciding it needs no translation. At minimum, scan for:
 
 - the `::` cast operator
 - `FLATTEN`

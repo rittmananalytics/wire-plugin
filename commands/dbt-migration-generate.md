@@ -218,9 +218,46 @@ loop_history: []
 3. Apply translations in this order:
    a. Data type references (inline casts, SAFE_CAST equivalents)
    b. SQL function translations (per the translation guide)
-   c. Configuration block updates (adapter profile, materialisation config)
+   c. Configuration block — adapter/dispatch updates, plus materialisation per **Materialisation config** below
    d. Jinja macro calls that need dispatch overrides
 4. Assign a confidence rating: `high` = only simple, table-driven replacements. `medium` = engagement-specific nuance. `low` = no clean equivalent or a construct the guide marks "manual".
+
+##### Materialisation config
+
+**Read the resolved materialisation from the manifest node, not the fallback path.** Take `config.materialized` (and the keys below) from `<migration.dbt_project_path>/target/manifest.json` → `nodes[...].config`. The manifest already merges `dbt_project.yml` folder config with in-file `{{ config() }}` blocks, so the node's config is the authoritative resolved value. Do not re-derive materialisation from `dbt_project.yml` + in-file blocks separately — that is the fragile fallback called out in Step 1a and it gets folder-level defaults wrong.
+
+**Default — faithful preservation (every client).** Carry the source's resolved materialisation across unchanged. A lift-and-shift must not silently change how a model is materialised:
+- Preserve the `materialized` value as-is: `table` → `table`, `view` → `view`, `incremental` → `incremental`, `ephemeral` → `ephemeral`.
+- For `incremental`, carry across `incremental_strategy`, `unique_key`, `partition_by`, `cluster_by`, and `on_schema_change` — translating only their *values* to target-dialect equivalents where the platform pair requires it, never their intent. An incremental model stays incremental with its strategy intact.
+- Preserve `persist_docs` and any other config key with a target equivalent.
+
+A blanket `materialized: table` rewrite is **wrong** — it discards incremental strategies and partitioning and silently re-shapes the build. Preservation is the correct default.
+
+**Override hook (declarative; the spec ships no path, no layer names, and no default rules).** The default above (faithful preservation) is the whole behaviour unless the engagement points the hook at an overrides file. Read a **configurable engagement path** from `status.md`:
+
+```yaml
+migration:
+  materialization_overrides_path: ".wire/engagement/<file>.yml"   # engagement-relative; unset = preserve only
+```
+
+The file it resolves to declares the policy. The schema is `default: preserve` plus an `overrides` list of `select` / `exclude` / `force_materialized` rules:
+
+```yaml
+default: preserve              # the default for every unmatched model — always "preserve"
+overrides:
+  - select: "<selector>"            # models this rule forces — a path glob, or a `path:`/`tag:` selector
+    exclude: "<selector>"            # optional — models to leave preserved (e.g. a staging exception)
+    force_materialized: "<table|view|incremental|...>"
+    # plus any config the forced materialisation needs: incremental_strategy, partition_by, cluster_by, …
+```
+
+Resolution: for each in-scope model, if it matches a rule's `select` and is not caught by that rule's `exclude`, force `force_materialized` (and the rule's accompanying config) in place of the preserved value; record the override and the rule that fired in `loop_history` and the `.diff.md`. `default: preserve` governs every model no rule forces. The staging exception is just an `exclude` the engagement supplies — the spec hardcodes no path, no selector, and no rules. When `materialization_overrides_path` is unset, missing, or the file declares no `overrides`, every model keeps its preserved materialisation.
+
+**Selector grammar.** `select` and `exclude` are each a **single** selector — a bare glob matched against the model's path (which includes its filename), a `path:<glob>` prefix/glob, or a `tag:<tag>`. Space-separated unions are **not** supported (a space is treated literally), and a bare glob matches the path, not a standalone model name. Because the filename is part of the path, a path glob still reaches name prefixes: `*stg_*` excludes `stg_`-named models and `*/stg/*` excludes a `stg/` directory. To exclude two disjoint sets in one rule, tag them and use `exclude: "tag:<tag>"`.
+
+**Optional `name` / `description`.** Each override rule may carry optional `name` and `description` keys. The parser tolerates them: they are **ignored by the matcher** and **must not** be copied into the forced model config (only keys other than `select`/`exclude`/`force_materialized`/`name`/`description` are treated as accompanying materialisation config). The fired rule's `name` is surfaced in run metadata (`loop_history` / the `.diff.md`).
+
+Forcing a materialisation the source did not use **diverges from the source** — it is an opt-in engagement optimisation, not faithful lift-and-shift. It happens only when a rule explicitly says so; it is never a default.
 
 **Iterations 2–5 — auto-fix:**
 
@@ -267,6 +304,8 @@ If run succeeds: proceed to 3.5.
 
 Run these three checks using both the source platform MCP (read-only) and the target platform MCP (read-only). Do not run any write queries here.
 
+**Baseline pin (when the strategy defines a frozen baseline).** If `migration.equivalency_baseline` is set in status.md (see the migration strategy's "frozen equivalency baseline" — instant `T`, the Snowflake zero-copy clone, the BigQuery Bronze watermark, and the expected type-translation allow-list), run these in-loop checks against the **pinned** states, not live tables: read the source from the `wire_baseline` clone at `T`, and restrict the target to rows with `_fivetran_synced <= T`. Apply the deterministic-build switch (suppress/fix `CURRENT_TIMESTAMP`, `CURRENT_DATE`-relative windows, and fix the sample seed) so the model materialises reproducibly at `T`. This keeps the per-model loop's pass/fail consistent with the later `equivalency-validate` tier-3 run, which uses the same baseline. When no baseline is defined, run against live tables as before.
+
 **Check A — Row count** (tolerance ±0.5%):
 ```sql
 -- Source
@@ -311,6 +350,10 @@ If any check fails AND `iteration == 5`:
 - Exit the loop for this model
 
 **No manual review prompts are issued between iterations.** The loop runs automatically for all models in the batch. Flagging for manual review happens only after all 5 iterations are exhausted.
+
+#### 3.7 Update the migration register
+
+When a model reaches a terminal state, upsert its row in `migration/migration_register.csv` (the per-model state store — see `migration-register-generate`). Write `source_path`, `source_layer`, `last_migrated_commit` (the source snapshot SHA from `migration_sources.dbt.commit`), `bq_target` (the `dataset.table` just built), and `state` — `migrated` on PASS, `failed` after 5 iterations, `deferred` if the model was skipped because its source object isn't built on target. Leave the equivalence columns to `equivalency-validate`. If the register doesn't exist yet, create it from `TEMPLATES/migration/migration_register.csv` first. This is what lets the drift gate later tell which source commit each model was built from.
 
 After the loop, record for this model:
 ```
@@ -418,13 +461,13 @@ artifacts:
 
 ### Step 4d: Persist per-model transformation log to BigQuery
 
-Carwow asked for a structured, queryable audit trail of what each model's translation changed — not just console output and `.diff.md` files. This step is **additive**: the diff files (Step 3.2) and batch summary (Step 4) are still written. It persists one structured record per migrated object to a BigQuery audit table.
+Engagements asked for a structured, queryable audit trail of what each model's translation changed — not just console output and `.diff.md` files. This step is **additive**: the diff files (Step 3.2) and batch summary (Step 4) are still written. It persists one structured record per migrated object to a BigQuery audit table.
 
 **Configurable target table.** Read the audit table location from status.md:
 
 ```yaml
 migration:
-  transformation_log_table: null   # e.g. "carwow-migration.wire_audit.dbt_transformation_log"
+  transformation_log_table: null   # e.g. "<target-project>.wire_audit.dbt_transformation_log"
 ```
 
 - If `transformation_log_table` is null or absent, **skip this step** with a one-line note (`[wire] No transformation_log_table configured — skipping BigQuery transformation log (diff.md still written).`). Do not block.

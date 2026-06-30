@@ -1,0 +1,44 @@
+# Wire migration — scheduled drift gate
+#
+# Deploy in the delivery repo. Runs the drift gate on a schedule so source
+# changes (new / modified / removed models, masking-policy changes) are caught
+# the day they land, not at cutover. Mirrors /wire:migration-drift-generate.
+#
+# Placeholder:
+#   <RELEASE>   e.g. 05-lift-and-shift
+name: migration-drift-gate
+
+on:
+  schedule:
+    - cron: "0 6 * * 1-5"   # 06:00 UTC, weekdays — adjust to the engagement cadence
+  workflow_dispatch: {}      # allow manual runs
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refresh live source and run the drift gate
+        run: |
+          # Mirrors: /wire:migration-source-refresh <RELEASE> dbt
+          #          /wire:migration-drift-generate <RELEASE>
+          # Diffs the live source dbt repo against each model's last_migrated_commit
+          # (dbt ls --select state:modified), classifies new/modified/removed,
+          # updates migration_register.csv, flags downstream Hightouch syncs, and
+          # flags masking-policy changes.
+          wire-drift-gate --release "<RELEASE>"
+
+      - name: Open / update a drift issue when drift is found
+        if: ${{ hashFiles('**/migration_drift_report.md') != '' }}
+        run: |
+          # If modified/removed/new > 0 or masking changes > 0, open or update a
+          # tracking issue with the drift report summary so it isn't missed.
+          scripts/report_drift_issue.sh
+
+# Notes
+# - dbt ls state comparison needs no warehouse connection, so this job is cheap.
+# - The masking-change hook in the drift gate marks affected objects for a
+#   target-setup policy-tag regeneration; the issue surfaces that as an action.
+# - wire-drift-gate is a stand-in for however the engagement invokes the drift
+#   spec in CI (Claude Code headless, or a scripted equivalent).

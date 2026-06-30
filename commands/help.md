@@ -263,6 +263,10 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:migration-report-generate` | `<release-folder>` | Generate post-migration report |
 | `/wire:migration-report-validate` | `<release-folder>` | Validate migration report completeness |
 | `/wire:migration-report-review` | `<release-folder>` | Final review and archive of migration report |
+| `/wire:migration-register-generate` | `<release-folder>` | Build and maintain the per-model migration register (source commit, BQ target, state, last equivalence) |
+| `/wire:migration-register-validate` | `<release-folder>` | Validate the migration register — schema, coverage, state consistency |
+| `/wire:migration-drift-generate` | `<release-folder>` | Scheduled drift gate — diff live source vs last-migrated commit, flag downstream syncs and masking changes |
+| `/wire:migration-drift-validate` | `<release-folder>` | Validate the migration drift report — classification, sync flagging, masking hook |
 | `/wire:data-residency-assessment-generate` | `<release-folder>` | Generate the GDPR and data-residency assessment, including the historical-window legal review (tenant carve-out) |
 | `/wire:data-residency-assessment-validate` | `<release-folder>` | Validate the data residency assessment — all required sections present and non-empty |
 | `/wire:data-residency-assessment-review` | `<release-folder>` | Client DPO/legal sign-off gate for the data residency assessment |

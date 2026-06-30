@@ -239,7 +239,7 @@ Add this to ~/.dbt/profiles.yml to connect to the target BigQuery environment:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Where `[profile_name]` is the engagement_name from status.md with `_target` appended (e.g. `carwow_target`).
+Where `[profile_name]` is the engagement_name from status.md with `_target` appended (e.g. `acme_target`).
 
 If `target_platform` is `snowflake`, emit the equivalent Snowflake block using `method: private-key` or `method: password` depending on which credentials are present in status.md.
 

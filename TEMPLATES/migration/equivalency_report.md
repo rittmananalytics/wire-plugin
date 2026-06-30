@@ -8,6 +8,27 @@
 **Migration scope**: {{MIGRATION_SCOPE}}  <!-- full_migration | tenant_carveout -->
 **Tenant predicate**: {{TENANT_PREDICATE}}  <!-- tenant_carveout only: the WHERE clause applied to every data-bearing check; blank for full_migration -->
 
+## Run Metadata
+
+<!-- Captured on every run so the result is reproducible. Live runs set mode=live and leave the baseline fields blank. -->
+
+| Field | Value |
+|-------|-------|
+| Mode | {{MODE}}  <!-- live | baseline --> |
+| Batch | {{BATCH}}  <!-- N or all --> |
+| Baseline instant T (UTC) | {{BASELINE_T}}  <!-- baseline mode only --> |
+| Snowflake clone location | {{CLONE_LOCATION}}  <!-- e.g. <db>.wire_baseline AT(TIMESTAMP => T) --> |
+| Target Bronze watermark | {{TARGET_WATERMARK}}  <!-- e.g. _fivetran_synced <= T (per connector) --> |
+| Source repo commit / snapshot SHA | {{SOURCE_COMMIT}} |
+
+## Expected Type Translations Applied
+
+<!-- Cross-platform type changes normalised by the baseline allow-list (VARIANT→JSON/STRING, TIMESTAMP_NTZ→DATETIME, NUMBER-scale rounding, etc.). Recorded as expected — NOT failures. -->
+
+| Object | Column | Source type | Target type | Normalisation applied |
+|--------|--------|-------------|-------------|----------------------|
+| | | | | |
+
 ## Summary
 
 <!-- For tenant_carveout runs, every check below was scoped to the tenant predicate above on both source and target. No new check types are added — min/max is part of value sampling, and checksum and aggregate control totals already exist. -->

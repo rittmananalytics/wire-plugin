@@ -34,6 +34,18 @@ migration:
   service_account_key_path: null  # BigQuery: local path to service account JSON key file
   transformation_log_table: null  # Optional BigQuery audit table for dbt-migration per-model transformation log
                                    # e.g. "<target-project>.wire_audit.dbt_transformation_log" — unset = logging skipped
+  materialization_overrides_path: null  # Optional engagement-relative path to a materialisation overrides file
+                                   # (schema: default: preserve + overrides[] with select/exclude/force_materialized).
+                                   # unset = faithful preservation of every model's source materialisation.
+  equivalency_baseline: null       # Release-level; set per freeze. null = equivalency runs in live mode.
+                                   # When pinned (see migration_strategy "frozen equivalency baseline"):
+                                   #   t: "<UTC instant>"                  # both sides pinned to this instant
+                                   #   source_clone: "<db>.wire_baseline"  # Snowflake zero-copy clone AT(TIMESTAMP => t)
+                                   #   target_watermark: "_fivetran_synced"# BigQuery Bronze watermark column (rows <= t)
+                                   #   source_commit: "<sha>"              # source dbt snapshot SHA used
+                                   #   type_translation_allowlist: []      # expected type changes (VARIANT->JSON/STRING,
+                                   #                                       #   TIMESTAMP_NTZ->DATETIME, NUMBER-scale rounding)
+                                   # equivalency-validate --baseline reads this per --batch.
   status: not_started                      # not_started | in_progress | complete
   completed_date: null
 
@@ -41,7 +53,7 @@ data_safety:
   source_readonly: true     # ALWAYS true — source platform is never written to during migration
   target_project: null      # Designated target project/account — all writes go here only
   production_projects: []   # Client production project IDs to treat as off-limits for writes
-                            # e.g. ["carwow-prod", "carwow-analytics-prod"]
+                            # e.g. ["acme-prod", "acme-analytics-prod"]
 
   equivalency_validation:
     checks_total: null
@@ -334,6 +346,31 @@ artifacts:
     file: null
     generated_date: null
     generated_files: []
+    revision_history: []
+
+  migration_register:
+    generate: not_started
+    validate: not_started
+    file: null   # migration/migration_register.csv — per-model state store
+    generated_date: null
+    models_total: null
+    migrated: null
+    drifted: null
+    pending: null
+    failed: null
+    revision_history: []
+
+  migration_drift:
+    generate: not_started
+    validate: not_started
+    file: null   # migration/migration_drift_report.md
+    last_run_date: null
+    drift_head: null
+    modified: null
+    removed: null
+    new: null
+    syncs_flagged: null
+    masking_changes: null
     revision_history: []
 
 notes:

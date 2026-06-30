@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.2 — Platform-migration hardening
+
+**Released**: June 2026
+
+Hardening from a Snowflake → BigQuery lift-and-shift: migrate models faithfully, validate them deterministically, and keep them in sync with a moving source. Additive and backward compatible.
+
+**Faithful materialisation + override hook** — `dbt-migration-generate` now preserves each model's resolved materialisation (incremental stays incremental with its strategy/partition/cluster; table stays table), instead of a blanket `materialized: table`. An engagement can diverge via a declarative override file (`migration.materialization_overrides_path`: `default: preserve` + `overrides[]` with `select`/`exclude`/`force_materialized`); the framework ships no path, no layer names, no rules.
+
+**Deterministic, frozen-baseline equivalency** — `migration-strategy` defines the frozen baseline (instant `T`, Snowflake zero-copy clone, BigQuery Bronze watermark, expected type-translation allow-list). `equivalency-validate` gains a baseline-pin mode (`--baseline`), a deterministic-build switch, a tier-3 value-level comparator (per-column fingerprints + normalised cross-platform row hash), run-metadata capture, and `--batch` fan-out. `migration.equivalency_baseline` is a release-level field.
+
+**Per-model register + scheduled drift gate** — `/wire:migration-register-*` records per model: source path, last-migrated commit, BigQuery target, state, and last equivalence result. `/wire:migration-drift-*` diffs the live source against each model's last-migrated commit (`dbt ls --select state:modified`), classifies new/modified/removed, flags downstream Hightouch syncs (via a new `model_sync_map.json` from `lineage-generate`), and triggers a policy-tag regeneration when a source `meta.masking_policy` changes. Ships with on-change and scheduled CI templates.
+
+**Housekeeping** — client engagement records relocated out of the framework repo; the client name removed from all specs, docs, templates, and fixtures.
+
+---
+
 ## v3.10.1 — Tenant carve-out variant + Metabase reporting layer
 
 **Released**: June 2026

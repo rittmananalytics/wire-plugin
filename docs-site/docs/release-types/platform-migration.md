@@ -340,6 +340,39 @@ Each run performs five check types: row count, schema, value, freshness, and dbt
 
 `cutover-generate` is blocked until `checks_failing: 0`.
 
+### Deterministic, frozen-baseline equivalency
+
+Live-to-live comparison surfaces timing differences, not translation differences. `migration-strategy` defines a **frozen equivalency baseline** — an instant `T`, a Snowflake zero-copy clone at `T`, a BigQuery Bronze watermark (`_fivetran_synced <= T`), and an allow-list of expected type translations (`VARIANT→JSON/STRING`, `TIMESTAMP_NTZ→DATETIME`, `NUMBER`-scale rounding). Set it per freeze in `migration.equivalency_baseline`, then:
+
+```
+/wire:equivalency-validate <release-folder> --baseline --batch 3
+```
+
+Baseline mode reads the clone and watermark instead of live tables, fixes `CURRENT_TIMESTAMP`/`CURRENT_DATE`-relative logic and sampling (the deterministic-build switch), and runs a **tier-3 value-level comparator** — per-column fingerprints plus a normalised cross-platform row hash, with the allow-list applied so a correct type translation isn't flagged as drift. Every run records its mode, batch, `T`, watermarks, clone location, and source commit.
+
+## Faithful materialisation
+
+`dbt-migration-generate` preserves each model's resolved materialisation by default — incremental stays incremental with its `incremental_strategy`/`partition_by`/`cluster_by`; table stays table. To diverge (force a materialisation the source didn't use), point `migration.materialization_overrides_path` at an engagement YAML:
+
+```yaml
+default: preserve
+overrides:
+  - select: "path:models/business"   # path glob / path: / tag:
+    exclude: "*/stg/*"                 # parameterised staging exception
+    force_materialized: table
+```
+
+The framework ships no path, no layer names, and no rules — divergence is opt-in engagement policy.
+
+## Keeping migrated models in sync — register and drift gate
+
+A long migration runs against a moving source. Two commands keep migrated models honest:
+
+- **`/wire:migration-register-generate`** maintains `migration_register.csv` — one row per model: source path, last-migrated commit, BigQuery target, state, and last equivalence result + `T`. `dbt-migration` and `equivalency-validate` keep it current.
+- **`/wire:migration-drift-generate`** is a scheduled gate: it diffs the live source against each model's last-migrated commit (`dbt ls --select state:modified`), classifies new/modified/removed, flags the downstream Hightouch syncs a re-migrated/removed model feeds (with a config diff), and triggers a policy-tag regeneration when a source `meta.masking_policy` changes.
+
+Deploy the bundled CI templates (`TEMPLATES/migration/ci/`) to run the tiered sweep on any change to a migrated model and the drift gate on a cron.
+
 ## Safety gates
 
 Four commands require explicit confirmation before proceeding:

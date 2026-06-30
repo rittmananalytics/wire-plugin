@@ -34,6 +34,10 @@ specs:
   - migration/cutover-validate
   - migration/migration_report-generate
   - migration/migration_report-validate
+  - migration/migration_register-generate
+  - migration/migration_register-validate
+  - migration/migration_drift-generate
+  - migration/migration_drift-validate
   - migration/region_tagging-generate
   - migration/region_tagging-validate
   - migration/data_residency_assessment-generate

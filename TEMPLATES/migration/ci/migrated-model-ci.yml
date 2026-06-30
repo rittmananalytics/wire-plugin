@@ -1,0 +1,59 @@
+# Wire migration — on-change CI for migrated models
+#
+# Deploy in the delivery / BigQuery repo. On any change to a migrated model
+# (path filter derived from the migration register's source_path column), this
+# re-runs compile + the tiered equivalence sweep so a translated model can't be
+# edited and merged without re-proving it.
+#
+# Placeholders to fill at deploy time:
+#   <RELEASE>            e.g. 05-lift-and-shift
+#   <PATHS>             newline list of migrated-model globs from migration_register.csv
+#   <BASELINE_BRANCH>   branch/ref carrying the frozen baseline config (or omit for live)
+name: migrated-model-ci
+
+on:
+  pull_request:
+    paths:
+      # Generated from migration_register.csv → source_path globs. Example:
+      - "dbt/migration/**/*.sql"
+      - "dbt/migration/**/*.yml"
+
+jobs:
+  compile-and-sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Identify changed migrated models
+        id: changed
+        run: |
+          # Intersect the PR's changed files with the register's migrated models.
+          # Only models with state=migrated in migration_register.csv are gated here.
+          echo "models=$(scripts/changed_migrated_models.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Tier 1 — dialect lint (offline, no warehouse)
+        run: |
+          # Mirrors /wire:dbt-migration-lint — fails on any 'error' severity finding.
+          wire-lint --select "${{ steps.changed.outputs.models }}" --severity error --format json
+
+      - name: Compile against BigQuery (LIMIT 0, no data)
+        run: |
+          dbt compile --select "${{ steps.changed.outputs.models }}" --target ci
+
+      - name: Tier 3 — equivalency sweep (baseline mode)
+        run: |
+          # Mirrors /wire:equivalency-validate --baseline for the changed models.
+          # Reads migration.equivalency_baseline (instant T, source clone, BQ watermark)
+          # so the comparison is deterministic, not live-to-live.
+          wire-equivalency --select "${{ steps.changed.outputs.models }}" --baseline
+        env:
+          WIRE_EQUIVALENCE_FAIL_ON: "fail"   # red build on any equivalence failure
+
+# Notes
+# - The path filter and the changed-model intersection both come from
+#   migration_register.csv (source_path + state=migrated). Regenerate the filter
+#   when the register changes (the drift gate / register-generate keep it current).
+# - wire-lint / wire-equivalency are stand-ins for however the engagement invokes
+#   the Tier 1 and Tier 3 sweeps in CI (a thin wrapper over the Wire specs, or a
+#   scripted dbt run). The contract is: compile + Tier 1 + Tier 3 on every change
+#   to a migrated model, red build on failure.

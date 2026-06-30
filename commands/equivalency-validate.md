@@ -22,7 +22,8 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Run equivalency checks across all in-scope tables (repeatable loop, parallel fan-out)
+description: Run equivalency checks across all in-scope tables (repeatable loop, parallel fan-out, optional frozen-baseline tier-3 mode)
+argument-hint: <release-folder> [--batch N] [--baseline]
 ---
 
 ## Data Safety — Read Before Proceeding
@@ -70,7 +71,9 @@ This command can be run as many times as needed. There is no "approved" state �
 
 Read the list of in-scope tables and dbt models from `migration/migration_inventory.md`. This is the full check scope.
 
-For projects with >50 in-scope objects: fan out checks in parallel subagents — one per schema or one per dbt layer. Each subagent runs the per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for its assigned objects and reports back. Business invariants (check type 7) are run once for the release, not per object, since many are cross-table aggregates. This dramatically reduces wall-clock time for large migrations.
+**Scope by batch (optional).** With `--batch N`, restrict the scope to the objects in migration batch `N` (the batch groupings from `migration_strategy` / `dbt_audit.csv`). This lets equivalency fan out and run per batch — validate batch 1 as soon as its models reach terminal state, rather than waiting for the whole estate. Without `--batch`, the scope is every in-scope object. The run metadata (Step 5) records which batch a run covered.
+
+For projects with >50 in-scope objects (or any batch over that size): fan out checks in parallel subagents — one per schema or one per dbt layer. Each subagent runs the per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for its assigned objects and reports back. Business invariants (check type 7) are run once for the release, not per object, since many are cross-table aggregates. This dramatically reduces wall-clock time for large migrations.
 
 **Tenant carve-out scoping**
 
@@ -85,6 +88,23 @@ When `migration.scope == tenant_carveout`, read `migration.tenant_predicate` (e.
 No new check types are introduced. min/max already lives inside value sampling (check 3); row-level checksum (check 6) and aggregate control totals (check 7) already exist. The carve-out only narrows the row set each existing check sees.
 
 If `migration.tenant_predicate` is null while `scope == tenant_carveout`, stop and report — the predicate is required to scope the carve-out.
+
+### Step 1b: Baseline-pin mode (deterministic equivalency)
+
+By default the checks read live source and target tables. With `--baseline` (or when `migration.equivalency_baseline` is set in status.md), run in **baseline-pin mode** against the frozen baseline defined in the migration strategy's "frozen equivalency baseline" section — comparing two pinned states at instant `T`, not two moving platforms.
+
+**(a) Pinned reads.** For every data-bearing check, replace the live table references with the pinned states:
+- **Source (Snowflake)** — read the **zero-copy clone at `T`** (the `wire_baseline` schema, `… AT (TIMESTAMP => '<T>')`), never the live table. Continued source ingestion does not move the comparison.
+- **Target (BigQuery)** — restrict to the **Bronze watermark**: add `AND _fivetran_synced <= '<T>'` (or the per-connector loaded-at column named in the baseline) so the target reflects exactly what had landed by `T`.
+
+Read `T`, the clone location, the per-connector watermark columns, and the expected type-translation allow-list from `migration.equivalency_baseline`. If `--baseline` is passed but the baseline is undefined in the strategy, stop and report — define it first (`migration-strategy-generate`).
+
+**(b) Deterministic-build switch.** Under baseline mode, make every query reproducible at `T`:
+- Replace `CURRENT_TIMESTAMP` / `CURRENT_DATE` / `NOW()` and `CURRENT_DATE`-relative windows (e.g. `WHERE created_at >= CURRENT_DATE - 30`) with values fixed at `T` on **both** sides, so a model's "last 30 days" means the same 30 days on each platform.
+- Fix the sampling seed / row-selection so value-sampling (check 3) and the tier-3 comparator draw the **same** rows on each platform across re-runs.
+- Tenant-carveout scoping (above) still applies — the predicate ANDs with the watermark/clone filters.
+
+When neither `--baseline` nor `migration.equivalency_baseline` is present, behaviour is unchanged (live reads, no determinism rewrites).
 
 ### Step 2: Run all check types
 
@@ -158,6 +178,26 @@ These cause false mismatches or, worse, false passes. Account for them before co
 - **Numeric precision / scale** — `NUMBER(38,9)` → `NUMERIC`/`BIGNUMERIC` can round. Round both sides to an agreed scale before hashing monetary columns.
 - **Float ordering / trailing zeros** — `1.0` vs `1` and `-0.0` vs `0.0` hash differently; cast to a fixed format first.
 
+### Step 2b: Tier-3 value-level comparator (baseline mode)
+
+In baseline-pin mode, strengthen value sampling (check 3) and the row-level checksum (check 6) into a full tier-3 value comparison over the pinned states. It has two layers, run per in-scope object:
+
+**Per-column aggregate fingerprints.** For each column, compute a deterministic fingerprint on both sides and compare:
+- Numeric: `COUNT`, `COUNT` non-null, `SUM`, `MIN`, `MAX`, and a scale-normalised `SUM` (round to the agreed scale) — catches precision/rounding drift.
+- String/other: `COUNT` non-null, `COUNT(DISTINCT)`, and `SUM(FARM_FINGERPRINT(value))` / `SUM(HASH(value))` over canonicalised (NFC, trimmed) values.
+- Temporal: `MIN`, `MAX`, and distinct-count, compared in UTC.
+A column passes when every fingerprint matches (exact for counts; within the agreed scale tolerance for normalised sums).
+
+**Normalised cross-platform row hash.** Hash each row's canonically-ordered, normalised column values and compare an aggregate of the row hashes over the same pinned row set (the deterministic-build switch guarantees the same rows). Normalise **before** hashing so equivalent values hash identically across platforms: cast numerics to a fixed scale, timestamps to UTC microseconds, NULL/empty-string per the edge-case rules, booleans/case-folding consistent. For tables >10M rows, hash the deterministic sample from check 6.
+
+**Expected type-translation allow-list.** Apply the allow-list declared in `migration.equivalency_baseline` so a *correct* cross-platform type change is normalised, not flagged as drift. At minimum:
+- `VARIANT → JSON` or `STRING` — compare canonicalised JSON text (sorted keys, no insignificant whitespace), not raw bytes.
+- `TIMESTAMP_NTZ → DATETIME` — compare as wall-clock at the same precision; do not apply a timezone shift.
+- `NUMBER`-scale rounding — round both sides to the agreed scale before comparing.
+A difference that the allow-list explains is **not** a failure; record it as an expected translation in the report. A difference outside the allow-list is a value-drift failure with the column, both fingerprints, and a sample of differing primary keys (drill via `equivalency-investigate`).
+
+Tier-3 runs only in baseline mode (it needs the pinned, deterministic states to be meaningful). In live mode, checks 3 and 6 run as before.
+
 ### Step 3: Compile results
 
 Aggregate:
@@ -173,6 +213,8 @@ Aggregate:
 
 Use the template at `TEMPLATES/migration/equivalency_report.md`. Include:
 - Run summary: date, run number, total/passing/failing
+- **Run metadata** (every run, so the result is reproducible): mode (`live` | `baseline`); batch (`N` or `all`); and in baseline mode — the baseline instant `T`, the per-connector Fivetran/loaded-at watermarks applied, the Snowflake clone location (`wire_baseline` schema + `AT(TIMESTAMP)`), and the source repo commit (`migration_sources.dbt.commit` / snapshot SHA). A live run records `mode: live` and why baseline was not used.
+- Expected type translations applied (from the allow-list) — recorded as expected, not failures
 - Objects failing by check type
 - Top 10 failures sorted by severity (schema failures first, then count, then value)
 
@@ -191,10 +233,20 @@ migration:
         passing: N
         failing: N
         report: migration/equivalency_report_1.md
+        mode: live | baseline
+        batch: N | all
+        baseline_t: null | "<T>"          # baseline instant (UTC), baseline mode only
+        clone_location: null | "<db>.wire_baseline"
+        target_watermark: null | "_fivetran_synced <= <T>"
+        source_commit: null | "<sha>"     # snapshot SHA used for the source side
     status: "passing" | "failing" | "complete"
 ```
 
 Set `status: complete` only when `checks_failing == 0`.
+
+### Step 5b: Update the migration register
+
+For every model checked, write its equivalence outcome into `migration/migration_register.csv` (per-model state store — see `migration-register-generate`): `last_equivalence_result` (`pass`/`fail`/`info`), `last_equivalence_t` (the baseline `T` in baseline mode, else `null`), and `last_validated_commit` (the source commit validated against — the baseline `source_commit` in baseline mode, else the current source HEAD). This is what lets the drift gate distinguish "validated, then drifted" from "never validated". Skip silently if the register doesn't exist.
 
 ### Step 6: Output results
 

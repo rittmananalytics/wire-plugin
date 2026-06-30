@@ -138,7 +138,7 @@ For each sync, capture:
 | `include_in_migration` | true (default) unless disabled >90 days | true (default — status unknown from Git; flag for manual review) | CSV column |
 | `migration_notes` | Auto-generated | Auto-generated; note where runtime data is absent | CSV column |
 
-**Warehouse object extraction**: Resolve `warehouse_objects` for **every** model type, not just `rawSql`. Leaving `table` and `custom` models with empty `warehouse_objects` is the coverage gap this command must close — in the Carwow audit, 209 of 559 active syncs (37%) had no resolved source object because the extractor only handled some `rawSql` models, leaving their source layer and type-drift exposure unknown.
+**Warehouse object extraction**: Resolve `warehouse_objects` for **every** model type, not just `rawSql`. Leaving `table` and `custom` models with empty `warehouse_objects` is the coverage gap this command must close — in one pilot audit, 209 of 559 active syncs (37%) had no resolved source object because the extractor only handled some `rawSql` models, leaving their source layer and type-drift exposure unknown.
 
 Resolve by model type:
 
