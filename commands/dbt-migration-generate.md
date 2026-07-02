@@ -89,6 +89,7 @@ Full grammar and resolution algorithm: `wire/docs/specs/dbt-node-selection.md`.
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.csv`
 - `.wire/releases/$ARGUMENTS/status.md` — dbt_migration.current_batch
 - Source dbt model SQL files **and their companion schema/properties YAML** (`schema.yml` / `_models.yml` / `sources.yml`) at `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if registered)
+- PII tag map (optional): the file at `migration.pii_tag_map_path` in status.md, defaulting to `.wire/releases/$ARGUMENTS/migration/tag_map.json` — a flat `{source_masking_policy_name: target_policy_tag_resource_path}` JSON map, loaded in Step 2 and consumed in Step 3b item 4
 - Canonical platform pair files:
   - `wire/platform_pairs/{pair}/translation_guide.md` — pattern table
   - `wire/platform_pairs/{pair}/translation_reference.md` — exhaustive deep reference, if present (snowflake → bigquery has one). Consult it when a model trips a silent-behaviour-change case (timezone defaults, `DATEDIFF` boundary semantics, day-of-week numbering, regex engine, hash-key mismatch, NaN/NULL sort) or uses a construct the pattern table doesn't list. Where it disagrees with the quick guide, it wins.
@@ -195,6 +196,8 @@ The resolved model list then flows into Step 3 unchanged.
 
 Read the translation guide for the active platform pair. For the models in this batch, identify which feature tags are present and load the corresponding translation patterns.
 
+**PII tag map.** Read `migration.pii_tag_map_path` from status.md. If unset, look for the default `.wire/releases/$ARGUMENTS/migration/tag_map.json`. The file is a flat JSON map of source masking-policy name → target policy-tag resource path, e.g. `{"pii_email": "projects/<project>/locations/<loc>/taxonomies/<id>/policyTags/<id>"}` — it comes from the same PII policy-tag taxonomy the target-setup security step stands up (`04_security.sql`), so do not invent tag paths here. On load, build a lookup keyed on the **normalised** policy name: lowercase and trim both the map keys and, later, every source `meta.masking_policy` value before comparing — masking-policy names are inconsistently cased in the wild, and an exact-match lookup silently misses `PII_EMAIL` against a `pii_email` key. If no file exists at either location, print `[wire] No PII tag map found — policy_tags will be authored manually per column (Step 3b item 4).` and continue. The map is an enhancement, not a prerequisite — never block on its absence.
+
 ### Step 3: Translate and validate each model (iterative loop)
 
 For each model in the batch, run an iterative translation-and-equivalency loop. The loop has a maximum of **5 iterations**. No manual review prompts are issued mid-loop — the loop runs to completion automatically for every model before any human interaction.
@@ -258,6 +261,8 @@ Resolution: for each in-scope model, if it matches a rule's `select` and is not 
 **Optional `name` / `description`.** Each override rule may carry optional `name` and `description` keys. The parser tolerates them: they are **ignored by the matcher** and **must not** be copied into the forced model config (only keys other than `select`/`exclude`/`force_materialized`/`name`/`description` are treated as accompanying materialisation config). The fired rule's `name` is surfaced in run metadata (`loop_history` / the `.diff.md`).
 
 Forcing a materialisation the source did not use **diverges from the source** — it is an opt-in engagement optimisation, not faithful lift-and-shift. It happens only when a rule explicitly says so; it is never a default.
+
+**Relationship to `dbt-migration-lint`.** The lint command's `MATERIALIZATION_DRIFT` rule is the after-the-fact backstop for anything this hook cannot reach — a model hand-edited after generation, or a written materialisation that is wrong despite preservation. Both mechanisms are intentionally kept: the hook prevents the wrong choice being written; the lint rule detects one that got written anyway.
 
 **Iterations 2–5 — auto-fix:**
 
@@ -376,9 +381,15 @@ Three parts to handle:
 
 3. **Tests** — generic tests (`not_null`, `unique`, `accepted_values`, `relationships`) are portable. Custom tests, `where:` filters, and `dbt_utils`/`dbt_expectations` arguments containing source-dialect SQL get the same translation as model bodies.
 
-4. **PII / column policy tags and `meta`** — if column-level protection is applied through dbt (e.g. BigQuery `policy_tags`), author the `policy_tags` references into the column YAML here. Confirm ownership with the security-migration scope first — do not apply tags in both dbt YAML and warehouse DDL.
+4. **PII / column policy tags and `meta`** — if column-level protection is applied through dbt (e.g. BigQuery `policy_tags`), author the `policy_tags` references into the column YAML here, driven by the tag map loaded in Step 2:
+   - For **every** column carrying a `meta.masking_policy` value in the source YAML, look up the target policy tag in the tag map using the **normalised** (lowercased, trimmed) policy name — never an exact-case match.
+   - On a hit, write the resolved policy-tag resource path into the column's `policy_tags` list in the translated YAML. Count it as auto-resolved.
+   - On a miss — no map entry even after normalisation — do **not** silently omit the tag. Leave the column untagged, flag it `MANUAL REVIEW REQUIRED`, and record the column name and the unresolved masking-policy value. These flags surface in the batch summary (Step 4) and in `manual_review_reasons` in the transformation log (Step 4d).
+   - If no tag map was found in Step 2, fall back to manual authoring: resolve each `policy_tags` reference by hand, or defer with a note in the diff file.
 
-Write the translated YAML alongside the model, preserving the same relative path: `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path_from_models_root_without_extension}.yml`. Note any `sources.yml` repoint, custom-test translation, or `policy_tags` in the model's diff file.
+   Confirm ownership with the security-migration scope first — do not apply tags in both dbt YAML and warehouse DDL.
+
+Write the translated YAML alongside the model, preserving the same relative path: `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path_from_models_root_without_extension}.yml`. Note any `sources.yml` repoint, custom-test translation, or `policy_tags` change (auto-resolved or flagged) in the model's diff file.
 
 ### Step 4: Generate batch summary
 
@@ -388,7 +399,7 @@ Write `.wire/releases/$ARGUMENTS/migration/dbt/batch_{N}_summary.md`:
 - Confidence breakdown (count of high / medium / low)
 - Per-model loop results: iterations taken, which checks failed, final status
 - Models requiring manual review (every `FAILED` model and every `low` confidence model)
-- **Companion YAML changes**: `sources.yml` repoints, custom/singular tests translated, `policy_tags` authored or deferred
+- **Companion YAML changes**: `sources.yml` repoints, custom/singular tests translated, `policy_tags` authored or deferred — including the count of policy tags auto-resolved from the tag map and the count of `MANUAL REVIEW REQUIRED` flags for unresolved masking policies, naming each flagged column and its unresolved policy value
 - Recommended next steps
 
 ### Step 4b: Update per-batch DAG
@@ -485,8 +496,8 @@ migration:
 | `source_dialect` | STRING | `migration.source_platform` |
 | `target_dialect` | STRING | `migration.target_platform` |
 | `dialect_changes` | JSON | Array of `{construct, from, to, category}` — the source→target dialect changes applied (function swaps, type casts, config/macro changes) |
-| `manual_review` | BOOL | True if the model is FAILED or `low` confidence |
-| `manual_review_reasons` | JSON | Array of strings — which checks failed / why review is flagged |
+| `manual_review` | BOOL | True if the model is FAILED, `low` confidence, or carries an unresolved masking-policy flag (Step 3b item 4) |
+| `manual_review_reasons` | JSON | Array of strings — which checks failed / why review is flagged (include each unresolved masking-policy value and column) |
 | `confidence` | STRING | `high` \| `medium` \| `low` |
 | `final_status` | STRING | `PASSED` \| `FAILED` |
 | `iterations_taken` | INT64 | Loop iterations used |

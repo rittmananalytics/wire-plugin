@@ -85,6 +85,8 @@ If the fix touches a column feeding a business invariant, re-run that invariant 
 
 If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target when re-running these checks, exactly as `equivalency-validate` does. When `scope` is `full_migration` or absent, re-run unscoped.
 
+If the fixed object or any re-checked dependent is a relative-date-flagged model (`equivalency-validate` Step 1.5), resolve a fresh pinned as-of for this re-run, apply the same literal substitution over the compiled SQL on both sides, and record the pinned value in the fix entry (Step 4). Never re-run a flagged model's checks unpinned.
+
 ### Step 4: Update status
 
 Add a `fix` entry to the loop history:
@@ -101,6 +103,7 @@ migration:
           date: "{{TODAY}}"
           object: "{{OBJECT_NAME}}"
           approach: "{{APPROACH}}"
+          pinned_as_of: "{{PINNED_AS_OF_TS}}"   # UTC; only when re-checked objects include relative-date-flagged models
           result: "passing" | "still_failing"
 ```
 

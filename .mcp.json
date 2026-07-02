@@ -2,7 +2,7 @@
   "mcpServers": {
     "atlassian": {
       "type": "url",
-      "url": "https://mcp.atlassian.com/v1/sse"
+      "url": "https://mcp.atlassian.com/v1/mcp"
     },
     "fathom": {
       "type": "url",

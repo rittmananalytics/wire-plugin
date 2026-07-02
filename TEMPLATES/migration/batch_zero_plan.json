@@ -1,0 +1,42 @@
+{
+  "batch_zero_plan": {
+    "release": "{{RELEASE_FOLDER}}",
+    "source": "{{SOURCE_PLATFORM}}",
+    "target": "{{TARGET_PLATFORM}}",
+    "description": "Batch-zero macro translation sequence. Rule: translate tier 0 (any order), then tier 1, then tier 2 — all before model batch 1.",
+    "needs_translation_count": 0,
+    "tier_sizes": {
+      "0": 0,
+      "1": 0
+    },
+    "category_counts": {
+      "scalar-function": 0,
+      "VARIANT-OBJECT_CONSTRUCT": 0
+    },
+    "dependency_chains": {
+      "example_chain": "leaf_macro_a (tier0) -> composing_macro (tier1)"
+    },
+    "manual_edges_note": "List any dependency edges added manually because schema-qualified UDF calls are invisible to the scan, or state 'none'.",
+    "macros": [
+      {
+        "name": "example_scalar_macro",
+        "project": "example_project",
+        "tier": 0,
+        "depends_on": [],
+        "category": "scalar-function",
+        "action": "translate",
+        "model_reach": 42
+      },
+      {
+        "name": "example_js_udf_macro",
+        "project": "example_project",
+        "tier": null,
+        "depends_on": [],
+        "category": "fn_-UDF",
+        "action": "redesign",
+        "model_reach": 3
+      }
+    ],
+    "_macros_note": "Illustrative entries only. Real output contains one entry per catalogued NEEDS macro: action 'translate' entries carry a non-null tier; 'redesign' and 'manual-review-out-of-scope' entries carry a null tier. model_reach is the count of models using the macro directly or transitively — a floor for UDF-layer macros."
+  }
+}

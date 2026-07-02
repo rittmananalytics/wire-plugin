@@ -48,11 +48,14 @@ Read the most recent equivalency report from `migration/equivalency_report_*.md`
 
 If `migration.scope == tenant_carveout`, apply `migration.tenant_predicate` as a `WHERE` clause on both source and target in every diagnostic query below — including the partition-level, sample, and freshness queries — so the diagnosis matches the scoped row set `equivalency-validate` checked. When `scope` is `full_migration` or absent, run the queries unscoped as written.
 
+Rule out timing before treating any failure as a real data divergence. If the object's SQL references `CURRENT_DATE()`, `NOW()`, or another relative-date function (a relative-date-flagged model per `equivalency-validate` Step 1.5), read the pinned as-of value recorded for it in the failing run's report. If no pinned value was recorded, the checks ran unpinned and the failure may be a live-edge timing artefact — re-run `/wire:equivalency-validate` (which pins the as-of instant for flagged models) before investigating further. If a pinned value was recorded, use that same literal in every diagnostic query below so the diagnosis reproduces the failing run exactly.
+
 **If failing on Row count**:
 - Run the row count query for both source and target
 - Compare counts at the partition/date level (if partitioned): identify which date ranges have discrepancies
 - Check Fivetran sync logs for the connector that loads this table — was the last sync complete?
 - Check for soft-deleted rows that might differ between platforms
+- For relative-date-flagged models: confirm the failing run used a pinned as-of (see preamble above) — an unpinned run over a "last N days" window can show a false count divergence at the live edge
 
 **If failing on Schema**:
 - Show the exact column diff: columns present in source but missing from target, columns present in target but not source, type mismatches

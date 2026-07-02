@@ -245,6 +245,9 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:migration-inventory-generate` | `<release-folder>` | Synthesise all audits into unified catalogue with dependency graph |
 | `/wire:migration-inventory-validate` | `<release-folder>` | Validate migration inventory object counts and dependency graph |
 | `/wire:migration-inventory-review` | `<release-folder>` | Internal RA and client scope confirmation |
+| `/wire:migration-batching-generate` | `<release-folder> [--seed <path>]` | Partition the migration inventory into independently-schedulable domain batches, checked against the real dependency graph |
+| `/wire:migration-batching-validate` | `<release-folder>` | Validate domain batching — every object classified once, DAG acyclic, every real cross-batch edge declared |
+| `/wire:migration-batching-review` | `<release-folder>` | Human/client adjudication gate — turn the proposed batch partition into a committed schedule |
 | `/wire:migration-strategy-generate` | `<release-folder>` | Generate platform-pair translation guide, phasing, rollback, equivalency criteria |
 | `/wire:migration-strategy-validate` | `<release-folder>` | Validate migration strategy completeness |
 | `/wire:migration-strategy-review` | `<release-folder>` | Client sign-off on migration strategy |

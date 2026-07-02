@@ -1,9 +1,9 @@
 ---
-description: Validate dbt audit completeness and complexity ratings
+description: Validate domain batching — every object classified once, DAG acyclic, every real cross-batch edge declared
 argument-hint: <release-folder>
 ---
 
-# Validate dbt audit completeness and complexity ratings
+# Validate domain batching — every object classified once, DAG acyclic, every real cross-batch edge declared
 
 ## User Input
 
@@ -22,63 +22,58 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Validate dbt audit completeness, batch ordering against the manifest graph, disk reconciliation, and the batch-zero macro plan
+description: Validate domain batching — every object classified once, DAG acyclic, every real cross-batch edge declared, parallel-safe claims hold
 ---
 
-# dbt Audit — Validate
+# Migration Batching — Validate
 
 ## Purpose
 
-Checks that all models are classified, that batch assignments respect the manifest-derived dependency graph, that the catalogue reconciles with the files actually on disk, that the macro layer is fully classified, and that the batch-zero macro plan is complete and acyclic.
+Independently re-derives the ground truth for every check — the inventory object list, the object-level dependency graph, the macro flags — rather than trusting generate's self-report. This independence is the entire point: it is what catches a batch plan that has drifted out of sync with the real dependency graph.
 
 ## Validation Checks
 
-**Check 1 — All models have complexity rating**
-Every model in the CSV has a non-null `complexity` value (Simple / Moderate / Complex).
-PASS/FAIL with gaps listed.
+Read `migration/migration_batching.csv`, `migration/migration_batching.md`, `migration/migration_inventory.md`, `audit/dbt_audit.csv`, and status.md.
 
-**Check 2 — All models have batch number**
-Every `enabled=true` model has a non-null `batch_number`. Every `enabled=false` model has a **null** `batch_number` — a non-null `batch_number` on a disabled model is also a FAIL.
-PASS/FAIL with gaps and violations listed separately.
+**Check 1 — Every inventory object classified exactly once**
+Rebuild the union of objects from `migration_inventory.md`'s unified catalog. Confirm a 1:1 match against `migration_batching.csv` rows — no object missing, none duplicated, no CSV row without a matching inventory object.
+PASS: one-to-one match.
+FAIL: list missing objects, duplicates, and orphan CSV rows, with counts of each.
 
-**Check 3 — Batch ordering respects dependency graph**
-Re-run `specs/utils/dbt_manifest_parse.md` independently to get the model dependency graph — do not trust generate's self-report. For any enabled model in batch N with a dependency-graph parent (both enabled) in batch M, M ≤ N must hold. This check replaces any inference from the CSV's `ref_count` column — `ref_count` is a count, not a dependency edge.
-PASS: Zero forward references.
-FAIL: List every violating (model, parent, batch, parent_batch) tuple and the total forward-reference count.
+**Check 2 — Batch dependency DAG is acyclic**
+Rebuild the batch-level dependency graph from the CSV's `depends_on_batches` column alone. Confirm no cycles.
+PASS: acyclic.
+FAIL: list the cycle (the sequence of batch_ids).
 
-**Check 4 — Feature tags applied to all models**
-Every model has been scanned for platform-specific features (even if the tag list is empty — an empty list is valid, an unscanned model is not).
-PASS: All models scanned.
-FAIL: List unscanned models.
+**Check 3 — Every real cross-batch graph edge is declared**
+Independently rebuild the object-level dependency graph from `migration_inventory.md`'s adjacency list plus `dbt_audit.csv`'s manifest-derived model dependencies. Do **not** read `migration_batching.md`'s own DAG as ground truth. For every graph edge whose two endpoints land in different batches (per the CSV's `batch_id` assignments), confirm the dependency direction is represented in `depends_on_batches` for the dependent batch. This is the check that directly answers "does this batch plan actually hold against the real dependencies."
+PASS: every cross-batch edge declared.
+FAIL: list every undeclared cross-batch edge — the two objects, their batches, and the correct direction.
 
-**Check 5 — CSV row count matches model count in status.md**
-The row count in `dbt_audit.csv` (excluding header) matches `model_count` in status.md.
-PASS: Counts match.
-FAIL: Report discrepancy.
+**Check 4 — Batch-zero macro dependency present where required**
+For every batch containing a model with a non-empty `platform_macros` value (re-read from `dbt_audit.csv`, not from generate's output), confirm the narrative declares the batch-zero macro translation pass as a prerequisite of that batch.
+PASS: all affected batches declare it.
+FAIL: list batches missing the prerequisite.
 
-**Check 6 — No models without tests flagged**
-Models with `has_tests: false` are noted in the audit. This is informational (not a FAIL on its own) but the count must be reported.
-Output: N models have no tests (list them).
+**Check 5 — Parallel-safe claims hold**
+For every batch pair listed as parallel-safe in the narrative, confirm zero graph edges (either direction) between their member objects, per the Check 3 graph.
+PASS: no parallel-safe claim contradicted.
+FAIL: list each contradicted claim with the edge (objects, batches, direction) that breaks it.
 
-**Check 7 — Macros with adapter functions flagged**
-Every model whose transitive macro-usage set (from the Check 3 re-parse) intersects the NEEDS-translation set has that intersection recorded, comma-separated, in `platform_macros`. Every macro classified as NEEDS-translation carries an `action` of `translate`, `redesign`, or `manual-review-out-of-scope` — none left unclassified.
-PASS: Fully consistent.
-FAIL: List models with missing or incomplete `platform_macros` and macros with no recorded `action`.
+**Check 6 — Every CSV row complete**
+Each row has a non-empty `object_id`, `object_type`, `source_audit`, `domain`, `batch_id`, and `batch_name`. `depends_on_batches` may be empty.
+PASS/FAIL with incomplete rows listed.
 
-**Check 8 — Catalogue reconciles with disk**
-Independently walk every resolved project's filesystem (per `specs/utils/dbt_manifest_parse.md` Steps 1 and 3) and compare against the CSV. This check exists specifically to catch a stale or substituted catalogue regardless of how it went stale — it must not rely on generate's own report of what it did.
-PASS: Every `file_path` in the CSV resolves to a real file, and every `.sql`/`.py` model file on disk under a resolved project appears as a CSV row.
-FAIL: List dead `file_path` values (in the CSV, not on disk) and missing models (on disk, not in the CSV), with counts of each.
-
-**Check 9 — Batch-zero macro plan is complete and acyclic**
-Every macro with `action: translate` or `action: redesign` appears in `batch_zero_plan.json` — translate macros with a non-null tier; redesign macros listed in the redesign bucket, no tier required. Tier assignment is internally consistent: no macro's tier is ≤ any NEEDS-macro dependency's tier.
-PASS/FAIL with violations listed.
+**Check 7 — Candidates only, no premature lock-in**
+Neither `migration_batching.md` nor `status.md` marks any batch "approved" or "final", and no batch carries a committed date or owner — that is `/wire:migration-batching-review`'s job.
+PASS: no lock-in language.
+FAIL: quote the offending lines.
 
 ### Update status
 
 ```yaml
 artifacts:
-  dbt_audit:
+  migration_batching:
     validate: pass | fail
     validated_date: "{{TODAY}}"
 ```
@@ -90,11 +85,11 @@ After updating `status.md`, run these in sequence:
 
 1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `dbt_audit` as artifact, `validate` as action.
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_batching` as artifact, `validate` as action.
 
-3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `dbt_audit` as artifact_id, `dbt Audit` as artifact_name, and the `file` value from `artifacts.dbt_audit` in status.md as file_path.
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_batching` as artifact_id, `Migration Batching` as artifact_name, and the `file` value from `artifacts.migration_batching` in status.md as file_path.
 
-4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `dbt_audit` as artifact, `validate` as action.
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `migration_batching` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 

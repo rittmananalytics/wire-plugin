@@ -95,6 +95,11 @@ artifacts:
 
 If approved:
 ```
+/wire:migration-batching-generate $ARGUMENTS
+```
+
+Batching partitions the approved inventory into graph-checked domain batches before strategy is drafted. For engagements that skip domain batching, go straight to:
+```
 /wire:migration-strategy-generate $ARGUMENTS
 ```
 

@@ -20,7 +20,7 @@ Add servers to `.claude/settings.json` in your project root (project-scoped) or 
   "mcpServers": {
     "atlassian": {
       "type": "url",
-      "url": "https://mcp.atlassian.com/v1/sse"
+      "url": "https://mcp.atlassian.com/v1/mcp"
     },
     "linear": {
       "type": "url",
@@ -52,7 +52,7 @@ Or use the Wire command interface:
 
 ```bash
 # SSE transport (Atlassian, Linear, Fathom, Context7)
-claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/sse
+claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/mcp
 
 # HTTP transport (Notion)
 claude mcp add --transport http-sse notion https://mcp.notion.com/mcp
@@ -65,7 +65,7 @@ Restart Claude Code after adding a new server. On first use, Claude Code prompts
 ## Atlassian
 
 **Key**: `atlassian`  
-**URL**: `https://mcp.atlassian.com/v1/sse`  
+**URL**: `https://mcp.atlassian.com/v1/mcp`  
 **Transport**: SSE  
 **Provides**: Jira issue tracking and Confluence document search/publishing
 
@@ -95,7 +95,7 @@ The Atlassian MCP server is the official Anthropic-hosted server. It requires an
 
 ```bash
 claude mcp remove atlassian
-claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/sse
+claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/mcp
 ```
 
 Restart Claude Code to complete re-authentication.

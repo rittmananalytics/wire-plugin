@@ -13,7 +13,7 @@ This table is the quick reference. For the exhaustive treatment — dialect fund
 | `LATERAL FLATTEN(input => array_col)` | `CROSS JOIN UNNEST(array_col) AS element` | BQ uses UNNEST for array expansion | `{{ sf_to_bq.flatten(array_col) }}` macro |
 | `f.value` (FLATTEN alias value) | element alias from UNNEST | Alias semantics differ | Manual per model |
 | `f.index` (FLATTEN position) | `WITH OFFSET` clause | Position access differs | Manual |
-| `PARSE_JSON(json_string)` | `PARSE_JSON(json_string)` or `SAFE.PARSE_JSON(...)` | BigQuery does have PARSE_JSON; use `SAFE.` to null-on-error. For extraction from a STRING column without parsing, use `JSON_VALUE`/`JSON_QUERY` | See `translation_reference.md` §6 |
+| `PARSE_JSON(json_string)` | `PARSE_JSON(json_string, wide_number_mode => 'round')` or `SAFE.PARSE_JSON(...)` | BigQuery does have PARSE_JSON; use `SAFE.` to null-on-error. For extraction from a STRING column without parsing, use `JSON_VALUE`/`JSON_QUERY`. When the JSON contains large integers (IDs, epoch timestamps), add `wide_number_mode => 'round'` to avoid silent precision loss — BigQuery's default JSON number handling truncates large integers that exceed float64 precision. | See `translation_reference.md` §6 |
 | `col:field` (colon path notation) | `JSON_VALUE(col, '$.field')` or struct dot notation | BQ uses JSON function or struct access depending on column type | Type-dependent — manual review |
 | `col:field::STRING` | `JSON_VALUE(col, '$.field')` | Snowflake path extract + cast | `{{ sf_to_bq.path_extract(col, 'field', 'STRING') }}` |
 | `OBJECT_CONSTRUCT('a', a, 'b', b)` | `STRUCT(a AS a, b AS b)` | BQ uses STRUCT literal | `{{ sf_to_bq.object_construct(...) }}` |
@@ -24,6 +24,7 @@ This table is the quick reference. For the exhaustive treatment — dialect fund
 | `ZEROIFNULL(x)` | `IFNULL(x, 0)` | BQ equivalent | Simple replacement |
 | `NULLIFZERO(x)` | `NULLIF(x, 0)` | BQ equivalent | Simple replacement |
 | `NVL(x, y)` | `IFNULL(x, y)` | BQ equivalent | Simple replacement |
+| `DIV0(a, b)` | `IFNULL(SAFE_DIVIDE(a, b), 0)` | Snowflake `DIV0` returns 0 on zero denominator; `SAFE_DIVIDE` returns NULL — must wrap with `IFNULL` to preserve the same zero-on-zero-denominator semantics. Do not use bare `SAFE_DIVIDE` — the NULL difference silently corrupts downstream metric values. | Pattern replacement |
 | `DECODE(x, v1, r1, v2, r2, default)` | `CASE WHEN x=v1 THEN r1 WHEN x=v2 THEN r2 ELSE default END` | BQ uses CASE — no DECODE | Regex/pattern replacement |
 | `DATEADD(DAY, n, date_col)` | `DATE_ADD(date_col, INTERVAL n DAY)` | Argument order and syntax differ | `{{ sf_to_bq.dateadd('DAY', n, date_col) }}` |
 | `DATEDIFF(DAY, date1, date2)` | `DATE_DIFF(date2, date1, DAY)` | Argument order differs — target minus source in BQ | `{{ sf_to_bq.datediff('DAY', date1, date2) }}` |
@@ -33,6 +34,8 @@ This table is the quick reference. For the exhaustive treatment — dialect fund
 | `TRY_CAST(x AS INTEGER)` | `SAFE_CAST(x AS INT64)` | BQ uses SAFE_CAST for non-erroring casts | Simple replacement (with type translation) |
 | `TRY_TO_DATE(x)` | `SAFE_CAST(x AS DATE)` | BQ equivalent | Simple replacement |
 | `TRY_TO_TIMESTAMP(x)` | `SAFE_CAST(x AS TIMESTAMP)` | BQ equivalent | Simple replacement |
+| `CAST(x AS NUMBER)` / `x::NUMBER` | `CAST(CAST(x AS NUMERIC) AS INT64)` | Snowflake `CAST(x AS NUMBER)` and the `::NUMBER` shorthand use scale 0 by default and **round** to the nearest integer. BigQuery's `CAST(x AS INT64)` **truncates** — producing different results on 0.5 boundaries. Use the two-step form to reproduce rounding. Do not use bare `CAST AS INT64` on a column that was `::NUMBER` in Snowflake. | Pattern replacement |
+| `a = b` join predicate where types differ (e.g. STRING = INT64) | `CAST(a AS <matching_type>) = b` | Snowflake implicitly coerces STRING to NUMBER in join predicates; BigQuery does not — the join silently returns no rows or errors. For every join predicate, confirm both sides share the same BigQuery type and emit an explicit `CAST` where Snowflake relied on implicit coercion. Common case: `legacy_id` (INT64) joined to a substring expression (STRING). | Manual per join |
 | `LISTAGG(col, ', ')` | `STRING_AGG(col, ', ')` | Different function name | Simple replacement |
 | `LISTAGG(col, ', ') WITHIN GROUP (ORDER BY x)` | `STRING_AGG(col, ', ' ORDER BY x)` | BQ supports ORDER BY inside STRING_AGG | Pattern replacement |
 | `MEDIAN(x)` | `PERCENTILE_CONT(x, 0.5) OVER ()` or `APPROX_QUANTILES(x, 2)[OFFSET(1)]` | BQ has no MEDIAN — use percentile approach | `{{ sf_to_bq.median(x) }}` macro |

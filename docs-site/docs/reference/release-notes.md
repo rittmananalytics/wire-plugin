@@ -9,6 +9,24 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.3 — dbt audit hardening, migration batching, PII/equivalency fixes
+
+**Released**: July 2026
+
+A round of fixes and a new command trio, each traced back to specific feedback from a live Snowflake → BigQuery migration. Additive and backward compatible.
+
+**`dbt-audit-generate` hard-fails on an unresolvable project** — no more silently substituting a prior release's catalogue, the failure mode that produced a stale, wrong audit undetected. It resolves nested dbt projects one level down when the configured path has no `dbt_project.yml` of its own, orders batches with a real topological sort over a parsed manifest (replacing a `ref_count` heuristic that produced hundreds of forward-reference violations), scans the macro layer for platform-specific SQL — classifying each hit macro `translate` / `redesign` / `manual-review-out-of-scope` — and produces a tiered **batch-zero macro translation plan** as a first-class artifact. `dbt-audit-validate` gains a disk-reconciliation check that independently re-derives the catalogue rather than trusting generate's self-report.
+
+**New `/wire:migration-batching-*` trio** — partitions the migration inventory into named domain batches (independently-schedulable, multi-layer slices, distinct from `dbt_audit`'s translation batches) checked against the real dependency graph. `-review` is the client adjudication gate for composition and schedule; `-validate` re-derives the graph independently, catching a batch plan drifting out of sync with reality the way a hand-drawn plan can once the true dependencies are known.
+
+**PII policy tags resolve automatically** — `dbt-migration-generate` looks up a tag map with a case-normalised lookup instead of requiring manual per-column authoring, flagging unresolved policies `MANUAL REVIEW REQUIRED` rather than dropping them silently.
+
+**Equivalency pins relative-date models in live mode too** — not just under the opt-in `--baseline` freeze — closing a false-divergence gap that cost a real investigation cycle on a pilot migration. Reports are now organised at the table level with explicit column-completeness and value-match lines per table.
+
+**Housekeeping** — Atlassian MCP endpoint updated from the deprecated `/v1/sse` path to `/v1/mcp`.
+
+---
+
 ## v3.10.2 — Platform-migration hardening
 
 **Released**: June 2026

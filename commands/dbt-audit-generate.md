@@ -36,7 +36,7 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: dbt_audit` and `
 
 ## Purpose
 
-Catalogs every model, source, test, macro, seed, and snapshot in the dbt project. Classifies each model by complexity based on SQL feature usage, line count, and dependency depth. The output drives the batching strategy for dbt_migration and the complexity weighting in the migration inventory.
+Catalogs every model, source, test, macro, seed, and snapshot in the dbt project. Classifies each model by complexity based on SQL feature usage, line count, and dependency depth. The audit also flags platform-specific macro usage across the macro layer and produces a batch-zero macro translation plan — the macros that must be translated before model batch 1 starts. The output drives the batching strategy for dbt_migration and the complexity weighting in the migration inventory.
 
 ## Prerequisites
 
@@ -54,26 +54,38 @@ Catalogs every model, source, test, macro, seed, and snapshot in the dbt project
 
 Confirm `release_type: platform_migration`. Read `migration.dbt_project_path` (default: `./dbt`).
 
-Check the path exists and contains `dbt_project.yml`. If not found, ask the user to confirm the correct path.
+Run `specs/utils/dbt_manifest_parse.md` Step 1 (project resolution). If it hard-fails, stop here with the exact blocker message it produces — do not catch the failure and fall back to a prior artifact, another release's catalogue, or any cached file.
 
-### Step 2: Inventory project components
+### Step 2: Parse the dbt manifest and build dependency graphs
 
-Parse the dbt project:
+Run `specs/utils/dbt_manifest_parse.md` Steps 2–5. Carry forward for the rest of this workflow:
 
-**Models**: For each `.sql` file under `models/`:
+- The resolved project list (path + package name per project)
+- The model dependency graph (full node IDs, enabled models only)
+- The macro dependency graph (macro→macro edges)
+- The per-model transitive macro-usage set
+
+If the utility used its text-scan fallback, mark every count and ordering below as medium confidence and record the fallback in the audit's Notes, per the utility spec.
+
+### Step 3: Inventory project components
+
+Walk each resolved project's filesystem directly. The manifest gives dependency edges; the filesystem is the ground truth for what exists — validate's disk-reconciliation check compares the catalogue against files on disk, so do not source the model list from the manifest alone.
+
+**Models**: For each `.sql` (or `.py`) file under `models/`:
 - File path and model name
 - Layer (staging, intermediate, mart — inferred from path or prefix)
 - Line count
 - Number of `ref()` calls (upstream dependencies)
 - Number of `source()` calls
 - Number of CTEs
-- SQL feature tags (see Step 3)
+- SQL feature tags (see Step 4)
+- `enabled` — cross-reference the file's path against the manifest's model nodes: present in `nodes` → `enabled=true`; present in `disabled` → `enabled=false`; on disk but absent from the manifest entirely → flag the model for investigation in the audit output rather than silently defaulting to `enabled=true`.
 
 **Sources**: Count and list all sources defined in `schema.yml` files.
 
 **Tests**: Count generic and singular tests. Note which models have no tests.
 
-**Macros**: List all macros in the `macros/` directory. Flag macros that use adapter-specific functions (`adapter.dispatch`, `dbt_utils` functions with platform behaviour differences).
+**Macros**: List all macros in each project's `macros/` directory. Platform-specific flagging happens in Step 5.
 
 **Seeds**: List all seed files with row counts.
 
@@ -81,7 +93,7 @@ Parse the dbt project:
 
 **Analyses**: List any files in `analyses/`.
 
-### Step 3: Detect platform-specific SQL features per model
+### Step 4: Detect platform-specific SQL features per model
 
 For each model SQL file, apply the feature detection patterns from the platform pair file:
 
@@ -90,7 +102,21 @@ For each model SQL file, apply the feature detection patterns from the platform 
 
 Tag each model with every feature pattern that matches. A model with no matches gets an empty tag list.
 
-### Step 4: Classify complexity
+### Step 5: Detect platform-specific SQL in the macro layer
+
+For every macro file across all resolved projects' `macros/` directories — plus any shared macros directory referenced in a `dbt_project.yml` `macro-paths:` entry or a sibling `shared/macros` directory — apply the same feature-detection patterns from Step 4 (including the macro-layer patterns: `create_function_udf`, `object_agg`, `within_group`, `colon_path`, `ilike`, `ilike_any`, `like_all`, `rlike`, `regexp_substr_multiarg`) to the macro's SQL body. Any macro with at least one hit joins the **NEEDS-translation set**.
+
+Classify each NEEDS macro's `action`:
+
+- `translate` (default) — a target-platform equivalent exists; the macro is rewritten in the batch-zero pass.
+- `redesign` — no direct equivalent (e.g. a Snowpark or JavaScript UDF with no BigQuery analogue). Needs an architectural decision — surface at the human review gate, do not tier it.
+- `manual-review-out-of-scope` — source-platform session, catalog, or dev-tooling operations (`ALTER SESSION`, external-table refresh, clone/drop schema and the like). Not model-build SQL; no target equivalent as written.
+
+Treat the pattern match as a **shortlist**, then apply judgement per macro body to assign `action` and a coarse `category` tag (e.g. scalar-function, VARIANT/OBJECT_CONSTRUCT, fn_-UDF, ILIKE/RLIKE). This is feature-detection-rules-plus-review, not a one-shot mechanical scan. Record in the audit's Notes that the classification is a single specialist-pass read of every macro body — a floor count, not independently re-verified.
+
+For every model, intersect its transitive macro-usage set (from Step 2) with the NEEDS set to populate that model's `platform_macros` value: comma-separated macro names, blank if none. Per the `dbt_manifest_parse.md` Step 5 caveat, schema-qualified UDF calls in model SQL are invisible to this intersection — `platform_macros` and any macro model-reach count is a floor for those macros.
+
+### Step 6: Classify complexity
 
 Assign each model a complexity rating:
 
@@ -112,13 +138,41 @@ Assign each model a complexity rating:
 - >10 upstream refs, OR
 - Uses UNNEST, STRUCT, FLATTEN, LATERAL, ML functions, or GEOGRAPHY operations
 
-### Step 5: Build migration batches
+### Step 7: Build migration batches
 
-Group models into translation batches of no more than 20 models each. Order batches by the dependency graph — models with no upstream dbt refs first, leaf nodes last. Within each batch, order Simple before Moderate before Complex.
+Order buildable (`enabled=true`) models via a **topological sort** (Kahn's algorithm or DFS-based) over the model dependency graph from Step 2. Do not use `ref_count` or a depth-then-pack heuristic — `ref_count` is a count, not an edge, and the heuristic it drove produced hundreds of forward-reference violations. Every model's `ref()` parents must sit in an earlier-or-equal batch.
 
-Assign each model a `batch_number` (1-indexed).
+Sort key when multiple valid orderings exist:
 
-### Step 6: Write the audit report and CSV
+1. A project that is `source()`'d by another resolved project sorts before the project that reads it
+2. Topological layer (leaf-first depth in the dependency graph)
+3. Simple before Moderate before Complex
+4. Name
+
+Pack into batches of at most 20 models, preserving that order. A parent and its child may share a batch — dbt builds in dependency order within a run, so this is safe; do not fragment into smaller batches just to force strict parent-in-an-earlier-batch.
+
+Assign each buildable model a `batch_number` (1-indexed). Disabled models get a **null** `batch_number` and are excluded from batching, but remain catalogued.
+
+Count forward references in the result (a model whose graph parent sits in a later batch). This should be 0 — state the count in the audit's Notes.
+
+### Step 8: Generate the batch-zero macro translation plan
+
+Restrict the macro dependency graph (from Step 2) to the NEEDS-translation set from Step 5, then compute tiers:
+
+- **Tier 0** — NEEDS macros with no NEEDS-macro dependency
+- **Tier N** — NEEDS macros that depend only on tiers <N
+
+`redesign` and `manual-review-out-of-scope` macros are listed in their own buckets and get no tier.
+
+Write:
+- `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json` — from `TEMPLATES/migration/batch_zero_plan.json`
+- `.wire/releases/$ARGUMENTS/audit/batch_zero_macro_plan.md` — from `TEMPLATES/migration/batch_zero_macro_plan.md`
+
+Mark the output **provisional**, and carry both caveats into the markdown output's caveat callout: (1) the classification is a single specialist-pass read — a floor count, not independently re-verified; (2) schema-qualified UDF calls in model SQL are invisible to the scan, so UDF-layer model-reach figures and dependency edges understate reality.
+
+State the rule in the plan: translate all of tier 0 (any order), then tier 1, then tier 2, etc. — entirely before model batch 1 begins. A widely-used macro can be referenced by 200+ models scattered across every batch; it must be rewritten once, up front.
+
+### Step 9: Write the audit report and CSV
 
 **Output locations**:
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.md` — narrative report with summary statistics
@@ -127,9 +181,9 @@ Assign each model a `batch_number` (1-indexed).
 Use the templates at `TEMPLATES/migration/dbt_audit.md` and `TEMPLATES/migration/dbt_audit.csv`.
 
 The CSV must contain:
-`model_name, file_path, layer, line_count, ref_count, source_count, cte_count, complexity, feature_tags, batch_number, has_tests, migration_notes`
+`model_name, file_path, layer, line_count, ref_count, source_count, cte_count, complexity, feature_tags, batch_number, has_tests, migration_notes, enabled, platform_macros`
 
-### Step 7: Update status
+### Step 10: Update status
 
 ```yaml
 artifacts:
@@ -138,18 +192,22 @@ artifacts:
     file: audit/dbt_audit.md
     generated_date: "{{TODAY}}"
     model_count: N
+    enabled_count: N
+    disabled_count: N
     simple_count: N
     moderate_count: N
     complex_count: N
     batch_count: N
     macro_count: N
+    macros_needing_translation_count: N
+    batch_zero_plan: audit/batch_zero_plan.json
     source_count: N
     test_count: N
 ```
 
-### Step 8: Output summary
+### Step 11: Output summary
 
-Print: total models, breakdown by complexity, number of batches, most common feature tags, and next command:
+Print: total models, breakdown by complexity, disabled-model count, number of batches, macros needing translation, confirmation the batch-zero plan was generated, most common feature tags, and next command:
 
 ```
 /wire:dbt-audit-validate $ARGUMENTS
@@ -159,6 +217,8 @@ Print: total models, breakdown by complexity, number of batches, most common fea
 
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.md`
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.csv`
+- `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json`
+- `.wire/releases/$ARGUMENTS/audit/batch_zero_macro_plan.md`
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 
 

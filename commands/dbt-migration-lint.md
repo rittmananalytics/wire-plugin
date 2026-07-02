@@ -68,6 +68,8 @@ The two are complementary and must not be merged:
   - `wire/platform_pairs/{pair}/translation_reference.md` — the §11 gotcha checklist this rule set is derived from; the authoritative description for every rule
   - `wire/platform_pairs/{pair}/translation_guide.md` — pattern table
 - Engagement overrides at `.wire/engagement/platform_pair_overrides/{pair}/lint_rules.md`, if present — extra rules or per-engagement severity overrides, layered on top (override wins on the same rule id)
+- `<migration.dbt_project_path>/target/manifest.json` — the resolved source `config.materialized` per model, for `MATERIALIZATION_DRIFT`; when absent, fall back to the `dbt_project.yml` + in-file config scan and note the reduced confidence per model
+- The engagement's materialisation overrides file at `migration.materialization_overrides_path` (status.md), if set — declared overrides suppress `MATERIALIZATION_DRIFT` hits
 
 ## Engines
 
@@ -124,6 +126,16 @@ Rules are derived from `translation_reference.md` §11 and the per-pair `feature
 | `DOW_NUMBERING` | warn | `DAYOFWEEK` arithmetic | Snowflake honours `WEEK_START`; confirm the account default | §5.5 |
 | `MEDIAN_WINDOW` | info | `PERCENTILE_CONT(... ) OVER ()` translated to Snowflake | Snowflake `MEDIAN`/`PERCENTILE_CONT ... WITHIN GROUP` is a true aggregate | §5.6 |
 
+### Direction-agnostic rules
+
+These run in both directions and in both engines — they read model config, not the SQL parse tree, so they work identically under AST and regex modes.
+
+| id | severity | detect (on translated model config) | fix hint | ref |
+|---|---|---|---|---|
+| `MATERIALIZATION_DRIFT` | warn | Translated model's resolved materialisation (in-file `{{ config(...) }}` / companion YAML) differs from the source manifest node's `config.materialized`, and no rule in the engagement's materialisation overrides file declares the change | Restore the preserved source materialisation, or declare the change as an override rule so it is on the record | `generate.md` "Materialisation config" |
+
+`MATERIALIZATION_DRIFT` exists precisely because `dbt-migration-generate`'s materialisation hook (preserve-by-default plus declarative overrides) cannot catch every case: a model hand-edited after generation, or a model where no override was declared and the written materialisation is simply wrong. The hook is proactive, this rule is the after-the-fact backstop — both are intentionally kept; they are complementary, not redundant. A hit is not automatically a defect: when the overrides file declares the change (the model matches a rule's `select`, is not caught by its `exclude`, and the written materialisation equals that rule's `force_materialized`), the rule stays silent — a declared override is the hook working as designed, never a lint finding. Severity is `warn` because an undeclared change compiles fine and silently re-shapes the build: an incremental flattened to `table` changes cost and freshness, and with late-arriving data can change results.
+
 Engagement override files may add rows (e.g. a client-specific UDF that has no target equivalent) or downgrade a severity with a documented reason.
 
 ## Workflow
@@ -135,7 +147,7 @@ Read `current_batch` (or `--batch`/`--model`) and the batch model list. Resolve 
 For each model in scope:
 1. Strip/render Jinja; obtain the largest parseable SQL (compiled artifact if available).
 2. **Parse-check** in the target dialect → `PARSE` rule on failure.
-3. Run every rule for the active direction. AST rules read the tree; regex rules apply the pattern. Each hit records: `model`, `rule_id`, `severity`, line/span, the offending snippet, the fix hint, and the `translation_reference.md` section.
+3. Run every rule for the active direction, plus the direction-agnostic rules. AST rules read the tree; regex rules apply the pattern; config rules (`MATERIALIZATION_DRIFT`) compare the translated model's config against the source manifest and the declared overrides. Each hit records: `model`, `rule_id`, `severity`, line/span, the offending snippet, the fix hint, and the `translation_reference.md` section.
 4. Where a rule has a deterministic rewrite and sqlglot is present, attach the suggested fix (informational).
 
 ### Step 3 — Write the report

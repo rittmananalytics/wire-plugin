@@ -50,12 +50,23 @@ These regex and grep patterns identify Snowflake-specific SQL features in dbt mo
 | `timestamp_tz` | `\bTIMESTAMP_TZ\b` | TZ timestamp type |
 | `show_command` | `^\s*SHOW\s+` | SHOW metadata commands |
 | `sample_clause` | `\bSAMPLE\s*\(\|TABLESAMPLE\s*\(` | Table sampling |
+| `ilike` | `\bILIKE\b` | Case-insensitive LIKE — BigQuery needs LOWER()/REGEXP_CONTAINS rewrite |
+| `ilike_any` | `\bILIKE\s+ANY\b` | ILIKE against a list of patterns — no direct BigQuery equivalent |
+| `like_all` | `\bLIKE\s+ALL\b` | LIKE against all of a list of patterns — no direct BigQuery equivalent |
+| `rlike` | `\bRLIKE\b` | Regex match operator — becomes REGEXP_CONTAINS |
+| `regexp_substr_multiarg` | `\bREGEXP_SUBSTR\s*\(([^,()]*(\([^()]*\))?[^,()]*,){3,}` | REGEXP_SUBSTR with 4+ arguments (position/occurrence/parameters) — Snowflake's multi-arg form has no direct BigQuery equivalent |
+| `object_agg` | `\bOBJECT_AGG\s*\(` | Key-value aggregation into OBJECT — needs JSON/STRUCT rewrite |
+| `create_function_udf` | `CREATE\s+(OR\s+REPLACE\s+)?FUNCTION[\s\S]*?LANGUAGE\s+(JAVASCRIPT\|PYTHON\|SQL)` | UDF DDL (`CREATE FUNCTION ... LANGUAGE JAVASCRIPT/PYTHON/SQL`) — JS/Snowpark UDFs need redesign, not translation |
 
 ## Usage
 
 Apply each pattern as a case-insensitive grep against each model's SQL file. Store results as comma-separated tags in `dbt_audit.csv` `feature_tags` column.
 
-Each pattern is a single-construct, line-based match — they do not span lines. Some patterns are only meaningful in combination: a model tagged both `array_agg` and `parse_json` is building a record array as JSON (`ARRAY_AGG(PARSE_JSON(...))`), which translates to a native BigQuery `ARRAY_AGG(STRUCT(...))` — see example 05. Read co-occurring tags together when selecting translation patterns.
+Each pattern is a single-construct, line-based match — they do not span lines (exception: `create_function_udf`, which spans from the `CREATE FUNCTION` to its `LANGUAGE` clause). Some patterns are only meaningful in combination: a model tagged both `array_agg` and `parse_json` is building a record array as JSON (`ARRAY_AGG(PARSE_JSON(...))`), which translates to a native BigQuery `ARRAY_AGG(STRUCT(...))` — see example 05. Read co-occurring tags together when selecting translation patterns.
+
+## Macro-Layer Usage
+
+These same patterns apply to macro bodies (`macros/**/*.sql`), not only model files. They are the basis for the dbt audit's macro-flagging step (`specs/migration/dbt_audit/generate.md` Step 5): any macro with at least one hit joins the NEEDS-translation set and is then classified by action (`translate` / `redesign` / `manual-review-out-of-scope`). Categories a model-only scan misses live almost entirely in the macro layer: the `fn_*` UDF-DDL layer (`create_function_udf`), key-value aggregation (`object_agg`, `within_group`, VARIANT colon-path access), and the pattern-matching family (`ilike`, `ilike_any`, `like_all`, `rlike`, `regexp_substr_multiarg`).
 
 ## Complexity Contribution
 

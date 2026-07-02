@@ -463,7 +463,7 @@ The Wire Framework optionally replicates generated artifacts to Confluence or No
 - **Setup**: Configured during `/wire:new` (Step 9.5) — choose Confluence or Notion as the document store for the engagement.
 - **On generate commands**: The generated artifact is automatically published or updated in the configured document store.
 - **On review commands**: Reviewer comments and any edits made directly in the document store are surfaced as review context before feedback is gathered.
-- **Confluence**: Uses the existing Atlassian MCP server (`https://mcp.atlassian.com/v1/sse`).
+- **Confluence**: Uses the existing Atlassian MCP server (`https://mcp.atlassian.com/v1/mcp`).
 - **Notion**: Uses the Notion MCP server (`https://mcp.notion.com/mcp`).
 
 Three utility commands support document store operations:

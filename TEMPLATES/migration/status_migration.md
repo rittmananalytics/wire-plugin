@@ -37,6 +37,10 @@ migration:
   materialization_overrides_path: null  # Optional engagement-relative path to a materialisation overrides file
                                    # (schema: default: preserve + overrides[] with select/exclude/force_materialized).
                                    # unset = faithful preservation of every model's source materialisation.
+  pii_tag_map_path: null           # Optional path to the PII tag map JSON — flat
+                                   # {source_masking_policy_name: target_policy_tag_resource_path}.
+                                   # unset = dbt-migration looks for .wire/releases/<release>/migration/tag_map.json,
+                                   # then falls back to manual policy_tags authoring per column.
   equivalency_baseline: null       # Release-level; set per freeze. null = equivalency runs in live mode.
                                    # When pinned (see migration_strategy "frozen equivalency baseline"):
                                    #   t: "<UTC instant>"                  # both sides pinned to this instant

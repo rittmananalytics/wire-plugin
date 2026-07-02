@@ -7,6 +7,7 @@
 **Target platform**: {{TARGET_PLATFORM}}
 **Migration scope**: {{MIGRATION_SCOPE}}  <!-- full_migration | tenant_carveout -->
 **Tenant predicate**: {{TENANT_PREDICATE}}  <!-- tenant_carveout only: the WHERE clause applied to every data-bearing check; blank for full_migration -->
+**Pinned as-of**: {{PINNED_AS_OF_TS}}  <!-- live mode only — UTC instant substituted for CURRENT_DATE()/NOW()-style functions in relative-date-flagged models (validate Step 1c); "n/a" if no models were flagged, or if running in baseline mode (Step 1b already pins the whole run) -->
 
 ## Run Metadata
 
@@ -52,6 +53,20 @@
 | dbt tests | | |
 | Row-level checksum | | |
 | Business invariants | | |
+
+## Table-Level Results
+
+<!-- One sub-section per in-scope table/model — every table, including passing ones.
+     The three labelled lines surface existing check types 1 (row count), 2 (schema
+     completeness), and 3 (value sampling) per table; no new check logic. -->
+
+### {{schema.table_name}}
+
+- **Row count**: PASS/FAIL — source {{N}}, target {{N}}, delta {{N}} ({{PCT}})
+- **All columns present**: yes/no — missing: {{none | column list}}, extra: {{none | column list}}
+- **Sampled column values match**: yes/no — mismatching columns: {{none | column list}}
+- **Other checks**: freshness PASS/FAIL · dbt tests PASS/FAIL · row-level checksum PASS/FAIL
+- **Pinned as-of**: {{PINNED_AS_OF_TS}}  <!-- relative-date-flagged models only; omit this line otherwise -->
 
 ## Failing Objects
 

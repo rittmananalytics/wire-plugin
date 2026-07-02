@@ -104,7 +104,34 @@ Read `T`, the clone location, the per-connector watermark columns, and the expec
 - Fix the sampling seed / row-selection so value-sampling (check 3) and the tier-3 comparator draw the **same** rows on each platform across re-runs.
 - Tenant-carveout scoping (above) still applies — the predicate ANDs with the watermark/clone filters.
 
-When neither `--baseline` nor `migration.equivalency_baseline` is present, behaviour is unchanged (live reads, no determinism rewrites).
+When neither `--baseline` nor `migration.equivalency_baseline` is present, behaviour is unchanged (live reads, no determinism rewrites) — which is exactly the gap Step 1c closes.
+
+### Step 1c: Pin the as-of instant for relative-date models (live mode only)
+
+**Skip this step entirely when running in baseline-pin mode (Step 1b).** The deterministic-build switch there already replaces every relative-date function with a value fixed at `T` on both sides — that fully supersedes this step. This step exists for the common case: a **live-mode** run, with no baseline defined, still needs to guard against timing skew for the specific models that reference "now".
+
+A model whose SQL references "now" — `CURRENT_DATE()`, `CURRENT_TIMESTAMP()`, `NOW()`, `GETDATE()`, or a `DATEADD(..., CURRENT_DATE())`-style window — evaluates "today" at whatever instant its side of the check runs. If the source check runs even minutes before the target check, a window near the live edge ("last 7 days including today", an intraday cutoff) genuinely produces different row counts, aggregates, and samples on the two sides. That is a false divergence caused by timing, not by the migration.
+
+**Detect flagged models.** Scan the SQL of every in-scope dbt model — both the source-dialect SQL and the translated target SQL — case-insensitively for relative-date/time functions:
+
+- `CURRENT_DATE`, `CURRENT_TIMESTAMP`, `CURRENT_TIME`, `LOCALTIMESTAMP`
+- `NOW(`, `GETDATE(`, `SYSDATE`, `SYSTIMESTAMP`
+- `DATEADD`, `DATE_ADD`, `DATE_SUB`, `TIMESTAMP_ADD`, `TIMESTAMP_SUB` where any argument contains one of the above
+
+Any model with at least one hit is a **relative-date-flagged model**. Note: `dbt_audit.csv`'s `feature_tags` column does not currently carry a tag for these functions (see `platform_pairs/*/feature_detection.md`), so scan the model SQL directly — do not rely on the audit tags.
+
+**Resolve the pinned as-of once.** At the start of the run, before any check on either side, run a single `SELECT CURRENT_TIMESTAMP()` against the source platform. From the result derive:
+
+- `pinned_as_of_ts` — the timestamp, in UTC
+- `pinned_as_of_date` — the UTC date component
+
+These two values are fixed for the entire run. When fanning out to parallel subagents (Step 1), pass both values into every subagent prompt so all objects — however long the run takes — evaluate against the identical instant.
+
+**Apply the pin via literal substitution.** For each flagged model, run the data-bearing checks (row count, value sampling, row-level checksum) over a **pinned inline relation** instead of the stored table: take the model's compiled SQL on each platform, replace every relative-date/now call with the pinned literal in that platform's syntax (`DATE '{pinned_as_of_date}'` for date functions, `TIMESTAMP '{pinned_as_of_ts}'` for timestamp functions — e.g. `DATEADD(day, -7, CURRENT_DATE())` becomes `DATEADD(day, -7, DATE '{pinned_as_of_date}')`), then run the check as `SELECT ... FROM ( {pinned SQL} ) AS t` on both sides. The tenant predicate, when in scope, still applies on top. Neither BigQuery nor Snowflake allows overriding `CURRENT_DATE()` via a session variable, so literal substitution over the compiled SQL is the mechanism — do not attempt to "run both sides quickly" as a substitute.
+
+For flagged models materialised as tables, the stored data on each side reflects "now" at its own build time, so the stored tables can legitimately differ at the live edge even when the migration is correct. If the pinned comparison passes but the stored tables differ, record it as a timing artefact, not a divergence.
+
+**Record the pin.** For every flagged model, record the pinned as-of value used against its results in the equivalency report (Step 4) and write `pinned_as_of` into the run's `loop_history` entry (Step 5), so any re-run or investigation can see exactly what instant was used.
 
 ### Step 2: Run all check types
 
@@ -120,6 +147,7 @@ SELECT COUNT(*) AS row_count FROM target_db.target_schema.table_name;
 ```
 PASS: |source_count - target_count| / source_count ≤ tolerance (default 0.1%, configurable per table in migration strategy)
 FAIL: Count outside tolerance
+Relative-date-flagged models (Step 1.5): count over the pinned inline relation on both sides, not the stored table.
 
 **Check type 2 — Schema**
 Compare column names, types, and nullability between source and target.
@@ -133,6 +161,7 @@ PASS: Statistical measures within ±1% (configurable)
 FAIL: Deviation outside threshold
 Min and max are already part of this check — no separate min/max check type is needed.
 Tenant carve-out: compute every statistic over `WHERE {migration.tenant_predicate}` on both source and target (and take the 10K-row sample from within the scoped set).
+Relative-date-flagged models (Step 1.5): compute every statistic over the pinned inline relation on both sides.
 
 **Check type 4 — Freshness**
 Compare max(updated_at) or max(loaded_at) between source and target.
@@ -160,7 +189,7 @@ FROM source_project.source_schema.table_name;
 -- Tenant carve-out: add `WHERE {migration.tenant_predicate}` to both sides, and apply it inside the deterministic
 -- sampling filter for large tables so the same scoped rows are sampled on each platform.
 ```
-Canonicalise before hashing so the comparison is not defeated by benign representation differences — see the edge-case checklist below. PASS: aggregate hashes match over the same row set. FAIL: mismatch (drill into the differing rows via `equivalency-investigate`).
+Canonicalise before hashing so the comparison is not defeated by benign representation differences — see the edge-case checklist below. Relative-date-flagged models (Step 1.5): hash over the pinned inline relation on both sides. PASS: aggregate hashes match over the same row set. FAIL: mismatch (drill into the differing rows via `equivalency-investigate`).
 
 **Check type 7 — Business invariants**
 The checks above confirm the data moved; invariants confirm it still *means* the same thing. For each invariant defined in the migration strategy, run the same aggregate query on both platforms and compare.
@@ -207,16 +236,28 @@ Aggregate:
 - `checks_by_type`: breakdown of pass/fail per check type
 - Per-object summary: which checks passed/failed for each object
 
+**Pinning coverage check.** Cross-check the relative-date-flagged model list from Step 1c against the models whose data-bearing checks recorded a pinned as-of value. Any flagged model whose checks ran unpinned has an invalid result regardless of pass/fail — count it as failing with reason `unpinned_relative_date_check` and re-run its checks with the pin applied before the run can be considered complete. Detecting the risk and then silently not applying the pin is exactly the failure mode this step exists to prevent.
+
 ### Step 4: Write equivalency report
 
 **Output location**: `.wire/releases/$ARGUMENTS/migration/equivalency_report_{run_number}.md`
 
 Use the template at `TEMPLATES/migration/equivalency_report.md`. Include:
 - Run summary: date, run number, total/passing/failing
-- **Run metadata** (every run, so the result is reproducible): mode (`live` | `baseline`); batch (`N` or `all`); and in baseline mode — the baseline instant `T`, the per-connector Fivetran/loaded-at watermarks applied, the Snowflake clone location (`wire_baseline` schema + `AT(TIMESTAMP)`), and the source repo commit (`migration_sources.dbt.commit` / snapshot SHA). A live run records `mode: live` and why baseline was not used.
+- **Run metadata** (every run, so the result is reproducible): mode (`live` | `baseline`); batch (`N` or `all`); and in baseline mode — the baseline instant `T`, the per-connector Fivetran/loaded-at watermarks applied, the Snowflake clone location (`wire_baseline` schema + `AT(TIMESTAMP)`), and the source repo commit (`migration_sources.dbt.commit` / snapshot SHA). A live run records `mode: live` and why baseline was not used. In live mode, also record the `pinned_as_of_ts` / `pinned_as_of_date` used for this run (Step 1c) and the list of relative-date-flagged models it was applied to — null/empty if none were in scope.
 - Expected type translations applied (from the allow-list) — recorded as expected, not failures
+- Table-level results: one sub-section per in-scope table/model — see below
 - Objects failing by check type
 - Top 10 failures sorted by severity (schema failures first, then count, then value)
+
+**Table-level results.** The report is organised at the table level, not as a flat check list — clients review reconciliation per table. For every table/model in scope, write a sub-section containing:
+- **Row count**: PASS/FAIL, with source count, target count, and delta
+- **All columns present**: yes/no — naming any missing or extra columns (this surfaces check type 2 per table)
+- **Sampled column values match**: yes/no — naming any columns whose sampled statistics deviated (this surfaces check type 3 per table)
+- One line for each remaining applicable check (freshness, dbt tests, row-level checksum)
+- **Pinned as-of**: the pinned value used, for relative-date-flagged models only
+
+These lines surface existing check types 1, 2, and 3 per table — no new check logic is introduced. The two explicit yes/no lines are required for every table, including passing ones: an all-clear must say so per table, not only in the aggregate summary.
 
 ### Step 5: Update status
 
@@ -232,6 +273,7 @@ migration:
         date: "{{TODAY}}"
         passing: N
         failing: N
+        pinned_as_of: "{{PINNED_AS_OF_TS}}"   # UTC; null if no relative-date-flagged models in scope
         report: migration/equivalency_report_1.md
         mode: live | baseline
         batch: N | all

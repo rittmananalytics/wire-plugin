@@ -126,7 +126,7 @@ The three most useful servers are Fathom, Atlassian, and Linear. Add them to `.c
     },
     "atlassian": {
       "type": "sse",
-      "url": "https://mcp.atlassian.com/v1/sse"
+      "url": "https://mcp.atlassian.com/v1/mcp"
     },
     "linear": {
       "type": "sse",

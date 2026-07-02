@@ -49,7 +49,7 @@ The following servers are recognised by the Wire Framework:
 
 | Key | Default URL | Transport | Wire Purpose |
 |-----|-------------|-----------|-------------|
-| `atlassian` | `https://mcp.atlassian.com/v1/sse` | SSE | Jira issue tracking; Confluence document store and search |
+| `atlassian` | `https://mcp.atlassian.com/v1/mcp` | SSE | Jira issue tracking; Confluence document store and search |
 | `linear` | `https://mcp.linear.app/sse` | SSE | Alternative/complementary Linear issue tracking |
 | `fathom` | `https://your-fathom-mcp-server/mcp` | SSE | Meeting transcript retrieval during review commands |
 | `context7` | `https://mcp.context7.com/mcp` | HTTP | Library documentation lookups during development |
@@ -102,7 +102,7 @@ Wire MCP Servers
 
   Server      Status          URL                                          Transport
   ──────────  ──────────────  ───────────────────────────────────────────  ─────────
-  atlassian   ✓ configured    https://mcp.atlassian.com/v1/sse             SSE
+  atlassian   ✓ configured    https://mcp.atlassian.com/v1/mcp             SSE
   linear      ✓ configured    https://mcp.linear.app/sse                   SSE
   fathom      ✗ not configured  (default: https://mcp-fathom-server-...)   SSE
   context7    ✓ configured    https://mcp.context7.com/mcp                 HTTP
@@ -131,7 +131,7 @@ Atlassian MCP Server
 
   Key:          atlassian
   Status:       ✓ configured
-  URL:          https://mcp.atlassian.com/v1/sse
+  URL:          https://mcp.atlassian.com/v1/mcp
   Transport:    SSE (type: "url")
   Auth method:  OAuth2 — managed by Claude Code
   Config file:  /path/to/.claude/settings.json
@@ -152,7 +152,7 @@ Wire Usage
 
 To add or re-authenticate
 ─────────────────────────
-  claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/sse
+  claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/mcp
   (Remove first if already present:  claude mcp remove atlassian)
 ```
 

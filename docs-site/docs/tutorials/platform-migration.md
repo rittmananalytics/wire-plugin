@@ -149,6 +149,7 @@ subgraph AUDIT["Audit Zone — read-only"]
 end
 
 subgraph MIGRATION["Migration Zone — writes to target"]
+    BATCH["/wire:migration-batching-* (optional)"]:::wireCmd
     STR["/wire:migration-strategy-generate"]:::wireCmd
     STRGATE{"Strategy\napproved?"}:::decision
     STRCHASE["Revise translation\ndecisions with client"]:::offline
@@ -188,7 +189,8 @@ PARALLEL --> INV
 INV --> INVGATE
 INVGATE -->|No| INVCHASE
 INVCHASE --> INV
-INVGATE -->|Yes| STR
+INVGATE -->|Yes| BATCH
+BATCH --> STR
 STR --> STRGATE
 STRGATE -->|No| STRCHASE
 STRCHASE --> STR
@@ -402,6 +404,12 @@ Migration Inventory — Risk Summary
 :::info[Auto-delegation]
 
 When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+
+:::
+
+:::tip[Optional: domain-batch scheduling]
+
+Before moving to strategy, a team scheduling this migration across several sprints or sub-teams would run `/wire:migration-batching-generate 01-gdp-snowflake-to-bq`, `-validate`, then `-review`. It partitions the approved inventory into named, independently-schedulable domain batches — checked against the real dependency graph, not a hand-drawn guess — distinct from the ≤20-model translation batches `dbt_audit` already assigns. Gatwick's migration is small enough to run as a single sequential build, so this tutorial skips straight to strategy; see [Migration batching](../release-types/platform-migration#migration-batching-domain-batches-vs-translation-batches) for the full walkthrough.
 
 :::
 

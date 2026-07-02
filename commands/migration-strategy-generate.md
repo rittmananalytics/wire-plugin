@@ -45,6 +45,7 @@ Translates the approved migration inventory into an actionable execution strateg
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/migration/migration_inventory.md`
+- `.wire/releases/$ARGUMENTS/migration/migration_batching.md` (optional) — if present with `review: approved`, Step 5b's per-batch DAG generation should note the approved domain batches alongside the existing translation-batch (`dbt_audit.csv` `batch_number`) granularity. These are two different batch concepts — business-domain/cutover slices vs. translation-sequencing groups of ≤20 models — and the strategy doc must not conflate them. If `migration_batching` was never generated, proceed exactly as below with no behaviour change.
 - `.wire/releases/$ARGUMENTS/status.md` — source_platform, target_platform
 - Canonical platform pair files:
   - BigQuery → Snowflake: `wire/platform_pairs/bigquery_to_snowflake/translation_guide.md`

@@ -35,6 +35,7 @@ The Platform Migration release type covers the full lifecycle of migrating a dat
 
 | Artifact | Safety gate | Purpose |
 |---|---|---|
+| `migration_batching` | No | Partition the approved inventory into named domain batches, checked against the real dependency graph; `-review` is the client sign-off on composition and schedule |
 | `migration_strategy` | No | Platform-pair translation decisions, phasing, rollback; generates per-batch Mermaid DAG files |
 | `target_setup` | **Yes** | Target warehouse config, schemas, roles, service accounts |
 | `ingestion_migration` | **Yes** | Migrate connectors to target platform via MCP (creates new connectors + connect cards); runbook fallback if MCP unavailable |
@@ -109,15 +110,27 @@ This fans out five subagents simultaneously. Before launching, you will see a to
 
 ## dbt audit and complexity classification
 
-`dbt-audit-generate` reads every `.sql` model file and assigns a complexity rating:
+`dbt-audit-generate` resolves the dbt project first — a single project at `migration.dbt_project_path`, or every nested project one level down if that path itself has no `dbt_project.yml`. **If neither resolves, the command hard-fails** rather than substituting a prior artifact or another release's catalogue.
+
+It parses each resolved project to a manifest (`dbt parse`, no warehouse connection, run against a scratch directory so package installs never touch the client's working tree) and walks the filesystem for the model/source/test/macro/seed/snapshot inventory. Each model is tagged with platform-specific SQL constructs and assigned a complexity rating:
 
 | Rating | Criteria |
 |---|---|
-| `trivial` | No platform-specific features; view or table materialization |
-| `low` | 1–2 platform-specific functions with direct target equivalents |
-| `medium` | 3+ platform-specific functions, OR incremental materialization |
-| `high` | Nested/repeated field logic, complex incremental strategies |
-| `blocked` | Depends on an out-of-scope object, OR uses a feature with no known target equivalent |
+| Simple | ≤100 lines, 0 feature tags, ≤3 upstream refs, no window functions or recursive CTEs |
+| Moderate | 101–300 lines, OR 1–3 feature tags, OR 4–10 upstream refs, OR window functions without nested STRUCT/ARRAY |
+| Complex | >300 lines, OR >3 feature tags, OR >10 upstream refs, OR UNNEST/STRUCT/FLATTEN/LATERAL/ML functions/GEOGRAPHY |
+
+**Batch ordering is a topological sort over the parsed manifest**, not a depth-then-pack heuristic — every model's real dependencies land in an earlier-or-equal batch. Models with `enabled: false` are catalogued with a null `batch_number` and excluded from batching.
+
+**The macro layer is scanned too.** Macros needing Snowflake→BigQuery translation are classified `translate` / `redesign` (no direct equivalent — surfaced at the review gate) / `manual-review-out-of-scope` (session/catalog operations, not model-build SQL). Each model's `platform_macros` column records which macros it uses, direct or transitive. The audit produces a **batch-zero macro translation plan** (`audit/batch_zero_plan.json` + `.md`) — the macros needing translation, tiered by dependency, meant to land before model batch 1.
+
+`dbt-audit-validate` independently re-walks the filesystem and re-parses the manifest rather than trusting generate's self-report — reconciling the catalogue against disk, re-verifying batch order against the real dependency graph, and confirming every macro needing translation is classified.
+
+## Migration batching: domain batches vs translation batches
+
+`dbt_audit`'s `batch_number` is a **translation batch** — a group of ≤20 models ordered for `dbt-migration-generate`. A **domain batch** is a different concept: a named, business-scoped slice spanning every layer it touches (ingestion, warehouse objects, dbt models, orchestration, reverse ETL), delivered as its own release or sprint. A domain-batch schedule drawn up before the real dependency graph is known can claim batches build independently in parallel when the graph, once generated, shows they can't.
+
+`/wire:migration-batching-generate` partitions the approved inventory's dependency graph into named domain batches once it's known, states plainly which batches have zero dependency edges between them (genuinely parallel-safe), and folds in the batch-zero macro dependency for any batch containing a flagged model. Like `region-tagging-generate`, it produces **candidates, not decisions** — `/wire:migration-batching-review` is the client adjudication gate (a change that would violate a real dependency must be withdrawn or explicitly risk-accepted, never silently overridden), and `/wire:migration-batching-validate` re-derives the graph independently so a plan drifting out of sync with reality gets caught automatically. Pass a hand-drafted plan as a seed (`--seed <path>`) to reconcile it against the graph rather than starting from scratch.
 
 ## Ingestion migration: MCP-driven execution
 
@@ -179,6 +192,10 @@ A bare `--select vehicles` is identical to `--model vehicles`. `--select` cannot
 Wire splits each batch into groups of ~5 models and spawns one `wire:migration-specialist` agent per group simultaneously — a 20-model batch runs as 4 parallel agents; 3 batches of 20 launches 12 agents at once.
 
 Translated models preserve the source project's folder structure. A model at `models/staging/stripe/stg_stripe_charges.sql` produces `migration/dbt/staging/stripe/stg_stripe_charges.sql` in the release folder. Companion YAML files follow the same structure.
+
+**PII policy tags resolve automatically.** For a column with `meta.masking_policy`, `dbt-migration-generate` looks up a PII tag map (`migration.pii_tag_map_path`, default `migration/tag_map.json`) with a case-normalised lookup and authors the resolved `policy_tags` into the column YAML — an unresolved policy is flagged `MANUAL REVIEW REQUIRED`, never silently dropped. No map falls back to manual authoring.
+
+**Materialisation is preserved by default**, with two layers of safety: an optional engagement override hook (`materialization_overrides_path`) forces a specific materialisation only where explicitly declared, and `dbt-migration-lint`'s `MATERIALIZATION_DRIFT` rule is the after-the-fact backstop for anything the hook can't reach — a hand-edited model, or a wrong materialisation despite preservation. Both are intentionally kept.
 
 Each model gets one of three translation treatments:
 - **auto-translate**: Mechanical syntax substitution applied with high confidence
@@ -331,7 +348,13 @@ Once data is flowing into both platforms:
 /wire:equivalency-validate <release-folder>
 ```
 
-Each run performs five check types: row count, schema, value, freshness, and dbt tests. When a check fails:
+Each run performs up to seven check types: row count, schema, value sampling, freshness, dbt tests, row-level checksum, and business invariants (release-level control totals). `--batch N` scopes a run to one migration batch.
+
+**Relative-date models are pinned even in live mode.** A model referencing `CURRENT_DATE()`/`NOW()`-style functions evaluates "today" at whatever instant its side of the check runs, which can produce a false divergence near the live edge purely from timing skew. Wire detects these models, resolves a single as-of instant at the start of the run, and substitutes it into both sides' checks — recorded per model in the report. This is the always-on, lightweight counterpart to the baseline-pin mode below, which fixes the whole run at `T` when it's active.
+
+**Reports are organised at the table level.** For every table in scope: a row-count result, an explicit "all columns present: yes/no" line naming any missing/extra columns, an explicit "sampled column values match: yes/no" line naming any mismatching columns, and one line per remaining applicable check — required for passing tables too.
+
+When a check fails:
 
 ```
 /wire:equivalency-investigate <release-folder> --object sales.fct_orders
@@ -440,6 +463,11 @@ Both build on the imported Metabase agent skills (`skills/metabase/SKILL.md`, wr
 /wire:migration-inventory-generate <release>
 /wire:migration-inventory-validate <release>
 /wire:migration-inventory-review <release>
+
+# Optional — domain-batch scheduling (independently-implementable slices, not translation batches)
+/wire:migration-batching-generate <release>          # or --seed <path> to reconcile a hand-drafted plan
+/wire:migration-batching-validate <release>
+/wire:migration-batching-review <release>            # client sign-off on batch composition and schedule
 
 # ── MIGRATION ZONE ──────────────────────────────────────────────
 /wire:migration-strategy-generate <release>          # also writes dag_batch_N.md per batch
