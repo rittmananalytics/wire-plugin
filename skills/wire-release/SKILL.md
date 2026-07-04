@@ -4,7 +4,7 @@ description: >
   Skill for releasing a new version of the Wire Framework. Activates whenever the user asks to
   create a release, bump the version, ship a new version, or says something like "release this as
   v3.8" or "create a new release". Covers the full release lifecycle: bump type selection,
-  pre-release cleanup, documentation updates, Wire Studio and VSCode extension updates, plugin
+  pre-release cleanup, documentation updates, VSCode extension updates, plugin
   rebuild, remote pushes, PR creation, and merge.
 triggers:
   - Creating a new Wire Framework release
@@ -37,8 +37,8 @@ The Wire Framework is distributed as three packages built from a single repo
 | Gemini CLI extension | `rittmananalytics/wire-extension` | `wire/packaging/gemini-extension/gemini-extension.json` |
 | Wire Work plugin | `rittmananalytics/wirework-plugin` | `wire/packaging/wirework-plugin/.claude-plugin/plugin.json` |
 
-The VSCode extension (`wire-vscode/`) and Wire Studio (`wire-web-ui/`) live in the same repo but
-are versioned independently. The build script is `wire/scripts/build-packages.sh`.
+The VSCode extension (`wire-vscode/`) lives in the same repo but
+is versioned independently. The build script is `wire/scripts/build-packages.sh`.
 A release automation script exists at `wire/scripts/release.sh` — it handles patch bumps,
 CHANGELOG, RELEASE_NOTES, USER_GUIDE, build, and remote pushes. This skill wraps and extends it.
 
@@ -67,7 +67,6 @@ Ask the user (or infer from context) the following:
 | **Release summary** | One sentence describing what this release contains |
 | **New features** | Bulleted list of what's new, changed, or fixed |
 | **New release types?** | If any new `/wire:new` release types were added, a walkthrough is needed in USER_GUIDE.md |
-| **Wire Studio changes?** | Any UI, API, or schema changes requiring a wire-web-ui update |
 | **VSCode extension changes?** | Any changes to wire-vscode requiring a version bump + rebuild |
 
 If bump type cannot be inferred, ask before proceeding. Never guess between minor and major.
@@ -87,16 +86,16 @@ If bump type cannot be inferred, ask before proceeding. Never guess between mino
 Before touching version numbers, clean the repo:
 
 1. **Temporary files**: remove any `.tmp`, `.scratch`, `*-draft.*`, `*-wip.*` files committed to
-   the repo root, `wire/`, `wire-web-ui/`, or `wire-vscode/`.
+   the repo root, `wire/`, or `wire-vscode/`.
 
 2. **Design and planning docs**: remove any internal design notes, spike docs, or exploration
    files that are not part of the published framework. Typical locations: `docs/` subdirectories,
-   `wire/specs/` one-off files, `wire-web-ui/docs/` drafts. Confirm with the user before deleting
+   `wire/specs/` one-off files. Confirm with the user before deleting
    anything that isn't clearly temporary.
 
 3. **RA client-specific references**: scan for any files that contain actual client data, project
    IDs, or RA-internal credentials accidentally committed. Flag these to the user — do not delete
-   silently. Check: `docs/`, `wire/skills/`, `wire/specs/`, `wire-web-ui/`.
+   silently. Check: `docs/`, `wire/skills/`, `wire/specs/`.
 
 4. **Stale references in SKILL.md files**: if any skills under `wire/skills/` reference a version
    number that predates this release, update them.
@@ -124,28 +123,27 @@ Update `USER_GUIDE.md` at the repo root:
 1. Replace every occurrence of the old version number with the new version.
 2. Update the "What's New" or "Latest Release" section at the top.
 3. **If a new release type was added**: add a walkthrough section following the existing pattern
-   (SOW setup → `/wire:new` → `/wire:autopilot` → key artifacts). Check existing walkthroughs for
-   `agentic_data_stack` and `agentic_commerce` as templates.
+   (SOW setup → `/wire:new` → `/wire:autopilot` → key artifacts). Check the existing `agentic_data_stack`
+   walkthrough as a template.
 4. If `WIRE_WORK_USER_GUIDE.md` exists and covers any changed features, update it too.
 
 ### 3c. README files
 
-Four files carry a version string in their title heading and **must be updated on every release**, unconditionally:
+Three files carry a version string in their title heading and **must be updated on every release**, unconditionally:
 
 | File | What to update |
 |------|----------------|
 | `README.md` (repo root) | `# Wire Framework vX.Y.Z` heading |
 | `wire/README.md` | `# Wire Framework vX.Y.Z` heading |
 | `USER_GUIDE.md` | `**Version**: X.Y.Z` header line (also covered in 3b, but confirm here) |
-| `wire-web-ui/README.md` | `# Wire Studio vX.Y.Z` heading |
 
 Verify every target before editing:
 
 ```bash
-grep -n "Wire Framework v\|Wire Studio v\|\*\*Version\*\*" README.md wire/README.md wire-web-ui/README.md USER_GUIDE.md
+grep -n "Wire Framework v\|\*\*Version\*\*" README.md wire/README.md USER_GUIDE.md
 ```
 
-Replace every hit. Do not skip `wire-web-ui/README.md` because "Wire Studio isn't bumping" — the Studio README heading tracks the framework version.
+Replace every hit.
 
 Also update if applicable:
 - `wire-vscode/README.md` — if the VSCode extension version is bumping
@@ -194,21 +192,20 @@ They must be kept in sync with `USER_GUIDE.md` on every release where the guide 
 | 13: Dashboard Extension | `docs-site/docs/release-types/dashboard-extension.md` |
 | 14: Dashboard First | `docs-site/docs/release-types/dashboard-first.md` |
 | 15: Enablement | `docs-site/docs/release-types/enablement.md` |
-| 16: Agentic Commerce | `docs-site/docs/release-types/agentic-commerce.md` |
-| 17: Platform Migration | `docs-site/docs/release-types/platform-migration.md` |
-| 18: Agentic Data Stack | `docs-site/docs/release-types/agentic-data-stack.md` |
-| 19: Droughty | `docs-site/docs/release-types/droughty.md` |
-| 20: Custom | `docs-site/docs/release-types/custom.md` |
-| 21: Worked Example | `docs-site/docs/advanced/worked-example.md` |
-| 22: Wire Autopilot | `docs-site/docs/advanced/autopilot.md` |
-| 23: Wire Studio | `docs-site/docs/advanced/wire-studio.md` |
-| 24: VS Code Extension | `docs-site/docs/advanced/vscode-extension.md` |
-| 25: Issue Tracking | `docs-site/docs/advanced/issue-tracking.md` |
-| 26: Document Store | `docs-site/docs/advanced/document-store.md` |
-| 27: Extending Wire | `docs-site/docs/advanced/extending.md` |
-| 28: FAQ | `docs-site/docs/reference/faq.md` |
-| 29: Troubleshooting | `docs-site/docs/reference/troubleshooting.md` |
-| 30: Management Commands | `docs-site/docs/reference/management-commands.md` |
+| 16: Platform Migration | `docs-site/docs/release-types/platform-migration.md` |
+| 17: Agentic Data Stack | `docs-site/docs/release-types/agentic-data-stack.md` |
+| 18: Droughty | `docs-site/docs/release-types/droughty.md` |
+| 19: Custom | `docs-site/docs/release-types/custom.md` |
+| 20: Worked Example | `docs-site/docs/advanced/worked-example.md` |
+| 21: Wire Autopilot | `docs-site/docs/advanced/autopilot.md` |
+| 22: Wire Agents | `docs-site/docs/advanced/wire-agents.md` |
+| 23: VS Code Extension | `docs-site/docs/advanced/vscode-extension.md` |
+| 24: Issue Tracking | `docs-site/docs/advanced/issue-tracking.md` |
+| 25: Document Store | `docs-site/docs/advanced/document-store.md` |
+| 26: Extending Wire | `docs-site/docs/advanced/extending.md` |
+| 27: FAQ | `docs-site/docs/reference/faq.md` |
+| 28: Troubleshooting | `docs-site/docs/reference/troubleshooting.md` |
+| 29: Management Commands | `docs-site/docs/reference/management-commands.md` |
 
 **Process:**
 
@@ -244,28 +241,7 @@ They must be kept in sync with `USER_GUIDE.md` on every release where the guide 
 
 ---
 
-## Step 4 — Wire Studio Updates (wire-web-ui)
-
-If this release includes changes that affect Wire Studio:
-
-1. Check whether any new Wire commands, release types, or artifacts need to be reflected in:
-   - `wire-web-ui/src/lib/artifacts.ts` — artifact catalog and dependency graph
-   - `wire-web-ui/src/lib/wire-commands.ts` — 66 Wire command definitions
-2. If a new release type was added, add its project type configuration to the artifact catalog.
-3. Update any UI strings that reference the version number (e.g. about screens, footer text).
-4. If the Prisma schema changed during this release, confirm `npx prisma db push` has been run and
-   the migration is reflected in `prisma/schema.prisma`.
-5. Run `npm run validate` from `wire-web-ui/` to confirm the build passes:
-   ```bash
-   cd wire-web-ui && npm run validate
-   ```
-
-Wire Studio's own version is in `wire-web-ui/package.json`. Bump it if substantive UI changes
-were made — not required for every framework release.
-
----
-
-## Step 5 — VSCode Extension Updates (wire-vscode)
+## Step 4 — VSCode Extension Updates (wire-vscode)
 
 If this release affects the VSCode extension:
 
@@ -291,7 +267,7 @@ When the extension does change:
 
 ---
 
-## Step 6 — Update Skill Source Files
+## Step 5 — Update Skill Source Files
 
 If any skills under `wire/skills/` were modified during this release:
 
@@ -305,7 +281,7 @@ If any skills under `wire/skills/` were modified during this release:
 
 ---
 
-## Step 7 — Run the Release Script
+## Step 6 — Run the Release Script
 
 For **patch bumps**, invoke the existing release automation:
 
@@ -321,7 +297,7 @@ The script prompts for a one-line release summary and a feature list, then:
 5. Builds plugin/extension packages via `build-packages.sh`
 6. Pushes the Claude plugin to `rittmananalytics/wire-plugin`
 7. Pushes the Gemini extension to `rittmananalytics/wire-extension`
-8. Updates Wire Studio and VSCode extension READMEs
+8. Updates the VSCode extension README
 9. Raises a PR
 
 Use `--dry-run` to preview changes without writing:
@@ -357,15 +333,13 @@ wire/packaging/wirework-plugin/.claude-plugin/plugin.json
 README.md                   → # Wire Framework vX.Y.Z
 wire/README.md              → # Wire Framework vX.Y.Z
 USER_GUIDE.md               → **Version**: X.Y.Z
-wire-web-ui/README.md       → # Wire Studio vX.Y.Z
 
 # package.json files (only if the component is bumping)
 wire-vscode/package.json    → "version" field
-wire-web-ui/package.json    → "version" field
 ```
 
 The build script reads its version from `plugin.json` — it does NOT automatically rewrite
-`wire/README.md`, `README.md`, `USER_GUIDE.md`, or `wire-web-ui/README.md`. Those four files
+`wire/README.md`, `README.md`, or `USER_GUIDE.md`. Those three files
 must be updated manually before every release commit.
 
 After manually setting versions, run `build-packages.sh` directly:
@@ -373,11 +347,11 @@ After manually setting versions, run `build-packages.sh` directly:
 bash wire/scripts/build-packages.sh
 ```
 
-Then commit, push, and raise the PR manually (see Step 8).
+Then commit, push, and raise the PR manually (see Step 7).
 
 ---
 
-## Step 8 — Commit, Push, PR, and Merge
+## Step 7 — Commit, Push, PR, and Merge
 
 If not handled by `release.sh`:
 
@@ -405,7 +379,7 @@ asked to do so.
 
 ---
 
-## Step 9 — Post-Release Verification
+## Step 8 — Post-Release Verification
 
 After the release completes, verify:
 
@@ -428,14 +402,10 @@ After the release completes, verify:
    ```bash
    grep "^# Wire Framework v" wire/README.md
    ```
-8. **wire-web-ui/README.md heading** — must also match:
-   ```bash
-   grep "^# Wire Studio v" wire-web-ui/README.md
-   ```
-9. **Plugin repo README** — the `rittmananalytics/wire-plugin` repo must have a non-empty `README.md`.
+8. **Plugin repo README** — the `rittmananalytics/wire-plugin` repo must have a non-empty `README.md`.
    The build script generates this from the root `README.md`. If it's missing, run
    `bash wire/scripts/build-packages.sh` and re-push.
-10. **Logo path in plugin repo** — the USER_GUIDE.md served from `rittmananalytics/wire-plugin` must
+9. **Logo path in plugin repo** — the USER_GUIDE.md served from `rittmananalytics/wire-plugin` must
     reference `docs/images/wire_logo_transparent.png` (not `wire/docs/images/...`). Check the first
     line of `wire/dist/claude-plugin/USER_GUIDE.md`:
     ```bash
@@ -467,7 +437,6 @@ Documentation
 [ ] WIRE_WORK_USER_GUIDE.md updated (if applicable)
 [ ] README.md (root) — # Wire Framework vX.Y.Z heading updated
 [ ] wire/README.md — # Wire Framework vX.Y.Z heading updated
-[ ] wire-web-ui/README.md — # Wire Studio vX.Y.Z heading updated
 [ ] QUICK-REFERENCE.md updated (if commands added/removed)
 [ ] docs-site/ doc pages updated for all changed USER_GUIDE.md sections
 [ ] docs-site/docs/reference/release-notes.md — new vX.Y.Z block prepended (hand-maintained; release.sh does not touch it)
@@ -475,11 +444,6 @@ Documentation
 [ ] New doc page created and added to sidebars.js (if new release type added)
 [ ] docs-site/ builds without errors (npm run build)
 [ ] docs-site/ synced to wire-plugin repo (rsync)
-
-Wire Studio
-[ ] artifacts.ts updated for new release types (if applicable)
-[ ] wire-commands.ts updated (if applicable)
-[ ] npm run validate passes
 
 VSCode Extension
 [ ] package.json version bumped (if applicable)
@@ -502,7 +466,6 @@ Post-release
 [ ] USER_GUIDE.md **Version** header matches new version
 [ ] README.md (root) # Wire Framework heading matches new version
 [ ] wire/README.md # Wire Framework heading matches new version
-[ ] wire-web-ui/README.md # Wire Studio heading matches new version
 [ ] wire-plugin repo has non-empty README.md
 [ ] wire-plugin USER_GUIDE.md logo path is docs/images/wire_logo_transparent.png (not wire/docs/images/...)
 [ ] wire-plugin docs-site/ updated (rsync completed, all changed sections reflected)

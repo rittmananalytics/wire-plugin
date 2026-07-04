@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.10.3 | **Date**: July 2026
+**Version**: 3.10.4 | **Date**: July 2026
 
 ---
 
@@ -25,24 +25,23 @@
 13. [Running a Dashboard Extension Release](#13-running-a-dashboard-extension-release)
 14. [Running a Dashboard-First Rapid Development Release](#14-running-a-dashboard-first-rapid-development-release)
 15. [Running an Enablement Release](#15-running-an-enablement-release)
-16. [Running an Agentic Commerce Release](#16-running-an-agentic-commerce-release)
-17. [Running a Platform Migration Release](#17-running-a-platform-migration-release)
-18. [Running an Agentic Data Stack Release](#18-running-an-agentic-data-stack-release)
-19. [Running a Droughty Release](#19-running-a-droughty-release)
-20. [Running a Custom Release](#20-running-a-custom-release)
-21. [Worked Example: Barton Peveril Live Pastoral Analytics](#21-worked-example-barton-peveril-live-pastoral-analytics)
-22. [Wire Autopilot: Autonomous Execution](#22-wire-autopilot-autonomous-execution)
-23. [Wire Agents: Specialist Subagents](#23-wire-agents-specialist-subagents)
-24. [Wire Studio: Web-Based Interface](#24-wire-studio-web-based-interface)
-25. [Wire Framework VS Code Extension](#25-wire-framework-vs-code-extension)
-26. [Issue Tracking: Jira and Linear](#26-issue-tracking-jira-and-linear)
-27. [Document Store: Confluence and Notion](#27-document-store-confluence-and-notion)
-28. [Extending and Customising the Framework](#28-extending-and-customising-the-framework)
-29. [FAQ](#29-faq)
-30. [Troubleshooting](#30-troubleshooting)
-31. [Framework Management Commands](#31-framework-management-commands)
+16. [Running a Platform Migration Release](#16-running-a-platform-migration-release)
+17. [Running an Agentic Data Stack Release](#17-running-an-agentic-data-stack-release)
+18. [Running a Droughty Release](#18-running-a-droughty-release)
+19. [Running a Custom Release](#19-running-a-custom-release)
+20. [Worked Example: Barton Peveril Live Pastoral Analytics](#20-worked-example-barton-peveril-live-pastoral-analytics)
+21. [Wire Autopilot: Autonomous Execution](#21-wire-autopilot-autonomous-execution)
+22. [Wire Agents: Specialist Subagents](#22-wire-agents-specialist-subagents)
+23. [Wire Framework VS Code Extension](#23-wire-framework-vs-code-extension)
+24. [Issue Tracking: Jira and Linear](#24-issue-tracking-jira-and-linear)
+25. [Document Store: Confluence and Notion](#25-document-store-confluence-and-notion)
+26. [Extending and Customising the Framework](#26-extending-and-customising-the-framework)
+27. [FAQ](#27-faq)
+28. [Troubleshooting](#28-troubleshooting)
+29. [Framework Management Commands](#29-framework-management-commands)
     - [`/wire:playbook-generate`](#wireplaybook-generate--delivery-playbook)
-32. [Release Notes](#32-release-notes)
+30. [Tutorials](#30-tutorials)
+31. [Release Notes](#31-release-notes)
 
 ---
 
@@ -254,7 +253,6 @@ The framework encodes delivery methodology as twelve release types, each definin
 | **dbt Development** | `dbt_development` | Analytics engineering on existing infrastructure | 1 week | requirements, data_model, dbt, data_quality |
 | **Dashboard Extension** | `dashboard_extension` | New dashboards on an existing semantic layer | 3–5 days | requirements, mockups, dashboards, uat |
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days | training, documentation |
-| **Agentic Commerce** | `agentic_commerce` | AI-powered ecommerce storefront: Lovable base build + 9 AI features via Claude Code | 1–4 weeks | ac_storefront, ac_semantic_search, ac_conversational_assistant, ac_virtual_tryon, ac_visual_similarity, ac_llm_tools, ac_personalisation, ac_ucp_server, ac_demo_orchestration |
 | **Platform Migration** | `platform_migration` | Full lifecycle migration of a data platform from one warehouse stack to another. Covers source platform audit, migration inventory, strategy, parallel platform setup, batched dbt translation, equivalency validation loop, and cutover | 4–16 weeks | ingestion_audit, db_object_audit, security_audit, dbt_audit, orchestration_audit, migration_inventory, lineage_view, migration_strategy, target_setup, ingestion_migration, dbt_migration, orchestration_migration, equivalency_validation, cutover, migration_report |
 | **Agentic Data Stack** | `agentic_data_stack` | Overlay for an existing data platform (warehouse + dbt + BI tool). Audits governance maturity, extends the semantic layer, generates per-domain knowledge skill files collocated with dbt models, delivers an installable agentic data stack skill with a CI-wired eval suite. Does not build the underlying pipeline or dbt project — use `full_platform` or `pipeline_only` first if the platform doesn't yet exist. | 4–6 weeks | dataset_audit, metric_audit, query_audit, governance_design, semantic_layer_design, canonical_models, lookml_views (Looker only), semantic_layer, knowledge_skill, agent_config, eval_suite, adversarial_config, launch_gate, enablement |
 | **Droughty** | `droughty` | Schema introspection and base-layer generation using the Droughty toolkit. Two modes: **discovery/audit** (maps an existing warehouse — ERD, field docs, QA report — no dbt deployment needed) and **post-dbt** (generates staging SQL, pattern-based schema tests, and base LookML views from deployed dbt tables). Can also be added as an optional phase within any `full_platform` or `dbt_development` release. | 1–3 days | droughty_setup, droughty_introspect, droughty_dbml, droughty_docs, droughty_qa, droughty_stage, droughty_dbt_tests, droughty_lookml |
@@ -270,7 +268,6 @@ The framework encodes delivery methodology as twelve release types, each definin
 - **Data is already in the warehouse; need to build the transformation layer**: **dbt Development**
 - **Semantic layer already has the data; adding new dashboards**: **Dashboard Extension**
 - **Platform exists; engaged to train and document it**: **Enablement**
-- **Building an AI-powered ecommerce storefront**: **Agentic Commerce**
 - **Migrating an existing data platform from BigQuery to Snowflake or Snowflake to BigQuery**: **Platform Migration** — five-zone source audit → migration inventory → strategy → target setup → batched dbt translation → equivalency validation loop → cutover
 - **Client wants an AI that answers business questions from their data warehouse accurately and reliably**: **Agentic Data Stack** — three-phase audit → governance and semantic layer design → build → eval suite with per-domain accuracy gates → installable agentic data stack skill
 - **Need to map an existing warehouse quickly — ERD, field descriptions, data quality report — before starting design work**: **Droughty** (discovery/audit mode)
@@ -345,16 +342,6 @@ To authenticate optional MCP integrations:
 - **Claude Code**: use the `/mcp` command
 - **Gemini CLI**: use `gemini mcp` commands
 
-### Wire Studio prerequisites (optional)
-
-Wire Studio is a separate web-based interface that runs alongside (not instead of) the CLI. If you want to use Wire Studio locally, you need:
-
-- **Node.js 18+** and npm
-
-No Docker required. No GitHub OAuth app required.
-
-See [Section 21: Wire Studio](#21-wire-studio-web-based-interface) for full setup and usage instructions.
-
 ### Upgrading
 
 Plugin and extension users get updates automatically when a new version is published. Project data in `.wire/` is never touched by upgrades — workflow specs are defensively compatible with existing project state.
@@ -403,7 +390,7 @@ Use `/wire:session-plan [release-folder]` for an optional structured planning ri
 
 ### Specialist agents
 
-As of v3.9.4, Wire commands auto-delegate to one of twelve specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`. See [Section 23](#23-wire-agents-specialist-subagents) for the full agent roster and how delegation works.
+As of v3.9.4, Wire commands auto-delegate to one of eleven specialist subagents — a `dbt-developer` agent that only knows dbt conventions, a `qa-agent` that is a pure critic with no generation responsibility, and so on. This happens transparently when you run individual commands. To batch-delegate all pending work across an entire release, use `/wire:delegate <release-folder>`. See [Section 22](#22-wire-agents-specialist-subagents) for the full agent roster and how delegation works.
 
 ### Research persistence
 
@@ -796,7 +783,7 @@ A new engagement with an uncertain scope:
 → Discovery release complete.
 ```
 
-> **Tip**: Run `/wire:playbook-generate 01-discovery` after the problem definition is approved to generate a BPMN-style visual delivery plan and step-by-step narrative for this release. See [Section 31](#31-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate 01-discovery` after the problem definition is approved to generate a BPMN-style visual delivery plan and step-by-step narrative for this release. See [Section 29](#29-framework-management-commands).
 
 ---
 
@@ -900,7 +887,7 @@ The canonical exit deliverable is the **Findings Playback slide deck**, presente
 
 The mandatory **four-tag rule** on every interview theme bullet (`#<domain> #<type> #<hierarchy> #<ppt>`) is enforced mechanically by `/wire:stakeholder-interview-validate`. The three analyses (Hierarchy of Needs / PPT / Maturity Curve) cannot run without it.
 
-> **Tip**: Run `/wire:playbook-generate 01-discovery` after the engagement brief is approved to generate a BPMN-style diagram of the full SOP discovery flow with your open questions, team, and target dates wired in. See [Section 31](#31-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate 01-discovery` after the engagement brief is approved to generate a BPMN-style diagram of the full SOP discovery flow with your open questions, team, and target dates wired in. See [Section 29](#29-framework-management-commands).
 
 ---
 
@@ -1315,7 +1302,7 @@ In addition to the phase-specific commands above, the framework provides utility
 - **`/wire:utils-jira-create <release-folder>`** — Creates or links Jira issues for a release. Can create a new Epic/Task/Sub-task hierarchy from scratch, or search an existing Jira project for matching issues and link to them
 - **`/wire:utils-atlassian-search <release-folder>`** — Searches Confluence for documentation, useful for finding existing client documentation and prior engagement materials
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a visual end-to-end plan for this release. See [Section 31](#31-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a visual end-to-end plan for this release. See [Section 29](#29-framework-management-commands).
 
 ---
 
@@ -1380,7 +1367,7 @@ The chosen tool is recorded as `pipeline_tool` in `status.md`. All downstream `/
 /wire:archive <release-folder>
 ```
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the pipeline design is approved to generate a visual delivery plan for this release. See [Section 31](#31-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the pipeline design is approved to generate a visual delivery plan for this release. See [Section 29](#29-framework-management-commands).
 
 ---
 
@@ -1423,7 +1410,7 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 - Add any existing dbt project files (existing `schema.yml`, source definitions, SQL examples) to `requirements/` before running `data_model:generate` — the AI will use them to understand the existing model structure and extend it correctly
 - Store SQL examples from the source database (schema introspection results, sample queries) so the AI understands actual column names and types
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a step-by-step plan for the dbt development work. See [Section 31](#31-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a step-by-step plan for the dbt development work. See [Section 29](#29-framework-management-commands).
 
 ---
 
@@ -1459,7 +1446,7 @@ Use this when the semantic layer already has the data, and you're adding new das
 - Add existing LookML view files to `requirements/` before generating dashboards — the AI needs to know which dimensions and measures are available
 - Screenshots of existing Looker explores also help
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the semantic layer design is confirmed to plan the dashboard build. See [Section 31](#31-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the semantic layer design is confirmed to plan the dashboard build. See [Section 29](#29-framework-management-commands).
 
 ---
 
@@ -1693,7 +1680,7 @@ The transition from `ref('customers_seed')` to `source('salesforce', 'accounts')
 - **Don't delay the refactor**: Once client data is available, run the data refactor promptly. The longer you wait, the more the seed-based version diverges from what the client expects.
 - **The prototype is disposable**: The seed-based dbt project exists to validate the design. The real value is the iteration it enables, not the seed data itself.
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after mockups are approved to generate a delivery plan that shows the mock → seed → real-data refactor progression. See [Section 31](#31-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after mockups are approved to generate a delivery plan that shows the mock → seed → real-data refactor progression. See [Section 29](#29-framework-management-commands).
 
 ---
 
@@ -1725,117 +1712,11 @@ Use this when an existing platform needs training and documentation — either a
 - Add any existing technical documentation, data dictionaries, or architecture diagrams to `requirements/` — the AI will use them as the basis for generated materials
 - Add the client stakeholder list (names, roles, technical levels) so training materials can be calibrated appropriately
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are set to plan the training and documentation sequence. See [Section 31](#31-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are set to plan the training and documentation sequence. See [Section 29](#29-framework-management-commands).
 
 ---
 
-## 16. Running an Agentic Commerce Release
-
-The Agentic Commerce release type (`project_type: agentic_commerce`) is for engagements where the deliverable is an AI-powered ecommerce storefront — not a data platform. It combines Lovable (rapid frontend scaffolding), Shopify (product catalog and cart), GitHub (code hosting), Supabase (backend state), Google Cloud (AI/search), and optionally Stripe (payments via the UCP merchant server).
-
-**In-scope features**: `ac_storefront`, `ac_semantic_search`, `ac_conversational_assistant`, `ac_virtual_tryon`, `ac_visual_similarity`, `ac_llm_tools`, `ac_personalisation`, `ac_ucp_server`, `ac_demo_orchestration`
-
-### Prerequisites before starting
-
-Ensure the following accounts and access tokens are ready before running `/wire:new`:
-
-| Service | What you need | Used by |
-|---------|--------------|---------|
-| Lovable | Account + new project | `ac_storefront` and all AI features via AI Gateway |
-| Shopify | Store + Storefront API access token (Headless channel) | `ac_storefront`, `ac_personalisation` |
-| GitHub | Account + Lovable GitHub App authorised | `ac_storefront` (code sync) |
-| Supabase | Project enabled in Lovable Cloud | `ac_storefront`, `ac_personalisation` |
-| GCP | Project with Vertex AI Retail API + BigQuery APIs enabled + service account key | `ac_semantic_search`, `ac_conversational_assistant`, `ac_personalisation` |
-| Stripe | Account + secret key | `ac_ucp_server` |
-
-See `wire/docs/agentic_commerce/00a-prerequisites-and-worked-examples.md` for a full step-by-step setup guide.
-
-### Workflow
-
-```
-/wire:new                                          # release_type: agentic_commerce
-
-# Phase 1 — Base storefront (prerequisite for all other features)
-/wire:ac_storefront-generate <release-folder>      # Guided Lovable prompt sequence + GitHub sync
-/wire:ac_storefront-validate <release-folder>      # Shopify products loading, cart working, Supabase connected
-/wire:ac_storefront-review <release-folder>        # Stakeholder sign-off before agentic features begin
-
-# Phase 2 — Agentic features (can be developed in parallel after storefront approved)
-/wire:ac_semantic_search-generate <release-folder>
-/wire:ac_semantic_search-validate <release-folder>
-/wire:ac_semantic_search-review <release-folder>
-
-/wire:ac_conversational_assistant-generate <release-folder>
-/wire:ac_conversational_assistant-validate <release-folder>
-/wire:ac_conversational_assistant-review <release-folder>
-
-/wire:ac_virtual_tryon-generate <release-folder>
-/wire:ac_virtual_tryon-validate <release-folder>
-/wire:ac_virtual_tryon-review <release-folder>
-
-/wire:ac_visual_similarity-generate <release-folder>
-/wire:ac_visual_similarity-validate <release-folder>
-/wire:ac_visual_similarity-review <release-folder>
-
-/wire:ac_llm_tools-generate <release-folder>
-/wire:ac_llm_tools-validate <release-folder>
-/wire:ac_llm_tools-review <release-folder>
-
-/wire:ac_personalisation-generate <release-folder>
-/wire:ac_personalisation-validate <release-folder>
-/wire:ac_personalisation-review <release-folder>
-
-/wire:ac_ucp_server-generate <release-folder>
-/wire:ac_ucp_server-validate <release-folder>
-/wire:ac_ucp_server-review <release-folder>
-
-/wire:ac_demo_orchestration-generate <release-folder>
-/wire:ac_demo_orchestration-validate <release-folder>
-/wire:ac_demo_orchestration-review <release-folder>
-
-/wire:archive <release-folder>
-```
-
-### What each generate command does
-
-**`/wire:ac_storefront-generate`** — walks through a 5-phase Lovable prompt sequence: brand foundation → product grid layout → Shopify Storefront API wiring → cart and checkout flow → GitHub sync. Each phase presents the exact Lovable prompt to paste, then waits for confirmation before proceeding.
-
-**`/wire:ac_semantic_search-generate`** — implements AI-powered product search. By default uses the Google Cloud Retail API (Vertex AI for Retail) for semantic vector search. Presents the implementation prompts for Lovable/Claude Code, sets up the search index sync from Shopify to Vertex AI, and wires the search UI component to the API.
-
-**`/wire:ac_conversational_assistant-generate`** — builds a multi-turn shopping assistant using Google Cloud Retail API Conversational Search. Implements intent detection (browse, filter, compare, checkout), maintains session state, and integrates with the cart.
-
-**`/wire:ac_virtual_tryon-generate`** — adds a "Try it on" button to product pages. Photo upload modal → Lovable AI Gateway (Gemini Flash) → composite image generation → display result. Handles retries, timeouts, and graceful degradation.
-
-**`/wire:ac_visual_similarity-generate`** — adds "Find similar" on product cards. Sends the product image to Gemini multimodal, generates embeddings, and returns visually similar products from the catalog.
-
-**`/wire:ac_llm_tools-generate`** — implements Gemini 2.5 Flash with function calling. Defines tool schemas for `search_products`, `get_product_details`, `add_to_cart`, `get_recommendations`. The assistant decides autonomously when to call tools.
-
-**`/wire:ac_personalisation-generate`** — sets up anonymous user profiles in Supabase (UUID-based, no PII), event tracking (views, searches, purchases), and dynamic UX elements (returning-user greeting, previously-viewed products, personalised search boost).
-
-**`/wire:ac_ucp_server-generate`** — implements a Universal Commerce Protocol merchant server: `/discover` endpoint for capability advertisement, full checkout lifecycle (`/checkout/start` → `/checkout/update` → `/checkout/confirm`), Stripe payment intent integration, idempotency, and CORS configuration.
-
-**`/wire:ac_demo_orchestration-generate`** — adds a floating demo control panel with a 5-phase state machine (Introduction → Product Discovery → AI Shopping → Personalisation → Checkout). Each phase activates the relevant AI feature, displays contextual callouts, and advances on timer or manual trigger.
-
-### Dependency order
-
-`ac_storefront` must reach **Approved** status before any other `ac_*` feature can begin — all features build on the GitHub-synced codebase produced by the storefront command. After that:
-
-- Features can be developed in parallel
-- `ac_personalisation` enriches `ac_conversational_assistant` and `ac_semantic_search` when completed (adds personalised ranking and search boost)
-- `ac_demo_orchestration` should be the final feature — it wraps all others into a cohesive demo flow
-
-### Tips
-
-- Run the full Lovable prompt sequence from `ac_storefront-generate` **before** making any code edits in GitHub — the Lovable sync is one-directional during the initial build phase
-- After GitHub sync is complete, all subsequent development happens in the GitHub repo via Claude Code — do not return to the Lovable UI for feature development
-- Keep the Shopify Storefront API token out of the frontend bundle — it should be passed via Supabase Edge Functions or a server-side proxy
-- Use `VITE_` prefix only for environment variables that are safe to expose to the browser
-
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the base storefront is approved to generate a visual delivery plan showing the dependency order of all nine agentic commerce features. See [Section 31](#31-framework-management-commands).
-
----
-
-## 17. Running a Platform Migration Release
+## 16. Running a Platform Migration Release
 
 The Platform Migration release type (`release_type: platform_migration`) covers the full lifecycle of migrating a data platform from one warehouse stack to another. It supports bidirectional BigQuery ↔ Snowflake migrations and introduces two structural features not found in other release types: a two-zone artifact model (audit zone then migration zone) and an iterative equivalency loop that runs until all data checks pass before cutover is allowed.
 
@@ -1869,6 +1750,8 @@ The Platform Migration release type (`release_type: platform_migration`) covers 
 | `dbt_migration` | `/wire:dbt-migration-*` | No | Translate dbt models batch by batch to target dialect |
 | `orchestration_migration` | `/wire:orchestration-migration-*` | **Yes** | Recreate orchestration jobs on target platform |
 | `equivalency_validation` | `/wire:equivalency-*` | No (loop) | Iterative row-count, schema, value, freshness comparison |
+| `migration_register` | `/wire:migration-register-*` | No | Per-model state store — source commit, BigQuery target, state, last equivalence result; maintained incrementally by other migration commands |
+| `migration_drift` | `/wire:migration-drift-*` | No | Scheduled gate — diffs the live source against each model's last-migrated commit, flags downstream Hightouch syncs and masking-policy changes |
 | `cutover` | `/wire:cutover-*` | **Yes** | Go-live runbook — point of no return |
 | `migration_report` | `/wire:migration-report-*` | No | Post-migration record |
 
@@ -2213,7 +2096,7 @@ graph TD
 *Pending review by `/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1`*
 
 ---
-*Generated automatically by Wire Framework v3.10.3 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
+*Generated automatically by Wire Framework v3.10.4 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
 ````
 
 After `/wire:migration-acceptance-pack-review` is run, the reviewer's decision is appended to the same file:
@@ -2275,6 +2158,18 @@ When a check fails, investigate and fix before re-running:
 ```
 
 `cutover-generate` is blocked until `checks_failing: 0`.
+
+---
+
+### Keeping migrated models in sync: register and drift gate
+
+A long migration runs against a moving source — models get added, edited, and removed on the source platform while batches are still being translated and validated elsewhere. Two commands keep migrated models honest against that moving target.
+
+**`/wire:migration-register-generate`** maintains `migration_register.csv` — a per-model state store, one row per in-scope model, distinct from the append-only `migration.transformation_log_table` audit trail. It records: `source_path`, `source_layer`, `last_migrated_commit` (the source commit the translated model was built from), `bq_target`, `state` (`pending` / `migrated` / `drifted` / `failed` / `removed` / `deferred`), `last_equivalence_result`, `last_equivalence_t` (the baseline instant, or null for a live run), and `last_validated_commit`. `dbt-migration-generate` and `equivalency-validate` keep it current as they run — this command initialises it and rebuilds/reconciles it on demand.
+
+**`/wire:migration-drift-generate`** is the scheduled gate. It diffs the live source dbt repo against each migrated model's `last_migrated_commit` (`dbt ls --select state:modified`, no warehouse connection needed — falls back to a `git diff`-based approximation if no dbt binary is available), classifies each model new / modified / removed, updates register state accordingly, and surfaces blast radius: which downstream Hightouch syncs a drifted model feeds (via `lineage-generate`'s `model_sync_map.json`), and whether a source `meta.masking_policy` change needs the policy tags regenerated. It's meant to run on a schedule and as a CI gate — drift gets caught the day it happens, not during a cutover scramble.
+
+Two bundled CI templates (`TEMPLATES/migration/ci/`) deploy this: `migrated-model-ci.yml` runs a tiered sweep (Tier 1 `dbt-migration-lint`, Tier 3 `equivalency-validate --baseline`) on any pull request touching a migrated model's path (derived from the register's `source_path` column), and `migration-drift-schedule.yml` runs the drift gate on a cron (default weekdays 06:00 UTC — adjust to the engagement's cadence).
 
 ---
 
@@ -2340,6 +2235,11 @@ Four commands require explicit confirmation before proceeding. Each gate display
 /wire:ingestion-migration-validate <release>
 /wire:ingestion-migration-review <release>
 
+# Per-model state store — initialise once migration starts; dbt-migration and
+# equivalency-validate keep it current on every run from here on
+/wire:migration-register-generate <release>
+/wire:migration-register-validate <release>
+
 # dbt migration — batched; repeat for each batch
 # dbt-migration-generate now runs translate → compile → run → 3-check → auto-fix per model (up to 5 iterations)
 /wire:dbt-migration-generate <release>               # or --batch N or --model name
@@ -2356,6 +2256,11 @@ Four commands require explicit confirmation before proceeding. Each gate display
 /wire:equivalency-validate <release>
 /wire:equivalency-investigate <release> --object <table_or_model>
 /wire:equivalency-fix <release> --object <table_or_model>
+
+# Drift gate — deploy TEMPLATES/migration/ci/ for on-change + scheduled runs,
+# or run ad hoc any time source changes mid-migration are suspected
+/wire:migration-drift-generate <release>
+/wire:migration-drift-validate <release>
 
 # ⚠ SAFETY GATE — point of no return
 /wire:cutover-generate <release>
@@ -2399,11 +2304,11 @@ When `mcp_tunnel_configured: true` is set in `status.md`, all audit and migratio
 
 ---
 
-> **Tip**: Run `/wire:playbook-generate <release-folder>` after the migration inventory is approved to generate a visual dependency graph showing which migration batches can proceed in parallel. See [Section 31](#31-framework-management-commands).
+> **Tip**: Run `/wire:playbook-generate <release-folder>` after the migration inventory is approved to generate a visual dependency graph showing which migration batches can proceed in parallel. See [Section 29](#29-framework-management-commands).
 
 ---
 
-## 18. Running an Agentic Data Stack Release
+## 17. Running an Agentic Data Stack Release
 
 The Agentic Data Stack release type (`release_type: agentic_data_stack`) is an **overlay for an existing data platform** — it assumes a warehouse, a dbt project, and a BI tool are already in place. The deliverable is a governed self-service analytics capability built on top of that foundation: an AI that answers business questions accurately, routes through the semantic layer first, and stays accurate as the data platform evolves.
 
@@ -2436,8 +2341,8 @@ Do not use `agentic_data_stack` as a first release for a new client. If the ware
 /wire:new
 # Select: Agentic Data Stack
 # Answer 7 additional questions:
-# 1. BI tool (Looker / Tableau / Power BI / Metabase / Other)
-# 2. Semantic layer (dbt Semantic Layer / MetricFlow / LookML / None)
+# 1. BI tool (Looker / Tableau / Power BI / Metabase / Omni / Other)
+# 2. Semantic layer (dbt Semantic Layer / MetricFlow / LookML / Cube / Omni model / OAC (SMML) / None)
 # 3. dbt project path
 # 4. Warehouse (BigQuery / Snowflake / Databricks / Redshift)
 # 5. Primary business domain
@@ -2549,9 +2454,7 @@ At the end of the engagement, the client has:
 
 ---
 
-## 19. Running a Droughty Release
-
-> **Already a Droughty user?** See [USER_GUIDE_droughty.md](USER_GUIDE_droughty.md) for a guide specifically aimed at existing Droughty users — covering how Wire's commands map to the standalone CLI, configuration management, and worked examples of integrating Droughty into other Wire release types.
+## 18. Running a Droughty Release
 
 Use the Droughty release type when the engagement begins with an existing data warehouse and the immediate goal is to understand what's in it, generate documentation, or produce a base semantic layer — before (or instead of) writing dbt models from scratch.
 
@@ -2729,7 +2632,7 @@ Consultants then pull the updated repo and re-run `/wire:droughty-setup --force`
 
 ---
 
-## 20. Running a Custom Release
+## 19. Running a Custom Release
 
 Use the Custom release type when an engagement has bespoke deliverables that don't map cleanly to any standard Wire release type — architecture advisory reports, technology decision logs, PoC productionisation blueprints, MCP/AI integration roadmaps, compliance reviews, data literacy programmes, or any fixed-scope engagement where the deliverables are defined by the SoW rather than by a standard delivery pattern.
 
@@ -2814,7 +2717,7 @@ This generalises the spec (removing client-specific details), drafts a GitHub is
 
 ---
 
-## 21. Worked Example: Barton Peveril Live Pastoral Analytics
+## 20. Worked Example: Barton Peveril Live Pastoral Analytics
 
 This section shows how a real engagement — a Full Platform release for Barton Peveril Sixth Form College — was run through the framework from start to finish. It covers every command in the canonical sequence and shows two Wire Agents features in practice: auto-delegation during the design phase, and batch dispatch via `/wire:delegate` at the start of development.
 
@@ -3693,7 +3596,7 @@ The consultant reviews, adds the college's IT support contact details, and appro
 
 ---
 
-## 22. Wire Autopilot: Autonomous Execution
+## 21. Wire Autopilot: Autonomous Execution
 
 Wire Autopilot takes a Statement of Work and executes the **entire engagement lifecycle** — starting with a full discovery sprint (problem definition → pitch → release brief → sprint plan), then autonomously creating and executing every downstream delivery release identified by that discovery. Each release is executed with the artifact sequence appropriate for its type.
 
@@ -4153,15 +4056,15 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 ---
 
-## 23. Wire Agents: Specialist Subagents
+## 22. Wire Agents: Specialist Subagents
 
 > **Introduced**: v3.8.6 (orchestrate command) → v3.9.2 (12 specialists + `/wire:delegate`) → v3.9.2 (14 specialists, adds `dashboard-mock-developer` and `mock-data-developer`) → v3.9.4 (migration generate commands auto-delegate to `migration-specialist`)
 
-Wire Agents replaces the single-agent pattern with fourteen named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
+Wire Agents replaces the single-agent pattern with thirteen named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
 
 The core insight is simple: a single Claude Code agent doing requirements, dbt development, LookML authoring, data quality, and migration audits across a full engagement dilutes context and produces generic output. A specialist with a narrow brief — "your job is dbt models and nothing else" — operates with a much cleaner context and makes better decisions within its domain.
 
-### The fourteen agents
+### The thirteen agents
 
 | Agent | Domain |
 |---|---|
@@ -4177,7 +4080,6 @@ The core insight is simple: a single Claude Code agent doing requirements, dbt d
 | `migration-specialist` | Full migration lifecycle — audits, inventory, strategy, cutover |
 | `delivery-lead` | Deployment guides, training, kickoff, enablement |
 | `agentic-data-stack-developer` | Canonical models, knowledge skills, agent configs, eval suites |
-| `agentic-commerce-developer` | Lovable storefront, Shopify integration, all AC AI features |
 | `qa-agent` | Pure validator across all release types — no generation |
 
 The `qa-agent` has no generation responsibility. It validates outputs from other agents and reports pass/fail with specific remediation actions.
@@ -4286,482 +4188,7 @@ Phase 4 (v4.2): named persistent agents with engagement-level expertise; a deliv
 
 ---
 
-## 24. Wire Studio: Web-Based Interface
-
-> **Status: Active** — Wire Studio v3.4.17 is deployed at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). Access is restricted to members of the `wire-studio-users` GitHub team.
-
-Wire Studio is a web-based visual interface for the Wire Framework. It provides a multi-user, browser-based console as an alternative to the CLI for managing Wire projects, running commands, viewing artifact diagrams, and browsing project files.
-
-### When to use Wire Studio
-
-- **Visual project overview**: You want to see all artifacts and their statuses at a glance in a flow diagram or icon table, rather than reading raw `status.md`
-- **Diagram exploration**: You want to view rendered mermaid diagrams (ER diagrams, pipeline architectures, DAGs) interactively rather than as raw text
-- **PDF and document viewing**: You want to view PDF proposals, CSV data files, or images inline without switching applications
-- **Validation reports**: You want AI-summarised validation results as clean markdown instead of raw terminal output
-- **Full repo browsing**: You want to browse the entire repository (dbt models, LookML, config files) alongside Wire project files with copy/cut/paste support
-- **Team collaboration**: Multiple users need to work on the same project with role-based access
-- **Client demonstrations**: You want to present the project's deliverables in a visual format
-- **File browsing**: You want to browse and preview project documents without switching to a file manager
-
-### When NOT to use Wire Studio
-
-- **Speed**: The CLI is faster for executing individual commands — Wire Studio adds the overhead of a browser interface
-- **Simple projects**: If you're running a quick `dbt_development` engagement solo, the CLI is sufficient
-- **Constrained environments**: Wire Studio requires Node.js 18+ and an internet connection for the initial install
-
-### Installation
-
-Wire Studio installs with a single command. You need **Node.js 18+** — no Docker, no GitHub OAuth app.
-
-If you have the Wire Framework plugin installed in Claude Code, run:
-
-```
-/wire:studio-install
-```
-
-Alternatively, install directly from the terminal:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/rittmananalytics/wire/main/install-wire-studio.sh | bash
-```
-
-Either method will:
-1. Download Wire Studio to `~/.wire-studio/`
-2. Install npm dependencies and build the app
-3. Prompt for your Anthropic API key
-4. Optionally prompt for a GitHub token (for cloning private repos — see below)
-5. Create a `wire-studio` CLI command
-
-**After installation:**
-
-```bash
-wire-studio start          # Start Wire Studio (opens browser at localhost:3000)
-wire-studio stop           # Stop
-wire-studio update         # Download latest version and rebuild
-wire-studio logs           # Tail the server log
-```
-
-Wire Studio opens at [http://localhost:3000](http://localhost:3000) — no sign-in required for local use.
-
-### The Wire Studio interface
-
-Wire Studio has four main areas:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  Menu Bar  (File | Project | Actions)   repo ↑↓ Ready   │
-├──────────┬──────────────────────────────────────────────┤
-│          │  Workflow │ status.md │ report.md │ ...      │
-│  File    │                                              │
-│  Explorer│     Artifact Graph / Document / PDF / CSV    │
-│  (tree)  │                                              │
-│          │                                              │
-├──────────┴──────────────────────────────────────────────┤
-│  Execution Log  (Output │ Activity Feed)                │
-└─────────────────────────────────────────────────────────┘
-```
-
-1. **Menu Bar** — File menu (New, Open, Close, Save, Settings, Light/Dark/System theme), Project menu (View Status, Pull, Push, Project Settings), and Actions menu (Generate/Validate/Review for selected artifact). Includes remote URL display and push/pull badges with arrows. Keyboard shortcuts: Cmd+O (open), Cmd+N (new), Cmd+S (save/push), Cmd+W (close tab).
-
-2. **File Explorer** (left panel) — Hierarchical tree view with Project/Repo toggle. In Project view, shows `.wire/` project files with dotfiles hidden. In Repo view, shows the full repository. Supports:
-   - Expand/collapse folders
-   - Right-click files to open them — supports markdown, PDF, CSV, images, code, and text files
-   - Copy/cut/paste files and folders
-   - Right-click folders → **New Folder**, **Upload File**
-   - Right-click any item → **Rename**, **Delete**
-   - Drag files between folders to move them
-   - Toolbar: Upload, New Folder, Refresh, Project/Repo Toggle
-
-3. **Tabbed Workspace** (centre) — The main content area with browser-style tabs:
-   - **Workflow tab** (always open) — the artifact flow diagram
-   - **Document tabs** — markdown rendered with GitHub-flavoured formatting, tables, and mermaid diagrams
-   - **PDF tabs** — rendered inline via react-pdf with pagination and scrolling
-   - **CSV/TSV tabs** — displayed in a sortable grid table
-   - **Image tabs** — inline preview for PNG, JPG, GIF, SVG
-   - **Code tabs** — monospace syntax display for SQL, YAML, JSON, Python, etc.
-   - **status.md** — rendered as an icon table with green check/red X indicators instead of raw markdown
-   - Tabs are closable (X button) and re-orderable via drag-and-drop
-
-4. **Execution Log** (bottom panel) — Dark terminal-style output panel with gradient accent line. The **Output** tab shows real-time streaming from the current command. The **Activity Feed** tab shows command history with timestamps, success/failure, cost, and duration. Resizable via drag handle.
-
-### Walkthrough: Using Wire Studio
-
-#### 1. Creating a project
-
-Click **File > New Project** (or Cmd+N). The wizard collects all parameters upfront:
-- **Project Type** — select the engagement type (e.g. full_stack, dbt_development, looker_development)
-- **Client Name** — e.g. "Acme Corp"
-- **Project Name** — e.g. "Marketing Analytics"
-- **GitHub Repository** — select from your accessible repos (auto-loaded on dialog open)
-- **SOW/Proposal** — optionally attach a Statement of Work or proposal document
-- **Jira Configuration** — optionally configure Jira Epic creation and issue tracking
-
-Click **Create**. Wire Studio creates the environment, provisions a workspace, and runs `/wire:new` with all pre-collected parameters.
-
-When no project is open, Wire Studio shows the welcome screen with **Open Project** and **New Project** buttons:
-
-![Wire Studio — Open Project screen](docs/images/wire_studio_open_project.png)
-
-Clicking **Open Project** opens the project selection dialog:
-
-![Wire Studio — Select Project dialog](docs/images/wire_studio_select_project.png)
-
-#### 2. Viewing the artifact graph
-
-After opening a project, the **Workflow** tab shows all artifacts as a left-to-right flow diagram:
-
-- **Grey nodes** — not started
-- **Blue nodes** — currently generating
-- **Green nodes** — complete or approved
-- **Red nodes** — failed validation
-- **Yellow nodes** — needs review
-
-Use the mouse to pan (click-drag background) and zoom (scroll wheel). The bottom-left controls offer zoom in/out, percentage display, and fit-to-view. Click the export button to save the diagram as PNG, JPEG, or PDF.
-
-#### 3. Viewing artifact documents
-
-Right-click any artifact node to see the context menu:
-
-- **View Document** — opens the artifact's output document in a new tab, rendering markdown with formatting, tables, and mermaid diagrams as interactive SVGs. This option is only enabled when Generate has been run for the artifact.
-- **Refresh Document** — reloads the content (useful after running a Generate command)
-- **Close Document** — closes the tab
-
-![Wire Studio — Right-click context menu on artifact node](docs/images/wire_studio_open_diagram.png)
-
-For example, right-clicking the **Data Model** node and selecting "View Document" opens a tab showing the ER diagram rendered from the mermaid code in the data model specification:
-
-![Wire Studio — Viewing a rendered pipeline design diagram in a tab](docs/images/wire_studio_view_diagram.png)
-
-#### 4. Running commands from the artifact graph
-
-The right-click context menu on artifact nodes also includes **Generate**, **Validate**, and **Review** actions. These correspond to the same Wire commands available in the CLI (e.g. `/wire:data_model:generate`, `/wire:data_model:validate`):
-
-- **Generate** — runs the generate command for that artifact, creating or recreating its output document
-- **Validate** — runs the validation command, producing a PASS/FAIL report
-- **Review** — initiates the review workflow for stakeholder approval
-
-These actions are greyed out while another command is running. Output streams to the **Execution Log** in real time, and the node colour updates as the command progresses.
-
-#### 5. Browsing and previewing files
-
-The file explorer on the left shows the project's file tree. Right-click any file to open it in a tab. Supported formats include:
-
-- **Markdown** (.md) — rendered with GitHub-flavoured formatting, tables, code blocks, and embedded mermaid diagrams
-- **PDF** (.pdf) — rendered inline via react-pdf with pagination and scrolling
-- **CSV/TSV** — displayed in a sortable grid table
-- **Images** (.png, .jpg, .gif, .svg) — inline preview
-- **Code files** (.sql, .yml, .json, .py, .js, etc.) — monospace syntax display
-
-This is useful for reading requirements specifications, design documents, training materials, or reviewing PDF proposals and CSV data files without leaving Wire Studio.
-
-#### 6. Running commands from the file explorer
-
-When a file in the file explorer corresponds to a Wire artifact (matched by filename keywords and output directory), the right-click context menu also shows **Generate**, **Validate**, and **Review** actions:
-
-![Wire Studio — Right-click context menu on file with Generate/Validate/Review](docs/images/wire_studio_validate_requirements.png)
-
-This provides a second way to trigger Wire commands — directly from the file tree rather than the artifact graph. The same command is executed either way, and output streams to the Execution Log.
-
-#### 7. Opening validation reports
-
-After running a Validate command, the AI automatically summarises the raw output into a clean markdown report saved as a hidden file. To view it:
-
-- Right-click the artifact node and select **Open Validation Report** (only available after validate has been run)
-- The report opens in a new tab with formatted pass/fail results, findings, and recommendations
-
-#### 8. Viewing project status
-
-Select **Project > View Status** from the menu bar. This opens the project's `status.md` file with a custom renderer that displays artifact statuses as an icon table with green check and red X indicators, rather than raw markdown text.
-
-#### 9. File explorer modes
-
-The file explorer supports two viewing modes, toggled via the Project/Repo button in the toolbar:
-
-- **Project view** (default) — shows only the `.wire/` project files, with dotfiles hidden. This is the focused view for day-to-day Wire work.
-- **Repo view** — shows the full repository file tree, including all directories and files. Useful for browsing dbt models, LookML files, or other project assets.
-
-Both modes support copy/cut/paste operations for files and folders.
-
-#### 10. Save & Git
-
-Wire Studio automatically commits file operations and command outputs to the local git repository. To push changes to the remote:
-
-- Press **Cmd+S** or select **File > Save** — this pushes all local commits to the remote repository
-- The menu bar shows **push/pull badges with arrows** indicating how many commits are ahead or behind the remote
-- The remote URL is displayed in the menu bar for reference
-- **Project > Pull** pulls the latest changes from the remote
-- **Project > Push** is an alternative to Cmd+S for pushing
-
-If you have unpushed local commits and try to close the project, open another project, or sign out, a dialog prompts you to save first.
-
-#### 11. Collaborating with team members
-
-Wire Studio supports multi-user access. The project owner can invite team members via the Project Settings modal. Members can run commands; viewers can browse files and diagrams. Login is restricted to members of the `rittmananalytics/wire-studio-users` GitHub team.
-
-### Relationship to the CLI
-
-Wire Studio and the CLI are complementary interfaces to the same framework:
-
-| Aspect | Wire CLI | Wire Studio |
-|--------|----------|-------------|
-| Interface | Terminal (Claude Code / Gemini CLI) | Browser |
-| Users | Single user per session | Multi-user with roles (team-restricted) |
-| Artifact view | `status.md` (text) | Visual flow diagram + icon table status |
-| Diagrams | Raw mermaid in markdown | Rendered SVG with zoom |
-| Validation reports | Raw terminal output | AI-summarised markdown reports |
-| File management | Local filesystem | Docker volumes + file explorer with copy/cut/paste |
-| File viewing | Text editor | Multi-format (markdown, PDF, CSV, images, code) |
-| Repo browsing | Full filesystem access | Project view + full repo toggle |
-| Git workflow | Manual git commands | Auto-commit, Cmd+S push, pull/push badges |
-| Command execution | Direct in terminal | Streamed via web API |
-| Speed | Faster (no Docker overhead) | Slightly slower |
-
-Projects are fully portable between the two interfaces — they share the same `.wire/` structure and Git repository.
-
-### Wire Studio Hosted Architecture
-
-Wire Studio can be deployed as a fully hosted, multi-tenant service on Google Cloud Platform. This replaces the local Docker Desktop requirement with production-grade cloud infrastructure, enabling teams to share a single Wire Studio instance across multiple users, clients, and projects without any local setup beyond a web browser.
-
-#### Why hosted?
-
-The local deployment model (Docker + SQLite + localhost) works well for individual users, but creates friction for teams:
-
-- Each user must install Node.js and run Wire Studio locally
-- Projects cannot be shared without Git push/pull cycles
-- There is no central visibility into project status across engagements
-- Client demonstrations require screen-sharing from a user's laptop
-
-The hosted model eliminates all of these by running Wire Studio as a managed web service. Users access it via a URL, authenticate with GitHub, and workspaces are provisioned on-demand in the cloud.
-
-#### Architecture overview
-
-The hosted architecture separates the stateless web application from the stateful workspace runtimes, connected by a managed database and event streaming layer:
-
-```mermaid
-graph TB
-    subgraph "Browser Clients"
-        U1["User A<br/>(Browser)"]
-        U2["User B<br/>(Browser)"]
-        U3["Client Reviewer<br/>(Browser)"]
-    end
-
-    subgraph "Google Cloud Platform"
-        subgraph "Cloud Run (Stateless Web Tier)"
-            CR["Wire Studio<br/>Next.js App<br/>(auto-scaling)"]
-            HC["/api/health<br/>Health Check"]
-            RL["Rate Limiter"]
-            AL["Audit Logger"]
-        end
-
-        subgraph "Cloud SQL (PostgreSQL)"
-            DB[("Users<br/>Projects<br/>Workspaces<br/>Events<br/>Sessions")]
-        end
-
-        subgraph "GKE Autopilot Cluster"
-            WC["Workspace Controller"]
-
-            subgraph "Workspace Pod — Project Alpha"
-                WP1["Wire Runtime<br/>(Node, Python, dbt, git)"]
-                FS1["File Server Sidecar"]
-                PV1[("PVC<br/>Persistent Volume")]
-            end
-
-            subgraph "Workspace Pod — Project Beta"
-                WP2["Wire Runtime<br/>(Node, Python, dbt, git)"]
-                FS2["File Server Sidecar"]
-                PV2[("PVC<br/>Persistent Volume")]
-            end
-
-            subgraph "Workspace Pod — Project Gamma"
-                WP3["Wire Runtime<br/>(Node, Python, dbt, git)"]
-                FS3["File Server Sidecar"]
-                PV3[("PVC<br/>Persistent Volume")]
-            end
-        end
-
-        subgraph "Supporting Services"
-            SM["Secret Manager<br/>(GitHub tokens,<br/>API keys)"]
-            AR["Artifact Registry<br/>(Container images)"]
-        end
-    end
-
-    U1 -->|"HTTPS"| CR
-    U2 -->|"HTTPS"| CR
-    U3 -->|"HTTPS"| CR
-
-    CR -->|"Workspace CRUD<br/>+ Events"| DB
-    CR -->|"Command dispatch<br/>(async)"| DB
-    CR -->|"SSE stream<br/>(event store)"| DB
-
-    CR -->|"Pod lifecycle"| WC
-    WC -->|"Create/Suspend/Resume"| WP1
-    WC -->|"Create/Suspend/Resume"| WP2
-    WC -->|"Create/Suspend/Resume"| WP3
-
-    CR -->|"File ops"| FS1
-    CR -->|"File ops"| FS2
-    CR -->|"File ops"| FS3
-
-    WP1 --- PV1
-    FS1 --- PV1
-    WP2 --- PV2
-    FS2 --- PV2
-    WP3 --- PV3
-    FS3 --- PV3
-
-    WC -->|"Pull secrets"| SM
-    WC -->|"Pull images"| AR
-```
-
-#### Component breakdown
-
-**Cloud Run (stateless web tier)** — The Next.js application runs on Cloud Run with auto-scaling. It serves the frontend, handles API requests, and manages SSE streams. Because Cloud Run is stateless, any instance can serve any request — there is no session affinity. The application includes rate limiting and audit logging middleware.
-
-**Cloud SQL (PostgreSQL)** — All persistent state lives in a managed PostgreSQL database: users, projects, workspaces, workspace events (the event store for async command dispatch), sessions, and execution history. This replaces SQLite from the local deployment.
-
-**GKE Autopilot (workspace runtime)** — Each active workspace runs as an isolated Kubernetes pod on GKE Autopilot. GKE Autopilot automatically provisions and scales the underlying node pool — there are no nodes to manage. Each workspace pod contains:
-
-- **Wire runtime container** — includes Node.js, Python, dbt, git, and the Wire Framework. Executes `/wire:*` commands within the workspace's cloned repository.
-- **File server sidecar** — a lightweight HTTP server that provides low-latency file tree listing, read, write, move, rename, and delete operations. This avoids the overhead of spawning a new pod for every file operation.
-- **Persistent Volume Claim (PVC)** — backs the workspace filesystem with persistent SSD storage. Files survive pod restarts, suspensions, and cluster upgrades.
-
-**Secret Manager** — Stores GitHub tokens (for private repo cloning), API keys, and workspace credentials. The workspace controller pulls secrets at pod creation time and injects them as environment variables — no secrets are stored in the database or exposed to the browser.
-
-**Artifact Registry** — Hosts the workspace runtime container images. The CI/CD pipeline builds and pushes new images on each release; the workspace controller pulls the latest image when provisioning new workspaces.
-
-#### Multi-user, multi-project model
-
-The hosted architecture uses a **one workspace per user-project pair** model. This means:
-
-- Each user working on a project gets their own isolated workspace with its own filesystem, git branch state, and credentials
-- Multiple users can work on the same project simultaneously, each in their own workspace pod
-- A single user can have workspaces open across multiple projects
-- Client reviewers get read-only access — they can view diagrams, browse files, and participate in reviews without needing their own workspace
-
-```mermaid
-graph LR
-    subgraph "Users"
-        CA["User A"]
-        CB["User B"]
-        CR["Client Reviewer"]
-    end
-
-    subgraph "Projects"
-        P1["Acme Analytics<br/>(Project)"]
-        P2["Beacon Data Platform<br/>(Project)"]
-    end
-
-    subgraph "Workspaces (GKE Pods)"
-        W1["Workspace<br/>A × Acme"]
-        W2["Workspace<br/>A × Beacon"]
-        W3["Workspace<br/>B × Acme"]
-    end
-
-    CA -->|"owns"| W1
-    CA -->|"owns"| W2
-    CB -->|"owns"| W3
-    CR -.->|"views<br/>(no workspace)"| P1
-
-    W1 -->|"cloned repo<br/>feature/acme-analytics"| P1
-    W3 -->|"cloned repo<br/>feature/acme-dbt"| P1
-    W2 -->|"cloned repo<br/>feature/beacon-pipeline"| P2
-```
-
-This model provides complete isolation — User A's dbt changes in the Acme project cannot interfere with User B's work on the same project, because each has their own git branch and filesystem. Changes are shared through the normal Git workflow: commit, push, pull, and PR.
-
-#### Workspace lifecycle and scaling
-
-Workspaces follow an explicit state machine that enables the system to scale efficiently across many projects and users:
-
-```mermaid
-stateDiagram-v2
-    [*] --> Provisioning : User opens project
-    Provisioning --> Ready : Pod started,<br/>repo cloned
-    Provisioning --> Failed : Timeout or error
-    Ready --> Busy : Command running
-    Busy --> Ready : Command complete
-    Ready --> Suspended : Idle timeout<br/>(configurable)
-    Suspended --> Ready : User reopens project
-    Ready --> Deleting : User deletes workspace
-    Suspended --> Deleting : Admin cleanup
-    Failed --> Deleting : Admin cleanup
-    Deleting --> [*]
-```
-
-**Provisioning** — When a user opens a project for the first time (or after their workspace has been deleted), the system provisions a new workspace asynchronously. The UI shows a status badge ("Provisioning...") and polls for readiness. Provisioning clones the Git repository, pulls secrets, and starts the file server sidecar. This typically takes 15–30 seconds.
-
-**Ready / Busy** — The workspace is running and available. Commands transition it to "busy" while executing and back to "ready" on completion. The file server sidecar remains available throughout.
-
-**Suspended** — After a configurable idle timeout (default: 30 minutes of inactivity), the workspace pod is suspended. The PVC retains all files. When the user reopens the project, the workspace resumes from the suspended state — typically in under 10 seconds, since the repo and files are already on disk.
-
-**Scaling characteristics:**
-
-| Dimension | Approach | Limit |
-|-----------|----------|-------|
-| Concurrent active workspaces | GKE Autopilot auto-scales nodes | 100+ pods (tested) |
-| Concurrent users | Cloud Run auto-scaling (stateless) | Effectively unlimited |
-| Idle workspaces | Suspended (pod removed, PVC retained) | Storage-bound only |
-| Total projects | Cloud SQL rows | Effectively unlimited |
-| File storage per workspace | PVC size (configurable, default 10Gi) | Per-workspace limit |
-
-The key to scaling is the suspend/resume cycle. At any given time, only workspaces with active sessions consume compute resources. Idle workspaces are suspended automatically, freeing GKE capacity. The system can support hundreds of total projects with only a fraction active at any time — which matches real-world usage patterns where users work on 2–3 projects concurrently.
-
-#### Async command dispatch
-
-In the local deployment, Wire commands execute synchronously — the browser sends a request, the server runs the command, and streams output back. In the hosted model, this would cause Cloud Run request timeouts (commands can run for several minutes).
-
-The hosted architecture solves this with an **event store** pattern:
-
-1. The browser sends a command request to the API
-2. The API writes a command event to Cloud SQL and returns immediately (HTTP 202)
-3. The workspace pod picks up the event and executes the command
-4. Output is written back to the event store as streaming events
-5. The browser subscribes to an SSE endpoint that tails the event store and delivers output in real-time
-
-This decouples the browser connection from command execution. If the browser disconnects and reconnects, it can resume reading from where it left off — no output is lost.
-
-#### Infrastructure as code
-
-All cloud infrastructure is defined in Terraform under `wire-web-ui/infra/terraform/`:
-
-| Module | Resources |
-|--------|-----------|
-| `networking` | VPC, subnets, Cloud NAT, firewall rules |
-| `gke` | GKE Autopilot cluster |
-| `cloudrun` | Cloud Run service with environment config |
-| `cloudsql` | Cloud SQL PostgreSQL instance |
-| `artifact-registry` | Container image registry |
-| `iam` | Service accounts and IAM bindings |
-| `secrets` | Secret Manager secrets |
-
-Environments are parameterised via `.tfvars` files (`environments/dev.tfvars`, `environments/prod.tfvars`).
-
-#### CI/CD
-
-The `.github/workflows/wire-studio-deploy.yml` workflow automates the build and deploy cycle:
-
-1. On push to the deployment branch, build the Next.js app and workspace runtime container images
-2. Push images to Artifact Registry
-3. Deploy the Cloud Run service with the new image
-4. Run database migrations
-
-#### Local vs. hosted deployment comparison
-
-| Aspect | Local (Docker) | Hosted (GCP) |
-|--------|---------------|--------------|
-| Setup | Node.js (no Docker, no OAuth app) | Terraform apply + CI/CD |
-| Runtime | Docker containers via dockerode | GKE Autopilot pods via @kubernetes/client-node |
-| Database | SQLite (file-based) | Cloud SQL PostgreSQL (managed) |
-| File access | Docker volumes (local) | PVCs + file server sidecars (persistent) |
-| Provisioning | Synchronous (instant) | Async with status tracking (15–30s) |
-| Command execution | Direct (synchronous) | Event store + SSE streaming (async) |
-| Scaling | Single machine | Auto-scaling across all tiers |
-| Multi-user | Shared localhost | Isolated workspaces per user-project |
-| Availability | Runs when laptop is on | Always-on managed service |
-
----
-
-## 25. Wire Framework VS Code Extension
+## 23. Wire Framework VS Code Extension
 
 The Wire Framework VS Code extension brings the delivery lifecycle directly into your editor. Instead of switching between the terminal, file explorer, and Claude Code to track progress, run commands, and review artifacts, you can do all of it from the VS Code sidebar.
 
@@ -4860,7 +4287,7 @@ For the full guide including keyboard reference and troubleshooting, see [`wire-
 
 ---
 
-## 26. Issue Tracking: Jira and Linear
+## 24. Issue Tracking: Jira and Linear
 
 Wire Framework supports both Jira and Linear as issue trackers. Both are optional — the framework works fully without either. When configured, issue tracking is automatic: generate, validate, and review commands sync artifact lifecycle steps to the chosen tracker without any manual action.
 
@@ -4937,7 +4364,7 @@ linear:
 
 ---
 
-## 27. Document Store: Confluence and Notion
+## 25. Document Store: Confluence and Notion
 
 The document store integration allows generated Wire artifacts to be replicated to Confluence or Notion, giving clients a familiar, annotatable view of deliverables. The Wire review command then retrieves client comments and any edits they have made, feeding them into the review as structured context.
 
@@ -5020,7 +4447,7 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
-## 28. Extending and Customising the Framework
+## 26. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
 
@@ -5178,7 +4605,7 @@ The framework uses a 2-tier convention loading system. When generating or valida
 
 ---
 
-## 29. FAQ
+## 27. FAQ
 
 **Q: Do I need to run every command in order, or can I skip phases?**
 
@@ -5336,37 +4763,6 @@ Yes. Autopilot and manual commands share the same state files (`status.md`, `exe
 
 ---
 
-**Q: What is Wire Studio and do I need it?**
-
-Wire Studio is an experimental web-based visual interface for the Wire Framework. It provides the same functionality as the CLI but with a graphical artifact flow diagram, rendered mermaid diagrams, a file explorer, and multi-user team access. You do not need it — the CLI is fully sufficient. Wire Studio is useful when you want visual project overviews, diagram exploration, team collaboration, or client demonstrations.
-
----
-
-**Q: Can I use Wire Studio and the CLI on the same project?**
-
-Yes. Wire Studio and the CLI share the same project structure (`.wire/`), the same `status.md`, and the same Git repository. You can create a project with the CLI and open it in Wire Studio, or vice versa. Changes made in one are visible in the other after a Git push/pull.
-
----
-
-**Q: Does Wire Studio require Docker?**
-
-No. Wire Studio runs Wire commands directly on your local filesystem via Node.js — no Docker volumes or containers required. The only requirement is Node.js 18+. Install via the plugin command `/wire:studio-install`, or directly with: `curl -fsSL https://raw.githubusercontent.com/rittmananalytics/wire/main/install-wire-studio.sh | bash`
-
----
-
-**Q: How do I connect Wire Studio to GitHub for cloning private repos?**
-
-The installer will prompt you automatically. It tries two options in order:
-
-1. **GitHub CLI** — if `gh` is installed and authenticated (`gh auth login`), the installer detects the token automatically and you won't be prompted
-2. **Personal Access Token** — if no CLI is found, you'll be prompted to paste a PAT (generate one at github.com/settings/tokens with `repo` scope). Press Enter to skip and configure later.
-
-Either way, the token is stored once and reused silently for all future clones — you won't be asked again. If you skipped the install-time prompt, open Wire Studio, click **Clone from GitHub**, and you'll see the same options: use the GitHub CLI or paste a PAT.
-
-Public repos can be cloned without a token.
-
----
-
 **Q: How does Autopilot handle dashboard-first mockups?**
 
 For dashboard-first projects, Autopilot generates interactive HTML Looker mockups autonomously as part of its standard execution — no manual intervention required. The mockup generation step is fully automated and produces both the HTML files and the visualization catalog inputs in one pass.
@@ -5446,7 +4842,7 @@ The command is safe to re-run — it skips anything already migrated. After runn
 
 ---
 
-## 30. Troubleshooting
+## 28. Troubleshooting
 
 **"Release not found"**
 - Verify the release folder exists under `.wire/releases/`: `/wire:status`
@@ -5493,7 +4889,7 @@ Just send a message in the repo. The engagement-context skill fires automaticall
 
 ---
 
-## 31. Framework Management Commands
+## 29. Framework Management Commands
 
 Wire includes several commands for managing the framework itself, rather than delivery work.
 
@@ -5549,7 +4945,7 @@ Supports alias forms (`/wire:help new`, `/wire:help wire:new`, `/wire:help /wire
 
 ---
 
-## 33. Tutorials
+## 30. Tutorials
 
 The Wire Framework documentation includes a full set of scenario-based tutorials, one per release type plus three supplementary guides covering installation, mid-release handovers, and release upgrades. They live in `docs-site/docs/tutorials/` and are published alongside the reference documentation at the project docs site.
 
@@ -5566,7 +4962,6 @@ Each tutorial traces a complete engagement from `/wire:new` through final artifa
 | Dashboard Extension | `dashboard_extension` | Foxwood Commerce Ltd — marketing dashboards on an existing Looker instance | `tutorials/dashboard-extension` |
 | Dashboard First | `dashboard_first` | Claybrook Media Group — interactive HTML mockup before any data layer is committed | `tutorials/dashboard-first` |
 | Enablement | `enablement` | Hargreave Insurance Ltd — platform enablement and technical handover | `tutorials/enablement` |
-| Agentic Commerce | `agentic_commerce` | Thornwick Outdoor Ltd — semantic search, conversational assistant, visual similarity on Shopify | `tutorials/agentic-commerce` |
 | Platform Migration | `platform_migration` | Gatwick Data Partners — Snowflake to BigQuery migration with equivalency validation | `tutorials/platform-migration` |
 | Agentic Data Stack | `agentic_data_stack` | Boutique consultancy — canonical model audit before AI agent configuration | `tutorials/agentic-data-stack` |
 | Droughty | `droughty` | Birchfield Capital Management — 240-table Snowflake warehouse, no dbt project | `tutorials/droughty` |
@@ -5579,13 +4974,13 @@ The detailed content — command sequences, scenario background, deliverable tab
 
 ---
 
-## 32. Release Notes
+## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
 
 ---
 
-### v3.10.3 — dbt audit hardening, migration batching, PII/equivalency fixes (July 2026)
+### v3.10.4 — dbt audit hardening, migration batching, PII/equivalency fixes (July 2026)
 
 A round of fixes and a new command trio, all traced back to specific consultant and client feedback on a live Snowflake → BigQuery migration.
 
@@ -5707,7 +5102,7 @@ Nine new `/wire:droughty-*` commands cover the full Droughty workflow:
 | `/wire:droughty-lookml` | Base LookML views from deployed dbt tables |
 | `/wire:droughty-generate` | Full Droughty phase in sequence |
 
-Droughty runs in two modes: **discovery/audit** (maps an existing warehouse, no dbt needed) and **post-dbt** (generates base layer from deployed dbt models, feeding into `/wire:semantic_layer-generate`). See [Section 19](#19-running-a-droughty-release) for a full walkthrough.
+Droughty runs in two modes: **discovery/audit** (maps an existing warehouse, no dbt needed) and **post-dbt** (generates base layer from deployed dbt models, feeding into `/wire:semantic_layer-generate`). See [Section 18](#18-running-a-droughty-release) for a full walkthrough.
 
 ---
 
@@ -5719,7 +5114,6 @@ For release history before v3.8.0, see [CHANGELOG.md](CHANGELOG.md) or the [full
 - **v3.7.5** (June 2026) — Interactive lineage visualisation: `/wire:lineage-generate` produces a self-contained HTML dependency explorer for `platform_migration` engagements
 - **v3.7.3** (June 2026) — Agentic Data Stack release type: 41 new `ads_` commands across Audit, Design, Build, Validate, and Deploy phases
 - **v3.7.0** (June 2026) — Platform Migration release type: full warehouse-to-warehouse migration lifecycle with six parallel audit tracks
-- **v3.5.0** (May 2026) — Agentic Commerce release type: AI-powered ecommerce storefront delivery with Lovable, Supabase, and Shopify Storefront API
 - **v3.4.0** (March 2026) — Discovery SOP release type; Jira and Linear issue tracking integration
 - **v3.3.0** (January 2026) — Confluence and Notion document store integration
 - **v3.0.0** (October 2025) — Wire Framework initial release: six-phase lifecycle, 12 release types, Claude Code and Gemini CLI runtimes

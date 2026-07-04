@@ -1,0 +1,227 @@
+---
+description: Internal RA review of Omni audit
+argument-hint: <release-folder>
+---
+
+# Internal RA review of Omni audit
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+## Path Configuration
+
+- **Projects**: `.wire` (project data and status files)
+
+When following the workflow specification below, resolve paths as follows:
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `TEMPLATES/` references refer to the templates section embedded at the end of this command
+
+## Workflow Specification
+
+---
+description: Internal RA review of Omni audit
+---
+
+# Omni Audit — Review
+
+## Purpose
+
+Internal RA review of the Omni audit before it feeds into the migration inventory. The reviewer confirms model and content coverage, agrees on decommission decisions for unused workbooks/tiles, checks that warehouse dependency mapping and connections are complete, and flags any views or raw-SQL tiles needing deeper investigation before the migration strategy is drafted — particularly `rewrite_sql` views/tiles and any `rebuild` cases.
+
+## Prerequisites
+
+- `audit/omni_audit.md` exists with `validate: pass`
+
+## Inputs
+
+- `.wire/releases/$ARGUMENTS/audit/omni_audit.md`
+- `.wire/releases/$ARGUMENTS/status.md`
+
+## Workflow
+
+### Step 1: Load meeting context
+
+Follow `specs/utils/meeting_context.md` to retrieve any Fathom recordings relevant to this release. Search for discussions about reporting, dashboards, Omni, BI access, or specific workbooks. Surface relevant extracts — particularly mentions of critical dashboards, model owners, or known query issues.
+
+### Step 2: Present audit for review
+
+Display a summary:
+- Total connections, topics, views, folders, workbooks, tiles
+- Migration approach distribution for views (repoint / rewrite_sql / rebuild)
+- Complexity breakdown for views (Low / Medium / High)
+- Tiles by query surface (topic vs raw_sql), and raw-SQL tiles by approach
+- Connections and the views per connection
+- Source-resolution coverage and the unresolved views / raw-SQL tiles
+- dbt model views and their migration batch dependencies
+- Workbooks/tiles flagged for decommission with reasons
+
+### Step 3: Gather reviewer feedback
+
+1. Is the model and content catalog complete — any workbooks, personal folders, or topics not captured here?
+2. Do the decommission decisions for unused/archived workbooks and tiles look right? Any that should be kept or cut differently?
+3. Are there any High-complexity views (`rewrite_sql` or `rebuild`) that need a spike before migration strategy is drafted?
+4. Are the warehouse object dependencies for views correct — do the listed tables/views match what the team knows about these reports?
+5. Are the raw-SQL tile overrides fully accounted for, and does their scope match what the client expects to keep after migration?
+
+### Step 4: Apply feedback and record decision
+
+Incorporate corrections into `audit/omni_audit.md`. Record:
+
+```markdown
+## Review
+
+**Reviewed by**: {{REVIEWER_NAME}}
+**Review date**: {{TODAY}}
+**Decision**: approved | changes_requested
+
+### Reviewer notes
+[Capture comments, corrections, or follow-up actions]
+```
+
+### Step 5: Update status
+
+```yaml
+artifacts:
+  omni_audit:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
+```
+
+### Step 6: Output next command
+
+If approved and all other audits are also approved:
+```
+/wire:migration-inventory-generate $ARGUMENTS
+```
+
+If other audits are still pending:
+```
+Continue with remaining audits. When all audits are approved:
+/wire:migration-inventory-generate $ARGUMENTS
+```
+
+## Review Gate
+
+The Omni audit review is an internal RA gate. Approval confirms all reporting content is accounted for, warehouse dependency mapping for the model's views is complete enough to drive cutover sequencing, connections are captured, raw-SQL tile overrides are fully scoped, and no blocking unknowns remain before migration strategy work begins. The output feeds the migration inventory's dependency graph — specifically which warehouse objects must exist on target before each view can be repointed.
+
+Execute the complete workflow as specified above.
+
+## Execution Logging
+
+After completing the workflow, append a log entry to the project's execution_log.md:
+
+# Execution Log — Command and Skill Logging
+
+## Purpose
+
+After completing any generate, validate, or review workflow (or a project management command that changes state), append a single log entry to the project's execution log file. Skills also append an entry on activation, making the log a unified trace of all agent activity — both explicit commands and auto-activated skills.
+
+## Log File Location
+
+```
+<DP_PROJECTS_PATH>/<project_folder>/execution_log.md
+```
+
+Where `<project_folder>` is the project directory passed as an argument (e.g., `20260222_acme_platform`).
+
+## Format
+
+If the file does not exist, create it with the header:
+
+```markdown
+# Execution Log
+
+| Timestamp | Command | Result | Detail |
+|-----------|---------|--------|--------|
+```
+
+Then append one row per execution:
+
+```markdown
+| YYYY-MM-DD HH:MM | /wire:<command> | <result> | <detail> |
+```
+
+### Field Definitions
+
+- **Timestamp**: Current date and time in `YYYY-MM-DD HH:MM` format (24-hour, local time)
+- **Command**: Either the `/wire:*` command invoked, or `skill` for a skill activation entry
+- **Result / Skill name**: For commands, the outcome; for skills, the skill identifier. Use one of:
+  - `complete` — generate command finished successfully
+  - `pass` — validate command passed all checks
+  - `fail` — validate command found failures
+  - `approved` — review command: stakeholder approved
+  - `changes_requested` — review command: stakeholder requested changes
+  - `created` — `/wire:new` created a new project
+  - `archived` — `/wire:archive` archived a project
+  - `removed` — `/wire:remove` deleted a project
+  - `activated` — a skill was auto-activated (used with `skill` in the Command column)
+- **Detail**: A concise one-line summary of what happened. Include:
+  - For generate: number of files created or key output filename
+  - For validate: number of checks passed/failed
+  - For review: reviewer name and brief feedback if changes requested
+  - For new: project type and client name
+  - For archive/remove: project name
+  - For skill activations: brief description of what triggered the skill
+
+## Skill Activation Entries
+
+When a skill activates, it appends a row in the same format as commands, using `skill` in the Command column and the skill identifier in the Result column:
+
+```markdown
+| YYYY-MM-DD HH:MM | skill | <skill-identifier> | activated | <brief trigger description> |
+```
+
+Skill identifiers:
+
+| Skill | Identifier |
+|-------|-----------|
+| Engagement Context | `engagement-context` |
+| Research Persistence | `research-persistence` |
+| dbt Development | `dbt-development` |
+| LookML Content Authoring | `lookml-authoring` |
+| dbt Analytics QA | `dbt-analytics-qa` |
+| dbt Migration | `dbt-migration` |
+| dbt Troubleshooting | `dbt-troubleshooting` |
+| dbt Semantic Layer | `dbt-semantic-layer` |
+| dbt Unit Testing | `dbt-unit-testing` |
+| dbt DAG | `dbt-dag` |
+| Dagster | `dagster` |
+| Fivetran | `fivetran` |
+| Project Review | `project-review` |
+| Looker Dashboard Mockup | `looker-dashboard-mockup` |
+
+This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
+
+## Rules
+
+1. **Append only** — never modify or delete existing log entries
+2. **One row per command execution** — even if a command is re-run, add a new row (this creates the revision history)
+3. **Always log after status.md is updated** — the log entry should reflect the final state
+4. **Pipe characters in detail** — if the detail text contains `|`, replace with `—` to preserve table formatting
+5. **Keep detail under 120 characters** — be concise
+
+## Example
+
+```markdown
+# Execution Log
+
+| Timestamp | Command | Result | Detail |
+|-----------|---------|--------|--------|
+| 2026-02-22 14:30 | skill | engagement-context | activated | Context loaded for new conversation |
+| 2026-02-22 14:35 | /wire:new | created | Project created (type: full_platform, client: Acme Corp) |
+| 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements specification (3 files) |
+| 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith |
+| 2026-02-23 09:15 | /wire:conceptual_model-generate | complete | Generated entity model with 8 entities |
+| 2026-02-23 10:30 | /wire:conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity |
+| 2026-02-23 11:00 | /wire:conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
+| 2026-02-23 11:15 | /wire:conceptual_model-validate | pass | 12 checks passed, 0 failed |
+| 2026-02-23 14:00 | /wire:conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity |
+| 2026-02-23 15:30 | /wire:conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) |
+| 2026-02-23 15:45 | /wire:conceptual_model-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-23 16:00 | /wire:conceptual_model-review | approved | Reviewed by John Doe |
+```

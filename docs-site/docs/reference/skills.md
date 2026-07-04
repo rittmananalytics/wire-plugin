@@ -125,6 +125,38 @@ Connects to a Metabase instance (metabase-cli serialization export, the REST API
 
 ---
 
+### `cube`
+
+**Activates when**: building or reviewing a Cube.dev semantic-layer model — cubes, views, dimensions, measures, joins, or pre-aggregations — or connecting to a live Cube deployment via its MCP server; also activates for semantic-layer work in other release types where the client's semantic layer is Cube rather than LookML.
+
+Covers Cube's core concepts (cubes vs. views, dimensions, measures, joins, pre-aggregations) and the Cube MCP server connection flow, and encodes Rittman Analytics' own Cube modeling conventions and coding standards — project/folder structure, naming, per-object-type standards, security, style, and a Definition of Done checklist — as the canonical reference for how RA builds Cube models. Referenced by `semantic_layer-generate` when the engagement's semantic layer is Cube rather than Looker.
+
+---
+
+### `omni`
+
+**Activates when**: auditing or migrating an Omni Analytics reporting layer — cataloguing connections, the semantic model, dashboards/tiles, or repointing Omni from one warehouse to another; also activates for semantic-layer or dashboard work in other release types where the client's BI tool is Omni.
+
+Connects via the Omni CLI and maps the connection → model (topics, views, dimensions, measures, relationships) → folder → workbook → tile hierarchy, each view's warehouse dependencies, and which tiles carry a raw-SQL override versus querying through the model. Used by the `omni-audit-*` and `omni-migration-*` platform-migration commands (gated on `migration.reporting_tool: omni`, not on migration scope), and referenced by `semantic_layer-generate` when the engagement's BI tool is Omni rather than Looker. Wraps the official `exploreomni/omni-agent-skills` (omni-model-explorer, omni-model-builder, omni-content-explorer, omni-content-builder, omni-query, omni-admin).
+
+---
+
+### `smml-semantic-modeling`
+
+**Activates when**: hand-authoring, editing, reviewing, or troubleshooting an Oracle Analytics Cloud (OAC) semantic model directly in SMML (Semantic Modeler Markup Language) — physical/logical/presentation layers, role-playing dimensions, hierarchies, calculated measures, or subject-area design.
+
+Covers the SMML object model (every layer, property, and enum, confidence-tagged by whether it's ground-truth-validated against a real OAC import or sourced from Oracle's own schema doc) and the judgement calls that separate a mechanically-correct model from one that behaves right in OAC. Ships `scripts/validate_smml.py`, a structural validator shared with `dbt-to-smml`. This is the modeling knowledge the `dbt-to-smml` generator is built on.
+
+---
+
+### `dbt-to-smml`
+
+**Activates when**: generating, converting, or scaffolding an OAC semantic model in SMML from a dbt project — driven by dbt's `manifest.json`/`catalog.json` plus `meta.oac` annotations in `schema.yml`.
+
+A deterministic generator (`scripts/generate_smml.py`) that turns dbt's physical truth (tables, columns, types) into SMML's physical/logical/presentation layers, with `meta.oac` metadata supplying the semantics a script can't infer (measures, hierarchies, role-playing dimensions, subject areas). Referenced by `semantic_layer-generate` when the engagement's semantic layer is OAC rather than Looker. Builds on the modeling knowledge in the sibling `smml-semantic-modeling` skill.
+
+---
+
 ## Data ingestion
 
 ### `fivetran`
@@ -187,7 +219,7 @@ Reads `.wire/releases/` to identify active releases, loads `status.md` for the m
 
 **Activates when**: creating a new Wire Framework release, bumping the version number, or saying "release this as vX.Y".
 
-Covers the full release lifecycle: bump type selection, pre-release cleanup, documentation updates (CHANGELOG, USER_GUIDE, README files), Wire Studio and VS Code extension updates, plugin rebuild via `build-packages.sh`, remote pushes to all three plugin repos, PR creation, and docs-site sync. See the [Advanced → Extending Wire](../advanced/extending) section for the full release workflow.
+Covers the full release lifecycle: bump type selection, pre-release cleanup, documentation updates (CHANGELOG, USER_GUIDE, README files), VS Code extension updates, plugin rebuild via `build-packages.sh`, remote pushes to all three plugin repos, PR creation, and docs-site sync. See the [Advanced → Extending Wire](../advanced/extending) section for the full release workflow.
 
 ---
 

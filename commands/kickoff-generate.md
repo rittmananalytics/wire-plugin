@@ -102,7 +102,7 @@ Read `.wire/engagement/context.md`. Extract:
 - `client_name` — formal client name for the title slide
 - `engagement_type` — map to EDITMODE values:
   - `discovery` → `engagementType: "Discovery"` (discovery sprint kickoff mode)
-  - any delivery type (`full_platform`, `pipeline_only`, `dbt_development`, `dashboard_first`, `dashboard_extension`, `agentic_commerce`) → `engagementType: "Project"`
+  - any delivery type (`full_platform`, `pipeline_only`, `dbt_development`, `dashboard_first`, `dashboard_extension`) → `engagementType: "Project"`
 - `team` or `presenters` — list of RA team members and roles presenting
 - `start_date` or `engagement_date` — used as `engagementDate` (ISO format)
 - `accent_color` — **ignore this field**. Always set `accentColor` to `#4F60FF` (RA indigo). The deck's `accentColor` overrides `--ra-indigo` across the entire design system (eyebrows, bullet dots, table headers, cards). Using a client's brand colour here replaces the RA design system; the RA indigo must be preserved.

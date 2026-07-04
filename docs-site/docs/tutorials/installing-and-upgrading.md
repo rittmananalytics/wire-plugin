@@ -64,7 +64,7 @@ Installation takes three commands. Each must complete before you run the next.
 ```
 /reload-plugins
 -> Plugins reloaded.
--> wire plugin active — 66 commands available as /wire:*
+-> wire plugin active — 265 commands available as /wire:*
 -> No Claude Code restart required.
 ```
 
@@ -90,7 +90,6 @@ Run `/wire:start` to confirm Wire is active. On first run in a repository with n
      dbt_development      — transformation layer only (data already in warehouse)
      dbt_migration        — migrate dbt models between warehouses or patterns
      dashboard_first      — start from dashboard mockups, derive the data model
-     agentic_commerce     — AI-powered ecommerce storefront on Shopify
      droughty             — schema-driven warehouse introspection and LookML generation
 
    Run /wire:new to create a release and set the engagement type.
@@ -106,7 +105,7 @@ Wire is also available as a Gemini CLI extension:
 gemini extensions install https://github.com/rittmananalytics/wire-extension
 ```
 
-The Gemini CLI uses a different command syntax. Where Claude Code uses `/wire:requirements-generate my_project`, Gemini CLI uses `wire requirements generate my_project` — a space-separated form with no slash prefix. All 66 commands are available under both runtimes; the workflow specs are shared between them and produce identical artifacts.
+The Gemini CLI uses a different command syntax. Where Claude Code uses `/wire:requirements-generate my_project`, Gemini CLI uses `wire requirements generate my_project` — a space-separated form with no slash prefix. All 265 commands are available under both runtimes; the workflow specs are shared between them and produce identical artifacts.
 
 ## Configuring MCP servers
 

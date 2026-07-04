@@ -872,7 +872,7 @@ gh pr create \
   --body "$(cat <<'EOF'
 ## Summary
 
-This PR migrates the delivery repository from the near-wire root-level layout to the standard Wire v3.4+ `.wire/` structure, enabling full compatibility with Wire Studio and wire plugin commands.
+This PR migrates the delivery repository from the near-wire root-level layout to the standard Wire v3.4+ `.wire/` structure, enabling full compatibility with wire plugin commands.
 
 ## What Changed
 
@@ -907,14 +907,14 @@ This PR migrates the delivery repository from the near-wire root-level layout to
 
 ## Why
 
-Wire Studio reads engagement and release state from `.wire/`. Moving files into this structure makes all wire plugin commands and Wire Studio immediately usable without manual path adjustments.
+Wire plugin commands read engagement and release state from `.wire/`. Moving files into this structure makes all wire plugin commands immediately usable without manual path adjustments.
 
 ## Review Checklist
 
 - [ ] `.wire/engagement/context.md` — review and fill in any fields left as placeholders
 - [ ] `.wire/releases/01-discovery/status.md` — verify artifact state mapping is correct
 - [ ] `CLAUDE.md` — confirm the current state section is accurate
-- [ ] Run `/wire:status` to confirm Wire Studio reads the engagement correctly
+- [ ] Run `/wire:status` to confirm Wire reads the engagement correctly
 
 🤖 Migrated by `/wire:migrate`
 EOF
@@ -954,7 +954,7 @@ Next steps:
   2. Open .wire/engagement/context.md and fill in any placeholder fields
   3. Verify .wire/releases/01-discovery/status.md artifact states are correct
   4. Merge the PR when satisfied
-  5. After merging, run /wire:status to confirm Wire Studio reads the engagement
+  5. After merging, run /wire:status to confirm Wire reads the engagement
 ```
 
 ---

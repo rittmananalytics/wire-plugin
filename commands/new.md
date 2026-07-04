@@ -516,7 +516,7 @@ Ask the following additional questions (one at a time):
 4. "What is the **orchestration tool**?" (Options: Dagster / dbt Cloud / Airflow / None)
 5. "What is the **ingestion tool**?" (Options: Fivetran / RudderStack / Coupler.io / Segment / Airbyte / Other). Store as `migration.ingestion_tool` with values `fivetran` / `rudderstack` / `coupler-io` / `segment` / `airbyte` / `other`. Each named tool has a corresponding skill at `wire/skills/<tool>/SKILL.md` and a tool-specific branch in `ingestion-audit-generate`. "Other" covers Stitch, Estuary, and custom-built ingestion — falls back to CSV-driven audit.
 6. "What is the **connectivity mode** to the source platform?" (Options: Public endpoint / Private network with MCP tunnel)
-   - Also ask: "What **reporting / BI tool** does the client use?" (Options: Looker / Metabase / None / Other). Store as `migration.reporting_tool` with values `looker` / `metabase` / `none` / `other`. `metabase` enables the `metabase-audit` and `metabase-migration` commands (reporting-layer migration); `looker` is the Wire default. This is independent of `migration.scope`.
+   - Also ask: "What **reporting / BI tool** does the client use?" (Options: Looker / Metabase / Omni / OAC / None / Other). Store as `migration.reporting_tool` with values `looker` / `metabase` / `omni` / `oac` / `none` / `other`. `metabase` enables the `metabase-audit` and `metabase-migration` commands; `omni` enables the `omni-audit` and `omni-migration` commands (same reporting-layer migration role, adapted to Omni's connection → model → topic → workbook/tile object hierarchy); `oac` enables the `oac-audit` and `oac-migration` commands (same reporting-layer migration role, adapted to OAC's SMML physical/logical/presentation layer object model); `looker` is the Wire default. This is independent of `migration.scope`.
 7. "What is the **target project / account**?" (The GCP project ID for BigQuery, or Snowflake account identifier for the target environment — the place all migration writes will land.)
 8. "Are there any **production project IDs** that should be treated as off-limits for writes?" (Comma-separated list, or press Enter to skip. These are client production environment IDs that Claude will refuse to write to during migration commands.) Store as `data_safety.production_projects` list.
 9. "Is this a **full platform migration** or a **tenant carve-out** (extracting a single tenant's data into the target)?" (Options: Full migration (default) / Tenant carve-out). If **Tenant carve-out** is selected, also ask: "What is the **tenant predicate** that scopes the extracted tenant — the WHERE clause or tenant key? (e.g. `tenant_id = 4815`)". Store as `migration.scope` (`full_migration` | `tenant_carveout`) and `migration.tenant_predicate`. If the user selects Full migration or presses Enter, leave `migration.scope` at its default of `full_migration` and `migration.tenant_predicate` null.
@@ -566,8 +566,8 @@ Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_t
 
 Ask seven additional questions (one at a time):
 
-1. "What **BI tool** is in use?" (Options: Looker / Tableau / Power BI / Metabase / Other)
-2. "What **semantic layer** exists?" (Options: dbt Semantic Layer / MetricFlow / LookML explores / None)
+1. "What **BI tool** is in use?" (Options: Looker / Tableau / Power BI / Metabase / Omni / Other)
+2. "What **semantic layer** exists?" (Options: dbt Semantic Layer / MetricFlow / LookML explores / Cube / Omni model / OAC (SMML) / None)
 3. "What is the **dbt project path**?" (Default: `./` — accept if user presses Enter; enter "none" if no dbt project)
 4. "What **warehouse** does the client use?" (Options: BigQuery / Snowflake / Databricks / Redshift)
 5. "What is the **primary business domain**?" (Options: ecommerce / SaaS / marketing analytics / finance / Other)

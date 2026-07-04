@@ -1,0 +1,49 @@
+{
+  "nodes": {
+    "model.mestec_semantic_model.fact_attendance_log": {
+      "metadata": {"schema": "MESTEC_DW", "name": "FACT_ATTENDANCE_LOG", "type": "BASE TABLE"},
+      "columns": {
+        "ACCOUNT_DATE_KEY": {"type": "DATE", "index": 1, "name": "ACCOUNT_DATE_KEY"},
+        "CLOCK_IN_DT": {"type": "DATE", "index": 2, "name": "CLOCK_IN_DT"},
+        "CLOCK_OUT_DT": {"type": "DATE", "index": 3, "name": "CLOCK_OUT_DT"},
+        "USER_ID": {"type": "NUMBER", "index": 4, "name": "USER_ID"},
+        "ATTENDANCE_LOG_ID": {"type": "NUMBER", "index": 5, "name": "ATTENDANCE_LOG_ID"},
+        "PAID_MINS": {"type": "NUMBER(10,1)", "index": 6, "name": "PAID_MINS"},
+        "WORKING_MINS": {"type": "NUMBER(10,1)", "index": 7, "name": "WORKING_MINS"}
+      }
+    },
+    "model.mestec_semantic_model.fact_activity_log": {
+      "metadata": {"schema": "MESTEC_DW", "name": "FACT_ACTIVITY_LOG", "type": "BASE TABLE"},
+      "columns": {
+        "START_DATE_KEY": {"type": "DATE", "index": 1, "name": "START_DATE_KEY"},
+        "END_DATE_KEY": {"type": "DATE", "index": 2, "name": "END_DATE_KEY"},
+        "USER_ID": {"type": "NUMBER", "index": 3, "name": "USER_ID"},
+        "ACTIVITY_LOG_ID": {"type": "NUMBER", "index": 4, "name": "ACTIVITY_LOG_ID"},
+        "DURATION_MINS": {"type": "NUMBER(10,1)", "index": 5, "name": "DURATION_MINS"}
+      }
+    },
+    "model.mestec_semantic_model.dim_users": {
+      "metadata": {"schema": "MESTEC_DW", "name": "DIM_USERS", "type": "BASE TABLE"},
+      "columns": {
+        "USER_ID": {"type": "NUMBER", "index": 1, "name": "USER_ID"},
+        "FULL_NAME": {"type": "VARCHAR2(300)", "index": 2, "name": "FULL_NAME"}
+      }
+    },
+    "model.mestec_semantic_model.dim_date": {
+      "metadata": {"schema": "MESTEC_DW", "name": "DIM_DATE", "type": "BASE TABLE"},
+      "columns": {
+        "DATE_KEY": {"type": "DATE", "index": 1, "name": "DATE_KEY"},
+        "YEAR": {"type": "NUMBER", "index": 2, "name": "YEAR"},
+        "QUARTER_NO": {"type": "NUMBER", "index": 3, "name": "QUARTER_NO"},
+        "MONTH_NO": {"type": "NUMBER", "index": 4, "name": "MONTH_NO"},
+        "MONTH_NAME": {"type": "VARCHAR2(20)", "index": 5, "name": "MONTH_NAME"},
+        "FULL_DATE": {"type": "DATE", "index": 6, "name": "FULL_DATE"},
+        "IS_WEEKEND": {"type": "CHAR(1)", "index": 7, "name": "IS_WEEKEND"}
+      }
+    },
+    "model.mestec_semantic_model.stg_oracle__users": {
+      "metadata": {"schema": "MESTEC_DW", "name": "STG_ORACLE__USERS", "type": "VIEW"},
+      "columns": {"USER_ID": {"type": "NUMBER", "index": 1, "name": "USER_ID"}}
+    }
+  }
+}

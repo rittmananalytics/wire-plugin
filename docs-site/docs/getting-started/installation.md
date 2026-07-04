@@ -58,16 +58,6 @@ gemini     # Gemini CLI
 
 Run `/wire:start` (Claude Code) or `/dp start` (Gemini CLI) to confirm everything works. On first run, `/wire:start` checks whether the plugin is installed and up to date, detects whether this is a new or existing engagement, and either walks you through onboarding or surfaces the right next action for the current project state.
 
-## Wire Studio prerequisites (optional)
-
-Wire Studio is a separate web-based interface that runs alongside (not instead of) the CLI. If you want to use Wire Studio locally, you need:
-
-- **Node.js 18+** and npm
-
-No Docker required. No GitHub OAuth app required.
-
-See [Wire Studio](../advanced/wire-studio) for full setup and usage instructions.
-
 ## Upgrading
 
 Plugin and extension users get updates automatically when a new version is published. Project data in `.wire/` is never touched by upgrades — workflow specs are defensively compatible with existing project state.

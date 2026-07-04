@@ -19,7 +19,7 @@ If `.wire/execution_log.md` does not exist, create it with the standard header f
 
 ## Purpose
 
-Generate a Mermaid `graph LR` diagram of dbt model lineage for a given model or set of models. The diagram is returned as fenced markdown that renders in Wire Studio's document viewer, GitHub, Notion, and other Markdown renderers.
+Generate a Mermaid `graph LR` diagram of dbt model lineage for a given model or set of models. The diagram is returned as fenced markdown that renders in GitHub, Notion, and other Markdown renderers.
 
 ## When This Skill Activates
 
@@ -149,7 +149,6 @@ graph LR
 ## Wire Project Notes
 
 - **Wire naming conventions**: sources feed `stg_<source>__<entity>` → `int_<entity>` → `<entity>_fct` / `<entity>_dim`. The diagram should reflect this layered flow.
-- **Wire Studio**: the diagram renders in the Wire Studio document viewer (FileDocumentTab). Users can right-click a validated artifact node → "View Document" to see a generated diagram.
 - **`/wire:conceptual_model:generate`**: the conceptual model command also produces a Mermaid entity diagram. This skill produces a **lineage** diagram (model dependencies), which is different from an entity-relationship diagram.
 - **Large projects**: Wire projects may have 50+ models. For large DAGs, offer to show only the immediate upstream/downstream of the selected model (1 level each direction) rather than the full graph, to keep the diagram readable.
 

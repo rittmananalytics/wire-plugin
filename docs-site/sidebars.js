@@ -40,7 +40,6 @@ const sidebars = {
         'advanced/worked-example',
         'advanced/wire-agents',
         'advanced/autopilot',
-        'advanced/wire-studio',
         'advanced/vscode-extension',
         'advanced/issue-tracking',
         'advanced/document-store',

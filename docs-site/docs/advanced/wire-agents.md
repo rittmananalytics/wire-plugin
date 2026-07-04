@@ -7,11 +7,11 @@ title: Wire Agents
 
 **Introduced**: v3.8.6 (orchestrate command) → v3.9.2 (12 specialists + `/wire:delegate`) → v3.9.2 (14 specialists, adds `dashboard-mock-developer` and `mock-data-developer`) → v3.9.3 (migration generate commands auto-delegate to `migration-specialist`) → v3.9.5 (all 44 non-migration generate commands auto-delegate) → v3.9.6 (intra-batch parallelism for dbt migration — groups of ~5 models per agent) → v3.9.7 (post-execution hooks, stale artifact detection, Data Safety blocks on all migration specs)
 
-Wire Agents replaces the single-agent pattern with fourteen named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
+Wire Agents replaces the single-agent pattern with thirteen named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
 
 The core insight: a single Claude Code agent doing requirements, dbt development, LookML authoring, data quality, and migration audits across a full engagement dilutes context and produces generic output. A specialist with a narrow brief — "your job is dbt models and nothing else" — operates with a much cleaner context and makes better decisions within its domain.
 
-## The fourteen agents
+## The thirteen agents
 
 | Agent | Domain |
 |---|---|
@@ -27,7 +27,6 @@ The core insight: a single Claude Code agent doing requirements, dbt development
 | `migration-specialist` | Full migration lifecycle — audits, inventory, strategy, cutover |
 | `delivery-lead` | Deployment guides, training, kickoff, enablement |
 | `agentic-data-stack-developer` | Canonical models, knowledge skills, agent configs, eval suites |
-| `agentic-commerce-developer` | Lovable storefront, Shopify integration, all AC AI features |
 | `qa-agent` | Pure validator across all release types — no generation |
 
 The `qa-agent` has no generation responsibility. It validates outputs from other agents and reports pass/fail with specific remediation actions.

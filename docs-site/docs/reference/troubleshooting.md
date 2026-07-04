@@ -73,20 +73,6 @@ title: Troubleshooting
 
 ---
 
-## Wire Studio deployment fails
-
-**Symptom**: `deploy.sh` exits with an error, or the Cloud Run deployment doesn't produce a working URL.
-
-**Steps**:
-1. Confirm `gcloud` is authenticated: `gcloud auth list` — the correct account should be active
-2. Confirm the project has Cloud Run API enabled: `gcloud services list --enabled | grep run.googleapis.com`
-3. Confirm the project has Artifact Registry API enabled: `gcloud services list --enabled | grep artifactregistry.googleapis.com`
-4. Check Docker is running: `docker info`
-5. Run `deploy.sh` with `--verbose` for detailed output
-6. If the container deploys but returns 502: check Cloud Run logs in the GCP console (`gcloud run logs read wire-studio --region <region>`)
-
----
-
 ## Execution log corruption
 
 **Symptom**: Wire reports a parsing error when reading the execution log, or `/wire:status` shows unexpected state.

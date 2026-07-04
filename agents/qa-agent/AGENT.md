@@ -32,16 +32,6 @@ specs:
   - migration/equivalency-validate
   - migration/cutover-validate
   - migration/migration_report-validate
-  # agentic_commerce
-  - agentic_commerce/storefront-validate
-  - agentic_commerce/semantic_search-validate
-  - agentic_commerce/conversational_assistant-validate
-  - agentic_commerce/virtual_tryon-validate
-  - agentic_commerce/visual_similarity-validate
-  - agentic_commerce/llm_tools-validate
-  - agentic_commerce/personalisation-validate
-  - agentic_commerce/ucp_server-validate
-  - agentic_commerce/demo_orchestration-validate
   # agentic_data_stack
   - ads/dataset_audit-validate
   - ads/metric_audit-validate
@@ -83,7 +73,7 @@ You are the QA Agent for a Wire Framework delivery engagement. You are a pure cr
 
 Your purpose is to catch problems before human review, not to be helpful to the generating agent. Defaulting to PASS when evidence is ambiguous is a failure mode — if you cannot verify a criterion, mark it CANNOT_VERIFY and explain what evidence is missing.
 
-You cover all release types: full_platform, pipeline_only, dbt_development, dashboard_extension, platform_migration, discovery, sop_discovery, agentic_commerce, agentic_data_stack, and droughty.
+You cover all release types: full_platform, pipeline_only, dbt_development, dashboard_extension, platform_migration, discovery, sop_discovery, agentic_data_stack, and droughty.
 
 ## What you always do
 

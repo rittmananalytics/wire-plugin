@@ -1,0 +1,109 @@
+{
+  "nodes": {
+    "model.mestec_semantic_model.fact_attendance_log": {
+      "resource_type": "model",
+      "name": "fact_attendance_log",
+      "schema": "MESTEC_DW",
+      "fqn": ["mestec_semantic_model", "warehouse", "core", "fact_attendance_log"],
+      "description": "One row per attendance log — labour minutes breakdown.",
+      "meta": {
+        "oac": {
+          "object_type": "fact",
+          "subject_area": "Attendance",
+          "presentation_name": "Attendance Fact",
+          "derived_measures": [
+            {"name": "Working Ratio", "description": "Paid minutes as a proportion of working minutes.",
+             "expression": "%1 / NULLIF(%2, 0)", "expressionObjects": ["paid_mins", "working_mins"]}
+          ]
+        }
+      },
+      "columns": {
+        "account_date_key": {"meta": {"oac": {"role": "foreign_key", "dimension": "dim_date", "role_alias": "Account Date"}}},
+        "clock_in_dt": {"meta": {"oac": {"role": "foreign_key", "dimension": "dim_date", "role_alias": "Clock In Date", "label": "Clock In"}}},
+        "clock_out_dt": {"meta": {"oac": {"role": "foreign_key", "dimension": "dim_date", "role_alias": "Clock Out Date", "label": "Clock Out"}}},
+        "user_id": {"meta": {"oac": {"role": "foreign_key", "dimension": "dim_users"}}},
+        "attendance_log_id": {"meta": {"oac": {"role": "degenerate"}}},
+        "paid_mins": {"description": "Paid minutes.", "meta": {"oac": {"role": "measure", "aggregation": "SUM", "label": "Paid Minutes"}}},
+        "working_mins": {"meta": {"oac": {"role": "measure", "aggregation": "SUM", "label": "Working Minutes"}}}
+      }
+    },
+    "model.mestec_semantic_model.fact_activity_log": {
+      "resource_type": "model",
+      "name": "fact_activity_log",
+      "schema": "MESTEC_DW",
+      "fqn": ["mestec_semantic_model", "warehouse", "core", "fact_activity_log"],
+      "description": "One row per production activity log entry.",
+      "meta": {
+        "oac": {
+          "object_type": "fact",
+          "subject_area": "Activity",
+          "presentation_name": "Activity Log Facts"
+        }
+      },
+      "columns": {
+        "start_date_key": {"meta": {"oac": {"role": "foreign_key", "dimension": "dim_date", "role_alias": "Start Date", "presentation_label": "Activity Start Date"}}},
+        "end_date_key": {"meta": {"oac": {"role": "foreign_key", "dimension": "dim_date", "role_alias": "End Date", "presentation_label": "Activity End Date"}}},
+        "user_id": {"meta": {"oac": {"role": "foreign_key", "dimension": "dim_users"}}},
+        "activity_log_id": {"meta": {"oac": {"role": "degenerate"}}},
+        "duration_mins": {"meta": {"oac": {"role": "measure", "aggregation": "SUM", "label": "Duration Mins"}}}
+      }
+    },
+    "model.mestec_semantic_model.dim_users": {
+      "resource_type": "model",
+      "name": "dim_users",
+      "schema": "MESTEC_DW",
+      "fqn": ["mestec_semantic_model", "warehouse", "core", "dim_users"],
+      "description": "Users / workers.",
+      "meta": {"oac": {"object_type": "dimension", "subject_area": ["Attendance", "Activity"]}},
+      "columns": {
+        "user_id": {"meta": {"oac": {"role": "key"}}},
+        "full_name": {"meta": {"oac": {"label": "Full Name"}}}
+      }
+    },
+    "model.mestec_semantic_model.dim_date": {
+      "resource_type": "model",
+      "name": "dim_date",
+      "schema": "MESTEC_DW",
+      "fqn": ["mestec_semantic_model", "warehouse", "core", "dim_date"],
+      "description": "Calendar date dimension.",
+      "meta": {
+        "oac": {
+          "object_type": "dimension",
+          "subject_area": ["Attendance", "Activity"],
+          "is_time_dimension": true,
+          "hierarchies": [
+            {
+              "name": "Calendar",
+              "type": "time",
+              "levels": ["Year", "Quarter", "Month", "Day"],
+              "level_columns": {
+                "Year":    {"key": ["year"], "label": "year"},
+                "Quarter": {"key": ["year", "quarter_no"], "label": "month_name"},
+                "Month":   {"key": ["year", "month_no"], "label": "month_name"},
+                "Day":     {"key": ["date_key"], "label": "full_date"}
+              }
+            }
+          ]
+        }
+      },
+      "columns": {
+        "date_key": {"meta": {"oac": {"role": "key"}}},
+        "year": {},
+        "quarter_no": {},
+        "month_no": {},
+        "month_name": {"meta": {"oac": {"label": "Month"}}},
+        "full_date": {"meta": {"oac": {"label": "Date"}}},
+        "is_weekend": {"meta": {"oac": {"label": "Is Weekend"}}}
+      }
+    },
+    "model.mestec_semantic_model.stg_oracle__users": {
+      "resource_type": "model",
+      "name": "stg_oracle__users",
+      "schema": "MESTEC_DW",
+      "fqn": ["mestec_semantic_model", "staging", "oracle", "stg_oracle__users"],
+      "description": "Staging — should be EXCLUDED by the warehouse layer filter.",
+      "meta": {},
+      "columns": {}
+    }
+  }
+}

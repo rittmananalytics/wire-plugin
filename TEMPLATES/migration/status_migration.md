@@ -21,8 +21,12 @@ migration:
   dbt_project_path: "{{DBT_PROJECT_PATH}}" # default: ./dbt
   orchestration_tool: "{{ORCHESTRATION_TOOL}}" # dagster | dbt_cloud | airflow | none
   ingestion_tool: "{{INGESTION_TOOL}}"     # fivetran | rudderstack | coupler-io | segment | airbyte | other
-  reporting_tool: none                     # looker | metabase | none — the client's reporting/BI layer.
+  reporting_tool: none                     # looker | metabase | omni | oac | none — the client's reporting/BI layer.
                                            # metabase enables the metabase_audit / metabase_migration commands;
+                                           # omni enables the omni_audit / omni_migration commands (same role,
+                                           # adapted to Omni's connection -> model -> topic -> workbook/tile hierarchy);
+                                           # oac enables the oac_audit / oac_migration commands (same role, adapted
+                                           # to OAC's SMML physical/logical/presentation layer object model);
                                            # looker is the Wire default. Not gated by migration.scope.
   connectivity: "{{CONNECTIVITY}}"         # public_endpoint | private_network_mcp_tunnel
   target_project: null      # BigQuery: GCP project ID for the target environment
@@ -282,6 +286,19 @@ artifacts:
     node_count: null
     edge_count: null
     generated_files: []
+
+  migration_batching:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    data_file: null   # migration/migration_batching.csv
+    generated_date: null
+    batch_count: null
+    objects_classified: null
+    seed_used: null
+    generated_files: []
+    revision_history: []
 
   migration_strategy:
     generate: not_started

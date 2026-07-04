@@ -1,6 +1,6 @@
 <img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
-# Wire Framework v3.10.3
+# Wire Framework v3.10.4
 
 Wire is a structured delivery system for data platform engagements, built on top of Claude Code and Gemini CLI. It encodes analytics engineering methodology as workflow specifications that the AI reads before generating anything so that output follows consistent patterns, traces back to requirements and can be validated automatically rather than having to be manually eyeballed.
 
@@ -22,12 +22,12 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 
 ## Key Features
 
-- **250 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
-- **13 release types** matching common engagement shapes: Shape Up discovery, SOP / Canonical discovery (sponsor-facing Findings Playback), full platform builds, pipeline-only, dbt development, dashboard extensions, dashboard-first rapid dev, enablement, agentic commerce storefronts, platform migration (BigQuery ↔ Snowflake), agentic data stack (governed self-service analytics with eval suite), droughty (schema introspection and base-layer generation from live warehouses), and custom (bespoke deliverables defined from SoW documents)
+- **265 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
+- **12 release types** matching common engagement shapes: Shape Up discovery, SOP / Canonical discovery (sponsor-facing Findings Playback), full platform builds, pipeline-only, dbt development, dashboard extensions, dashboard-first rapid dev, enablement, platform migration (BigQuery ↔ Snowflake), agentic data stack (governed self-service analytics with eval suite), droughty (schema introspection and base-layer generation from live warehouses), and custom (bespoke deliverables defined from SoW documents)
 - **Two-tier engagement structure** separating long-running client context from individual scoped releases
 - **Generate / validate / review lifecycle** for every artifact: structured generation, automated checks, stakeholder sign-off
 - **27 ad-hoc development skills** that activate automatically during coding work (dbt, LookML, Dagster, Python, Fivetran, Airbyte, Coupler.io, RudderStack, Segment, Looker, Snowflake, Hightouch, BigQuery, Cloud Run, gcloud) without any explicit invocation, plus **26 Amplitude product-analytics skills** for working with an Amplitude instance
-- **Wire Agents** — 12 specialist subagents (dbt developer, semantic layer developer, pipeline engineer, migration specialist, and 8 others) dispatched automatically on every generate and validate command. `/wire:delegate` computes a full parallel/sequential execution plan across all pending work, with fan-out parallelism for large model sets (layers stay sequential; agents within each layer run in parallel)
+- **Wire Agents** — 13 specialist subagents (dbt developer, semantic layer developer, pipeline engineer, migration specialist, and 9 others) dispatched automatically on every generate and validate command. `/wire:delegate` computes a full parallel/sequential execution plan across all pending work, with fan-out parallelism for large model sets (layers stay sequential; agents within each layer run in parallel)
 - **Autopilot mode** for autonomous end-to-end delivery
 - **Jira and Linear integration** for issue tracking synced to the artifact lifecycle
 - **Confluence and Notion integration** for client-facing document review
@@ -224,7 +224,6 @@ Each command has a matching validate and review counterpart: `/wire:requirements
 | **dbt Development** | `dbt_development` | Analytics engineering on existing infrastructure | 1 week |
 | **Dashboard Extension** | `dashboard_extension` | New dashboards on an existing semantic layer | 3–5 days |
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days |
-| **Agentic Commerce** | `agentic_commerce` | Lovable base storefront plus 9 AI commerce features via Claude Code | 1–4 weeks |
 | **Agentic Data Stack** | `agentic_data_stack` | Overlay for an existing data platform (warehouse + dbt + BI tool) — audits governance maturity, extends the semantic layer, generates per-domain knowledge skills and a CI-wired eval suite, delivers an installable agentic data stack skill. Requires an existing dbt project; not a platform build. | 4–6 weeks |
 | **Custom** | `custom` | Bespoke deliverables derived from SoW — Wire generates project-scoped specs | Varies |
 
@@ -290,22 +289,6 @@ It works best on well-scoped engagements where the SOW is clear and the release 
 
 ---
 
-## Wire Studio (Experimental)
-
-[Wire Studio](wire-web-ui/) is a browser-based interface for the Wire Framework, providing an alternative to working directly in the CLI.
-
-Features include an artifact workflow graph with pan/zoom and export, an IDE-style tabbed workspace with Mermaid diagram rendering, a file explorer, real-time command execution with streaming output, and multi-user support for teams working the same engagement.
-
-**Install locally** (requires Node.js 18+):
-```
-/wire:studio-install
-wire-studio start
-```
-
-A hosted version is available at [wirestudio.rittmananalytics.com](https://wirestudio.rittmananalytics.com). See the [Wire Studio README](wire-web-ui/README.md) for setup details.
-
----
-
 ## VS Code Extension (Experimental)
 
 A VS Code extension (`wire-vscode/`) is in early development. The intention is to surface Wire commands and project status directly inside the editor. It is not yet published to the VS Code Marketplace.
@@ -315,9 +298,8 @@ A VS Code extension (`wire-vscode/`) is in early development. The intention is t
 ## Documentation
 
 - [Documentation site](https://docs.rittmananalytics.com) — full documentation with search, covering all release types, commands, skills, and MCP servers
-- [User Guide](USER_GUIDE.md) — full operational guide covering all release types, worked examples, Wire Studio, Autopilot, and troubleshooting
-- [Droughty Integration Guide](USER_GUIDE_droughty.md) — for existing Droughty users: CLI-to-Wire command mapping, configuration, and worked examples across release types
-- [Command Registry](wire/COMMANDS.md) — all 89 commands with descriptions
+- [User Guide](USER_GUIDE.md) — full operational guide covering all release types, worked examples, Autopilot, and troubleshooting
+- [Command Registry](wire/COMMANDS.md) — command catalog and conventions (run `/wire:help` for the full, current list of all 265 commands)
 - [Changelog](CHANGELOG.md)
 - [Release Notes](RELEASE_NOTES.md)
 - [Framework Source README](wire/README.md) — internals, build process, package structure

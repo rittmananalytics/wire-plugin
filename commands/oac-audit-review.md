@@ -1,0 +1,230 @@
+---
+description: Internal RA review of OAC audit
+argument-hint: <release-folder>
+---
+
+# Internal RA review of OAC audit
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+## Path Configuration
+
+- **Projects**: `.wire` (project data and status files)
+
+When following the workflow specification below, resolve paths as follows:
+- `.wire/` in specs refers to the `.wire/` directory in the current repository
+- `TEMPLATES/` references refer to the templates section embedded at the end of this command
+
+## Workflow Specification
+
+---
+description: Internal RA review of OAC audit
+---
+
+# OAC Audit — Review
+
+## Purpose
+
+Internal RA review of the OAC audit before it feeds into the migration inventory. The reviewer confirms physical/logical/presentation-layer coverage, agrees on decommission decisions for unused subject areas or physical tables, checks that warehouse dependency mapping and connection pools are complete, and flags any physical tables or raw SQL constructs needing deeper investigation before the migration strategy is drafted — particularly `rewrite_sql`/`rebuild` physical tables and any construct classified `redesign` or `manual-review-out-of-scope`.
+
+## Prerequisites
+
+- `audit/oac_audit.md` exists with `validate: pass`
+
+## Inputs
+
+- `.wire/releases/$ARGUMENTS/audit/oac_audit.md`
+- `.wire/releases/$ARGUMENTS/status.md`
+
+## Workflow
+
+### Step 1: Load meeting context
+
+Follow `specs/utils/meeting_context.md` to retrieve any Fathom recordings relevant to this release. Search for discussions about reporting, dashboards, OAC, semantic model ownership, or specific subject areas. Surface relevant extracts — particularly mentions of critical subject areas, model owners, or known query issues.
+
+### Step 2: Present audit for review
+
+Display a summary:
+- Total databases, connection pools, physical tables, physical joins, logical tables, subject areas
+- Migration approach distribution for physical tables (repoint / rewrite_sql / rebuild)
+- Complexity breakdown for physical tables (Low / Medium / High)
+- Raw SQL constructs by type and by `construct_action` (translate / redesign / manual-review-out-of-scope)
+- Connection pools and the physical tables per connection
+- Source-resolution coverage and the unresolved physical tables
+- Logical and presentation layer summary, with any `migration_impact` exceptions called out
+- Structural validation (`validate_smml.py`) result
+- dbt model dependencies and their migration batch dependencies
+- Subject areas/physical tables flagged for decommission with reasons
+
+### Step 3: Gather reviewer feedback
+
+1. Is the physical/logical/presentation catalog complete — any databases, schemas, or subject areas not captured here?
+2. Do the decommission decisions for unused/archived subject areas and physical tables look right? Any that should be kept or cut differently?
+3. Are there any High-complexity physical tables (`rewrite_sql` or `rebuild`) that need a spike before migration strategy is drafted?
+4. Are the `redesign` and `manual-review-out-of-scope` constructs fully accounted for, and does the team agree on who owns reauthoring each one?
+5. Are the warehouse object dependencies for physical tables correct — do the listed tables/views match what the team knows about these subject areas?
+6. Does the structural validation result need action before this audit is treated as final?
+
+### Step 4: Apply feedback and record decision
+
+Incorporate corrections into `audit/oac_audit.md`. Record:
+
+```markdown
+## Review
+
+**Reviewed by**: {{REVIEWER_NAME}}
+**Review date**: {{TODAY}}
+**Decision**: approved | changes_requested
+
+### Reviewer notes
+[Capture comments, corrections, or follow-up actions]
+```
+
+### Step 5: Update status
+
+```yaml
+artifacts:
+  oac_audit:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
+```
+
+### Step 6: Output next command
+
+If approved and all other audits are also approved:
+```
+/wire:migration-inventory-generate $ARGUMENTS
+```
+
+If other audits are still pending:
+```
+Continue with remaining audits. When all audits are approved:
+/wire:migration-inventory-generate $ARGUMENTS
+```
+
+## Review Gate
+
+The OAC audit review is an internal RA gate. Approval confirms the physical, logical, and presentation layers are fully accounted for, warehouse dependency mapping for the physical layer is complete enough to drive cutover sequencing, connection pools are captured, raw SQL constructs are fully scoped and classified, and no blocking unknowns remain before migration strategy work begins. The output feeds the migration inventory's dependency graph — specifically which warehouse objects must exist on target before each physical table can be repointed.
+
+Execute the complete workflow as specified above.
+
+## Execution Logging
+
+After completing the workflow, append a log entry to the project's execution_log.md:
+
+# Execution Log — Command and Skill Logging
+
+## Purpose
+
+After completing any generate, validate, or review workflow (or a project management command that changes state), append a single log entry to the project's execution log file. Skills also append an entry on activation, making the log a unified trace of all agent activity — both explicit commands and auto-activated skills.
+
+## Log File Location
+
+```
+<DP_PROJECTS_PATH>/<project_folder>/execution_log.md
+```
+
+Where `<project_folder>` is the project directory passed as an argument (e.g., `20260222_acme_platform`).
+
+## Format
+
+If the file does not exist, create it with the header:
+
+```markdown
+# Execution Log
+
+| Timestamp | Command | Result | Detail |
+|-----------|---------|--------|--------|
+```
+
+Then append one row per execution:
+
+```markdown
+| YYYY-MM-DD HH:MM | /wire:<command> | <result> | <detail> |
+```
+
+### Field Definitions
+
+- **Timestamp**: Current date and time in `YYYY-MM-DD HH:MM` format (24-hour, local time)
+- **Command**: Either the `/wire:*` command invoked, or `skill` for a skill activation entry
+- **Result / Skill name**: For commands, the outcome; for skills, the skill identifier. Use one of:
+  - `complete` — generate command finished successfully
+  - `pass` — validate command passed all checks
+  - `fail` — validate command found failures
+  - `approved` — review command: stakeholder approved
+  - `changes_requested` — review command: stakeholder requested changes
+  - `created` — `/wire:new` created a new project
+  - `archived` — `/wire:archive` archived a project
+  - `removed` — `/wire:remove` deleted a project
+  - `activated` — a skill was auto-activated (used with `skill` in the Command column)
+- **Detail**: A concise one-line summary of what happened. Include:
+  - For generate: number of files created or key output filename
+  - For validate: number of checks passed/failed
+  - For review: reviewer name and brief feedback if changes requested
+  - For new: project type and client name
+  - For archive/remove: project name
+  - For skill activations: brief description of what triggered the skill
+
+## Skill Activation Entries
+
+When a skill activates, it appends a row in the same format as commands, using `skill` in the Command column and the skill identifier in the Result column:
+
+```markdown
+| YYYY-MM-DD HH:MM | skill | <skill-identifier> | activated | <brief trigger description> |
+```
+
+Skill identifiers:
+
+| Skill | Identifier |
+|-------|-----------|
+| Engagement Context | `engagement-context` |
+| Research Persistence | `research-persistence` |
+| dbt Development | `dbt-development` |
+| LookML Content Authoring | `lookml-authoring` |
+| dbt Analytics QA | `dbt-analytics-qa` |
+| dbt Migration | `dbt-migration` |
+| dbt Troubleshooting | `dbt-troubleshooting` |
+| dbt Semantic Layer | `dbt-semantic-layer` |
+| dbt Unit Testing | `dbt-unit-testing` |
+| dbt DAG | `dbt-dag` |
+| Dagster | `dagster` |
+| Fivetran | `fivetran` |
+| Project Review | `project-review` |
+| Looker Dashboard Mockup | `looker-dashboard-mockup` |
+
+This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
+
+## Rules
+
+1. **Append only** — never modify or delete existing log entries
+2. **One row per command execution** — even if a command is re-run, add a new row (this creates the revision history)
+3. **Always log after status.md is updated** — the log entry should reflect the final state
+4. **Pipe characters in detail** — if the detail text contains `|`, replace with `—` to preserve table formatting
+5. **Keep detail under 120 characters** — be concise
+
+## Example
+
+```markdown
+# Execution Log
+
+| Timestamp | Command | Result | Detail |
+|-----------|---------|--------|--------|
+| 2026-02-22 14:30 | skill | engagement-context | activated | Context loaded for new conversation |
+| 2026-02-22 14:35 | /wire:new | created | Project created (type: full_platform, client: Acme Corp) |
+| 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements specification (3 files) |
+| 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith |
+| 2026-02-23 09:15 | /wire:conceptual_model-generate | complete | Generated entity model with 8 entities |
+| 2026-02-23 10:30 | /wire:conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity |
+| 2026-02-23 11:00 | /wire:conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
+| 2026-02-23 11:15 | /wire:conceptual_model-validate | pass | 12 checks passed, 0 failed |
+| 2026-02-23 14:00 | /wire:conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity |
+| 2026-02-23 15:30 | /wire:conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) |
+| 2026-02-23 15:45 | /wire:conceptual_model-validate | pass | 14 checks passed, 0 failed |
+| 2026-02-23 16:00 | /wire:conceptual_model-review | approved | Reviewed by John Doe |
+```

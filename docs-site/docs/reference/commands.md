@@ -33,7 +33,6 @@ These commands operate on the session or engagement as a whole, not on individua
 | `/wire:session-plan <release>` | Enter Plan Mode and propose a 3–5 step session plan. Optional — never required. |
 | `/wire:mcp [list/view/update/auth]` | Manage MCP server connections: list configured servers, view details, update URLs, or guide re-authentication. |
 | `/wire:help` | Display available commands for the current release type and phase. |
-| `/wire:studio-install` | Install and configure Wire Studio (the web UI). |
 | `/wire:migrate <release>` | Migrate a release from an older Wire spec format to the current version. |
 | `/wire:remove <release>` | Remove a release folder after confirming with the user. Irreversible — prompts for confirmation. |
 

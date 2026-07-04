@@ -36,7 +36,7 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: dbt_audit` and `
 
 ## Purpose
 
-Catalogs every model, source, test, macro, seed, and snapshot in the dbt project. Classifies each model by complexity based on SQL feature usage, line count, and dependency depth. The audit also flags platform-specific macro usage across the macro layer and produces a batch-zero macro translation plan — the macros that must be translated before model batch 1 starts. The output drives the batching strategy for dbt_migration and the complexity weighting in the migration inventory.
+Catalogs every model, source, test, macro, seed, and snapshot in the dbt project. Classifies each model by complexity based on SQL feature usage, line count, and dependency depth. Treats `enabled` as tri-state (`true` / `false` / `conditional:<var_name>`) rather than boolean, so a model that's only disabled because a flag defaulted off is never confused with one that's permanently out of scope. The audit also flags platform-specific macro usage across the macro layer and produces a batch-zero macro translation plan — the macros that must be translated before model batch 1 starts. The output drives the batching strategy for dbt_migration and the complexity weighting in the migration inventory.
 
 ## Prerequisites
 
@@ -79,7 +79,7 @@ Walk each resolved project's filesystem directly. The manifest gives dependency 
 - Number of `source()` calls
 - Number of CTEs
 - SQL feature tags (see Step 4)
-- `enabled` — cross-reference the file's path against the manifest's model nodes: present in `nodes` → `enabled=true`; present in `disabled` → `enabled=false`; on disk but absent from the manifest entirely → flag the model for investigation in the audit output rather than silently defaulting to `enabled=true`.
+- `enabled` — per `specs/utils/dbt_manifest_parse.md` Steps 3 and 3b: `true` (statically enabled), `false` (statically disabled — confirmed no `var()` anywhere in the resolution path, not just absent from the manifest's `nodes`), or `conditional:<var_name>` (the config resolves via a `var()` — in scope regardless of what it currently evaluates to, never collapsed to `true` or `false`). On disk but absent from the manifest entirely → flag the model for investigation in the audit output rather than silently defaulting to `enabled=true`.
 
 **Sources**: Count and list all sources defined in `schema.yml` files.
 
@@ -140,7 +140,7 @@ Assign each model a complexity rating:
 
 ### Step 7: Build migration batches
 
-Order buildable (`enabled=true`) models via a **topological sort** (Kahn's algorithm or DFS-based) over the model dependency graph from Step 2. Do not use `ref_count` or a depth-then-pack heuristic — `ref_count` is a count, not an edge, and the heuristic it drove produced hundreds of forward-reference violations. Every model's `ref()` parents must sit in an earlier-or-equal batch.
+Order buildable models — every model classified `true` **or** `conditional:<var_name>` — via a **topological sort** (Kahn's algorithm or DFS-based) over the model dependency graph from Step 2. Do not use `ref_count` or a depth-then-pack heuristic — `ref_count` is a count, not an edge, and the heuristic it drove produced hundreds of forward-reference violations. Every model's `ref()` parents must sit in an earlier-or-equal batch.
 
 Sort key when multiple valid orderings exist:
 
@@ -151,7 +151,9 @@ Sort key when multiple valid orderings exist:
 
 Pack into batches of at most 20 models, preserving that order. A parent and its child may share a batch — dbt builds in dependency order within a run, so this is safe; do not fragment into smaller batches just to force strict parent-in-an-earlier-batch.
 
-Assign each buildable model a `batch_number` (1-indexed). Disabled models get a **null** `batch_number` and are excluded from batching, but remain catalogued.
+**Conditional models.** A `conditional:*` model has no dependency edges in the default-var manifest sort — its edges come from `dbt_manifest_parse.md` Step 4's flags-on re-parse (place it in the sort like any other model once its real edges are known) or, when re-parsing wasn't available, the dependency-rule fallback (place it one batch after the highest batch of its in-scope dependencies, or in batch 1 if none of its dependencies are in scope). State in the audit's Notes which mode was used, and that the dependency-rule placement is exact only for single-parent leaf nodes.
+
+Assign each buildable (`true` or `conditional:*`) model a `batch_number` (1-indexed). Only models classified **statically** `false` get a null `batch_number` and are excluded from batching — a `conditional:*` model always gets a real batch number, never null, regardless of what it resolves to under default vars.
 
 Count forward references in the result (a model whose graph parent sits in a later batch). This should be 0 — state the count in the audit's Notes.
 
@@ -183,6 +185,15 @@ Use the templates at `TEMPLATES/migration/dbt_audit.md` and `TEMPLATES/migration
 The CSV must contain:
 `model_name, file_path, layer, line_count, ref_count, source_count, cte_count, complexity, feature_tags, batch_number, has_tests, migration_notes, enabled, platform_macros`
 
+The `enabled` column is tri-state, not boolean: `true`, `false`, or `conditional:<var_name>` — never collapse a var-driven model to `true` or `false`.
+
+**Conditionally-enabled models section.** If any models are classified `conditional:*`, add a "Conditionally-enabled models (var-driven)" section to `dbt_audit.md` — a model whose `enabled` config resolves via a `var()` must be called out explicitly, not left to be inferred from the CSV. One row per conditional model:
+
+| Model | Project(s) | `enabled` expression | `enabled` column | batch_number |
+|-------|-----------|----------------------|-------------------|--------------|
+
+State per model: the source surface that produced it (in-model config vs folder-level `+enabled`), which dependency-graph mode placed its batch number (flags-on re-parse vs dependency-rule fallback, per `dbt_manifest_parse.md` Step 4), and confirmation that enabling the driving var(s) doesn't newly bring any other project-native model into scope beyond what's already listed (the completeness check from `dbt_manifest_parse.md` Step 3b).
+
 ### Step 10: Update status
 
 ```yaml
@@ -194,6 +205,7 @@ artifacts:
     model_count: N
     enabled_count: N
     disabled_count: N
+    conditional_enabled_count: N
     simple_count: N
     moderate_count: N
     complex_count: N
@@ -205,9 +217,11 @@ artifacts:
     test_count: N
 ```
 
+`enabled_count` is `true`-classified models only; `conditional_enabled_count` is tracked separately — both are buildable and carry a `batch_number`, but they are not the same count, and folding conditional models into `enabled_count` would hide exactly the distinction this exists to preserve.
+
 ### Step 11: Output summary
 
-Print: total models, breakdown by complexity, disabled-model count, number of batches, macros needing translation, confirmation the batch-zero plan was generated, most common feature tags, and next command:
+Print: total models, breakdown by complexity, disabled-model count, conditionally-enabled model count (and list them by name if any), number of batches, macros needing translation, confirmation the batch-zero plan was generated, most common feature tags, and next command:
 
 ```
 /wire:dbt-audit-validate $ARGUMENTS

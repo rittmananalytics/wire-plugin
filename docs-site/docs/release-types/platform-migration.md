@@ -54,7 +54,7 @@ Run `/wire:new` and select **Platform Migration**. You will be asked a set of ad
 3. **dbt project path** — relative to repo root
 4. **Orchestration tool** — Dagster, dbt Cloud, Airflow, or None
 5. **Ingestion tool** — Fivetran, RudderStack, Coupler.io, Segment, Airbyte, or Other
-6. **Reporting / BI tool** — Looker, Metabase, None, or Other. `metabase` enables the Metabase reporting-layer commands.
+6. **Reporting / BI tool** — Looker, Metabase, Omni, OAC, None, or Other. `metabase` enables the Metabase reporting-layer commands; `omni` enables the Omni reporting-layer commands; `oac` enables the OAC reporting-layer commands.
 7. **Connectivity** — public endpoint or private network requiring an MCP tunnel
 8. **Target project / account** and any **production project IDs** to treat as off-limits for writes
 9. **Migration scope** — full migration (default) or a **tenant carve-out**. Choosing carve-out captures a `migration.tenant_predicate` and turns on the carve-out flow described below.
@@ -435,6 +435,28 @@ Wire's reporting-layer support was Looker-only. Metabase is now a recognised rep
 
 Both build on the imported Metabase agent skills (`skills/metabase/SKILL.md`, wrapping the upstream `metabase/agent-skills`).
 
+## Omni reporting-layer migration
+
+Set via `migration.reporting_tool: omni` in `status.md` (asked at `/wire:new`), same general, scope-independent role as the Metabase support above.
+
+| Command | Purpose |
+|---|---|
+| `/wire:omni-audit-*` | Catalogue connections, the semantic model (topics, views, dimensions, measures, relationships), and folders/workbooks/tiles; resolve each model view's warehouse dependencies. Dialect-specific SQL concentrates in the model's view definitions, not scattered per-tile the way Metabase's cards are — so views, not tiles, get the primary migration-approach classification. |
+| `/wire:omni-migration-*` | Add the target connection, translate model view SQL by approach, validate on an **Omni model branch** (Omni's native branch-based model development — dashboards query through topics, so once the branch is promoted they inherit the new connection without individual repointing), then cut over the primary connection in two stages with rollback. |
+
+Both build on the `omni` skill (`skills/omni/SKILL.md`), which references the official [exploreomni/omni-agent-skills](https://github.com/exploreomni/omni-agent-skills) — install via `/plugin marketplace add exploreomni/omni-agent-skills` then `/plugin install omni-analytics@omni-analytics`.
+
+## OAC reporting-layer migration
+
+Set via `migration.reporting_tool: oac` in `status.md` (asked at `/wire:new`), same general, scope-independent role as the Metabase support above. OAC's dialect-specific SQL concentrates in the **physical layer** of its SMML semantic model (physical table connections, raw physical join expressions) — the logical and presentation layers sit on top as a dialect-neutral star schema referencing physical columns by FQN, so they carry over unchanged.
+
+| Command | Purpose |
+|---|---|
+| `/wire:oac-audit-*` | Catalogue the SMML semantic model — physical tables/connections/joins, logical tables/joins/hierarchies/measures, presentation subject areas — from the semantic-model Git repo; run `validate_smml.py` as part of cataloguing structural health. |
+| `/wire:oac-migration-*` | Add the target physical connection, translate and re-validate physical joins against the new warehouse dialect, validate on a non-production copy of the semantic-model repo, then cut over the physical connection in two stages with rollback. Logical and presentation layers are not touched. |
+
+Both build on the `smml-semantic-modeling` and `dbt-to-smml` skills (`wire/skills/smml-semantic-modeling/SKILL.md`, `wire/skills/dbt-to-smml/SKILL.md`).
+
 ## Full command sequence
 
 ```
@@ -514,9 +536,9 @@ Both build on the imported Metabase agent skills (`skills/metabase/SKILL.md`, wr
 /wire:archive <release>
 ```
 
-### Carve-out and Metabase additions
+### Carve-out and reporting-layer additions
 
-For a `tenant_carveout` release, these slot into the sequence: region tagging after the audits, the data-residency assessment alongside strategy, the bulk copy in place of ingestion migration, and logical-access UAT before cutover. Metabase commands run for any migration where `reporting_tool: metabase`.
+For a `tenant_carveout` release, these slot into the sequence: region tagging after the audits, the data-residency assessment alongside strategy, the bulk copy in place of ingestion migration, and logical-access UAT before cutover. Metabase commands run for any migration where `reporting_tool: metabase`; Omni commands run where `reporting_tool: omni`; OAC commands run where `reporting_tool: oac`.
 
 ```
 # ── after audits, before inventory ──────────────────────────────
@@ -532,6 +554,14 @@ For a `tenant_carveout` release, these slot into the sequence: region tagging af
 # ── reporting layer (reporting_tool: metabase) ──────────────────
 /wire:metabase-audit-generate <release>              # …-validate / …-review
 /wire:metabase-migration-generate <release>          # …-validate / …-review
+
+# ── reporting layer (reporting_tool: omni) ──────────────────────
+/wire:omni-audit-generate <release>                  # …-validate / …-review
+/wire:omni-migration-generate <release>              # …-validate / …-review
+
+# ── reporting layer (reporting_tool: oac) ────────────────────────
+/wire:oac-audit-generate <release>                   # …-validate / …-review
+/wire:oac-migration-generate <release>               # …-validate / …-review
 
 # ⚠ SAFETY GATE — in place of ingestion-migration for a carve-out
 /wire:bulk-copy-migration-generate <release>

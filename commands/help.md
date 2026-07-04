@@ -210,12 +210,6 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:utils-delivery-forecast` | `<client-name> [--release <folder>]` | Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates |
 | `/wire:utils-doc-analyze` | `<file-path-or-url> [<file-path-2> ...]` | Extract deliverables, acceptance criteria, and timeline from SoW or project documents |
 
-### WIRE STUDIO
-
-| Command | Arguments | Description |
-|---------|-----------|-------------|
-| `/wire:studio-install` | `(no arguments)` | Install Wire Studio local web UI on this machine |
-
 ### RELEASE UTILITIES
 
 | Command | Arguments | Description |
@@ -288,6 +282,18 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:metabase-migration-generate` | `<release-folder>` | Generate Metabase migration runbook — translate card SQL, remap permission groups, two-stage connection repoint |
 | `/wire:metabase-migration-validate` | `<release-folder>` | Validate Metabase migration runbook completeness |
 | `/wire:metabase-migration-review` | `<release-folder>` | Internal RA review of Metabase migration runbook |
+| `/wire:omni-audit-generate` | `<release-folder>` | Catalog Omni connections, model (topics/views/dimensions/measures), and folders/workbooks/tiles |
+| `/wire:omni-audit-validate` | `<release-folder>` | Validate Omni audit completeness and dependency coverage |
+| `/wire:omni-audit-review` | `<release-folder>` | Internal RA review of Omni audit |
+| `/wire:omni-migration-generate` | `<release-folder>` | Generate Omni migration runbook — translate model view SQL on a branch, two-stage connection repoint |
+| `/wire:omni-migration-validate` | `<release-folder>` | Validate Omni migration runbook completeness |
+| `/wire:omni-migration-review` | `<release-folder>` | Internal RA review of Omni migration runbook |
+| `/wire:oac-audit-generate` | `<release-folder>` | Catalog OAC's SMML semantic model — physical/logical/presentation layers |
+| `/wire:oac-audit-validate` | `<release-folder>` | Validate OAC audit completeness and dependency coverage |
+| `/wire:oac-audit-review` | `<release-folder>` | Internal RA review of OAC audit |
+| `/wire:oac-migration-generate` | `<release-folder>` | Generate OAC migration runbook — translate physical-layer connection and joins, two-stage connection repoint |
+| `/wire:oac-migration-validate` | `<release-folder>` | Validate OAC migration runbook completeness |
+| `/wire:oac-migration-review` | `<release-folder>` | Internal RA review of OAC migration runbook |
 
 ### DROUGHTY
 
@@ -330,33 +336,6 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:adopt` | `[repo-path-or-url]` | Adopt an in-flight project into Wire — assess repo and external sources, map existing work to artifacts, set up engagement structure, generate adoption playbook |
 | `/wire:custom-define` | `<release-folder>` | Define a custom release type from SoW or project documents — map deliverables to Wire commands or generate bespoke specs |
 | `/wire:custom-feature-request` | `<custom-spec-name>` | Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition |
-| `/wire:ac_storefront-generate` | `<release-folder>` | Build base e-commerce storefront via Lovable and sync to GitHub |
-| `/wire:ac_storefront-validate` | `<release-folder>` | Pre-flight checklist verification for base storefront |
-| `/wire:ac_storefront-review` | `<release-folder>` | Stakeholder sign-off on base storefront |
-| `/wire:ac_semantic_search-generate` | `<release-folder>` | Implement AI semantic search |
-| `/wire:ac_semantic_search-validate` | `<release-folder>` | Functional and performance tests for semantic search |
-| `/wire:ac_semantic_search-review` | `<release-folder>` | Demo and stakeholder approval for semantic search |
-| `/wire:ac_conversational_assistant-generate` | `<release-folder>` | Build multi-turn shopping assistant chat interface |
-| `/wire:ac_conversational_assistant-validate` | `<release-folder>` | Conversation flow and cart integration tests |
-| `/wire:ac_conversational_assistant-review` | `<release-folder>` | Demo and stakeholder approval for conversational assistant |
-| `/wire:ac_virtual_tryon-generate` | `<release-folder>` | Add AI virtual try-on with photo upload and image generation |
-| `/wire:ac_virtual_tryon-validate` | `<release-folder>` | Try-on quality and error handling tests |
-| `/wire:ac_virtual_tryon-review` | `<release-folder>` | Demo and stakeholder approval for virtual try-on |
-| `/wire:ac_visual_similarity-generate` | `<release-folder>` | Add visual similarity product discovery via multimodal AI |
-| `/wire:ac_visual_similarity-validate` | `<release-folder>` | Similarity relevance and performance tests |
-| `/wire:ac_visual_similarity-review` | `<release-folder>` | Demo and stakeholder approval for visual similarity |
-| `/wire:ac_llm_tools-generate` | `<release-folder>` | Implement LLM with autonomous tool calling |
-| `/wire:ac_llm_tools-validate` | `<release-folder>` | Tool call accuracy and resilience tests |
-| `/wire:ac_llm_tools-review` | `<release-folder>` | Demo and stakeholder approval for LLM tools |
-| `/wire:ac_personalisation-generate` | `<release-folder>` | Build personalisation engine with profiles and event tracking |
-| `/wire:ac_personalisation-validate` | `<release-folder>` | Profile storage, event logging, and privacy tests |
-| `/wire:ac_personalisation-review` | `<release-folder>` | Demo and stakeholder approval for personalisation |
-| `/wire:ac_ucp_server-generate` | `<release-folder>` | Implement Universal Commerce Protocol merchant server |
-| `/wire:ac_ucp_server-validate` | `<release-folder>` | Discovery, checkout, Stripe, and security tests |
-| `/wire:ac_ucp_server-review` | `<release-folder>` | Demo and stakeholder approval for UCP server |
-| `/wire:ac_demo_orchestration-generate` | `<release-folder>` | Add automated demo flows with phase state machine |
-| `/wire:ac_demo_orchestration-validate` | `<release-folder>` | Phase progression and persona tests |
-| `/wire:ac_demo_orchestration-review` | `<release-folder>` | Live demo run-through and stakeholder approval |
 | `/wire:ads-audit-all` | `<release-folder>` | Run all three agentic data stack audits in parallel |
 | `/wire:ads_dataset-audit-generate` | `<release-folder>` | Inventory warehouse tables, identify duplicates, grade governance maturity |
 | `/wire:ads_dataset-audit-validate` | `<release-folder>` | Verify dataset audit completeness and tier classifications |

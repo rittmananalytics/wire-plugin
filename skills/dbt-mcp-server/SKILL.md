@@ -189,7 +189,7 @@ Add `.env` to `.gitignore` — never commit literal tokens.
 ### Claude Code (primary Wire tool)
 
 **Option A — Project-specific** (recommended for Wire projects, shareable with team):
-Add to `.mcp.json` at the repo root. Wire Studio already creates `.mcp.json` with Atlassian, Fathom, and Context7 servers — **merge** the dbt entry rather than replacing:
+Add to `.mcp.json` at the repo root. `/wire:new` already creates `.mcp.json` with Atlassian, Fathom, and Context7 servers — **merge** the dbt entry rather than replacing:
 
 ```json
 {

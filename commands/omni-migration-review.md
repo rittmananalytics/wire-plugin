@@ -1,9 +1,9 @@
 ---
-description: Validate dbt audit completeness and complexity ratings
+description: Internal RA review of Omni migration runbook
 argument-hint: <release-folder>
 ---
 
-# Validate dbt audit completeness and complexity ratings
+# Internal RA review of Omni migration runbook
 
 ## User Input
 
@@ -22,70 +22,70 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Validate dbt audit completeness, batch ordering against the manifest graph, disk reconciliation, conditionally-enabled model scope, and the batch-zero macro plan
+description: Internal RA review of Omni migration runbook
 ---
 
-# dbt Audit — Validate
+# Omni Migration — Review
 
 ## Purpose
 
-Checks that all models are classified, that batch assignments respect the manifest-derived dependency graph, that the catalogue reconciles with the files actually on disk, that the macro layer is fully classified, that every var-driven `enabled` model is correctly tagged conditional and in scope rather than dropped as disabled, and that the batch-zero macro plan is complete and acyclic.
+Internal RA review of the Omni migration runbook before execution. Confirms view SQL translations are correct, raw-SQL tile translations are sound and their scope is current, validation is genuinely branch-based, and the two-stage connection cutover and its per-stage rollback are agreed.
 
-## Validation Checks
+## Prerequisites
 
-**Check 1 — All models have complexity rating**
-Every model in the CSV has a non-null `complexity` value (Simple / Moderate / Complex).
-PASS/FAIL with gaps listed.
+- `migration/omni_migration_runbook.md` exists with `validate: pass`
 
-**Check 2 — All models have batch number**
-Every model classified `true` or `conditional:<var_name>` has a non-null `batch_number` — a conditional model is buildable and must carry a real batch number exactly like an unconditionally-enabled one. Every model classified **statically** `false` has a **null** `batch_number` — a non-null `batch_number` on a statically disabled model is also a FAIL.
-PASS/FAIL with gaps and violations listed separately.
+## Workflow
 
-**Check 3 — Batch ordering respects dependency graph**
-Re-run `specs/utils/dbt_manifest_parse.md` independently to get the model dependency graph — do not trust generate's self-report. For any enabled model in batch N with a dependency-graph parent (both enabled) in batch M, M ≤ N must hold. This check replaces any inference from the CSV's `ref_count` column — `ref_count` is a count, not a dependency edge.
-PASS: Zero forward references.
-FAIL: List every violating (model, parent, batch, parent_batch) tuple and the total forward-reference count.
+### Step 1: Load meeting context
 
-**Check 4 — Feature tags applied to all models**
-Every model has been scanned for platform-specific features (even if the tag list is empty — an empty list is valid, an unscanned model is not).
-PASS: All models scanned.
-FAIL: List unscanned models.
+Follow `specs/utils/meeting_context.md`. Search for discussions about Omni, reporting cutover, dashboard owners, or BI access requirements.
 
-**Check 5 — CSV row count matches model count in status.md**
-The row count in `dbt_audit.csv` (excluding header) matches `model_count` in status.md.
-PASS: Counts match.
-FAIL: Report discrepancy.
+### Step 2: Present runbook for review
 
-**Check 6 — No models without tests flagged**
-Models with `has_tests: false` are noted in the audit. This is informational (not a FAIL on its own) but the count must be reported.
-Output: N models have no tests (list them).
+Summary to present:
+- Topology (additive target connection + model branch) and rationale
+- Views by approach (repoint / rewrite_sql / rebuild)
+- Any SQL translations with non-trivial changes
+- Raw-SQL tile translations and their `omni-query` test results
+- The two-stage cutover plan (branch validation on a pilot scope → branch promotion + primary connection repoint) and per-stage rollback
 
-**Check 7 — Macros with adapter functions flagged**
-Every model whose transitive macro-usage set (from the Check 3 re-parse) intersects the NEEDS-translation set has that intersection recorded, comma-separated, in `platform_macros`. Every macro classified as NEEDS-translation carries an `action` of `translate`, `redesign`, or `manual-review-out-of-scope` — none left unclassified.
-PASS: Fully consistent.
-FAIL: List models with missing or incomplete `platform_macros` and macros with no recorded `action`.
+### Step 3: Gather reviewer feedback
 
-**Check 8 — Catalogue reconciles with disk**
-Independently walk every resolved project's filesystem (per `specs/utils/dbt_manifest_parse.md` Steps 1 and 3) and compare against the CSV. This check exists specifically to catch a stale or substituted catalogue regardless of how it went stale — it must not rely on generate's own report of what it did.
-PASS: Every `file_path` in the CSV resolves to a real file, and every `.sql`/`.py` model file on disk under a resolved project appears as a CSV row.
-FAIL: List dead `file_path` values (in the CSV, not on disk) and missing models (on disk, not in the CSV), with counts of each.
+1. Are the view SQL translations correct and do they preserve the report's meaning?
+2. Are the `rebuild` plans complete for views with no direct translation path?
+3. Are the raw-SQL tile translations correct, and was the tile scope genuinely reconfirmed live rather than taken on trust from the original audit?
+4. Is validation genuinely branch-based — are the primary connection and production content confirmed untouched until Stage 2?
+5. Is the two-stage cutover agreed, and is each stage's rollback (branch abandon/revert, connection details, tile SQL restore) workable? Who on the client side owns the cutover window?
 
-**Check 9 — Batch-zero macro plan is complete and acyclic**
-Every macro with `action: translate` or `action: redesign` appears in `batch_zero_plan.json` — translate macros with a non-null tier; redesign macros listed in the redesign bucket, no tier required. Tier assignment is internally consistent: no macro's tier is ≤ any NEEDS-macro dependency's tier.
-PASS/FAIL with violations listed.
+### Step 4: Apply feedback and record decision
 
-**Check 10 — Conditionally-enabled models are correctly in scope**
-Independently re-scan for var-driven `enabled` config per `specs/utils/dbt_manifest_parse.md` Step 3b — in-model config and folder-level `+enabled` in every resolved project's `dbt_project.yml` — do not trust generate's classification or the manifest's resolved `nodes`/`disabled` split alone. For every model whose `enabled` resolution path contains a `var(` call, anywhere, confirm: it is tagged `conditional:<var_name>` in the CSV (never `true` and never `false`), it carries a non-null `batch_number`, and it is not counted toward the statically-disabled exemption in Check 2.
-PASS: every var-driven model found by the independent source re-scan is tagged `conditional:*` with a real batch number.
-FAIL: list every var-driven model the re-scan found that the CSV instead marks `true`, `false`, or leaves with a null `batch_number` — a model in this list was silently dropped from scope (or silently and permanently marked enabled) by a manifest resolved under one default var-set. This is the check that would have caught a conditionally-enabled model being waved through as "correctly exempt" from Check 2 instead of being flagged.
+```markdown
+## Review
 
-### Update status
+**Reviewed by**: {{REVIEWER_NAME}}
+**Review date**: {{TODAY}}
+**Decision**: approved | changes_requested
+
+### Reviewer notes
+[Capture corrections, agreed cutover window, rollback ownership]
+```
+
+### Step 5: Update status
 
 ```yaml
 artifacts:
-  dbt_audit:
-    validate: pass | fail
-    validated_date: "{{TODAY}}"
+  omni_migration:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
+```
+
+### Step 6: Output next command
+
+If approved:
+```
+/wire:equivalency-validate $ARGUMENTS
 ```
 
 
@@ -95,11 +95,11 @@ After updating `status.md`, run these in sequence:
 
 1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `dbt_audit` as artifact, `validate` as action.
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `omni_migration` as artifact, `review` as action.
 
-3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `dbt_audit` as artifact_id, `dbt Audit` as artifact_name, and the `file` value from `artifacts.dbt_audit` in status.md as file_path.
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `omni_migration` as artifact_id, `Omni Migration` as artifact_name, and the `file` value from `artifacts.omni_migration` in status.md as file_path.
 
-4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `dbt_audit` as artifact, `validate` as action.
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `omni_migration` as artifact, `review` as action.
 
 Execute the complete workflow as specified above.
 

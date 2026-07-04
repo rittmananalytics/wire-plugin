@@ -34,6 +34,8 @@ Follow `specs/utils/semantic_layer_developer_delegate.md` before executing the w
 
 Generate LookML views, explores, and model configurations based on the project's data model design, dbt schema files, and requirements. Creates properly formatted, validated LookML files following best practices and project conventions.
 
+This command is Looker/LookML-specific. When the engagement's semantic layer is **Cube** instead, the equivalent modeling work follows the `cube` skill (`wire/skills/cube/SKILL.md`) — cubes and views defined in YAML (or JavaScript) rather than LookML, generated per RA's own Cube modeling conventions and coding standards documented there. When the engagement's BI tool is **Omni** instead, the equivalent semantic-layer work is the `omni` skill's `omni-model-builder` — YAML topics/views/dimensions/measures/relationships via the Omni CLI, not LookML files. See `wire/skills/omni/SKILL.md`. When the engagement's semantic layer is **Oracle Analytics Cloud (OAC)** instead, the equivalent modeling work follows the `dbt-to-smml` skill (`wire/skills/dbt-to-smml/SKILL.md`) to generate SMML (Semantic Modeler Markup Language) — physical/logical/presentation layers, driven by a dbt project's `meta.oac` metadata — with modeling judgement calls (hierarchies, role-playing dimensions, subject-area design) grounded in the sibling `smml-semantic-modeling` skill (`wire/skills/smml-semantic-modeling/SKILL.md`).
+
 ## Usage
 
 ```bash

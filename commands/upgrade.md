@@ -96,7 +96,7 @@ Extract:
 
 If `release_type` is absent or unrecognised, ask:
 ```
-What is the release type for this release? (e.g. full_platform, dbt_development, platform_migration, droughty, discovery, agentic_commerce, agentic_data_stack, custom)
+What is the release type for this release? (e.g. full_platform, dbt_development, platform_migration, droughty, discovery, agentic_data_stack, custom)
 ```
 
 ---
@@ -122,7 +122,6 @@ Map `release_type` to its template file. Resolve relative to the plugin root (pl
 | `full_platform`, `dbt_development` | `wire/TEMPLATES/status-template.md` |
 | `platform_migration`, `data_warehouse_migration` | `wire/TEMPLATES/migration/status_migration.md` |
 | `droughty` | `wire/TEMPLATES/droughty-status-template.md` |
-| `agentic_commerce` | `wire/TEMPLATES/agentic-commerce-status-template.md` |
 | `agentic_data_stack` | `wire/TEMPLATES/agentic_data_stack/status_agentic_data_stack.md` |
 | `discovery`, `shape_up_discovery` | `wire/TEMPLATES/discovery-status-template.md` |
 | `sop_discovery` | `wire/TEMPLATES/sop-discovery-status-template.md` |
@@ -202,6 +201,12 @@ Based on `release_type` and the detected additions, report any commands that are
 
 | Added in | Commands | Relevant release types |
 |---|---|---|
+| v3.10.3 | `/wire:migration-batching-generate\|validate\|review` | `platform_migration`, `data_warehouse_migration` — domain-batch scheduling, checked against the real dependency graph; distinct from `dbt_audit`'s translation batches |
+| v3.10.2 | `/wire:migration-register-generate\|validate`, `/wire:migration-drift-generate\|validate` | `platform_migration`, `data_warehouse_migration` — per-model state store and scheduled drift gate for a migration running against a moving source |
+| v3.10.1 | `/wire:region-tagging-*`, `/wire:data-residency-assessment-*`, `/wire:bulk-copy-migration-*`, `/wire:logical-access-uat-*` | `platform_migration` with `migration.scope: tenant_carveout` only |
+| v3.10.1 | `/wire:metabase-audit-*`, `/wire:metabase-migration-*` | `platform_migration` with `migration.reporting_tool: metabase` |
+| v3.9.9 | `/wire:migration-source-register`, `/wire:migration-source-refresh`, `/wire:migration-acceptance-pack-review` | `platform_migration`, `data_warehouse_migration` |
+| v3.9.7 | `/wire:mcp check [release-folder]` | all — per-server connectivity table (CONNECTED / AUTH_REQUIRED / UNAVAILABLE / NOT_CONFIGURED); run at the start of every session |
 | v3.9.0 | `/wire:delegate` | all — batch dispatch to specialist local subagents for pending artifact work |
 | v3.8.0 | `/wire:droughty-*` (9 commands) | all — can be added to any release as an optional phase |
 | v3.8.1 | `/wire:dbt-migration-lint` | `platform_migration`, `data_warehouse_migration`, `dbt_development` |
