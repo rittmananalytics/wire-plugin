@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.4 — Cube, Omni, and OAC semantic-layer options; Wire Studio and agentic_commerce removed
+
+**Released**: July 2026
+
+Three new semantic-layer/reporting-tool options, a real bug fix from live migration feedback, and a cleanup pass removing two low-usage features and their remaining references.
+
+**Cube.dev, Omni Analytics, and Oracle Analytics Cloud (OAC) join LookML as semantic-layer options.** Each ships as a `wire/skills/` entry activated when the engagement's semantic layer is that tool rather than Looker: `cube` encodes RA's own Cube modeling conventions and coding standards alongside Cube's core concepts and MCP server; `omni` wraps the official `exploreomni/omni-agent-skills` and adds `omni-audit`/`omni-migration` reporting-layer migration commands (gated on `migration.reporting_tool: omni`); `dbt-to-smml` and `smml-semantic-modeling` generate and hand-author OAC's SMML (Semantic Modeler Markup Language) semantic model from a dbt project, with `oac-audit`/`oac-migration` commands for reporting-layer migration (gated on `migration.reporting_tool: oac`). OAC's dialect-specific SQL concentrates in the physical layer (connection pools, physical tables, physical joins), so its migration classification happens at the physical-table level, mirroring how Omni's classification happens at the model-view level rather than per-tile.
+
+**`dbt-audit-generate` no longer misclassifies conditionally-enabled models as disabled.** Models whose `enabled` config resolves from a `var(...)` — in-model `config()` blocks or folder-level `+enabled` in `dbt_project.yml` — are now classified `conditional:<var_name>` and kept in migration scope regardless of the var's default resolution, with dependency edges resolved via a flags-on re-parse or a documented fallback rule. `dbt-audit-validate` independently re-scans for var-driven config to catch a model still marked `true`/`false`/null-batch that should be `conditional`.
+
+**Wire Studio (the `wire-web-ui` browser interface) and the `agentic_commerce` release type are removed entirely**, along with every reference across docs, build scripts, and tests — both showed effectively no engagement usage against BigQuery telemetry. `USER_GUIDE_droughty.md` and `USER_GUIDE_platform_migration.md`, which duplicated content already in `USER_GUIDE.md`, are also removed, along with three stale feature-design docs for work that had already shipped.
+
+---
+
 ## v3.10.3 — dbt audit hardening, migration batching, PII/equivalency fixes
 
 **Released**: July 2026

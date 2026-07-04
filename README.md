@@ -40,7 +40,7 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 
 Wire is distributed as a Claude Code plugin and a Gemini CLI extension. Installing the plugin embeds every Wire command inline — no framework files need to exist in your project repository.
 
-**Plugins** provide the 250 `/wire:*` commands. Each command file contains its full workflow specification, so the AI receives complete instructions as context at invocation time.
+**Plugins** provide the 265 `/wire:*` commands. Each command file contains its full workflow specification, so the AI receives complete instructions as context at invocation time.
 
 **Skills** sit alongside commands but work differently. They activate automatically during ad-hoc coding work without any explicit invocation. When you start writing a dbt model, the dbt development skill provides naming conventions, SQL style rules, and testing patterns as background context. The following skills are included:
 
