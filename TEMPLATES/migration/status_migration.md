@@ -28,6 +28,11 @@ migration:
                                            # oac enables the oac_audit / oac_migration commands (same role, adapted
                                            # to OAC's SMML physical/logical/presentation layer object model);
                                            # looker is the Wire default. Not gated by migration.scope.
+  reverse_etl_tool: none                   # hightouch | none | other — the client's reverse ETL layer, if any.
+                                           # hightouch enables the sixth audit (reverse_etl_audit) and
+                                           # reverse_etl_migration commands; other covers Census/Polytomic,
+                                           # which follow the same output shape but aren't implemented yet.
+                                           # none is the default — the sixth audit simply doesn't run.
   connectivity: "{{CONNECTIVITY}}"         # public_endpoint | private_network_mcp_tunnel
   target_project: null      # BigQuery: GCP project ID for the target environment
   target_dataset: null      # BigQuery: default dataset / schema on the target

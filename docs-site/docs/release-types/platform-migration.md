@@ -55,9 +55,10 @@ Run `/wire:new` and select **Platform Migration**. You will be asked a set of ad
 4. **Orchestration tool** — Dagster, dbt Cloud, Airflow, or None
 5. **Ingestion tool** — Fivetran, RudderStack, Coupler.io, Segment, Airbyte, or Other
 6. **Reporting / BI tool** — Looker, Metabase, Omni, OAC, None, or Other. `metabase` enables the Metabase reporting-layer commands; `omni` enables the Omni reporting-layer commands; `oac` enables the OAC reporting-layer commands.
-7. **Connectivity** — public endpoint or private network requiring an MCP tunnel
-8. **Target project / account** and any **production project IDs** to treat as off-limits for writes
-9. **Migration scope** — full migration (default) or a **tenant carve-out**. Choosing carve-out captures a `migration.tenant_predicate` and turns on the carve-out flow described below.
+7. **Reverse ETL tool** — Hightouch, None, or Other. `hightouch` enables `reverse-etl-audit` and `reverse-etl-migration` as a sixth audit alongside the five core ones; `none` (the default) skips it entirely.
+8. **Connectivity** — public endpoint or private network requiring an MCP tunnel
+9. **Target project / account** and any **production project IDs** to treat as off-limits for writes
+10. **Migration scope** — full migration (default) or a **tenant carve-out**. Choosing carve-out captures a `migration.tenant_predicate` and turns on the carve-out flow described below.
 
 ## MCP server connections
 

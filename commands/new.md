@@ -517,6 +517,7 @@ Ask the following additional questions (one at a time):
 5. "What is the **ingestion tool**?" (Options: Fivetran / RudderStack / Coupler.io / Segment / Airbyte / Other). Store as `migration.ingestion_tool` with values `fivetran` / `rudderstack` / `coupler-io` / `segment` / `airbyte` / `other`. Each named tool has a corresponding skill at `wire/skills/<tool>/SKILL.md` and a tool-specific branch in `ingestion-audit-generate`. "Other" covers Stitch, Estuary, and custom-built ingestion — falls back to CSV-driven audit.
 6. "What is the **connectivity mode** to the source platform?" (Options: Public endpoint / Private network with MCP tunnel)
    - Also ask: "What **reporting / BI tool** does the client use?" (Options: Looker / Metabase / Omni / OAC / None / Other). Store as `migration.reporting_tool` with values `looker` / `metabase` / `omni` / `oac` / `none` / `other`. `metabase` enables the `metabase-audit` and `metabase-migration` commands; `omni` enables the `omni-audit` and `omni-migration` commands (same reporting-layer migration role, adapted to Omni's connection → model → topic → workbook/tile object hierarchy); `oac` enables the `oac-audit` and `oac-migration` commands (same reporting-layer migration role, adapted to OAC's SMML physical/logical/presentation layer object model); `looker` is the Wire default. This is independent of `migration.scope`.
+   - Also ask: "Does the client use a **reverse ETL tool**?" (Options: Hightouch / None / Other). Store as `migration.reverse_etl_tool` with values `hightouch` / `none` / `other`. `hightouch` enables `reverse-etl-audit` and `reverse-etl-migration` as a sixth audit alongside the five core audits (see `wire/skills/hightouch/SKILL.md`); `none` is the default — the sixth audit simply doesn't run. "Other" covers Census and Polytomic, which `reverse-etl-audit`'s spec documents as following the same output shape via tool-specific API branches, but aren't implemented yet — falls back to the same manual `migration.reverse_etl_tool` value with a note that automated cataloguing isn't available for that tool.
 7. "What is the **target project / account**?" (The GCP project ID for BigQuery, or Snowflake account identifier for the target environment — the place all migration writes will land.)
 8. "Are there any **production project IDs** that should be treated as off-limits for writes?" (Comma-separated list, or press Enter to skip. These are client production environment IDs that Claude will refuse to write to during migration commands.) Store as `data_safety.production_projects` list.
 9. "Is this a **full platform migration** or a **tenant carve-out** (extracting a single tenant's data into the target)?" (Options: Full migration (default) / Tenant carve-out). If **Tenant carve-out** is selected, also ask: "What is the **tenant predicate** that scopes the extracted tenant — the WHERE clause or tenant key? (e.g. `tenant_id = 4815`)". Store as `migration.scope` (`full_migration` | `tenant_carveout`) and `migration.tenant_predicate`. If the user selects Full migration or presses Enter, leave `migration.scope` at its default of `full_migration` and `migration.tenant_predicate` null.
@@ -536,7 +537,7 @@ Confirm when the tunnel is active and accessible. (Type "tunnel ready" to contin
 
 Wait for confirmation before continuing.
 
-Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_tool`, `ingestion_tool`, `reporting_tool`, `connectivity`, `target_project_or_account`, `production_projects`, `scope`, `tenant_predicate`.
+Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_tool`, `ingestion_tool`, `reporting_tool`, `reverse_etl_tool`, `connectivity`, `target_project_or_account`, `production_projects`, `scope`, `tenant_predicate`.
 
 1. Read `TEMPLATES/migration/status_migration.md`
 2. Replace placeholders:
@@ -552,6 +553,7 @@ Store `source_platform`, `target_platform`, `dbt_project_path`, `orchestration_t
    - `{{ORCHESTRATION_TOOL}}` → orchestration_tool
    - `{{INGESTION_TOOL}}` → ingestion_tool
    - `migration.reporting_tool` → reporting_tool if captured; otherwise leave the template default `none` unchanged
+   - `migration.reverse_etl_tool` → reverse_etl_tool if captured; otherwise leave the template default `none` unchanged
    - `{{CONNECTIVITY}}` → connectivity
    - `migration.target_project` (BigQuery) or `migration.target_account` (Snowflake) → target_project_or_account
    - `data_safety.target_project` → target_project_or_account (same value — mirrors the migration section)
