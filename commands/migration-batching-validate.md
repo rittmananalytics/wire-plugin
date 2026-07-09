@@ -35,6 +35,8 @@ Independently re-derives the ground truth for every check — the inventory obje
 
 Read `migration/migration_batching.csv`, `migration/migration_batching.md`, `migration/migration_inventory.md`, `audit/dbt_audit.csv`, and status.md.
 
+**Read the partition mode first.** Take `artifacts.migration_batching.partition_mode` from status.md (`domain` or `build_ordered_waves`; treat absent as `domain` for backward compatibility). The mode changes what Checks 3, 5, and the new Check 8 expect — Checks 1, 2, 4, 6, 7 are identical in both modes. Both modes must still pass C2 (acyclic) and C3 (every cross-batch edge declared); build-ordered waves satisfy both trivially via the full-prefix dependency, which is the whole reason the fallback exists.
+
 **Check 1 — Every inventory object classified exactly once**
 Rebuild the union of objects from `migration_inventory.md`'s unified catalog. Confirm a 1:1 match against `migration_batching.csv` rows — no object missing, none duplicated, no CSV row without a matching inventory object.
 PASS: one-to-one match.
@@ -59,6 +61,7 @@ FAIL: list batches missing the prerequisite.
 For every batch pair listed as parallel-safe in the narrative, confirm zero graph edges (either direction) between their member objects, per the Check 3 graph.
 PASS: no parallel-safe claim contradicted.
 FAIL: list each contradicted claim with the edge (objects, batches, direction) that breaks it.
+In `build_ordered_waves` mode the parallel-safe set must be **empty** (full-prefix dependencies make every wave sequential) — a non-empty parallel-safe list in that mode is a FAIL.
 
 **Check 6 — Every CSV row complete**
 Each row has a non-empty `object_id`, `object_type`, `source_audit`, `domain`, `batch_id`, and `batch_name`. `depends_on_batches` may be empty.
@@ -68,6 +71,14 @@ PASS/FAIL with incomplete rows listed.
 Neither `migration_batching.md` nor `status.md` marks any batch "approved" or "final", and no batch carries a committed date or owner — that is `/wire:migration-batching-review`'s job.
 PASS: no lock-in language.
 FAIL: quote the offending lines.
+
+**Check 8 — Build-ordered waves are well-formed (only when `partition_mode: build_ordered_waves`)**
+Skip in `domain` mode. When the SCC fallback fired, independently confirm the waves are a valid build order:
+- **Fallback is justified and recorded** — re-derive the domain-level SCC condition from the Check 3 object graph (a single SCC spanning the domains). Confirm the narrative and status (`scc_fallback: true`) record it. A build-ordered partition emitted when a viable acyclic *domain* partition existed is a FAIL (the fallback should only fire when it must).
+- **Topological order holds** — for every object edge, the dependency's wave id ≤ the dependent's wave id (0 forward references across waves).
+- **Full-prefix dependencies** — each wave `Bk`'s `depends_on_batches` is exactly `B01;…;B(k-1)` (wave 1 empty). A missing or partial prefix is a FAIL.
+- **Domain tag retained** — every CSV row still carries a non-empty `domain` value for rollup.
+PASS/FAIL with the specific violation(s) listed.
 
 ### Update status
 

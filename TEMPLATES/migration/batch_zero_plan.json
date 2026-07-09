@@ -21,6 +21,7 @@
       {
         "name": "example_scalar_macro",
         "project": "example_project",
+        "layer": "macro",
         "tier": 0,
         "depends_on": [],
         "category": "scalar-function",
@@ -28,8 +29,19 @@
         "model_reach": 42
       },
       {
+        "name": "fn_parse_ppc_names",
+        "project": "example_project",
+        "layer": "udf",
+        "tier": 1,
+        "depends_on": ["fn_helper__clean"],
+        "category": "fn_-UDF",
+        "action": "translate",
+        "model_reach": 18
+      },
+      {
         "name": "example_js_udf_macro",
         "project": "example_project",
+        "layer": "udf",
         "tier": null,
         "depends_on": [],
         "category": "fn_-UDF",
@@ -37,6 +49,6 @@
         "model_reach": 3
       }
     ],
-    "_macros_note": "Illustrative entries only. Real output contains one entry per catalogued NEEDS macro: action 'translate' entries carry a non-null tier; 'redesign' and 'manual-review-out-of-scope' entries carry a null tier. model_reach is the count of models using the macro directly or transitively — a floor for UDF-layer macros."
+    "_macros_note": "Illustrative entries only. Real output contains one entry per catalogued NEEDS macro. `layer` routes the entry to its lifecycle: 'macro' (Jinja/dispatched SQL-dialect macros) is translated by `/wire:dbt-migration-generate --macros`; 'udf' (`create_udfs`, `fn_*` → CREATE FUNCTION objects) is deployed by `/wire:target-setup-generate`. action 'translate' entries carry a non-null tier; 'redesign' and 'manual-review-out-of-scope' entries carry a null tier. model_reach is the count of models using the macro directly or transitively — a floor for UDF-layer macros."
   }
 }

@@ -70,9 +70,9 @@ Independently walk every resolved project's filesystem (per `specs/utils/dbt_man
 PASS: Every `file_path` in the CSV resolves to a real file, and every `.sql`/`.py` model file on disk under a resolved project appears as a CSV row.
 FAIL: List dead `file_path` values (in the CSV, not on disk) and missing models (on disk, not in the CSV), with counts of each.
 
-**Check 9 — Batch-zero macro plan is complete and acyclic**
-Every macro with `action: translate` or `action: redesign` appears in `batch_zero_plan.json` — translate macros with a non-null tier; redesign macros listed in the redesign bucket, no tier required. Tier assignment is internally consistent: no macro's tier is ≤ any NEEDS-macro dependency's tier.
-PASS/FAIL with violations listed.
+**Check 9 — Batch-zero macro plan is complete, layered, and acyclic**
+Every macro with `action: translate` or `action: redesign` appears in `batch_zero_plan.json` — translate macros with a non-null tier; redesign macros listed in the redesign bucket, no tier required. Tier assignment is internally consistent: no macro's tier is ≤ any NEEDS-macro dependency's tier. Every entry also carries a `layer` of `macro` or `udf` (never absent, never any other value), and the assignment is consistent: `create_udfs`, `fn_*`-prefixed names, and `fn_-UDF`-category entries are `layer: udf`; all other entries are `layer: macro`. This is the field `/wire:dbt-migration-generate --macros` and `/wire:target-setup-generate` route on — a missing or wrong `layer` sends a macro to the wrong lifecycle.
+PASS/FAIL with violations listed (including any entry missing `layer` or classified into the wrong lifecycle).
 
 **Check 10 — Conditionally-enabled models are correctly in scope**
 Independently re-scan for var-driven `enabled` config per `specs/utils/dbt_manifest_parse.md` Step 3b — in-model config and folder-level `+enabled` in every resolved project's `dbt_project.yml` — do not trust generate's classification or the manifest's resolved `nodes`/`disabled` split alone. For every model whose `enabled` resolution path contains a `var(` call, anywhere, confirm: it is tagged `conditional:<var_name>` in the CSV (never `true` and never `false`), it carries a non-null `batch_number`, and it is not counted toward the statically-disabled exemption in Check 2.

@@ -34,6 +34,7 @@ Validates that translated dbt models compile and pass basic structural checks ag
 ## Flags
 
 - `--batch N` — validate batch N only (default: current_batch in status.md)
+- `--macros` — validate the batch-zero macro pass (`/wire:dbt-migration-generate --macros`) instead of a model batch. See **Macro Mode Checks** below.
 
 ## Validation Checks
 
@@ -74,6 +75,30 @@ For every model in the batch that has a companion schema/properties YAML in the 
 - Any column-level `policy_tags` / masking `meta` is either authored into the YAML (dbt-managed) or explicitly recorded in the batch summary as deferred to the security workstream — not silently dropped.
 PASS: All companion-YAML items handled or explicitly deferred. FAIL: List models with an un-repointed `sources.yml`, untranslated test SQL, or dropped policy-tag/meta config.
 
+## Macro Mode Checks (`--macros`)
+
+Run these instead of Checks 1–7 when `--macros` is supplied. Ground truth is `audit/batch_zero_plan.json` (the `layer: macro`, `action: translate` entries), re-read here rather than trusted from generate's summary.
+
+**Check M1 — Every macro-layer entry has a translated file**
+For every `layer: macro`, `action: translate` entry in `batch_zero_plan.json`, a translated definition exists under `migration/dbt/macros/` at the mirrored relative path. UDF-layer entries are explicitly out of scope (they are validated by `/wire:target-setup-validate`).
+PASS/FAIL with gaps.
+
+**Check M2 — No source-platform-specific functions remain in macro bodies**
+Same scan as Check 2, applied to the translated macro files.
+PASS/FAIL with functions and macros listed.
+
+**Check M3 — Tier order is respected**
+No translated macro references the *source-dialect* form of a lower-tier macro it depends on — a tier-N macro must call the already-translated tier-`<N` version. Rebuild the dependency tiers from `batch_zero_plan.json`.
+PASS/FAIL with violations listed.
+
+**Check M4 — MANUAL REVIEW flags and deferrals tracked**
+Every `-- MANUAL REVIEW` comment in a translated macro, and every `compile: deferred` macro, is listed in `batch_zero_macros_summary.md`.
+PASS/FAIL.
+
+**Check M5 — Diff files exist**
+Every translated macro has a `.diff.md`.
+PASS/FAIL.
+
 ### Update status
 
 ```yaml
@@ -82,6 +107,7 @@ artifacts:
     validate: pass | fail
     validated_date: "{{TODAY}}"
     batch_N_validate: pass | fail
+    macros_validate: pass | fail          # set only when run with --macros
 ```
 
 

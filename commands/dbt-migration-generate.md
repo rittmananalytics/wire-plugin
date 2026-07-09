@@ -23,7 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Translate dbt models batch by batch to target dialect with inline equivalency validation
-argument-hint: <release-folder> [--batch N] [--model name] [--select selector] [--exclude selector]
+argument-hint: <release-folder> [--batch N] [--model name] [--select selector] [--exclude selector] [--macros]
 ---
 
 ## Auto-Delegation
@@ -78,15 +78,19 @@ Works in batches as defined in the dbt audit. Normally the auto-delegation layer
 - `--model <name>` — process a single model by name (shorthand for `--models` with one entry)
 - `--select <selector>` — resolve the models to translate using dbt node-selection grammar (graph operators `+`, `n+`, `@`; space-separated unions; comma-separated intersections; `tag:`, `config.materialized:`, `path:` set selectors). Resolved by Wire over the source project's dependency graph — **no dbt binary required**. See Step 1a.
 - `--exclude <selector>` — companion to `--select`; removes matching models from the resolved set. Same grammar. Optional.
+- `--macros` — **batch-zero macro pass.** Translate the shared Jinja / dispatched *macro definition* files listed in `audit/batch_zero_plan.json`, in tier order, instead of the model graph. This is the pass that must land before model batch 1: a widely-used macro is expanded by models scattered across every batch, so it is rewritten once, up front, and every downstream model then compiles against the already-translated macro. See **Macro Mode Workflow** below. UDF-layer entries (`layer: udf`) are **not** in scope here — they are `CREATE FUNCTION` DDL deployed by `/wire:target-setup-generate`.
 - No flag — process the next incomplete batch (read from status.md `dbt_migration.current_batch`)
 
 `--select`/`--exclude` and `--batch` are different scoping models — abort if both are supplied. Likewise abort if both `--select` and `--model`/`--models` are supplied. A bare name (`--select vehicles`) resolves to that single model, identical to `--model vehicles`. `--exclude` may be supplied without `--select` (it filters whatever scope is otherwise in effect). `--select ""` aborts with: `[wire] --select value is empty. Pass a selector, or omit the flag to use --batch / --model.`
+
+`--macros` is its own scope mode — abort if it is combined with `--batch`, `--model`, `--models`, `--select`, or `--exclude`: `[wire] --macros is a standalone scope. Run it on its own; do not combine with --batch/--model/--models/--select/--exclude.` Do **not** overload `--batch 0` for this — audit batches run 1–N, and `--macros` reads unambiguously.
 
 Full grammar and resolution algorithm: `wire/docs/specs/dbt-node-selection.md`.
 
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.csv`
+- `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json` — consumed only by `--macros` mode (the `layer: macro`, `action: translate` entries, tiered)
 - `.wire/releases/$ARGUMENTS/status.md` — dbt_migration.current_batch
 - Source dbt model SQL files **and their companion schema/properties YAML** (`schema.yml` / `_models.yml` / `sources.yml`) at `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if registered)
 - PII tag map (optional): the file at `migration.pii_tag_map_path` in status.md, defaulting to `.wire/releases/$ARGUMENTS/migration/tag_map.json` — a flat `{source_masking_policy_name: target_policy_tag_resource_path}` JSON map, loaded in Step 2 and consumed in Step 3b item 4
@@ -141,6 +145,7 @@ Read `migration_sources.dbt` from status.md (if the block exists):
 
 1. Read `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if set) and `migration.source_platform` from status.md.
 2. Determine which models to translate:
+   - If `--macros` provided: this is not a model scope. Skip Steps 2–6 entirely and run the **Macro Mode Workflow** below instead.
    - If `--select <selector>` (optionally with `--exclude`) provided: resolve the model set per **Step 1a**.
    - If `--model <name>` provided: process that single model
    - If `--batch N` provided: load all models with `batch_number = N` from `dbt_audit.csv`
@@ -191,6 +196,67 @@ out to dbt** and do not reimplement graph traversal over `dbt_audit.csv` (it sto
    If the resolved set is empty, abort: `[wire] No models matched selector "<selector>". Aborting.`
 
 The resolved model list then flows into Step 3 unchanged.
+
+## Macro Mode Workflow (`--macros`)
+
+Runs **instead of** Steps 2–6 when `--macros` is supplied. Steps 0 (MCP connectivity), 0b (snapshot freshness), and the data-safety reminder still apply — the source MCP is needed to read macro bodies and the target MCP to compile-check. There is **no row-equivalency loop** here: macros are definitions, not tables. A macro is "correct" when the models that expand it compile on the target — that verification happens in the model batches, not here.
+
+### Step M1: Load the batch-zero plan
+
+Read `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json`. If it is missing, abort: `[wire] No batch_zero_plan.json found — run /wire:dbt-audit-generate $ARGUMENTS first.`
+
+Select the entries to translate: every macro with `action: "translate"` **and** `layer: "macro"`. Exclude:
+- `layer: "udf"` entries — these are `CREATE FUNCTION` DDL owned by `/wire:target-setup-generate`; print a one-line note stating how many UDF-layer entries were skipped and that they deploy via target-setup.
+- `action: "redesign"` and `action: "manual-review-out-of-scope"` entries — list them so the consultant knows they are handled outside this pass (redesign at the target-setup review gate; manual-review out of scope).
+
+Order the selected macros by `tier` ascending (tier 0 first, then tier 1, …). Within a tier, order is free. If the selected set is empty, print `[wire] No macro-layer entries need translation — nothing to do.` and stop cleanly.
+
+### Step M2: Load translation context
+
+Same as Step 2: read the platform-pair `translation_guide.md`, `translation_reference.md` (authoritative on conflict), and `dbt_neutral_translation.md`. Apply the **macro-first strategy** from `dbt_neutral_translation.md` — where each dialect difference should live (dbt built-in → `dbt_utils` → dispatched macro → `target.type` as a last resort). Prefer lifting in-macro `target.type` branches up to clean dispatched macros over reproducing per-dialect switches. Load any engagement-level overrides at `.wire/engagement/platform_pair_overrides/{pair}/`. The PII tag map does not apply to macros.
+
+### Step M3: Translate each macro (tier order, compile-only)
+
+For each macro, in tier order:
+
+1. Read the macro definition file from `macros/` under `migration.dbt_project_path` (or the registered local snapshot). Record its **relative path within the source project** (e.g. `macros/cross_dialect/globalize_id.sql`) — mirrored in the output.
+2. Translate the macro body applying the same treatments as a model (function swaps, type handling, dispatch/adapter updates, Jinja macro calls). A tier-N macro may call already-translated tier-`<N` macros — reference the translated version, never re-translate a dependency inline.
+3. Assign a confidence rating (`high` / `medium` / `low`) on the same basis as models.
+4. **Compile check** against the target MCP: compile a trivial probe that expands the macro (e.g. a `SELECT` wrapping the macro call with representative literal args, run with `LIMIT 0` / dry-run) so the translated definition is exercised without materialising data. Never run a write query. If compile fails, auto-fix (same diagnosis-and-fix loop as models, **max 5 iterations**), then re-check. Some macros cannot be exercised standalone (they assume a `ref`/relation context) — if a macro is not independently compile-checkable, record `compile: deferred` with the reason and rely on the model-batch compile to validate it; do not count this as a failure.
+5. Apply the **translation safeguards** (guard against silent record loss and value drift) exactly as for models.
+
+Write the translated macro to `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path}` preserving the subdirectory structure, and a side-by-side diff to `{same_path_without_extension}.diff.md`.
+
+Macros are not models: do **not** write a `migration_register.csv` row and do **not** run the three-check equivalency (Step 3.5). The register tracks per-model source-commit provenance; macros are validated transitively.
+
+### Step M4: Write the macro-pass summary
+
+Write `.wire/releases/$ARGUMENTS/migration/dbt/batch_zero_macros_summary.md`:
+- Macros translated, grouped by tier, with per-macro confidence and compile result (passed / deferred / failed)
+- Translation patterns applied (counts by type)
+- Any macro that exhausted 5 iterations without compiling — flagged `-- MANUAL REVIEW`
+- UDF-layer entries skipped (count) with the pointer to `/wire:target-setup-generate`
+- `redesign` / `manual-review-out-of-scope` entries listed as out of scope for this pass
+
+### Step M5: Update status and output
+
+```yaml
+artifacts:
+  dbt_migration:
+    macros_translated: true
+    macros_translated_date: "{{TODAY}}"
+    macros_translated_count: N        # layer:macro, action:translate entries written
+    macros_deferred_count: N          # compile deferred to model-batch validation
+    macros_failed_count: N            # exhausted 5 iterations
+```
+
+Do **not** touch `current_batch` or the model counts — the macro pass is orthogonal to model batches. Print a tier-ordered summary table and the next command:
+
+```
+Batch-zero macro pass complete. Deploy the UDF layer, then translate model batch 1:
+/wire:target-setup-generate $ARGUMENTS      # deploys the layer:udf CREATE FUNCTION objects
+/wire:dbt-migration-generate $ARGUMENTS --batch 1
+```
 
 ### Step 2: Load translation context
 
@@ -558,6 +624,7 @@ All N batches translated.
 - `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path}/{model_name}.diff.md` — covers `.sql` and `.yml` changes
 - `.wire/releases/$ARGUMENTS/migration/dbt/batch_{N}_summary.md`
 - `.wire/releases/$ARGUMENTS/migration/dbt/acceptance_pack_batch_{N}.md` — generated when all batch models reach terminal state
+- **`--macros` mode:** `.wire/releases/$ARGUMENTS/migration/dbt/macros/{relative_path}/{macro}.sql` (+ `.diff.md`) mirroring the source `macros/` tree, and `.wire/releases/$ARGUMENTS/migration/dbt/batch_zero_macros_summary.md`
 - BigQuery table `migration.transformation_log_table` (when configured) — one structured row per migrated object; not a file
 - `.wire/releases/$ARGUMENTS/artifacts/migration_strategy/dag_batch_{N}.md` — updated Mermaid DAG with current model states
 - Updated `.wire/releases/$ARGUMENTS/status.md`

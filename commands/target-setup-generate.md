@@ -48,7 +48,9 @@ Generates the DDL scripts required to create all databases, schemas, tables, vie
 - `.wire/releases/$ARGUMENTS/migration/migration_strategy.md`
 - `.wire/releases/$ARGUMENTS/audit/db_object_audit.md`
 - `.wire/releases/$ARGUMENTS/audit/security_audit.md`
+- `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json` — the UDF layer (`layer: udf` entries) for Step 5b; optional (skip cleanly if absent or dbt-audit was not run)
 - Platform pair type mapping: `wire/platform_pairs/{pair}/type_mapping.md`
+- Platform pair translation guide/reference: `wire/platform_pairs/{pair}/translation_guide.md` and `translation_reference.md` (for translating UDF bodies in Step 5b)
 
 ## Workflow
 
@@ -189,11 +191,34 @@ When scope is absent or `full_migration`, emit the security DDL exactly as the f
 
 Write to: `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/04_security.sql`
 
+### Step 5b: Generate UDF DDL (batch-zero UDF layer)
+
+The batch-zero pass has two lifecycles. The Jinja / dispatched macros (`layer: macro`) are pure dialect translation, handled by `/wire:dbt-migration-generate --macros`. The **UDFs** (`layer: udf` — `create_udfs` and `fn_*` → `CREATE FUNCTION`) are warehouse DDL objects with a deploy-once + verify-exists lifecycle. They belong here, alongside the other target objects, and are deployed as part of target-setup Phase 1 (before model batch 1 runs).
+
+Read `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json`:
+
+- If the file is absent (dbt-audit was not run, e.g. a discovery-only or non-dbt migration), **skip this step** with a one-line note: `[wire] No batch_zero_plan.json — skipping UDF DDL (no dbt UDF layer to deploy).` Do not block.
+- Select entries with `layer: "udf"`. If none, note `[wire] No UDF-layer entries in batch_zero_plan.json — skipping 05_udfs.sql.` and skip.
+
+Split the selected UDFs by `action`:
+
+**`action: translate` UDFs — emit `CREATE FUNCTION` DDL.** Translate each UDF body from the source dialect to the target using the platform-pair `translation_guide.md` / `translation_reference.md` (same engine as model translation). Emit target `CREATE FUNCTION` (BigQuery: `CREATE FUNCTION IF NOT EXISTS`; Snowflake: `CREATE FUNCTION IF NOT EXISTS`) statements into the script, **in tier order** so a UDF is defined after any UDF it calls: all of tier 0 first, then tier 1, …, and `create_udfs` (the aggregator) last. This mirrors the pilot, which deployed `STRIP_NULL_VALUE` and the dispatched helper UDFs manually as target-setup Phase 1. Where a UDF depends on another UDF's fully-qualified name, reference the target namespace, not the source.
+
+**`action: redesign` UDFs — do not mechanically translate.** These have no direct target equivalent (Snowpark Python, JS VARIANT handling, etc.). Do **not** emit a `CREATE FUNCTION` for them. Instead, write a clearly-commented block into `05_udfs.sql` naming each redesign UDF, its source construct, and its model reach, and add each to the **UDF redesign decisions** section of the MANIFEST (Step 6) as an explicit architecture decision — BigQuery ML, Vertex AI, a remote UDF, or an in-model rewrite. This is a decision for the `target-setup-review` safety gate, not a translation.
+
+**`action: manual-review-out-of-scope`** entries (session/catalog/dev-tooling) are not model-build objects — list them in a trailing comment in `05_udfs.sql` and move on; they are not deployed.
+
+Add a verify-exists footer to `05_udfs.sql` — a commented `INFORMATION_SCHEMA.ROUTINES` (BigQuery) or `SHOW USER FUNCTIONS` (Snowflake) query the operator runs post-execution to confirm every translated UDF was created.
+
+Write to: `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/05_udfs.sql`
+
 ### Step 6: Generate execution manifest
 
 Write a manifest file listing all scripts with descriptions and recommended execution order:
 
 `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/MANIFEST.md`
+
+Include `05_udfs.sql` in the execution order when it was written (Step 5b) — after `04_security.sql` and before model batch 1. If any `redesign` UDFs were found, add a **UDF redesign decisions** section to the MANIFEST that names each redesign UDF, its source construct, and its model reach, and states that a target approach (BigQuery ML / Vertex AI / remote UDF / in-model rewrite) must be chosen at the `target-setup-review` gate before the affected models can be translated. This is the equivalent of the `redesign` macro bucket surfacing at review — an architecture decision, not a mechanical step.
 
 ### Step 7: Update status
 
@@ -205,6 +230,8 @@ artifacts:
     generated_date: "{{TODAY}}"
     scripts_count: N
     tables_in_ddl: N
+    udfs_in_ddl: N              # layer:udf, action:translate entries written to 05_udfs.sql (0 or absent if no UDF layer)
+    udfs_redesign: N            # layer:udf, action:redesign entries surfaced at the review gate
 ```
 
 ### Step 8: Emit dbt profiles.yml block
@@ -260,12 +287,21 @@ explicit approval before any script is executed against the target platform.
 /wire:target-setup-validate $ARGUMENTS
 ```
 
+If any `redesign` UDFs were surfaced in Step 5b, add an explicit line so they are not missed at the gate:
+
+```
+⚠  N UDF(s) have no direct [target_platform] equivalent and need an architecture
+   decision at target-setup-review (see "UDF redesign decisions" in MANIFEST.md):
+   [list each redesign UDF]
+```
+
 ## Output Files
 
 - `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/01_schemas.sql`
 - `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/02_tables.sql`
 - `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/03_views_stub.sql`
 - `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/04_security.sql`
+- `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/05_udfs.sql` — when a `layer: udf` batch-zero layer exists (Step 5b)
 - `.wire/releases/$ARGUMENTS/migration/target_setup_scripts/MANIFEST.md`
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 

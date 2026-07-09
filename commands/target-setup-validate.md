@@ -50,13 +50,21 @@ PASS/FAIL.
 PASS/FAIL.
 
 **Check 6 — MANIFEST.md lists all scripts**
-All four SQL script files are listed in MANIFEST.md with descriptions.
+Every SQL script file written is listed in MANIFEST.md with a description — the four core scripts (`01`–`04`), plus `05_udfs.sql` when it was generated.
 PASS/FAIL.
 
 **Check 7 — SQL syntax is valid for target platform**
 Perform a static syntax check: scan for keywords illegal on the target platform (e.g., BQ-only syntax in Snowflake scripts, or vice versa).
 PASS: No illegal syntax found.
 FAIL: List lines with illegal syntax.
+
+**Check 8 — UDF layer complete (when a UDF layer exists)**
+Read `audit/batch_zero_plan.json`. If it exists and has `layer: udf` entries:
+- Every `action: translate` UDF has a `CREATE FUNCTION` statement in `05_udfs.sql`, and the statements are in tier order (a UDF appears after every UDF it depends on, with `create_udfs` last).
+- Every `action: redesign` UDF is named in the MANIFEST's **UDF redesign decisions** section — not silently emitted as a `CREATE FUNCTION`.
+- No untranslated source-dialect function bodies remain in the emitted UDF DDL (same scan as Check 7, applied to `05_udfs.sql`).
+If `batch_zero_plan.json` is absent or has no `layer: udf` entries, this check is **N/A** (not a FAIL) — record "no UDF layer".
+PASS/FAIL with gaps and out-of-order or mis-routed UDFs listed.
 
 ### Update status
 

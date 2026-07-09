@@ -6,6 +6,12 @@
 
 > **CANDIDATES, NOT DECISIONS.** This is a proposed partition of the migration inventory into domain batches, derived from the real dependency graph. No batch is approved, final, or scheduled. Batch composition, target dates, and owners are decided at `/wire:migration-batching-review` — until that gate runs, this artifact is not authoritative for scheduling.
 
+## Partition Mode
+
+**Mode**: {{PARTITION_MODE}} (`domain` or `build_ordered_waves`)
+
+[Domain mode: "One batch per domain group; the domain dependency graph is a viable acyclic DAG." Build-ordered mode: state the SCC evidence — the domains form a single strongly-connected component (SCC count / largest-SCC size vs domain count), so no domain grouping can be both acyclic and declare every cross-batch edge. The partition of record is therefore build-ordered waves: a topological sort of the model graph cut into {{WAVE_COUNT}} waves, each depending on the full prefix of earlier waves. The `domain` column is retained on every row for client/milestone rollup, but it is not the build order.]
+
 ## Seed Reconciliation
 
 **Seed plan**: {{SEED_PATH_OR_NONE}}

@@ -46,6 +46,7 @@ The following actions will be authorised by approving this review:
   - CREATE DATABASE / SCHEMA statements will be executed on the target platform
   - CREATE TABLE statements for N tables will be executed
   - GRANT statements will be executed to configure roles and permissions
+  - CREATE FUNCTION statements for N UDFs will be executed (if 05_udfs.sql exists)
 
 No data is moved at this step. Fivetran connectors are NOT yet activated.
 
@@ -55,6 +56,8 @@ Please confirm:
 [ ] The target platform is a non-production environment OR
     a production environment with explicit client authorisation
 [ ] Any TODO items in the DDL have been addressed or formally deferred
+[ ] Each UDF in the "UDF redesign decisions" section has an agreed target
+    approach (BigQuery ML / Vertex AI / remote UDF / in-model rewrite), or none exist
 [ ] A rollback plan is in place (drop all created objects if target setup fails)
 ```
 
@@ -71,8 +74,9 @@ Safety gate not cleared. Address the unchecked items and re-run:
 ### Step 1: Present scripts for review
 
 Display the MANIFEST.md contents and summarise:
-- Total schemas, tables, views, security objects to be created
+- Total schemas, tables, views, security objects, and UDFs to be created
 - Any TODO items still open
+- The **UDF redesign decisions** section, if present — each UDF with no direct target equivalent and the target approach proposed for it. These are architecture decisions the reviewer must sign off before the affected models can be translated.
 - Rollback procedure from migration strategy
 
 ### Step 2: Safety gate confirmation
@@ -99,6 +103,7 @@ Scripts should be executed in this order:
 2. 02_tables.sql
 3. 03_views_stub.sql (manual TODOs only)
 4. 04_security.sql
+5. 05_udfs.sql (if present — deploys the batch-zero UDF layer before model batch 1)
 ```
 
 ### Step 4: Update status

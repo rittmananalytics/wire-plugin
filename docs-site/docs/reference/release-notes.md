@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.5 — Batch-zero macro & UDF pass, single-SCC batching fallback
+
+**Released**: July 2026
+
+Completes the batch-zero pass that `dbt-audit` has planned all along but nothing consumed, and makes migration batching reproduce the build-ordered plan that SCC-heavy estates always needed by hand.
+
+**`dbt-migration-generate --macros` translates the shared macro layer.** The batch-zero macro plan (`audit/batch_zero_plan.json`) is the tiered list of shared macros and UDFs that must be translated before model batch 1 — a widely-used macro reaches models scattered across every batch, so it can't sit inside one. The new `--macros` scope mode reads that plan and translates the `layer: macro` Jinja/dispatched macro *definition* files in tier order (tier 0 first), mirroring the source `macros/` tree, reusing the same platform-pair guides and macro-first strategy as model translation. It's a standalone scope — not combinable with `--batch`/`--model`/`--select`, and it does not overload `--batch 0`. There's no row-equivalency loop: a macro is validated when the models that expand it compile, so it's a compile-only pass checked by `dbt-migration-validate --macros`.
+
+**`target-setup-generate` now deploys the UDF layer.** UDFs (`create_udfs`, `fn_*` → `CREATE FUNCTION`) are warehouse DDL, not Jinja, so they belong with the other target objects rather than in `dbt-migration`. Each plan entry carries a `layer` field (`macro` | `udf`) that routes it; `target-setup-generate` translates the `layer: udf`, `action: translate` entries into tier-ordered `CREATE FUNCTION` statements in a new `05_udfs.sql`, run as target-setup Phase 1. A UDF with no direct target equivalent (`action: redesign`) is not mechanically translated — it surfaces in the MANIFEST's "UDF redesign decisions" section as an architecture choice (BigQuery ML / Vertex AI / remote UDF / in-model rewrite) that the `target-setup-review` safety gate must sign off before the affected models are translated.
+
+**`migration-batching-generate` falls back to build-ordered waves for single-SCC estates.** When every domain cross-references every other — the domain graph is one strongly-connected component — no domain grouping can be both acyclic and declare every cross-batch edge, so the domain partition can never validate. The command now detects that and switches `partition_mode` to `build_ordered_waves`: it topologically sorts the model graph, cuts it into `--target-batches N` waves (default: the domain-group count), and makes each wave depend on the full prefix of earlier waves — trivially acyclic and edge-complete. The domain tag stays on every row for client and milestone rollup even though it's no longer the build order, and the fallback is recorded in the narrative and `status.md` (`scc_fallback: true`). `migration-batching-validate` reads `partition_mode` and applies mode-aware checks.
+
+---
+
 ## v3.10.4 — Cube, Omni, and OAC semantic-layer options; Wire Studio and agentic_commerce removed
 
 **Released**: July 2026

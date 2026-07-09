@@ -44,12 +44,13 @@ Follow `specs/utils/meeting_context.md` to surface any Fathom recordings touchin
 ### Step 2: Present the batching summary
 
 Display:
+- The partition mode (`domain` or `build_ordered_waves`) — if the SCC fallback fired, explain that the estate is a single dependency SCC, so the plan is build-ordered waves rather than domain batches, and the domain column is a rollup tag not the build order
 - The batch summary table (batch_id, name, domain, object count, effort hours, depends_on_batches, batch-zero prerequisite)
 - The batch-level dependency DAG
-- The parallel-safe groupings
+- The parallel-safe groupings (none in build-ordered mode — waves are strictly sequential)
 - The seed-reconciliation note from generate
 
-Reaffirm to the reviewer that these are candidates — no batch has a committed date, owner, or approval yet. This gate is where that happens.
+Reaffirm to the reviewer that these are candidates — no batch has a committed date, owner, or approval yet. This gate is where that happens. In build-ordered mode the reviewer still schedules and owns each wave, but reordering waves against the build order is a dependency violation — treat it like any Check 3 violation (withdraw or record an explicit risk acceptance).
 
 ### Step 3: Adjudicate
 

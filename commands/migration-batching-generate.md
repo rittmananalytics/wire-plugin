@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Partition the migration inventory into independently-schedulable domain batches, checked against the real dependency graph
+argument-hint: <release-folder> [--seed path] [--target-batches N]
 ---
 
 ## Auto-Delegation
@@ -39,6 +40,8 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: migration_batchi
 Partitions the approved migration inventory into named **domain batches** — independently-implementable, schedulable slices of the migration scope, each spanning every layer it touches (ingestion, warehouse objects, dbt models, orchestration, reverse ETL) — and derives the dependency ordering between batches from the real dependency graph.
 
 This replaces the hand-drafted batch spreadsheet. It is re-runnable whenever the inventory or dbt audit changes, specifically so a domain-batch plan cannot silently drift out of sync with the real dependency graph — a hand-drawn plan on a past engagement scheduled batches in parallel that the graph, once known, showed could not build in parallel, and nothing was responsible for catching it.
+
+**Two partition modes.** The default output is one batch per domain group (`partition_mode: domain`). But some estates cross-reference in every direction — the domains form a single strongly-connected component (SCC), and no domain grouping can be both acyclic *and* declare every cross-batch edge (the two conditions `/wire:migration-batching-validate` enforces are mutually exclusive for an SCC). When Step 4b detects that, generate falls back automatically to **build-ordered waves** (`partition_mode: build_ordered_waves`): a topological sort of the model graph, cut into N waves, each depending on the full prefix of earlier waves. That is trivially acyclic and declares every edge, so it validates — and it reproduces from the command instead of a hand-rolled script. The domain tag is kept as a column for client/milestone rollup even when it can't be the build order.
 
 **Domain batches are not translation batches.** `dbt_audit.csv`'s `batch_number` is a translation batch — a group of ≤20 models sequenced for `/wire:dbt-migration-generate` runs. A domain batch is a business-scoped, multi-layer slice delivered as its own release or sprint. Do not conflate them.
 
@@ -58,6 +61,7 @@ If the inventory is not approved, stop: "Approve the migration inventory before 
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.csv` — per-model `batch_number`, `enabled`, `platform_macros`, layer/path (domain-grouping hints and the batch-zero dependency)
 - `.wire/releases/$ARGUMENTS/status.md`
 - **Optional seed**: if `status.md` carries a `sow.batch_allocation` path (or a similar hand-drafted batch plan reference), or `--seed <path>` was passed in `$ARGUMENTS`, read the referenced CSV/plan of human-assigned batch names and groupings as a **seed, not ground truth** — it is reconciled against the real graph in Step 3, never accepted or discarded silently. If no seed exists, proceed with pure graph-derived grouping.
+- **Optional `--target-batches N`**: the number of waves to cut the model graph into if the build-ordered fallback fires (Step 4b/4c). Ignored in the default domain mode. If unset, defaults to the candidate domain-group count (Step 3), so wave granularity stays comparable to what the domain partition would have produced.
 
 ## Workflow
 
@@ -85,17 +89,43 @@ If edges run in **both** directions between the same two groups, they are not ac
 
 **The output DAG must be acyclic. This is a hard requirement — verify it before writing anything.** If a cycle survives the merge rule, keep merging along the cycle until it is gone, and record every merge in the narrative.
 
+### Step 4b: Detect the single-SCC condition
+
+The merge rule in Step 4 removes cycles by collapsing bidirectionally-linked groups. When the whole estate cross-references in every direction, that collapsing runs all the way to **one group** — the domain partition degenerates to a single batch, which is no partition at all. A domain plan can never both stay acyclic and declare every cross-batch edge in that case; the two are mutually exclusive, so `/wire:migration-batching-validate` C2 and C3 can never both pass.
+
+Test for it. Build the domain-level directed graph (a node per candidate domain group from Step 3; an edge A→B for any object edge crossing from A to B), then compute its strongly-connected components (Tarjan's or Kosaraju's):
+
+- **More than one SCC, and the condensation is a non-trivial DAG** → the domain partition is viable. Continue in **domain mode** (Steps 5–10 as written).
+- **A single SCC spanning all (or effectively all) domains** — equivalently, Step 4's merge rule collapses everything to one batch → the domain partition is not viable. Switch to **build-ordered waves** per Step 4c.
+
+Record which mode was chosen and the evidence (SCC count, the size of the largest SCC vs the domain count) — it goes in the narrative and the status block. Never silently emit a single-batch domain partition.
+
+### Step 4c: Build-ordered waves (fallback — only when Step 4b selects it)
+
+Replace the domain partition with waves cut from the model-level build order:
+
+1. **Topologically sort the full buildable model graph** (the same graph the dbt audit's batch ordering uses — every model's `ref()`/`source()` parents sort before it, 0 forward references). Break ties by domain priority (so a wave stays as domain-coherent as the build order allows), then by name.
+2. **Coarsen into `--target-batches N` waves** (default: the candidate domain-group count from Step 3), preserving the topological order — wave 1 is the earliest slice of the sort, wave N the latest. Balance the waves by the inventory's per-object effort hours (Step 6) without ever reordering across the topological cut.
+3. **Set each wave's `depends_on_batches` to the full prefix** `B01..B(k-1)`. This declares every possible cross-wave edge by construction, so C3 holds, and a strict prefix is trivially acyclic, so C2 holds.
+4. **Keep the domain tag** on every object's CSV row (the `domain` column) so the still-meaningful domain grouping survives for client/milestone/billing rollup — it just isn't the build order.
+
+Non-dbt inventory objects (ingestion, warehouse objects, reverse ETL) that have no place in the model graph attach to the wave of the earliest model that depends on them, or to wave 1 if nothing does; note the rule applied. In build-ordered mode there are no parallel-safe wave pairs — the full-prefix dependency makes every wave depend on all earlier ones — so Step 7 emits an empty parallel-safe set with that explanation rather than searching for one.
+
 ### Step 5: Fold in the batch-zero macro dependency
 
 Any batch containing a model with a non-empty `platform_macros` value (from `dbt_audit.csv`) has an implicit prerequisite on the dbt-audit **batch-zero macro translation pass** (`audit/batch_zero_plan.json`) completing first. Record this explicitly per affected batch in the narrative's batch summary table and batch-zero callout — do not let it get lost among the domain-to-domain edges. This prerequisite lives in the narrative only; the CSV's `depends_on_batches` column carries domain batch ids, not the batch-zero pass.
 
 ### Step 6: Balance batch sizes
 
-Using the inventory's per-object effort-hour estimates, aim for roughly even hours per batch — without breaking a domain grouping and without violating the Step 4 dependency order. Note any batch that is a clear size outlier and why. A shared foundational layer that many batches depend on is often small in object count but blocks everything — its position in the DAG matters more for scheduling than its own hours; say so in the narrative.
+**Domain mode.** Using the inventory's per-object effort-hour estimates, aim for roughly even hours per batch — without breaking a domain grouping and without violating the Step 4 dependency order. Note any batch that is a clear size outlier and why. A shared foundational layer that many batches depend on is often small in object count but blocks everything — its position in the DAG matters more for scheduling than its own hours; say so in the narrative.
+
+**Build-ordered mode.** Balancing already happened inside the Step 4c coarsening — cut the topological order into waves of roughly even effort hours, never reordering across the cut. Note any wave that is a size outlier and why (a dense foundational layer early in the sort often makes wave 1 heavier).
 
 ### Step 7: Identify parallel-safe batch groups
 
-Any set of batches with **zero** dependency edges (either direction) between their members, per the Step 4 DAG, can be scheduled in parallel. Produce this list explicitly — it is the deliverable that directly answers "which of these batches can actually run at the same time", which is exactly what a hand-drawn plan gets wrong.
+**Domain mode.** Any set of batches with **zero** dependency edges (either direction) between their members, per the Step 4 DAG, can be scheduled in parallel. Produce this list explicitly — it is the deliverable that directly answers "which of these batches can actually run at the same time", which is exactly what a hand-drawn plan gets wrong.
+
+**Build-ordered mode.** There are none by construction — every wave depends on the full prefix of earlier waves. Emit an empty parallel-safe set and state that build-ordered waves are strictly sequential (the domain tag, not the wave, is what rolls up for parallel client-facing planning).
 
 ### Step 8: Emit the CSV
 
@@ -108,6 +138,8 @@ object_id,object_type,source_audit,domain,batch_id,batch_name,depends_on_batches
 
 One row per migration_inventory object, classified into exactly one batch. `batch_id` is zero-padded (`B01`, `B02`, …). `depends_on_batches` is a semicolon-separated list of `batch_id`s this object's batch depends on (may be empty; identical for every row in the same batch).
 
+The columns are the same in both modes. In **build-ordered mode**, `batch_id` is the wave id, `batch_name` is the wave label (`Wave 1`, `Wave 2`, …), `domain` still carries the object's domain tag (retained for rollup, not used as the build order), and `depends_on_batches` is the full prefix `B01;…;B(k-1)`.
+
 ### Step 9: Emit the narrative
 
 **Output location**: `.wire/releases/$ARGUMENTS/migration/migration_batching.md`
@@ -115,10 +147,11 @@ One row per migration_inventory object, classified into exactly one batch. `batc
 Use the template at `TEMPLATES/migration/migration_batching.md`. Include:
 
 - The CANDIDATES-not-decisions posture statement (from Purpose) at the top
+- **The partition-mode note**: `domain` or `build_ordered_waves`, and — when the fallback fired — the Step 4b evidence (the domains form a single SCC, so no domain grouping can be acyclic *and* declare every cross-batch edge), stated plainly so no reader wonders why the output isn't domain-grouped
 - The seed-reconciliation note: what was kept from the seed, what changed and why (including every Step 3/4 merge), or "no seed provided"
-- Batch summary table: `batch_id`, name, domain, object count, effort hours, `depends_on_batches`, batch-zero prerequisite (yes/no)
-- A Mermaid DAG at batch granularity — nodes are batches, edges are dependencies
-- The parallel-safe groupings table
+- Batch summary table: `batch_id`, name, domain, object count, effort hours, `depends_on_batches`, batch-zero prerequisite (yes/no). In build-ordered mode the `domain` column shows the wave's dominant domain tag(s) for rollup
+- A Mermaid DAG at batch granularity — nodes are batches, edges are dependencies (in build-ordered mode, the prefix chain B01→B02→…→BN)
+- The parallel-safe groupings table (empty, with the by-construction explanation, in build-ordered mode)
 - The batch-zero macro dependency callout: which batches require the batch-zero pass first, and why
 - A note that this artifact is not authoritative for scheduling or dates until `/wire:migration-batching-review` runs
 
@@ -131,14 +164,18 @@ artifacts:
     file: migration/migration_batching.md
     data_file: migration/migration_batching.csv
     generated_date: "{{TODAY}}"
+    partition_mode: domain | build_ordered_waves
+    scc_fallback: true | false          # true when Step 4b forced build-ordered waves
     batch_count: N
     objects_classified: N
     seed_used: true | false
 ```
 
+`partition_mode` is what `/wire:migration-batching-validate` reads to pick the right checks. When `scc_fallback` is true, `partition_mode` is `build_ordered_waves` and `batch_count` is the wave count (from `--target-batches` or the default).
+
 ### Step 11: Output summary
 
-Print: batch count, object count, parallel-safe groupings found, and next command:
+Print: partition mode (and, if the SCC fallback fired, a one-line reason), batch/wave count, object count, parallel-safe groupings found (none in build-ordered mode), and next command:
 
 ```
 /wire:migration-batching-validate $ARGUMENTS

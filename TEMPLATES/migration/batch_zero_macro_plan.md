@@ -10,6 +10,11 @@ Companion to `batch_zero_plan.json`. Migration input for the {{RELEASE_FOLDER}} 
 
 The macro layer is translated as a **batch-zero pass, before model batch 1**. A widely-used macro can be expanded by hundreds of models scattered across every translation batch, so it cannot sit "in" a model batch — it must be rewritten up front, once, so every model downstream compiles against an already-translated macro.
 
+**Two lifecycles, two commands.** Each entry in `batch_zero_plan.json` carries a `layer` that routes it:
+
+- **`layer: macro`** — Jinja / dispatched SQL-dialect macros. Translated by `/wire:dbt-migration-generate --macros`, which reads this plan and rewrites the macro definition files in tier order. Validated indirectly: the models that call them compile.
+- **`layer: udf`** — `create_udfs` and `fn_*` `CREATE FUNCTION` objects. Deployed to the target by `/wire:target-setup-generate` as `05_udfs.sql` (tier 0 → tier 1 → `create_udfs`). UDFs in the redesign bucket have no target equivalent and surface at the `target-setup-review` safety gate as an architecture decision.
+
 Scope: **{{NEEDS_TRANSLATION_COUNT}} of {{TOTAL_MACRO_COUNT}}** macro definitions need {{SOURCE_PLATFORM}}→{{TARGET_PLATFORM}} translation. {{TIER_BREAKDOWN_SENTENCE}}. Two further buckets are handled outside the translation pass ({{REDESIGN_COUNT}} redesign, {{MANUAL_REVIEW_COUNT}} manual-review).
 
 ## Tiers

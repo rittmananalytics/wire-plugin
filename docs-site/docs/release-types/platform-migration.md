@@ -125,6 +125,8 @@ It parses each resolved project to a manifest (`dbt parse`, no warehouse connect
 
 **The macro layer is scanned too.** Macros needing Snowflake→BigQuery translation are classified `translate` / `redesign` (no direct equivalent — surfaced at the review gate) / `manual-review-out-of-scope` (session/catalog operations, not model-build SQL). Each model's `platform_macros` column records which macros it uses, direct or transitive. The audit produces a **batch-zero macro translation plan** (`audit/batch_zero_plan.json` + `.md`) — the macros needing translation, tiered by dependency, meant to land before model batch 1.
 
+Each plan entry also carries a **`layer`** that routes it to one of two lifecycles: `layer: macro` (Jinja / dispatched SQL-dialect macros) is translated by `/wire:dbt-migration-generate --macros`; `layer: udf` (`create_udfs` and `fn_*` → `CREATE FUNCTION` objects) is deployed to the target by `/wire:target-setup-generate` as `05_udfs.sql`. See [Batch-zero pass: macros and UDFs](#batch-zero-pass-macros-and-udfs) below.
+
 `dbt-audit-validate` independently re-walks the filesystem and re-parses the manifest rather than trusting generate's self-report — reconciling the catalogue against disk, re-verifying batch order against the real dependency graph, and confirming every macro needing translation is classified.
 
 ## Migration batching: domain batches vs translation batches
@@ -132,6 +134,8 @@ It parses each resolved project to a manifest (`dbt parse`, no warehouse connect
 `dbt_audit`'s `batch_number` is a **translation batch** — a group of ≤20 models ordered for `dbt-migration-generate`. A **domain batch** is a different concept: a named, business-scoped slice spanning every layer it touches (ingestion, warehouse objects, dbt models, orchestration, reverse ETL), delivered as its own release or sprint. A domain-batch schedule drawn up before the real dependency graph is known can claim batches build independently in parallel when the graph, once generated, shows they can't.
 
 `/wire:migration-batching-generate` partitions the approved inventory's dependency graph into named domain batches once it's known, states plainly which batches have zero dependency edges between them (genuinely parallel-safe), and folds in the batch-zero macro dependency for any batch containing a flagged model. Like `region-tagging-generate`, it produces **candidates, not decisions** — `/wire:migration-batching-review` is the client adjudication gate (a change that would violate a real dependency must be withdrawn or explicitly risk-accepted, never silently overridden), and `/wire:migration-batching-validate` re-derives the graph independently so a plan drifting out of sync with reality gets caught automatically. Pass a hand-drafted plan as a seed (`--seed <path>`) to reconcile it against the graph rather than starting from scratch.
+
+**Single-SCC estates fall back to build-ordered waves.** Some estates cross-reference in every direction — the domains form one strongly-connected component, and no domain grouping can be both acyclic *and* declare every cross-batch edge (validate's C2 and C3 become mutually exclusive). On the Carwow Snowflake→BigQuery migration — 1,731 models, 3,467 objects, one SCC — the seed 13-domain partition reported 1,108 of 1,542 cross-batch edges undeclared and could not pass. When `migration-batching-generate` detects this, it switches `partition_mode` to `build_ordered_waves`: it topologically sorts the model graph, cuts it into `--target-batches N` waves (default: the domain-group count), and sets each wave to depend on the full prefix of earlier waves. That is trivially acyclic and declares every edge, so it validates 7/7 — and it reproduces from the command instead of a hand-rolled script. The domain tag stays on every row for client/milestone rollup even when it can't be the build order. The fallback is recorded in the narrative and `status.md` (`scc_fallback: true`) so it's explicit *why* the output isn't domain-grouped.
 
 ## Ingestion migration: MCP-driven execution
 
@@ -189,6 +193,21 @@ Before running any audit or migration commands, register the source dbt project 
 | `tag:pilot`, `path:models/staging` | Set selectors by tag, config, or path |
 
 A bare `--select vehicles` is identical to `--model vehicles`. `--select` cannot be combined with `--batch`, `--model`, or `--models`. Before translating, Wire prints the resolved model list and aborts if the selector matches nothing.
+
+### Batch-zero pass: macros and UDFs
+
+The macros and UDFs a model expands have to exist in translated form *before* the model that calls them can compile — a widely-used macro reaches models scattered across every batch, so it can't sit "in" a model batch. That is the batch-zero pass, and `dbt-audit` already produces its plan (`audit/batch_zero_plan.json`). Two commands consume it, one per `layer`:
+
+```
+/wire:dbt-migration-generate <release-folder> --macros   # translate the layer:macro Jinja/dispatched macros
+/wire:target-setup-generate  <release-folder>            # deploy the layer:udf CREATE FUNCTION objects (05_udfs.sql)
+```
+
+`--macros` is its own scope mode (it can't be combined with `--batch`/`--model`/`--models`/`--select`). It translates the shared macro *definition* files in tier order — tier 0 first, then tier 1, and so on — reusing the same platform-pair guides and macro-first strategy as model translation, and writes them to `migration/dbt/macros/` mirroring the source tree. There's no row-equivalency loop here: a macro is validated when the models that expand it compile. `dbt-migration-validate --macros` checks the pass (every macro-layer entry translated, tier order respected, no source-dialect functions left).
+
+The **UDF layer** (`create_udfs`, `fn_*`) is warehouse DDL, not Jinja, so it deploys with the other target objects. `target-setup-generate` translates each `action: translate` UDF into a target `CREATE FUNCTION` and writes them tier-ordered (`create_udfs` last) to `05_udfs.sql`, executed as target-setup Phase 1 after the review gate. UDFs with no direct target equivalent (`action: redesign` — Snowpark Python, JS VARIANT handling) are **not** mechanically translated; they surface in the MANIFEST's *UDF redesign decisions* section as an architecture choice (BigQuery ML / Vertex AI / remote UDF / in-model rewrite) that the `target-setup-review` safety gate must sign off before the affected models are translated.
+
+Run order: `dbt-audit` → `dbt-migration-generate --macros` → `target-setup-generate` (deploy UDFs) → `dbt-migration-generate --batch 1`.
 
 Wire splits each batch into groups of ~5 models and spawns one `wire:migration-specialist` agent per group simultaneously — a 20-model batch runs as 4 parallel agents; 3 batches of 20 launches 12 agents at once.
 

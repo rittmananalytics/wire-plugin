@@ -166,6 +166,13 @@ Restrict the macro dependency graph (from Step 2) to the NEEDS-translation set f
 
 `redesign` and `manual-review-out-of-scope` macros are listed in their own buckets and get no tier.
 
+**Assign each entry a `layer` — the lifecycle it belongs to.** The batch-zero pass is two different kinds of work, translated and deployed by two different commands, so every macro entry carries a `layer` field that routes it:
+
+- `layer: "udf"` — the entry emits a warehouse `CREATE FUNCTION` object (deploy-once DDL): its name matches `create_udfs` or the `fn_*` prefix, or its detected category is `fn_-UDF`. These are deployed to the target by `/wire:target-setup-generate` (see that spec's UDF DDL step), tiered `tier 0 → tier 1 → create_udfs`.
+- `layer: "macro"` — every other NEEDS macro: pure Jinja / dispatched SQL-dialect macros (`globalize_id`, `cross_dialect_helpers`, `ensure_*`, the scalar / VARIANT / ILIKE set). These are translated by `/wire:dbt-migration-generate --macros` and validated indirectly when the models that call them compile.
+
+`redesign` and `manual-review-out-of-scope` UDF entries still carry `layer: "udf"` (with a null tier) so `target-setup-generate` can surface them at its safety-gate review as architecture decisions. The `layer` split is the discriminator both consuming commands route on — do not omit it.
+
 Write:
 - `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json` — from `TEMPLATES/migration/batch_zero_plan.json`
 - `.wire/releases/$ARGUMENTS/audit/batch_zero_macro_plan.md` — from `TEMPLATES/migration/batch_zero_macro_plan.md`
