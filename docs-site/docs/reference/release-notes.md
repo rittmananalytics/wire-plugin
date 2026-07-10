@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.6 — Migration-lifecycle hardening from a real platform-migration delivery
+
+**Released**: July 2026
+
+A hardening pass across the platform-migration lifecycle, closing gaps a live client migration surfaced: validation order, orphan-connector handling, batching idempotency, and execution against the authoritative build schedule.
+
+**dbt-audit-validate now catches a stale catalogue before anything else can pass against it.** Disk reconciliation — comparing the catalogue against the model files actually on disk — now runs as Check 1, first, instead of last. A substituted or stale catalogue used to be able to pass several count-based checks before the reconciliation check caught it; now nothing downstream runs against bad data.
+
+**Orphan connectors and warehouse objects no longer default into wave 1.** `migration-batching-generate` previously fell back to placing any non-dbt object with no model consumer into wave/batch 1 — on one estate that put 105 of 168 connectors into wave 1 when only 31 belonged there, and wave 1 is what the client authenticates against first. Objects with no real model dependency now route to an explicit `NO-DEP` "no model dependency — review" bucket for human triage instead, in both partition modes. The command and its `review` companion also gained an idempotency guard, so a hand-corrected batching CSV is never silently overwritten by a blind re-run, plus a shared-reference build-priority rule, a secondary cutover-partition view, and configurable connector-alias normalization for its single-SCC build-ordered-waves fallback.
+
+**dbt-migration-generate/lint/validate gain a `--wave` flag, resolving scope directly from `migration_batching.csv`'s build waves** — the authoritative execution schedule — instead of `dbt_audit.csv`'s finer-grained topological batches, which previously had no clean mapping to a wave. They also gained a `--config` overlay for isolated/validation runs without editing `status.md`, monorepo-aware manifest resolution via `dbt_manifest_parse.md`, a guard routing long-running builds through dbt instead of the `execute_sql` MCP tool (which enforces a hard ~3-minute timeout), a preference for `ref()` over `source()` when a source is already a migrated model, and a Bronze-schema column-existence check that substitutes `CAST(NULL AS type)` instead of emitting a reference that errors the build.
+
+**New connective-tissue utilities**: `audit_baseline_check` fails loudly when an audit-generate command is handed a missing or empty baseline instead of silently generating off it; `utils-git-workflow` and `utils-session-summary` close the two largest "done by hand in chat" clusters from the engagement (branch-per-artifact + commit/PR sequencing, and drafting a Slack-shaped session summary from the execution log); `jira_sync` gained an opt-in full sync mode reconciling acceptance criteria and assignee. `ingestion-audit-generate` extended to Kleene, Funnel, and Amplitude, and `lineage-generate` — written but never registered in the package build — is now actually installable.
+
+---
+
 ## v3.10.5 — Batch-zero macro & UDF pass, single-SCC batching fallback
 
 **Released**: July 2026
