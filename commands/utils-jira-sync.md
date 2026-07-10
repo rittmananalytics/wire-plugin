@@ -40,10 +40,23 @@ Sync a single artifact's lifecycle state change to Jira. Transitions the corresp
 
 Typically invoked automatically by lifecycle commands after updating status.md.
 
+Optionally, pass `sync_scope: full` to also reconcile acceptance criteria and assignee (Step 6.6):
+
+```bash
+/wire:utils-jira-sync YYYYMMDD_project_name requirements generate sync_scope=full
+```
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `sync_scope` | `status` — lifecycle state, comments, and revision_history only (all steps below except 6.6). `full` — also runs Step 6.6 (acceptance criteria + assignee reconciliation). | `status` |
+
+**Existing callers are unaffected.** Every generate/validate/review spec that currently invokes this utility without a `sync_scope` argument continues to get exactly today's behavior — `sync_scope` defaults to `status`, and Step 6.6 does not run unless a caller explicitly opts in.
+
 ## Prerequisites
 
 - Atlassian MCP server must be configured
 - Project must have Jira keys in `status.md` (created by `/wire:utils-jira-create`)
+- For `sync_scope: full`: `jira.artifacts.[artifact].ac_field_id` must be configured for AC reconciliation, and `artifacts.[artifact].owner` must be set in status.md for assignee reconciliation. Either or both may be absent — see Step 6.6, which skips whichever sub-step lacks its input.
 
 ## Workflow
 
@@ -54,6 +67,7 @@ Typically invoked automatically by lifecycle commands after updating status.md.
 2. Check for `jira` section in YAML frontmatter
 3. If no `jira` section exists, skip silently (no output, no error)
 4. Extract `jira.project_key`, `jira.structure` (defaults to `subtasks` if absent — backwards compatible), and the artifact's issue keys
+5. Resolve `sync_scope` from the caller's input, defaulting to `status` if not passed
 
 ### Step 2: Look Up Issue Key
 
@@ -137,6 +151,8 @@ If `jira.state_mapping` is absent or does not contain a key for the target state
 ### Step 5: Transition the Sub-task
 
 **IMPORTANT: Only transition — do NOT call `editJiraIssue` to update the description. Issue descriptions are set at creation time and must never be modified by sync operations. All lifecycle progress is recorded as comments (Step 6), never by editing the description.**
+
+**This rule scopes narrowly to the narrative description field.** It does not forbid `editJiraIssue` outright — `sync_scope: full` (Step 6.6, optional, off by default) is explicitly permitted to call `editJiraIssue` against two specific fields: a dedicated acceptance-criteria custom field (`jira.artifacts.[artifact].ac_field_id`) and the `assignee` field. Neither is the `description` field. If `sync_scope: full` is not requested, no `editJiraIssue` call of any kind happens anywhere in this spec, and behavior is identical to before this rule was added.
 
 ```
 transitionJiraIssue:
@@ -358,6 +374,69 @@ After writing the Jira comment (whether or not the comment succeeded), append an
 
 **Edge case**: If Jira sync failed (MCP unavailable, transition error), still record the revision history entry — the audit trail should be maintained regardless of Jira connectivity.
 
+### Step 6.6: Acceptance Criteria and Assignee Reconciliation (OPTIONAL — `sync_scope: full` only)
+
+**Skip this entire step if `sync_scope` is `status` (the default) or absent.** Nothing below changes the behavior of an existing caller that doesn't pass `sync_scope: full`.
+
+This step reconciles two things the rest of this spec doesn't touch: whether the artifact's own stated acceptance criteria match what's recorded in Jira, and whether the Jira issue's assignee matches the artifact's recorded owner. Both operate on `[target_issue_key]` — the same key resolved in Step 2 (the Sub-task under `subtasks` structure, or the Task under `single_issue` structure).
+
+#### Step 6.6a: Acceptance Criteria Reconciliation
+
+**Applies only to artifacts that have their own AC construct.** Today that's `requirements` — each `### FR-N: [Name]` section in the generated requirements file has a `**Acceptance Criteria**:` checklist (see `wire/specs/requirements/generate.md` §4). If the artifact type has no equivalent AC section, skip Step 6.6a silently.
+
+**Process**:
+1. Look up `jira.artifacts.[artifact].ac_field_id` in status.md — the custom field ID that holds acceptance criteria in this project's Jira (e.g. `customfield_10050`).
+   - **This field must be explicitly configured. Do not guess a custom field ID and do not fall back to writing into the description.** If `ac_field_id` is absent, skip and note: `Note: sync_scope: full requested AC reconciliation for [artifact] but jira.artifacts.[artifact].ac_field_id is not configured — skipped.`
+2. Read the artifact's source file(s) from `artifacts.[artifact].generated_files` (or `artifacts.[artifact].file` for single-file artifacts) and extract each requirement's AC checklist, grouped by requirement ID (FR-1, FR-2, ...).
+3. Fetch the field's current value:
+   ```
+   getJiraIssue:
+     issueKey: "[target_issue_key]"
+     fields: ["[ac_field_id]"]
+   ```
+4. Diff the artifact's AC text against the field's current text (requirement by requirement).
+   - **No diff**: no action.
+   - **Diff found**: update the field only:
+     ```
+     editJiraIssue:
+       issueKey: "[target_issue_key]"
+       fields:
+         [ac_field_id]: "[formatted AC text, grouped by requirement ID]"
+     ```
+     This call touches only `[ac_field_id]`. It must never include `description` in the same `fields` payload.
+5. If a diff was applied, add a short comment: `Acceptance criteria field updated to match [artifact] (source: [file path]).`
+6. If `editJiraIssue` fails (field not editable in this project's screen scheme, permissions error), log: `Note: Could not update AC field on [target_issue_key]. [error summary]` and continue — do not block the rest of the sync.
+
+#### Step 6.6b: Assignee Reconciliation
+
+**Process**:
+1. Read `artifacts.[artifact].owner` from status.md — the artifact's recorded owner. If this field doesn't exist (status.md predates this convention, or no owner has been recorded for this artifact), skip Step 6.6b silently. Treat this the same as the forward-compatible handling already used for `generated_files` and `revision_history` elsewhere in this spec.
+2. Resolve the owner to a Jira account:
+   ```
+   lookupJiraAccountId:
+     query: "[owner name or email from status.md]"
+   ```
+   If no match is found, log: `Note: sync_scope: full could not resolve Jira account for owner "[owner]" on [artifact] — assignee left unchanged.` and skip.
+3. Fetch the issue's current assignee:
+   ```
+   getJiraIssue:
+     issueKey: "[target_issue_key]"
+     fields: ["assignee"]
+   ```
+4. Compare the current assignee's account ID to the resolved account ID.
+   - **Match (or already assigned to the resolved account)**: no action.
+   - **Mismatch, or currently unassigned**:
+     ```
+     editJiraIssue:
+       issueKey: "[target_issue_key]"
+       fields:
+         assignee:
+           accountId: "[resolved_account_id]"
+     ```
+5. If `editJiraIssue` fails, log: `Note: Could not set assignee on [target_issue_key]. [error summary]` and continue.
+
+**Neither sub-step ever calls `editJiraIssue` with `description` in the payload.** Step 6.6 exists precisely to carve out two narrow, named fields (a custom AC field, and `assignee`) from the description-immutability rule in Step 5 — it does not reopen it more broadly.
+
 ### Step 7: Check Parent Task Completion
 
 After transitioning the Sub-task, check if all Sub-tasks under the parent Task are now "Done":
@@ -421,6 +500,9 @@ addCommentToJiraIssue:
 **Missing generated_files field:**
 - If `artifacts.[artifact].generated_files` doesn't exist, create it using the Glob discovery from Step 5.5. This provides forward compatibility with older status files.
 
+**`sync_scope: full` requested but `ac_field_id` or `owner` missing:**
+- Skip the relevant sub-step of Step 6.6 silently (with a note, per Step 6.6a/6.6b), never fail the whole sync.
+
 In all cases, the calling lifecycle command is never blocked by Jira sync issues.
 
 ## Output
@@ -433,6 +515,7 @@ This utility:
 - Cascades completion up to parent Task and Epic
 - Fails gracefully and silently if Jira is unavailable
 - Maintains revision_history even when Jira is unavailable
+- With `sync_scope: full` (optional, off by default): also reconciles a configured acceptance-criteria custom field and the issue assignee against the artifact's own AC content and recorded owner in status.md — touching only those two named fields, never the description
 
 Execute the complete workflow as specified above.
 
@@ -521,6 +604,24 @@ Skill identifiers:
 | Looker Dashboard Mockup | `looker-dashboard-mockup` |
 
 This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
+
+## Stale Status Check
+
+Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
+
+**Process**:
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
+3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
+4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).
+5. For each stale field found, emit a one-line warning in the command's output:
+   ```
+   ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
+   ```
+   Emit one warning per stale field — do not suppress after the first.
+6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+
+This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 
 ## Rules
 

@@ -1,6 +1,6 @@
 <img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
-# Wire Framework v3.10.5
+# Wire Framework v3.10.6
 
 Wire is a structured delivery system for data platform engagements, built on top of Claude Code and Gemini CLI. It encodes analytics engineering methodology as workflow specifications that the AI reads before generating anything so that output follows consistent patterns, traces back to requirements and can be validated automatically rather than having to be manually eyeballed.
 
@@ -22,7 +22,7 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 
 ## Key Features
 
-- **265 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
+- **263 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
 - **12 release types** matching common engagement shapes: Shape Up discovery, SOP / Canonical discovery (sponsor-facing Findings Playback), full platform builds, pipeline-only, dbt development, dashboard extensions, dashboard-first rapid dev, enablement, platform migration (BigQuery ↔ Snowflake), agentic data stack (governed self-service analytics with eval suite), droughty (schema introspection and base-layer generation from live warehouses), and custom (bespoke deliverables defined from SoW documents)
 - **Two-tier engagement structure** separating long-running client context from individual scoped releases
 - **Generate / validate / review lifecycle** for every artifact: structured generation, automated checks, stakeholder sign-off
@@ -299,7 +299,7 @@ A VS Code extension (`wire-vscode/`) is in early development. The intention is t
 
 - [Documentation site](https://docs.rittmananalytics.com) — full documentation with search, covering all release types, commands, skills, and MCP servers
 - [User Guide](USER_GUIDE.md) — full operational guide covering all release types, worked examples, Autopilot, and troubleshooting
-- [Command Registry](wire/COMMANDS.md) — command catalog and conventions (run `/wire:help` for the full, current list of all 265 commands)
+- [Command Registry](wire/COMMANDS.md) — command catalog and conventions (run `/wire:help` for the full, current list of all 263 commands)
 - [Changelog](CHANGELOG.md)
 - [Release Notes](RELEASE_NOTES.md)
 - [Framework Source README](wire/README.md) — internals, build process, package structure

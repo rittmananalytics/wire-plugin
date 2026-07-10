@@ -52,6 +52,8 @@ migration:
 
 Every migration command now reads `migration.scope`. With `full_migration` (or the field absent) nothing below changes. With `tenant_carveout` the predicate threads through equivalency and the security chain, and the four carve-out commands become part of the flow.
 
+One branching note before you start cutting branches: `01-tenant-carveout` tracks a moving parent migration release, so sync it with periodic `git merge <parent-branch>` rather than rebase, and once you've cut a per-batch branch from it, don't rebase-and-force-push the carve-out branch — that orphans the batch branch by moving the commit its merge-base points at. See [Branching strategy](../release-types/platform-migration#branching-strategy) for the full reasoning.
+
 ## Step 1 — Region tagging (after the audits)
 
 Once the five audits are approved, classify every in-scope item by whether it belongs to the regional tenant being carved out.

@@ -81,7 +81,9 @@ Update `migration_batching.md` (and the affected `migration_batching.csv` rows, 
 [Per acceptance: the dependency edge being overridden, who accepted it, and the rationale — or "none"]
 ```
 
-### Step 5: Update status
+### Step 5: Record a provenance marker, then update status
+
+Step 4 may have rewritten `migration_batching.csv` rows in place (renames, merges, moves) with no marker distinguishing an adjudicated CSV from a freshly-generated candidate. That silence is what let a re-run of `/wire:migration-batching-generate` overwrite a hand-corrected plan without warning — including a hand-fix for exactly the kind of defect Fix W-7 addresses (an object generate misclassified that a human moved by hand at this gate). Close that gap here: after Step 4's edits are written to disk, compute a checksum of the final `migration_batching.csv` (e.g. `shasum -a 256 migration/migration_batching.csv`) and record it as `reviewed_checksum` alongside the review outcome. This is what `/wire:migration-batching-generate`'s idempotency guard reads before it will overwrite anything.
 
 ```yaml
 artifacts:
@@ -89,6 +91,7 @@ artifacts:
     review: approved | changes_requested
     reviewed_by: "{{REVIEWER_NAME}}"
     reviewed_date: "{{TODAY}}"
+    reviewed_checksum: "{{SHA256_OF_MIGRATION_BATCHING_CSV}}"
 ```
 
 ### Step 6: Output next command
@@ -202,6 +205,24 @@ Skill identifiers:
 | Looker Dashboard Mockup | `looker-dashboard-mockup` |
 
 This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
+
+## Stale Status Check
+
+Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
+
+**Process**:
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
+3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
+4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).
+5. For each stale field found, emit a one-line warning in the command's output:
+   ```
+   ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
+   ```
+   Emit one warning per stale field — do not suppress after the first.
+6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+
+This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 
 ## Rules
 

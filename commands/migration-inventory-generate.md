@@ -62,6 +62,7 @@ Run all audits in parallel: /wire:migration-audit-all $ARGUMENTS
 
 - All required audit files under `.wire/releases/$ARGUMENTS/audit/`
 - `.wire/releases/$ARGUMENTS/status.md`
+- **Optional** `migration.connector_alias_patterns` in `status.md` — a list of regex or affix patterns to strip from connector/object identifiers and model `source()` references before matching them in Step 2 (see the alias-normalization note there). Examples: per-market prefixes such as `uk_`/`de_`/`es_`, or connector-suffix short-codes such as `__eu1`. These are documented examples, not a fixed list — set whatever patterns match the engagement's actual naming convention. If unset, Step 2 matches identifiers literally, as before.
 
 ## Workflow
 
@@ -78,12 +79,14 @@ Read each approved audit file. Extract:
 ### Step 2: Cross-reference and deduplicate
 
 Identify objects that appear in multiple audits and link them:
-- Each Fivetran connector writes to one or more schemas → link to db objects in those schemas
+- Each ingestion connector/source writes to one or more schemas → link to db objects in those schemas
 - dbt models reference source tables → link dbt models to db objects
 - Orchestration jobs run dbt commands → link jobs to dbt models
-- Service accounts in security audit → link to Fivetran connectors and orchestration jobs
+- Service accounts in security audit → link to ingestion connectors/sources and orchestration jobs
 - Hightouch syncs reference warehouse objects → link each sync to the db objects and dbt models it reads from (using the `warehouse_objects` field from the reverse ETL audit)
 - Hightouch `dbtModel`-type syncs → link to the specific dbt models in the dbt audit
+
+**Alias normalization before matching.** A regionalized or multi-tenant connector often carries an alias its consuming model's `source()` call doesn't literally repeat — a UK-market connector suffixed `_uk`, a German instance prefixed `de_`, a connector-suffix short-code like `__eu1`. Matched as bare strings, that alias makes a connector with a real downstream consumer look orphaned, which is exactly the kind of false orphan Fix W-7 (`migration_batching`'s `NO-DEP` bucket) exists to catch honestly rather than paper over. Before linking a connector or db-object identifier to a model's `source()` reference, strip any pattern listed in `migration.connector_alias_patterns` (see Inputs) from both sides, then match on the normalized form. If no patterns are configured, match literally as today — this normalization is additive and engagement-specific, never a fixed list of one client's naming scheme.
 
 ### Step 3: Build the dependency graph
 
@@ -108,9 +111,9 @@ For each object type, apply effort weights:
 
 | Object type | Complexity | Est. hours |
 |------------|-----------|-----------|
-| Fivetran connector | Low | 0.5 |
-| Fivetran connector | Medium | 2 |
-| Fivetran connector | High | 4 |
+| Ingestion connector/source | Low | 0.5 |
+| Ingestion connector/source | Medium | 2 |
+| Ingestion connector/source | High | 4 |
 | dbt model | Simple | 0.25 |
 | dbt model | Moderate | 1 |
 | dbt model | Complex | 3 |
@@ -265,6 +268,24 @@ Skill identifiers:
 | Looker Dashboard Mockup | `looker-dashboard-mockup` |
 
 This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
+
+## Stale Status Check
+
+Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
+
+**Process**:
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
+3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
+4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).
+5. For each stale field found, emit a one-line warning in the command's output:
+   ```
+   ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
+   ```
+   Emit one warning per stale field — do not suppress after the first.
+6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+
+This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 
 ## Rules
 

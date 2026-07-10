@@ -35,11 +35,11 @@ Independently re-derives the ground truth for every check — the inventory obje
 
 Read `migration/migration_batching.csv`, `migration/migration_batching.md`, `migration/migration_inventory.md`, `audit/dbt_audit.csv`, and status.md.
 
-**Read the partition mode first.** Take `artifacts.migration_batching.partition_mode` from status.md (`domain` or `build_ordered_waves`; treat absent as `domain` for backward compatibility). The mode changes what Checks 3, 5, and the new Check 8 expect — Checks 1, 2, 4, 6, 7 are identical in both modes. Both modes must still pass C2 (acyclic) and C3 (every cross-batch edge declared); build-ordered waves satisfy both trivially via the full-prefix dependency, which is the whole reason the fallback exists.
+**Read the partition mode first.** Take `artifacts.migration_batching.partition_mode` from status.md (`domain` or `build_ordered_waves`; treat absent as `domain` for backward compatibility). The mode changes what Checks 3, 5, 8, and 9 expect — Checks 1, 2, 4, 6, 7 are identical in both modes. Both modes must still pass C2 (acyclic) and C3 (every cross-batch edge declared); build-ordered waves satisfy both trivially via the full-prefix dependency, which is the whole reason the fallback exists.
 
 **Check 1 — Every inventory object classified exactly once**
-Rebuild the union of objects from `migration_inventory.md`'s unified catalog. Confirm a 1:1 match against `migration_batching.csv` rows — no object missing, none duplicated, no CSV row without a matching inventory object.
-PASS: one-to-one match.
+Rebuild the union of objects from `migration_inventory.md`'s unified catalog. Confirm a 1:1 match against `migration_batching.csv` rows — no object missing, none duplicated, no CSV row without a matching inventory object. A row with `batch_id: NO-DEP` counts as classified — it is a deliberate, named bucket for objects with no model consumer (Check 3 confirms none exist), not a gap. Do not flag `NO-DEP` rows as missing, duplicate, or orphaned on that basis alone.
+PASS: one-to-one match. Report the `NO-DEP` count alongside the pass (e.g. "168 objects, 1:1 match, 12 routed to NO-DEP") so it's visible in the check output, not just the narrative.
 FAIL: list missing objects, duplicates, and orphan CSV rows, with counts of each.
 
 **Check 2 — Batch dependency DAG is acyclic**
@@ -49,8 +49,11 @@ FAIL: list the cycle (the sequence of batch_ids).
 
 **Check 3 — Every real cross-batch graph edge is declared**
 Independently rebuild the object-level dependency graph from `migration_inventory.md`'s adjacency list plus `dbt_audit.csv`'s manifest-derived model dependencies. Do **not** read `migration_batching.md`'s own DAG as ground truth. For every graph edge whose two endpoints land in different batches (per the CSV's `batch_id` assignments), confirm the dependency direction is represented in `depends_on_batches` for the dependent batch. This is the check that directly answers "does this batch plan actually hold against the real dependencies."
-PASS: every cross-batch edge declared.
-FAIL: list every undeclared cross-batch edge — the two objects, their batches, and the correct direction.
+
+For every object classified `NO-DEP`, independently confirm it genuinely has **zero** graph edges to any model in the Check 3 graph. `NO-DEP` is for objects with no real consumer, not an escape hatch for skipping a batch/wave assignment on an object that does have one — a `NO-DEP` object with an actual model edge is a FAIL on this check, same as an undeclared cross-batch edge.
+
+PASS: every cross-batch edge declared, and every `NO-DEP` object confirmed edge-free.
+FAIL: list every undeclared cross-batch edge — the two objects, their batches, and the correct direction — and separately list any `NO-DEP` object that in fact has a model consumer (the object, the model, and the edge).
 
 **Check 4 — Batch-zero macro dependency present where required**
 For every batch containing a model with a non-empty `platform_macros` value (re-read from `dbt_audit.csv`, not from generate's output), confirm the narrative declares the batch-zero macro translation pass as a prerequisite of that batch.
@@ -61,10 +64,10 @@ FAIL: list batches missing the prerequisite.
 For every batch pair listed as parallel-safe in the narrative, confirm zero graph edges (either direction) between their member objects, per the Check 3 graph.
 PASS: no parallel-safe claim contradicted.
 FAIL: list each contradicted claim with the edge (objects, batches, direction) that breaks it.
-In `build_ordered_waves` mode the parallel-safe set must be **empty** (full-prefix dependencies make every wave sequential) — a non-empty parallel-safe list in that mode is a FAIL.
+In `build_ordered_waves` mode the parallel-safe set must be **empty** (full-prefix dependencies make every wave sequential) — a non-empty parallel-safe list in that mode is a FAIL. `NO-DEP` must never appear in a parallel-safe grouping in either mode — it is a holding pen, not a batch, and having zero edges to everything is not evidence it's safe to schedule; a parallel-safe claim naming `NO-DEP` is a FAIL.
 
 **Check 6 — Every CSV row complete**
-Each row has a non-empty `object_id`, `object_type`, `source_audit`, `domain`, `batch_id`, and `batch_name`. `depends_on_batches` may be empty.
+Each row has a non-empty `object_id`, `object_type`, `source_audit`, `domain`, `batch_id`, and `batch_name`. `depends_on_batches` may be empty. A row with `batch_id: NO-DEP` and `batch_name: "No model dependency — review"` is complete on the same terms as any other row — `NO-DEP` is a valid classification, not a placeholder for a missing one, and must not be flagged incomplete on that basis. `depends_on_batches` empty on a `NO-DEP` row is expected, not a defect.
 PASS/FAIL with incomplete rows listed.
 
 **Check 7 — Candidates only, no premature lock-in**
@@ -79,6 +82,11 @@ Skip in `domain` mode. When the SCC fallback fired, independently confirm the wa
 - **Full-prefix dependencies** — each wave `Bk`'s `depends_on_batches` is exactly `B01;…;B(k-1)` (wave 1 empty). A missing or partial prefix is a FAIL.
 - **Domain tag retained** — every CSV row still carries a non-empty `domain` value for rollup.
 PASS/FAIL with the specific violation(s) listed.
+
+**Check 9 — Cutover partition present (only when `partition_mode: build_ordered_waves`)**
+Skip in `domain` mode. Confirm `migration_batching.md` has a non-empty `### Cutover partition (secondary view)` section: a domain-grouped rollup, independently re-derivable from the CSV's `domain` and `batch_id` columns, showing which wave(s) each domain's objects actually landed in. Confirm it states — in words, not just implied by the table — that build order and cutover/domain order diverge because the SCC fallback fired, and names at least the domains whose objects are split across the most waves. An empty or missing section, or one that just repeats the wave DAG without the domain rollup, is a FAIL — this is the check that stops a reader from mistaking a wave number for a client milestone grouping.
+PASS: section present, non-empty, domain/wave mapping independently reproducible from the CSV, divergence stated explicitly.
+FAIL: state which of the above is missing.
 
 ### Update status
 
@@ -189,6 +197,24 @@ Skill identifiers:
 | Looker Dashboard Mockup | `looker-dashboard-mockup` |
 
 This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
+
+## Stale Status Check
+
+Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
+
+**Process**:
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
+3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
+4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).
+5. For each stale field found, emit a one-line warning in the command's output:
+   ```
+   ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
+   ```
+   Emit one warning per stale field — do not suppress after the first.
+6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+
+This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 
 ## Rules
 

@@ -33,10 +33,20 @@ Validates that translated dbt models compile and pass basic structural checks ag
 
 ## Flags
 
-- `--batch N` — validate batch N only (default: current_batch in status.md)
-- `--macros` — validate the batch-zero macro pass (`/wire:dbt-migration-generate --macros`) instead of a model batch. See **Macro Mode Checks** below.
+- `--batch N` — validate batch N only (default: current_batch in status.md). Reads `dbt_audit.csv`'s `batch_number` — the topological, finer-grained translation batch.
+- `--wave <id>` — **the intended execution unit for a normal run.** Validate every dbt-model row `migration/migration_batching.csv` assigns to this wave (`batch_id`), cross-referenced against `dbt_audit.csv` for the actual model set — see **Step 0w** below. Accepts zero-padded (`B01`) or bare (`1`) forms, normalised identically to `dbt_migration-generate`'s and `dbt_migration-lint`'s `--wave`. `--wave` and `--batch` read different numbering schemes — abort if both are supplied: `[wire] --wave and --batch read different numbering schemes and cannot be combined. Pick one.`
+- `--macros` — validate the batch-zero macro pass (`/wire:dbt-migration-generate --macros`) instead of a model batch. See **Macro Mode Checks** below. Standalone scope — abort if combined with `--batch` or `--wave`.
+- `--config <path>` — load a per-run config overlay file overriding status.md-sourced fields (`migration.dbt_project_path`, `migration.target_platform`, etc.) for this invocation only — never written back to status.md. Mirrors `dbt_migration-generate`'s `--config` overlay exactly; see that spec's **Config overlay** section. Orthogonal to scope.
+
+### Step 0 — Load config overlay, resolve project(s)
+If `--config <path>` was supplied, load it exactly as `dbt_migration-generate` Step 0c describes — in-memory for this invocation only, `data_safety.production_projects` never overridable. Resolve the dbt project(s) at `migration.dbt_project_path` (or the overlay's equivalent) via `specs/utils/dbt_manifest_parse.md` Steps 1–2 (nested/multi-project aware) rather than assuming a single project directly at that path — this is what Check 5's `dbt compile` needs to run from the correct project directory in a monorepo, and what any check below needing the source manifest (e.g. resolving a model's source layer) reads from.
+
+### Step 0w — Resolve `--wave` (only when `--wave` is used)
+Identical resolution to `dbt_migration-generate`'s Step 1w: normalise the wave id, load `migration/migration_batching.csv` (abort if missing), filter to rows where `batch_id` matches and `object_type` is `dbt_model`, cross-reference `object_id` against `dbt_audit.csv`'s `model_name` to get the actual model set, and print the resolved-model preview before validating. The resolved set replaces "the batch" in every check below — Checks 1–7 (and Check 8) run over it exactly as they run over a `--batch`-resolved set.
 
 ## Validation Checks
+
+Every check below reads "the batch" as whichever model set is in scope for this run — the `--batch`-resolved set, or the `--wave`-resolved set from Step 0w. The checks themselves are identical either way; only the resolved model list differs.
 
 **Check 1 — Translated files exist for all models in batch**
 Every model in the batch has a corresponding translated `.sql` file in `migration/dbt/`.
@@ -59,7 +69,7 @@ FAIL: List models with errors.
 
 **Check 5 — dbt compile (if target profile available)**
 If `~/.dbt/profiles.yml` has a profile matching `migration.target_platform`:
-Run `dbt compile --select batch_N_models --profiles-dir ~/.dbt`
+Run `dbt compile --select <in-scope models> --profiles-dir ~/.dbt`, from whichever project directory Step 0 resolved for these models (a monorepo may resolve different models to different projects — run compile once per project the in-scope set touches, not once against a single assumed project root).
 PASS: All models in batch compile without errors.
 FAIL: List compilation errors per model.
 If target profile not available: note as "compile check skipped — target profile not configured" (not a FAIL).
@@ -75,9 +85,16 @@ For every model in the batch that has a companion schema/properties YAML in the 
 - Any column-level `policy_tags` / masking `meta` is either authored into the YAML (dbt-managed) or explicitly recorded in the batch summary as deferred to the security workstream — not silently dropped.
 PASS: All companion-YAML items handled or explicitly deferred. FAIL: List models with an un-repointed `sources.yml`, untranslated test SQL, or dropped policy-tag/meta config.
 
+**Check 8 — Cross-market Bronze-column substitutions are flagged, not silently dropped**
+This is the companion check to `dbt_migration-generate` Step 3.1 item b (the Bronze-schema existence check). For every translated model in the batch:
+- Scan the translated SQL for a `CAST(NULL AS <type>)` carrying a `-- MARKET GAP:` inline comment (the marker `dbt_migration-generate` emits when a source column doesn't exist in every in-scope market).
+- Confirm every such substitution is also named in the batch summary's "Source-to-ref substitutions and Bronze-schema gaps" section (model, column, synthesized type, affected market(s)).
+- Confirm the reverse also holds: nothing in that batch-summary section is missing a matching `-- MARKET GAP:` comment in the SQL — a gap recorded in the summary but not flagged inline (or vice versa) is a defect either way.
+PASS: every substitution is present in the SQL and tracked in the summary, and every tracked entry has a matching inline flag. FAIL: list models where the SQL and the summary disagree, naming the column and market. If `migration.target_markets` was unset for this engagement (Step 3.1 item b's single-market skip), note "not applicable — single-market engagement" rather than running the scan.
+
 ## Macro Mode Checks (`--macros`)
 
-Run these instead of Checks 1–7 when `--macros` is supplied. Ground truth is `audit/batch_zero_plan.json` (the `layer: macro`, `action: translate` entries), re-read here rather than trusted from generate's summary.
+Run these instead of Checks 1–8 when `--macros` is supplied. Ground truth is `audit/batch_zero_plan.json` (the `layer: macro`, `action: translate` entries), re-read here rather than trusted from generate's summary.
 
 **Check M1 — Every macro-layer entry has a translated file**
 For every `layer: macro`, `action: translate` entry in `batch_zero_plan.json`, a translated definition exists under `migration/dbt/macros/` at the mirrored relative path. UDF-layer entries are explicitly out of scope (they are validated by `/wire:target-setup-validate`).
@@ -108,6 +125,8 @@ artifacts:
     validated_date: "{{TODAY}}"
     batch_N_validate: pass | fail
     macros_validate: pass | fail          # set only when run with --macros
+    wave_validate:                        # set only when run with --wave, keyed by wave id
+      B01: pass | fail
 ```
 
 
@@ -210,6 +229,24 @@ Skill identifiers:
 | Looker Dashboard Mockup | `looker-dashboard-mockup` |
 
 This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
+
+## Stale Status Check
+
+Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
+
+**Process**:
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
+3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
+4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).
+5. For each stale field found, emit a one-line warning in the command's output:
+   ```
+   ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
+   ```
+   Emit one warning per stale field — do not suppress after the first.
+6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+
+This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 
 ## Rules
 

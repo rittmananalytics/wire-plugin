@@ -42,6 +42,18 @@ Batches within a group have zero dependency edges (either direction) between the
 |-------|---------|-------|
 | {{GROUP_ID}} | {{BATCH_IDS}} | {{ZERO_EDGE_CONFIRMATION}} |
 
+### Cutover partition (secondary view)
+
+*Build-ordered mode only — omit this section entirely in domain mode.*
+
+Build order (the waves above) and cutover/domain order **diverge** here: the SCC fallback fired precisely because no domain grouping could stay acyclic and declare every cross-batch edge, so the waves are not domain-coherent. This table is the domain-grouped rollup for client communication and milestone planning — it is **not** required to be acyclic or edge-complete, unlike the wave partition; it does not feed `depends_on_batches`, size balancing, or the parallel-safe analysis above.
+
+| Domain | Object count | Wave(s) its objects landed in |
+|--------|--------------|-------------------------------|
+| {{DOMAIN}} | {{OBJECT_COUNT}} | {{WAVE_IDS}} |
+
+[Name explicitly which domains end up spread across the most waves, so nobody mistakes a wave number for this grouping.]
+
 ## Batch-Zero Macro Dependency
 
 The following batches contain models with non-empty `platform_macros` (from `audit/dbt_audit.csv`) and therefore cannot start until the batch-zero macro translation pass (`audit/batch_zero_plan.json`) is complete:
@@ -49,6 +61,16 @@ The following batches contain models with non-empty `platform_macros` (from `aud
 | Batch | Affected models | Macros |
 |-------|----------------|--------|
 | {{BATCH_ID}} | {{MODEL_COUNT}} | {{MACRO_NAMES}} |
+
+## NO-DEP — No Model Dependency (Human Triage Required)
+
+**Count**: {{NO_DEP_COUNT}} objects (state 0 explicitly if none)
+
+Objects below have no real graph edge to any model — no `source()` reference or other consumer found anywhere in the buildable graph. They are **not** defaulted into wave/batch 1 or any other batch; they sit here until a reviewer decides to decommission, later-wave, or hand-confirm each one as genuinely foundational at `/wire:migration-batching-review`.
+
+| Object | Type | Source audit | Notes |
+|--------|------|--------------|-------|
+| {{OBJECT_ID}} | {{OBJECT_TYPE}} | {{SOURCE_AUDIT}} | {{WHY_NO_CONSUMER_FOUND}} |
 
 ## Notes
 

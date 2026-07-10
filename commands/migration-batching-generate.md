@@ -29,6 +29,7 @@ argument-hint: <release-folder> [--seed path] [--target-batches N]
 ## Auto-Delegation
 
 Follow `specs/utils/migration_agent_delegate.md` before executing the workflow below.
+Before the generic stale-artifact prompt, run the **Reviewed-Artifact Guard** below — a reviewed/adjudicated batching plan needs a stronger warning than "re-generate? yes/no".
 Follow `specs/utils/stale_artifact_check.md` with `artifact_id: migration_batching` and `artifact_file_path: migration/migration_batching.md` before proceeding.
 
 ---
@@ -55,6 +56,18 @@ State this posture at the top of the generated artifact so no downstream reader 
 
 If the inventory is not approved, stop: "Approve the migration inventory before batching — run /wire:migration-inventory-review $ARGUMENTS."
 
+## Reviewed-Artifact Guard
+
+`/wire:migration-batching-review` rewrites `migration_batching.csv` rows in place — renames, merges, object moves, a human correcting a misclassification the graph got wrong — with nothing on disk to mark the file as adjudicated rather than generated. Left unguarded, re-running this command silently overwrites that human work with a fresh candidate partition, which can reintroduce exactly the defect a reviewer just fixed by hand (an orphan connector routed correctly to `NO-DEP` at review, for instance, landing back in wave 1 on the next run).
+
+Read `artifacts.migration_batching.reviewed_checksum` from `status.md` before doing anything else:
+
+- **Not set** — no review has run against this artifact yet (or this engagement predates the guard). Proceed straight to the generic `specs/utils/stale_artifact_check.md` prompt as today; this guard adds nothing here.
+- **Set** — a review has recorded a checksum of the CSV at adjudication time. Compute the current on-disk `migration_batching.csv`'s checksum (e.g. `shasum -a 256 migration/migration_batching.csv`) and compare:
+  - **Matches** — the reviewed CSV is sitting untouched since adjudication. Regenerating would discard a committed, client-facing schedule for a fresh unreviewed proposal. Warn explicitly, naming what's at stake — pull `reviewed_by`, `reviewed_date`, and the batch names/dates/owners from `migration_batching.md`'s Review — Adjudication section — and require the reviewer to type back a distinct confirmation (e.g. "overwrite reviewed plan") rather than a plain yes/no.
+  - **Does not match** — the CSV was reviewed, then hand-edited again afterward outside the review flow. Those further edits are exactly as much at risk as an unmodified review. Warn explicitly that this CSV was reviewed on `reviewed_date` and has since changed by hand, so a regenerate would lose both the original adjudication and the untracked follow-up edit, and require the same explicit named confirmation.
+  - Either way, do **not** fall through to the generic `stale_artifact_check.md` yes/no prompt — this guard's confirmation replaces it. Only proceed to Step 1 once the reviewer has typed the exact confirmation string.
+
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/migration/migration_inventory.md` — unified object catalog, dependency graph, per-object effort-hour estimates
@@ -69,6 +82,8 @@ If the inventory is not approved, stop: "Approve the migration inventory before 
 
 Parse the dependency graph from `migration_inventory.md` (adjacency list; the Mermaid diagram is a rendering, the adjacency list is the source) and the unified object catalog with per-object effort estimates. Parse `dbt_audit.csv` for per-model `batch_number`, `enabled`, and `platform_macros`.
 
+The inventory graph already reflects connector/object alias normalization (regionalized or multi-tenant naming — see `migration_inventory/generate.md` Step 2's `migration.connector_alias_patterns` handling): a regional connector alias is already resolved to its canonical object and edge there. This command consumes that graph as-is and does not re-normalize.
+
 ### Step 2: Load the optional seed plan
 
 If a seed exists (Step 0 of Inputs), extract its batch names and object→batch groupings. This is a starting hint for naming and grouping preference, to be reconciled against the graph in Step 3 — not accepted as-is. Record the seed path used, or "no seed provided".
@@ -80,6 +95,7 @@ Assign every inventory object to exactly one candidate domain group:
 - Where the seed plan assigns an object to a named domain group, start from that assignment.
 - Where no seed exists, or for objects the seed doesn't cover, group by structural signal: schema/dataset name for db objects, top-level model folder or tag for dbt models, connector→destination pairing for ingestion and reverse ETL objects.
 - **Merge rule**: merge two candidate groups if the edge density between them is high enough that separating them would force most objects in one group to declare a dependency on the other — they aren't really separable. State each merge and why in the narrative's seed-reconciliation note.
+- **No silent default.** A non-dbt inventory object (Fivetran connector, warehouse object, reverse-ETL sync) with no structural grouping signal and no graph edge to any other object must never be forced into a default or nearest domain group just to keep the partition complete. Route it instead to the **`NO-DEP`** bucket — `batch_id: NO-DEP`, `batch_name: "No model dependency — review"` — for human triage at `/wire:migration-batching-review` (decommission, assign once its real consumer surfaces, or confirm it as genuinely foundational and hand-place it). This is the same rule Step 4c applies in build-ordered mode; a domain plan that quietly folds an orphan connector into whichever domain group happens to come first is the same defect by another name, just less visible because domain mode usually has a structural signal (schema, folder, connector→destination pairing) to fall back on. Use `NO-DEP` only when that structural signal is genuinely absent, not as a substitute for doing the structural grouping.
 
 ### Step 4: Build the batch-level dependency DAG
 
@@ -104,12 +120,18 @@ Record which mode was chosen and the evidence (SCC count, the size of the larges
 
 Replace the domain partition with waves cut from the model-level build order:
 
-1. **Topologically sort the full buildable model graph** (the same graph the dbt audit's batch ordering uses — every model's `ref()`/`source()` parents sort before it, 0 forward references). Break ties by domain priority (so a wave stays as domain-coherent as the build order allows), then by name.
+1. **Topologically sort the full buildable model graph** (the same graph the dbt audit's batch ordering uses — every model's `ref()`/`source()` parents sort before it, 0 forward references). Node identity must be the project-qualified node ID (`model.<package_name>.<model_name>`, per `specs/utils/dbt_manifest_parse.md` Step 3), not the bare model name — the dbt audit CSV only carries `model_name`, so if this step is joining against the CSV rather than re-deriving the graph via the manifest-parse utility, re-qualify by project first in a multi-project estate to avoid silently merging two same-named models from different projects into one node.
+
+   Break ties, in this order:
+   1. **Shared-reference priority** — an object depended on by consumers spanning **N or more** distinct domains (default `N = 3`, or "more than half the candidate domain count from Step 3" if that's larger — state whichever threshold was used, and treat it as tunable per engagement) is a shared/foundational object. Among topologically-tied candidates, pull it to the earlier position regardless of where the other tie-break rules would otherwise place it — it blocks the most downstream work, so building it early matters more than keeping any one wave domain-coherent.
+   2. **Domain priority** (so a wave stays as domain-coherent as the build order allows beyond rule 1).
+   3. **Name**.
 2. **Coarsen into `--target-batches N` waves** (default: the candidate domain-group count from Step 3), preserving the topological order — wave 1 is the earliest slice of the sort, wave N the latest. Balance the waves by the inventory's per-object effort hours (Step 6) without ever reordering across the topological cut.
 3. **Set each wave's `depends_on_batches` to the full prefix** `B01..B(k-1)`. This declares every possible cross-wave edge by construction, so C3 holds, and a strict prefix is trivially acyclic, so C2 holds.
 4. **Keep the domain tag** on every object's CSV row (the `domain` column) so the still-meaningful domain grouping survives for client/milestone/billing rollup — it just isn't the build order.
+5. **Compute the cutover partition (secondary view).** Group every object by its `domain` tag alone, purely for client communication and milestone/cutover-rollup purposes. Unlike the wave partition above, this grouping is **not required to be acyclic or edge-complete** — it doesn't feed `depends_on_batches`, Step 6 balancing, or Step 7's parallel-safe analysis, and it can perfectly well contain a cycle or split a single dependency across two of its groups. It exists purely to answer "which domains does the client see progress in during which waves", not "what can build in parallel". For each domain, record which wave(s) its member objects actually landed in.
 
-Non-dbt inventory objects (ingestion, warehouse objects, reverse ETL) that have no place in the model graph attach to the wave of the earliest model that depends on them, or to wave 1 if nothing does; note the rule applied. In build-ordered mode there are no parallel-safe wave pairs — the full-prefix dependency makes every wave depend on all earlier ones — so Step 7 emits an empty parallel-safe set with that explanation rather than searching for one.
+Non-dbt inventory objects (ingestion, warehouse objects, reverse ETL) attach to the wave of the earliest model that has a real graph edge to them — a model that `source()`s the object, or otherwise references it directly in the inventory graph. **Never default an object with no such edge into wave 1, or into any other wave.** An object with no model consumer anywhere in the graph goes into the **`NO-DEP`** bucket instead — `batch_id: NO-DEP`, `batch_name: "No model dependency — review"`, `depends_on_batches` empty — for human triage at `/wire:migration-batching-review`: decommission it, place it once its real consumer surfaces in a later audit pass, or confirm it as genuinely foundational and hand-assign it to a wave. Note the rule applied and the `NO-DEP` count in the narrative. This is not a hypothetical: on one engagement, "attach to wave 1 if nothing does" put 105 of a client's 168 Fivetran connectors into wave 1 against an intended 31 — and wave 1 is what the client authenticates first, so the defaulting was directly client-facing. In build-ordered mode there are no parallel-safe wave pairs — the full-prefix dependency makes every wave depend on all earlier ones — so Step 7 emits an empty parallel-safe set with that explanation rather than searching for one. Exclude `NO-DEP` objects from Step 6's effort-hour balancing, Step 7's parallel-safe grouping, and the wave/batch DAG itself in both modes — `NO-DEP` is a holding pen for human triage, not a schedulable batch.
 
 ### Step 5: Fold in the batch-zero macro dependency
 
@@ -121,11 +143,15 @@ Any batch containing a model with a non-empty `platform_macros` value (from `dbt
 
 **Build-ordered mode.** Balancing already happened inside the Step 4c coarsening — cut the topological order into waves of roughly even effort hours, never reordering across the cut. Note any wave that is a size outlier and why (a dense foundational layer early in the sort often makes wave 1 heavier).
 
+**Both modes.** Exclude `NO-DEP` objects from these hour totals entirely — they aren't in any batch or wave yet, so they can't be balanced into one.
+
 ### Step 7: Identify parallel-safe batch groups
 
 **Domain mode.** Any set of batches with **zero** dependency edges (either direction) between their members, per the Step 4 DAG, can be scheduled in parallel. Produce this list explicitly — it is the deliverable that directly answers "which of these batches can actually run at the same time", which is exactly what a hand-drawn plan gets wrong.
 
 **Build-ordered mode.** There are none by construction — every wave depends on the full prefix of earlier waves. Emit an empty parallel-safe set and state that build-ordered waves are strictly sequential (the domain tag, not the wave, is what rolls up for parallel client-facing planning).
+
+**Both modes.** `NO-DEP` is not a batch — exclude it from parallel-safe grouping in either mode. Zero edges to everything is an artifact of having no consumer yet, not evidence it's safe to schedule alongside anything.
 
 ### Step 8: Emit the CSV
 
@@ -140,6 +166,8 @@ One row per migration_inventory object, classified into exactly one batch. `batc
 
 The columns are the same in both modes. In **build-ordered mode**, `batch_id` is the wave id, `batch_name` is the wave label (`Wave 1`, `Wave 2`, …), `domain` still carries the object's domain tag (retained for rollup, not used as the build order), and `depends_on_batches` is the full prefix `B01;…;B(k-1)`.
 
+**`NO-DEP` is a valid classification, not an anomaly.** An object routed to `NO-DEP` per Step 3 or Step 4c gets `batch_id: NO-DEP`, `batch_name: "No model dependency — review"`, `depends_on_batches` empty, and its best-effort `domain` tag (structural signal if one exists, otherwise the tag it would have inferred with — never left blank; Check 6 still requires every column non-empty). A `NO-DEP` row satisfies "every object classified exactly once" (validate's Check 1) and "every row complete" (Check 6) exactly as any other row does — it is a deliberate, named holding pen for human triage, not a gap in the partition, and validate must not flag it as one.
+
 ### Step 9: Emit the narrative
 
 **Output location**: `.wire/releases/$ARGUMENTS/migration/migration_batching.md`
@@ -153,6 +181,8 @@ Use the template at `TEMPLATES/migration/migration_batching.md`. Include:
 - A Mermaid DAG at batch granularity — nodes are batches, edges are dependencies (in build-ordered mode, the prefix chain B01→B02→…→BN)
 - The parallel-safe groupings table (empty, with the by-construction explanation, in build-ordered mode)
 - The batch-zero macro dependency callout: which batches require the batch-zero pass first, and why
+- **The `NO-DEP` callout**: the count of objects routed to `NO-DEP` and the list of them (object_id, object_type, source_audit) — surfaced explicitly as a named section for human triage, never folded into the object-count totals or left implicit in the CSV. Zero is fine and should still be stated ("0 objects with no model consumer"); a non-zero count is the number one thing a reviewer should not have to go digging in the CSV to find
+- **`### Cutover partition (secondary view)`** — build-ordered mode only. The Step 4c.5 domain-grouped rollup: one row per domain, listing which wave(s) its objects landed in. State plainly that **build order and cutover/domain order diverge whenever the SCC fallback has fired** — that's the entire reason the fallback exists — and name specifically which domains end up spread across which waves, so no reader mistakes a wave number for a domain or milestone grouping. Explicitly flag this partition as not required to be acyclic or edge-complete, unlike the wave partition it sits alongside — it's for talking to the client about milestones, not for sequencing builds
 - A note that this artifact is not authoritative for scheduling or dates until `/wire:migration-batching-review` runs
 
 ### Step 10: Update status
@@ -168,6 +198,7 @@ artifacts:
     scc_fallback: true | false          # true when Step 4b forced build-ordered waves
     batch_count: N
     objects_classified: N
+    no_dep_count: N                     # objects routed to the NO-DEP bucket — 0 if none
     seed_used: true | false
 ```
 
@@ -175,7 +206,7 @@ artifacts:
 
 ### Step 11: Output summary
 
-Print: partition mode (and, if the SCC fallback fired, a one-line reason), batch/wave count, object count, parallel-safe groupings found (none in build-ordered mode), and next command:
+Print: partition mode (and, if the SCC fallback fired, a one-line reason), batch/wave count, object count, `NO-DEP` count (state it even when 0), parallel-safe groupings found (none in build-ordered mode), and next command:
 
 ```
 /wire:migration-batching-validate $ARGUMENTS
@@ -287,6 +318,24 @@ Skill identifiers:
 | Looker Dashboard Mockup | `looker-dashboard-mockup` |
 
 This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
+
+## Stale Status Check
+
+Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
+
+**Process**:
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
+3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
+4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).
+5. For each stale field found, emit a one-line warning in the command's output:
+   ```
+   ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
+   ```
+   Emit one warning per stale field — do not suppress after the first.
+6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+
+This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 
 ## Rules
 

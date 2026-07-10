@@ -1,1 +1,4 @@
 object_id,object_type,source_audit,domain,batch_id,batch_name,depends_on_batches
+fivetran_conn_orders_uk,connector,ingestion_audit,orders,B01,Orders,
+stg_orders,dbt_model,dbt_audit,orders,B01,Orders,
+fivetran_conn_legacy_crm,connector,ingestion_audit,legacy_crm,NO-DEP,No model dependency — review,

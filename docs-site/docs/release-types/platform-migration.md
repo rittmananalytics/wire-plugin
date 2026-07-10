@@ -444,6 +444,12 @@ Four commands are specific to the carve-out flow:
 
 A worked example of the carve-out flow is in the [Tutorial: Tenant Carve-out](../tutorials/platform-migration-tenant-carveout).
 
+### Branching strategy
+
+A carve-out release tracks a moving parent release — the parent keeps landing changes while the carve-out extracts the tenant on its own branch. Keep the two in sync with `git merge <parent-branch>` into the carve-out branch on a regular cadence, not rebase: the releases touch disjoint files (parent extends staging/warehouse models, carve-out adds region tags, tenant IAM, bulk-copy runbooks), so the merges are close to conflict-free. Reserve `git rebase` for short-lived, single-owner per-batch branches cut *from* the carve-out branch, where there's no shared history to protect.
+
+Once any per-batch branch has been cut, treat the carve-out branch as append-only. Rebasing it and force-pushing rewrites its history, which moves the commit those per-batch branches' merge-base points at — the force-push silently orphans them, with no error to flag it.
+
 ## Metabase reporting-layer migration
 
 Wire's reporting-layer support was Looker-only. Metabase is now a recognised reporting tool, set via `migration.reporting_tool: metabase` in `status.md` (asked at `/wire:new`). It is a general capability — it applies to any migration where the client uses Metabase, full migration or carve-out alike, and is **not gated by `migration.scope`**.

@@ -207,6 +207,8 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:utils-docstore-sync` | `<project-folder> <artifact>` | Sync a generated artifact to the document store |
 | `/wire:utils-docstore-fetch` | `<project-folder> <artifact>` | Fetch document store content and comments for review |
 | `/wire:utils-migration-agent-delegate` | `(internal — called by migration generate commands)` | Auto-delegation protocol for migration generate commands — dispatch to migration-specialist subagent when available |
+| `/wire:utils-session-summary` | `<release-folder> [scope]` | Draft a Slack-shaped session summary from a release's execution log |
+| `/wire:utils-git-workflow` | `<release-folder> <artifact-id> <action>` | Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR |
 | `/wire:utils-delivery-forecast` | `<client-name> [--release <folder>]` | Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates |
 | `/wire:utils-doc-analyze` | `<file-path-or-url> [<file-path-2> ...]` | Extract deliverables, acceptance criteria, and timeline from SoW or project documents |
 
@@ -239,6 +241,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:migration-inventory-generate` | `<release-folder>` | Synthesise all audits into unified catalogue with dependency graph |
 | `/wire:migration-inventory-validate` | `<release-folder>` | Validate migration inventory object counts and dependency graph |
 | `/wire:migration-inventory-review` | `<release-folder>` | Internal RA and client scope confirmation |
+| `/wire:lineage-generate` | `<release-folder>` | Generate interactive dbt lineage HTML, with optional reverse-ETL layer showing Hightouch syncs and destinations |
 | `/wire:migration-batching-generate` | `<release-folder> [--seed <path>]` | Partition the migration inventory into independently-schedulable domain batches, checked against the real dependency graph |
 | `/wire:migration-batching-validate` | `<release-folder>` | Validate domain batching — every object classified once, DAG acyclic, every real cross-batch edge declared |
 | `/wire:migration-batching-review` | `<release-folder>` | Human/client adjudication gate — turn the proposed batch partition into a committed schedule |

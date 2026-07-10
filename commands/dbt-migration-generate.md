@@ -23,7 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Translate dbt models batch by batch to target dialect with inline equivalency validation
-argument-hint: <release-folder> [--batch N] [--model name] [--select selector] [--exclude selector] [--macros]
+argument-hint: <release-folder> [--batch N] [--wave id] [--model name] [--select selector] [--exclude selector] [--macros] [--config path]
 ---
 
 ## Auto-Delegation
@@ -62,36 +62,60 @@ If the current working context or tool calls would write to a source platform or
 
 Translates dbt models from the source platform dialect to the target platform dialect — both the model `.sql` **and the companion schema/properties YAML** (`schema.yml` / `_models.yml` / `sources.yml`). Each model goes through an inline translation-and-equivalency loop: translate → compile → run on target → three-check equivalency test → auto-fix on failure → iterate up to 5 times before flagging for manual review. Both the source platform MCP and the target platform MCP are mandatory — this command cannot run without live connections to both.
 
-Works in batches as defined in the dbt audit. Normally the auto-delegation layer handles splitting a batch into parallel groups and spawning one agent per group — this spec executes on whatever scope it is handed. Supports `--batch N` to process a specific batch, `--model <name>` to process a single model, and `--models <name1,name2,...>` to process a specific subset (used by parallel agents within a batch).
+Works in batches as defined in the dbt audit, or in waves as defined by the authoritative execution schedule (`migration_batching.csv`). Normally the auto-delegation layer handles splitting a batch or wave into parallel groups and spawning one agent per group — this spec executes on whatever scope it is handed. Supports `--batch N` to process a specific (topological) dbt-audit batch, `--wave <id>` to process a specific (execution-schedule) wave, `--model <name>` to process a single model, and `--models <name1,name2,...>` to process a specific subset (used by parallel agents within a batch or wave).
 
 ## Prerequisites
 
 - `ingestion_migration review: approved`
 - `audit/dbt_audit.csv` exists with batch assignments
+- `migration/migration_batching.csv` exists — required only when running with `--wave`
 - Source platform MCP connected and readable
 - Target platform MCP connected and writable to the test project
 
 ## Flags
 
-- `--batch N` — process batch number N only (all models in that batch, unless `--models` also provided)
+- `--batch N` — process batch number N only (all models in that batch, unless `--models` also provided). Reads `dbt_audit.csv`'s `batch_number` — the topological, ~20-model translation grouping. Finer-grained than a wave; use it for a topological-only run or to re-run a slice inside a wave.
+- `--wave <id>` — **the intended execution unit for a normal run.** Resolves the model scope from `migration/migration_batching.csv`'s `batch_id` — the authoritative, client-facing execution schedule (`migration_batching-generate`'s output; e.g. "Wave 1" spans however many `dbt_audit.batch_number` micro-batches it happens to cross). Accepts either the zero-padded form (`--wave B01`) or a bare number (`--wave 1`); both normalise to the same wave. See Step 1w. `--wave` and `--batch` read two different numbering schemes and must not be combined — see below.
 - `--models <name1,name2,...>` — process only these named models (comma-separated); used by the parallel-dispatch layer to hand a subset of a batch to each agent
 - `--model <name>` — process a single model by name (shorthand for `--models` with one entry)
 - `--select <selector>` — resolve the models to translate using dbt node-selection grammar (graph operators `+`, `n+`, `@`; space-separated unions; comma-separated intersections; `tag:`, `config.materialized:`, `path:` set selectors). Resolved by Wire over the source project's dependency graph — **no dbt binary required**. See Step 1a.
 - `--exclude <selector>` — companion to `--select`; removes matching models from the resolved set. Same grammar. Optional.
 - `--macros` — **batch-zero macro pass.** Translate the shared Jinja / dispatched *macro definition* files listed in `audit/batch_zero_plan.json`, in tier order, instead of the model graph. This is the pass that must land before model batch 1: a widely-used macro is expanded by models scattered across every batch, so it is rewritten once, up front, and every downstream model then compiles against the already-translated macro. See **Macro Mode Workflow** below. UDF-layer entries (`layer: udf`) are **not** in scope here — they are `CREATE FUNCTION` DDL deployed by `/wire:target-setup-generate`.
+- `--config <path>` — load a per-run config overlay file; see **Config overlay** below. Orthogonal to scope — combine freely with `--batch`, `--wave`, `--model`/`--models`, `--select`/`--exclude`, or `--macros`.
 - No flag — process the next incomplete batch (read from status.md `dbt_migration.current_batch`)
 
-`--select`/`--exclude` and `--batch` are different scoping models — abort if both are supplied. Likewise abort if both `--select` and `--model`/`--models` are supplied. A bare name (`--select vehicles`) resolves to that single model, identical to `--model vehicles`. `--exclude` may be supplied without `--select` (it filters whatever scope is otherwise in effect). `--select ""` aborts with: `[wire] --select value is empty. Pass a selector, or omit the flag to use --batch / --model.`
+`--select`/`--exclude` is a different scoping model from `--batch`, `--wave`, and `--model`/`--models` — abort if `--select` is supplied alongside any of `--batch`, `--wave`, `--model`, or `--models`. `--batch` and `--wave` are themselves mutually exclusive with each other (two different numbering schemes over the same models — see below), but each independently composes with `--model`/`--models` exactly as `--batch` always has: `--model`/`--models` narrows the batch or wave down to a named subset (this is what the parallel-dispatch layer uses to hand each agent its slice of a batch **or** a wave), it does not replace it. `--model`/`--models` supplied with neither `--batch` nor `--wave` still works as its own scope (a single model or named subset, independent of any batch/wave), unchanged from today.
 
-`--macros` is its own scope mode — abort if it is combined with `--batch`, `--model`, `--models`, `--select`, or `--exclude`: `[wire] --macros is a standalone scope. Run it on its own; do not combine with --batch/--model/--models/--select/--exclude.` Do **not** overload `--batch 0` for this — audit batches run 1–N, and `--macros` reads unambiguously.
+A bare name (`--select vehicles`) resolves to that single model, identical to `--model vehicles`. `--exclude` may be supplied without `--select` (it filters whatever scope is otherwise in effect). `--select ""` aborts with: `[wire] --select value is empty. Pass a selector, or omit the flag to use --batch / --wave / --model.` Passing both `--wave` and `--batch` aborts with: `[wire] --wave and --batch read different numbering schemes (migration_batching.csv vs dbt_audit.batch_number) and cannot be combined. Pick one.`
+
+`--macros` is its own scope mode — abort if it is combined with `--batch`, `--wave`, `--model`, `--models`, `--select`, or `--exclude`: `[wire] --macros is a standalone scope. Run it on its own; do not combine with --batch/--wave/--model/--models/--select/--exclude.` Do **not** overload `--batch 0` for this — audit batches run 1–N, and `--macros` reads unambiguously.
 
 Full grammar and resolution algorithm: `wire/docs/specs/dbt-node-selection.md`.
+
+### Config overlay (`--config`)
+
+By default every per-run field this spec reads from status.md (`migration.dbt_project_path`, `migration.pii_tag_map_path`, `migration.target_schema`, `migration.source_platform`, `migration.target_platform`, `migration.materialization_overrides_path`, `migration.transformation_log_table`, `data_safety.target_project`, and any other status.md-sourced field referenced below) comes from the release's `status.md`. That forces an isolated or one-off run (e.g. validating against a different schema, or a scratch project without a status.md yet fully wired up) to hand-edit status.md first.
+
+`--config <path>` points at a small YAML or JSON file that overrides these fields **for this invocation only** — it is read at Step 0c, held in memory, and never written back to status.md. Where the overlay sets a key, it wins over status.md for the duration of this run; where it doesn't set a key, status.md's value applies as normal. The overlay's shape mirrors the status.md field names it overrides, e.g.:
+
+```yaml
+migration:
+  dbt_project_path: ".wire/scratch/carwow-source-layer"
+  target_schema: "wire_migration_test"
+  pii_tag_map_path: ".wire/releases/carwow-migration/migration/tag_map_v2.json"
+data_safety:
+  target_project: "carwow-migration-test-2"
+```
+
+**`data_safety.production_projects` is never overridable** — that blocklist always comes from status.md, so a `--config` overlay can never be used to route a write around the production-write guard in Step 0 / Step 3.4. If the overlay declares a `data_safety.production_projects` key, ignore it and print a one-line warning; the guard still reads status.md's list.
 
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.csv`
+- `.wire/releases/$ARGUMENTS/migration/migration_batching.csv` — consumed only by `--wave` mode (see Step 1w); the authoritative execution-schedule scoping
 - `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json` — consumed only by `--macros` mode (the `layer: macro`, `action: translate` entries, tiered)
 - `.wire/releases/$ARGUMENTS/status.md` — dbt_migration.current_batch
+- **`--config <path>` overlay (optional)**: a YAML/JSON file overriding status.md-sourced per-run fields for this invocation only — see **Config overlay** above
 - Source dbt model SQL files **and their companion schema/properties YAML** (`schema.yml` / `_models.yml` / `sources.yml`) at `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if registered)
 - PII tag map (optional): the file at `migration.pii_tag_map_path` in status.md, defaulting to `.wire/releases/$ARGUMENTS/migration/tag_map.json` — a flat `{source_masking_policy_name: target_policy_tag_resource_path}` JSON map, loaded in Step 2 and consumed in Step 3b item 4
 - Canonical platform pair files:
@@ -141,14 +165,21 @@ Read `migration_sources.dbt` from status.md (if the block exists):
   ```
   Do not block. Continue after the warning.
 
+### Step 0c: Load per-run config overlay (`--config`)
+
+If `--config <path>` was supplied: read and parse the file (YAML or JSON by extension/content-sniff). If it does not exist or fails to parse, abort: `[wire] --config file <path> not found or invalid. Aborting.` Hold the parsed overlay in memory as the override layer for this invocation — every subsequent step that reads a status.md field checks the overlay first, then falls back to status.md. Never write the overlay's values back to status.md. Drop (with a warning) any `data_safety.production_projects` key the overlay declares, per **Config overlay** above.
+
+If `--config` was not supplied, skip this step; every field resolves from status.md exactly as today.
+
 ### Step 1: Determine scope
 
-1. Read `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if set) and `migration.source_platform` from status.md.
+1. Resolve the dbt project(s): read `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if set) and `migration.source_platform` from status.md, honouring the `--config` overlay from Step 0c. Then resolve the actual project(s) and their manifest(s) via `specs/utils/dbt_manifest_parse.md` Steps 1–2 — its nested/multi-project resolution (a single project at the path, or one-level-down subdirectories each with their own `dbt_project.yml`) and hard-fail-on-unresolvable-path behaviour, rather than assuming a single project sits directly at `dbt_project_path`. This matters for a monorepo with more than one dbt project (e.g. a `source_layer` project and a `carwow` project, neither at the parent path) — resolving the wrong single project silently mis-scopes everything downstream. Wherever this spec below reads a manifest node for a given model or macro, locate it by its **project-qualified node ID** (`model.<package_name>.<model_name>`) in whichever resolved project's manifest contains it, per the utility's Step 3 — never assume all models live in one manifest.
 2. Determine which models to translate:
    - If `--macros` provided: this is not a model scope. Skip Steps 2–6 entirely and run the **Macro Mode Workflow** below instead.
    - If `--select <selector>` (optionally with `--exclude`) provided: resolve the model set per **Step 1a**.
    - If `--model <name>` provided: process that single model
-   - If `--batch N` provided: load all models with `batch_number = N` from `dbt_audit.csv`
+   - If `--wave <id>` provided: resolve the model set per **Step 1w** (every dbt-model row in that wave, unless `--models` also provided to narrow further)
+   - If `--batch N` provided: load all models with `batch_number = N` from `dbt_audit.csv` (unless `--models` also provided to narrow further)
    - Otherwise: read `dbt_migration.current_batch` from status.md (default: 1 if not set)
 3. Confirm the batch/model has not already been translated (check for existing translated files). If already done, ask whether to re-translate.
 
@@ -159,12 +190,7 @@ out to dbt** and do not reimplement graph traversal over `dbt_audit.csv` (it sto
 `ref_count`/`source_count`, not edges).
 
 1. **Build the graph (no dbt binary):**
-   - **Preferred:** read `<migration.dbt_project_path>/target/manifest.json`. For each
-     `model` node it gives `name`, `depends_on.nodes` (parent edges), `tags`,
-     `config.materialized`, and `path`/`fqn`. It is a plain JSON artifact — reading it
-     needs no dbt install and no warehouse connection. A manifest almost always exists
-     (the dbt audit was built from this project); if absent, it can be regenerated once
-     offline with `dbt parse`.
+   - **Preferred:** use the manifest(s) already resolved in Step 1 via `specs/utils/dbt_manifest_parse.md` (nested/multi-project aware — do not assume a single manifest sits directly at `<migration.dbt_project_path>/target/manifest.json`). For each `model` node, across every resolved project's manifest, take `name`, `depends_on.nodes` (parent edges), `tags`, `config.materialized`, and `path`/`fqn`, keyed by the project-qualified node ID (`model.<package_name>.<model_name>`) so same-named models in different nested projects are never merged. It is plain JSON — reading it needs no dbt install and no warehouse connection beyond what Step 1's resolution already did.
    - **Fallback (no manifest):** build edges by scanning each model `.sql` for `ref(...)`
      / `source(...)`, and read tags/config from `_models.yml`/`schema.yml`, in-file
      `{{ config(...) }}`, and the folder-level `models:` config in `dbt_project.yml`.
@@ -197,6 +223,36 @@ out to dbt** and do not reimplement graph traversal over `dbt_audit.csv` (it sto
 
 The resolved model list then flows into Step 3 unchanged.
 
+### Step 1w: Resolve `--wave` (only when `--wave`/`--wave <id>` is used)
+
+`--wave` reads the authoritative execution schedule (`migration_batching.csv`) rather than the topological micro-batch numbering in `dbt_audit.csv`. It never touches, reinterprets, or repurposes `dbt_audit.batch_number` — that field stays a pure topological-ordering value, unchanged by this flag, because `dbt-audit-validate`'s Check 4 ("batch ordering respects dependency graph") and `migration_batching`'s batch-zero macro-dependency-per-batch logic both depend on it staying exactly that.
+
+1. **Normalise the wave id.** Accept either form:
+   - Zero-padded (`B01`, `b01`, `B1`) — uppercase the `B`, extract the digits, left-pad to two digits.
+   - Bare number (`1`, `01`) — left-pad to two digits and prefix `B`.
+
+   Both normalise to the same `batch_id` value (e.g. `--wave B01` and `--wave 1` both resolve to `B01`). If the argument matches neither shape, abort: `[wire] --wave value "<value>" is not a recognised wave id. Use a form like --wave B01 or --wave 1.`
+
+2. **Load `migration/migration_batching.csv`.** If it does not exist, abort: `[wire] No migration_batching.csv found — run /wire:migration-batching-generate $ARGUMENTS first.`
+
+3. **Filter to this wave's dbt-model rows.** Select rows where `batch_id` equals the normalised wave id **and** `object_type` indicates a dbt model (`dbt_model`, per `migration_inventory-generate`'s node-type vocabulary). Rows for other object types (ingestion connectors, warehouse objects, reverse-ETL syncs, etc.) in the same wave are out of scope for this command — they belong to their own migration commands. If no rows match the wave id at all (any object type), abort: `[wire] No rows found for wave <id> in migration_batching.csv. Check the wave id against the batch_id column.` If rows match the wave but none are `dbt_model` rows, print `[wire] Wave <id> has no dbt model objects — nothing to translate for this command.` and stop cleanly (not an error).
+
+4. **Cross-reference `dbt_audit.csv`.** Each matched row's `object_id` is a model name — look it up by `model_name` in `dbt_audit.csv` to pull the actual per-model detail this command needs (`file_path`, `layer`, `complexity`, `batch_number`, `enabled`, `platform_macros`, etc.). A wave's ~172 models can scatter across dozens of `dbt_audit.batch_number` micro-batches; that's expected — the wave is the execution unit, the audit batch number is just carried along as per-model metadata. If a wave's `object_id` has no matching row in `dbt_audit.csv`, list it as unresolved rather than silently skipping it: `[wire] Wave <id>: object_id "<name>" has no matching row in dbt_audit.csv — check the two artifacts are in sync (re-run /wire:dbt-audit-generate or /wire:migration-batching-generate).`
+
+5. **Preview (mandatory)**, same posture as Step 1a:
+
+   ```
+   [wire] Wave B01 — 172 models resolved (audit batches: B01 spans dbt_audit batch_number 1–32):
+     - stg_admin_site__leads
+     - stg_admin_site__dealers
+     ...
+   [wire] Proceeding to translate 172 models...
+   ```
+
+   If the resolved set is empty after cross-referencing (all unresolved), abort per item 4.
+
+The resolved model list then flows into Step 3 unchanged, exactly like a `--select` or `--batch` resolution. Where Steps 4–6 below label output artifacts and status fields with the batch number `N` (e.g. `batch_{N}_summary.md`, `dag_batch_{N}.md`), substitute the wave id (e.g. `batch_B01_summary.md`, `dag_batch_B01.md`) when the scope is `--wave`. Step 5's status update records the wave under `wave` / `waves_complete` (see Step 5) in addition to the model-level counts, and — like `--model`/`--select` — a `--wave` run never advances `dbt_migration.current_batch`, since that field belongs to the `dbt_audit.batch_number` scheme, not the wave schedule.
+
 ## Macro Mode Workflow (`--macros`)
 
 Runs **instead of** Steps 2–6 when `--macros` is supplied. Steps 0 (MCP connectivity), 0b (snapshot freshness), and the data-safety reminder still apply — the source MCP is needed to read macro bodies and the target MCP to compile-check. There is **no row-equivalency loop** here: macros are definitions, not tables. A macro is "correct" when the models that expand it compile on the target — that verification happens in the model batches, not here.
@@ -219,7 +275,7 @@ Same as Step 2: read the platform-pair `translation_guide.md`, `translation_refe
 
 For each macro, in tier order:
 
-1. Read the macro definition file from `macros/` under `migration.dbt_project_path` (or the registered local snapshot). Record its **relative path within the source project** (e.g. `macros/cross_dialect/globalize_id.sql`) — mirrored in the output.
+1. Read the macro definition file from the `macros/` tree of whichever resolved project (per Step 1's `dbt_manifest_parse.md`-based resolution) owns it — do not assume a single `macros/` tree directly under `migration.dbt_project_path`; a monorepo with nested projects has one `macros/` tree per project. Record its **relative path within its source project** (e.g. `macros/cross_dialect/globalize_id.sql`) — mirrored in the output.
 2. Translate the macro body applying the same treatments as a model (function swaps, type handling, dispatch/adapter updates, Jinja macro calls). A tier-N macro may call already-translated tier-`<N` macros — reference the translated version, never re-translate a dependency inline.
 3. Assign a confidence rating (`high` / `medium` / `low`) on the same basis as models.
 4. **Compile check** against the target MCP: compile a trivial probe that expands the macro (e.g. a `SELECT` wrapping the macro call with representative literal args, run with `LIMIT 0` / dry-run) so the translated definition is exercised without materialising data. Never run a write query. If compile fails, auto-fix (same diagnosis-and-fix loop as models, **max 5 iterations**), then re-check. Some macros cannot be exercised standalone (they assume a `ref`/relation context) — if a macro is not independently compile-checkable, record `compile: deferred` with the reason and rely on the model-batch compile to validate it; do not count this as a failure.
@@ -262,7 +318,7 @@ Batch-zero macro pass complete. Deploy the UDF layer, then translate model batch
 
 Read the translation guide for the active platform pair. For the models in this batch, identify which feature tags are present and load the corresponding translation patterns.
 
-**PII tag map.** Read `migration.pii_tag_map_path` from status.md. If unset, look for the default `.wire/releases/$ARGUMENTS/migration/tag_map.json`. The file is a flat JSON map of source masking-policy name → target policy-tag resource path, e.g. `{"pii_email": "projects/<project>/locations/<loc>/taxonomies/<id>/policyTags/<id>"}` — it comes from the same PII policy-tag taxonomy the target-setup security step stands up (`04_security.sql`), so do not invent tag paths here. On load, build a lookup keyed on the **normalised** policy name: lowercase and trim both the map keys and, later, every source `meta.masking_policy` value before comparing — masking-policy names are inconsistently cased in the wild, and an exact-match lookup silently misses `PII_EMAIL` against a `pii_email` key. If no file exists at either location, print `[wire] No PII tag map found — policy_tags will be authored manually per column (Step 3b item 4).` and continue. The map is an enhancement, not a prerequisite — never block on its absence.
+**PII tag map.** Read `migration.pii_tag_map_path` from status.md (or the `--config` overlay's `migration.pii_tag_map_path`, if loaded in Step 0c and it sets that key). If unset, look for the default `.wire/releases/$ARGUMENTS/migration/tag_map.json`. The file is a flat JSON map of source masking-policy name → target policy-tag resource path, e.g. `{"pii_email": "projects/<project>/locations/<loc>/taxonomies/<id>/policyTags/<id>"}` — it comes from the same PII policy-tag taxonomy the target-setup security step stands up (`04_security.sql`), so do not invent tag paths here. On load, build a lookup keyed on the **normalised** policy name: lowercase and trim both the map keys and, later, every source `meta.masking_policy` value before comparing — masking-policy names are inconsistently cased in the wild, and an exact-match lookup silently misses `PII_EMAIL` against a `pii_email` key. If no file exists at either location, print `[wire] No PII tag map found — policy_tags will be authored manually per column (Step 3b item 4).` and continue. The map is an enhancement, not a prerequisite — never block on its absence.
 
 ### Step 3: Translate and validate each model (iterative loop)
 
@@ -285,15 +341,17 @@ loop_history: []
 1. Read the source SQL from the dbt project (or local snapshot).
 2. Record the model's **relative path within the source dbt project** (e.g. `models/staging/stripe/stg_stripe_charges.sql`). This path is mirrored in the output.
 3. Apply translations in this order:
-   a. Data type references (inline casts, SAFE_CAST equivalents)
-   b. SQL function translations (per the translation guide)
-   c. Configuration block — adapter/dispatch updates, plus materialisation per **Materialisation config** below
-   d. Jinja macro calls that need dispatch overrides
+   a. **Source-to-ref resolution.** For each `source('<source_name>', '<table>')` call in the model body, check whether `<source_name>.<table>` is the output relation of a model that has **already been translated earlier in this migration** — cross-reference `migration/migration_register.csv` (the per-model state store maintained by this command per Step 3.7; see `migration-register-generate`), matching `<source_name>.<table>` against each row's `bq_target` where `state = migrated`. On a match, rewrite the call to `ref('<model>')` using that row's `model` column, instead of emitting a fresh `source(...)` call — leaving it as `source(...)` regresses to reading a Bronze/source table that a hand-done or later translation has already replaced with a warehouse model. Record the substitution (`source(...)` → `ref(...)`, and which register row matched) in `loop_history` and the model's `.diff.md`. If `migration_register.csv` doesn't exist yet (no models translated yet this migration), there is nothing to match against — proceed with `source(...)` calls untouched; this is not a failure. This check runs before Step 3b's `sources.yml` repointing, which handles whatever `source(...)` calls remain genuine external sources after this substitution.
+   b. **Bronze-schema existence check.** Before finalising the translated SQL, for every column still referenced via a `source(...)` call after item a (a `ref()` reads a sibling model's own reconciled output, so this check applies to genuine source references only): confirm the column exists in the source/Bronze relation for **every** market/region in scope. Read the in-scope markets from `migration.target_markets` in status.md (or the `--config` overlay's equivalent key) — a list of market/region identifiers, each mapping to its own Bronze schema/dataset instance. Use the target platform MCP's read-only schema introspection (`INFORMATION_SCHEMA.COLUMNS`, the same mechanism Step 3.5 Check B uses for schema comparison), queried once per market against the Bronze relation. For a column absent in one or more markets: do not leave the raw column reference — it will error the build the moment it runs against a market lacking the column. Instead emit `CAST(NULL AS <type>)` in its place, inferring `<type>` from the source's own schema in whichever market(s) do have the column, and add an inline SQL comment flagging the substitution and the affected market(s), e.g. `CAST(NULL AS STRING) /* -- MARKET GAP: authentication_token not present in DE, FR — synthesized NULL, see batch summary */`. Record every substitution in `loop_history` and the model's `.diff.md`, and carry it into the batch summary (Step 4) so it is never a silent drop. If `migration.target_markets` is unset (single-market engagement), skip this check with a one-line note — there is nothing to reconcile across a single schema.
+   c. Data type references (inline casts, SAFE_CAST equivalents)
+   d. SQL function translations (per the translation guide)
+   e. Configuration block — adapter/dispatch updates, plus materialisation per **Materialisation config** below
+   f. Jinja macro calls that need dispatch overrides
 4. Assign a confidence rating: `high` = only simple, table-driven replacements. `medium` = engagement-specific nuance. `low` = no clean equivalent or a construct the guide marks "manual".
 
 ##### Materialisation config
 
-**Read the resolved materialisation from the manifest node, not the fallback path.** Take `config.materialized` (and the keys below) from `<migration.dbt_project_path>/target/manifest.json` → `nodes[...].config`. The manifest already merges `dbt_project.yml` folder config with in-file `{{ config() }}` blocks, so the node's config is the authoritative resolved value. Do not re-derive materialisation from `dbt_project.yml` + in-file blocks separately — that is the fragile fallback called out in Step 1a and it gets folder-level defaults wrong.
+**Read the resolved materialisation from the manifest node, not the fallback path.** Take `config.materialized` (and the keys below) from the model's node in whichever resolved project's manifest contains it, per Step 1's `dbt_manifest_parse.md`-based resolution (`nodes[...].config`, keyed by the project-qualified node ID). The manifest already merges `dbt_project.yml` folder config with in-file `{{ config() }}` blocks, so the node's config is the authoritative resolved value. Do not re-derive materialisation from `dbt_project.yml` + in-file blocks separately — that is the fragile fallback called out in Step 1a and it gets folder-level defaults wrong. Do not assume the manifest sits at a single `<migration.dbt_project_path>/target/manifest.json` — a monorepo with more than one dbt project resolves to more than one manifest, and the wrong one gets the config subtly wrong for every model in the other project.
 
 **Default — faithful preservation (every client).** Carry the source's resolved materialisation across unchanged. A lift-and-shift must not silently change how a model is materialised:
 - Preserve the `materialized` value as-is: `table` → `table`, `view` → `view`, `incremental` → `incremental`, `ephemeral` → `ephemeral`.
@@ -361,9 +419,11 @@ If compile succeeds: proceed to 3.4.
 
 #### 3.4 Run on target
 
-Execute the full model SQL as a materialisation against the test project using the target platform MCP's write tool. For BigQuery: `execute_sql` (not readonly). The target dataset/schema is read from `data_safety.target_project` and `migration.target_schema` in status.md.
+Execute the full model SQL as a materialisation against the test project using the target platform MCP's write tool. For BigQuery: `execute_sql` (not readonly). The target dataset/schema is read from `data_safety.target_project` and `migration.target_schema` in status.md (or the `--config` overlay's equivalents, if loaded).
 
 Run only against the test project — never against production. If the write tool would target a project listed in `data_safety.production_projects`, stop immediately and report the conflict.
+
+**Long-running model guard.** The MCP's `execute_sql` enforces a hard job timeout of roughly 3 minutes. If a model is expected to run long — a large CTAS, a backfill, or a model that has historically taken more than 2 minutes — do not run it via the MCP's `execute_sql`. Route it through `dbt run --select <model>` (or the target's dbt Cloud/Core job runner) instead, which honours a much longer (3600s) timeout. A genuinely slow but successful build (e.g. 188 seconds) killed by the MCP's timeout is a false failure, not a real one — don't record it as a run failure in `loop_history` without first ruling out that the job was still running when the MCP gave up.
 
 If run fails:
 - Record: `{ iteration: N, stage: "run", error: "<message>", action: "auto-fix" }`
@@ -466,6 +526,7 @@ Write `.wire/releases/$ARGUMENTS/migration/dbt/batch_{N}_summary.md`:
 - Per-model loop results: iterations taken, which checks failed, final status
 - Models requiring manual review (every `FAILED` model and every `low` confidence model)
 - **Companion YAML changes**: `sources.yml` repoints, custom/singular tests translated, `policy_tags` authored or deferred — including the count of policy tags auto-resolved from the tag map and the count of `MANUAL REVIEW REQUIRED` flags for unresolved masking policies, naming each flagged column and its unresolved policy value
+- **Source-to-ref substitutions and Bronze-schema gaps** (Step 3.1 items a–b): count of `source(...)` calls rewritten to `ref(...)`, and every `MARKET GAP` column substitution — naming the model, column, synthesized type, and affected market(s)
 - Recommended next steps
 
 ### Step 4b: Update per-batch DAG
@@ -586,9 +647,11 @@ artifacts:
     models_failed: failed_count
     transformation_log_written: true | false   # false when transformation_log_table is unconfigured
     transformation_log_rows: N                  # rows written this run (0 if skipped)
+    wave: "B01"                                 # set only when run with --wave; the wave id just processed
+    waves_complete: ["B01"]                     # set only when run with --wave; accumulates across runs
 ```
 
-If `--model` or `--select` was used, update only the translated models' status. Do not advance `current_batch`.
+If `--model`, `--select`, or `--wave` was used, update only the translated models' status. Do not advance `current_batch` — that field belongs to the `dbt_audit.batch_number` scheme, and a `--wave` run tracks its own progress via `wave` / `waves_complete` instead.
 
 ### Step 6: Output summary
 
@@ -729,6 +792,24 @@ Skill identifiers:
 | Looker Dashboard Mockup | `looker-dashboard-mockup` |
 
 This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
+
+## Stale Status Check
+
+Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
+
+**Process**:
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
+3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
+4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).
+5. For each stale field found, emit a one-line warning in the command's output:
+   ```
+   ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
+   ```
+   Emit one warning per stale field — do not suppress after the first.
+6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+
+This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 
 ## Rules
 

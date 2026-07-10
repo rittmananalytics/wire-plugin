@@ -241,6 +241,13 @@ artifacts:
     users_count: null
     rls_policies: null
     masking_policies: null
+    baseline_path: null   # Optional: path to a prior audit/artifact this run builds on or compares
+                          # against (e.g. a previous release's audit/security_audit.md). null = no
+                          # baseline — security-audit-generate skips the baseline check entirely.
+                          # When set, checked by specs/utils/audit_baseline_check.md before generation:
+                          # fails loudly if the path is missing/empty, and warns if any role/PII/user
+                          # count cited in this release's brief/SOW/status.md notes doesn't match what
+                          # the baseline actually contains.
     generated_files: []
     revision_history: []
 
