@@ -102,9 +102,9 @@ commit to a semantic-model Git repo and open in the OAC Semantic Modeler.
   aliased), `presentation_label` overrides, a time hierarchy, and a derived
   ratio measure. Run the generator against it to see the output shape.
 - `references/meta-oac-vocabulary.md` — the `meta.oac` schema.yml vocabulary.
-- `references/eyelit-worked-example.md` — a real worked case study (the
-  `eyelit-dbt` → `eyelit_smml` pairing) showing these tags applied, including
-  a real tagging gap that was found and fixed.
+- `references/client-worked-example.md` — a real worked case study (client
+  identity anonymized) showing these tags applied, including a real tagging
+  gap that was found and fixed.
 - `README.md` — full usage, CLI reference, caveats.
 - Schema reference and modeling guidance live in the sibling
   `smml-semantic-modeling` skill (`../smml-semantic-modeling/references/`) —
@@ -113,8 +113,8 @@ commit to a semantic-model Git repo and open in the OAC Semantic Modeler.
 ## Caveats (read before production)
 
 - Object shapes, `DataType`/`DatabaseType` mapping, and physical/logical join
-  shapes are validated against a real OAC-imported export (`eyelit_smml`) —
-  see `smml-schema.md`'s `[ground truth]` tags.
+  shapes are validated against a real OAC-imported export (client identity
+  anonymized) — see `smml-schema.md`'s `[ground truth]` tags.
 - **Hierarchies and derived measures are not** — the one real project that
   declared both never actually got them built into its shipped SMML. Treat
   `emit_hierarchies()`'s output and derived-measure columns as PDF-sourced

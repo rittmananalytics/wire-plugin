@@ -88,9 +88,9 @@ measures) without a human writing raw SMML by hand. Use this skill when:
 ## Provenance
 
 `smml-schema.md` is built from *SMML Schema Reference for Oracle Analytics
-Cloud* (F38574-15, June 2026) cross-checked against `eyelit_smml` — a real,
-OAC-imported semantic model built from the `eyelit-dbt` project — wherever
-the two sources overlap. `modeling-patterns.md` adds *Building Semantic
+Cloud* (F38574-15, June 2026) cross-checked against a real, OAC-imported
+semantic model (client identity anonymized) wherever the two sources
+overlap. `modeling-patterns.md` adds *Building Semantic
 Models in Oracle Analytics Cloud* (F42737-41). Where ground truth and the
 official guide disagree on practice (e.g. subject-area design), both are
 cited so you can weigh them.

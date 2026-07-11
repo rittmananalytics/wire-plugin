@@ -660,11 +660,11 @@ def main():
     ap.add_argument("--manifest", default="target/manifest.json")
     ap.add_argument("--catalog", default="target/catalog.json")
     ap.add_argument("--out", default="smml")
-    ap.add_argument("--database-name", default="MESTEC ADW")
+    ap.add_argument("--database-name", default="REPLACE_WITH_DATABASE_NAME")
     ap.add_argument("--database-type", default="ORACLE_ADW",
                      help="SMML DatabaseType enum value, e.g. ORACLE_ADW or ORACLE_DATABASE")
     ap.add_argument("--connection", default="REPLACE_WITH_OAC_CONNECTION")
-    ap.add_argument("--business-model", default="MESTEC")
+    ap.add_argument("--business-model", default="REPLACE_WITH_BUSINESS_MODEL")
     ap.add_argument("--schema", default=None, help="override physical schema name")
     ap.add_argument("--layer", default="warehouse", help="dbt layer to expose, or 'all'")
     args = ap.parse_args()

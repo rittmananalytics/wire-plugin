@@ -194,7 +194,7 @@ from one model by deleting different hierarchies from each copy). **Ground
 truth did the opposite and it also worked**: two subject areas
 (`Attendance`, `Activity`), each built narrow from the start — one fact plus
 only the handful of dimensions it actually joins to (7 and 11 tables
-respectively) — with no subject area matching the flat `"MESTEC Operations"`
+respectively) — with no subject area matching the flat `"Client Operations"`
 tag every dbt model carried. **Recommendation for a generator**: default to
 one subject area per fact table plus its directly-joined dimensions — it
 matches what was actually shipped and avoids producing one undifferentiated

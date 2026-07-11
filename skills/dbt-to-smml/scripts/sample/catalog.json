@@ -1,7 +1,7 @@
 {
   "nodes": {
-    "model.mestec_semantic_model.fact_attendance_log": {
-      "metadata": {"schema": "MESTEC_DW", "name": "FACT_ATTENDANCE_LOG", "type": "BASE TABLE"},
+    "model.sample_semantic_model.fact_attendance_log": {
+      "metadata": {"schema": "SAMPLE_DW", "name": "FACT_ATTENDANCE_LOG", "type": "BASE TABLE"},
       "columns": {
         "ACCOUNT_DATE_KEY": {"type": "DATE", "index": 1, "name": "ACCOUNT_DATE_KEY"},
         "CLOCK_IN_DT": {"type": "DATE", "index": 2, "name": "CLOCK_IN_DT"},
@@ -12,8 +12,8 @@
         "WORKING_MINS": {"type": "NUMBER(10,1)", "index": 7, "name": "WORKING_MINS"}
       }
     },
-    "model.mestec_semantic_model.fact_activity_log": {
-      "metadata": {"schema": "MESTEC_DW", "name": "FACT_ACTIVITY_LOG", "type": "BASE TABLE"},
+    "model.sample_semantic_model.fact_activity_log": {
+      "metadata": {"schema": "SAMPLE_DW", "name": "FACT_ACTIVITY_LOG", "type": "BASE TABLE"},
       "columns": {
         "START_DATE_KEY": {"type": "DATE", "index": 1, "name": "START_DATE_KEY"},
         "END_DATE_KEY": {"type": "DATE", "index": 2, "name": "END_DATE_KEY"},
@@ -22,15 +22,15 @@
         "DURATION_MINS": {"type": "NUMBER(10,1)", "index": 5, "name": "DURATION_MINS"}
       }
     },
-    "model.mestec_semantic_model.dim_users": {
-      "metadata": {"schema": "MESTEC_DW", "name": "DIM_USERS", "type": "BASE TABLE"},
+    "model.sample_semantic_model.dim_users": {
+      "metadata": {"schema": "SAMPLE_DW", "name": "DIM_USERS", "type": "BASE TABLE"},
       "columns": {
         "USER_ID": {"type": "NUMBER", "index": 1, "name": "USER_ID"},
         "FULL_NAME": {"type": "VARCHAR2(300)", "index": 2, "name": "FULL_NAME"}
       }
     },
-    "model.mestec_semantic_model.dim_date": {
-      "metadata": {"schema": "MESTEC_DW", "name": "DIM_DATE", "type": "BASE TABLE"},
+    "model.sample_semantic_model.dim_date": {
+      "metadata": {"schema": "SAMPLE_DW", "name": "DIM_DATE", "type": "BASE TABLE"},
       "columns": {
         "DATE_KEY": {"type": "DATE", "index": 1, "name": "DATE_KEY"},
         "YEAR": {"type": "NUMBER", "index": 2, "name": "YEAR"},
@@ -41,8 +41,8 @@
         "IS_WEEKEND": {"type": "CHAR(1)", "index": 7, "name": "IS_WEEKEND"}
       }
     },
-    "model.mestec_semantic_model.stg_oracle__users": {
-      "metadata": {"schema": "MESTEC_DW", "name": "STG_ORACLE__USERS", "type": "VIEW"},
+    "model.sample_semantic_model.stg_oracle__users": {
+      "metadata": {"schema": "SAMPLE_DW", "name": "STG_ORACLE__USERS", "type": "VIEW"},
       "columns": {"USER_ID": {"type": "NUMBER", "index": 1, "name": "USER_ID"}}
     }
   }

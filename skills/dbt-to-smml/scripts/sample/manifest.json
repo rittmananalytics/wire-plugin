@@ -1,10 +1,10 @@
 {
   "nodes": {
-    "model.mestec_semantic_model.fact_attendance_log": {
+    "model.sample_semantic_model.fact_attendance_log": {
       "resource_type": "model",
       "name": "fact_attendance_log",
-      "schema": "MESTEC_DW",
-      "fqn": ["mestec_semantic_model", "warehouse", "core", "fact_attendance_log"],
+      "schema": "SAMPLE_DW",
+      "fqn": ["sample_semantic_model", "warehouse", "core", "fact_attendance_log"],
       "description": "One row per attendance log — labour minutes breakdown.",
       "meta": {
         "oac": {
@@ -27,11 +27,11 @@
         "working_mins": {"meta": {"oac": {"role": "measure", "aggregation": "SUM", "label": "Working Minutes"}}}
       }
     },
-    "model.mestec_semantic_model.fact_activity_log": {
+    "model.sample_semantic_model.fact_activity_log": {
       "resource_type": "model",
       "name": "fact_activity_log",
-      "schema": "MESTEC_DW",
-      "fqn": ["mestec_semantic_model", "warehouse", "core", "fact_activity_log"],
+      "schema": "SAMPLE_DW",
+      "fqn": ["sample_semantic_model", "warehouse", "core", "fact_activity_log"],
       "description": "One row per production activity log entry.",
       "meta": {
         "oac": {
@@ -48,11 +48,11 @@
         "duration_mins": {"meta": {"oac": {"role": "measure", "aggregation": "SUM", "label": "Duration Mins"}}}
       }
     },
-    "model.mestec_semantic_model.dim_users": {
+    "model.sample_semantic_model.dim_users": {
       "resource_type": "model",
       "name": "dim_users",
-      "schema": "MESTEC_DW",
-      "fqn": ["mestec_semantic_model", "warehouse", "core", "dim_users"],
+      "schema": "SAMPLE_DW",
+      "fqn": ["sample_semantic_model", "warehouse", "core", "dim_users"],
       "description": "Users / workers.",
       "meta": {"oac": {"object_type": "dimension", "subject_area": ["Attendance", "Activity"]}},
       "columns": {
@@ -60,11 +60,11 @@
         "full_name": {"meta": {"oac": {"label": "Full Name"}}}
       }
     },
-    "model.mestec_semantic_model.dim_date": {
+    "model.sample_semantic_model.dim_date": {
       "resource_type": "model",
       "name": "dim_date",
-      "schema": "MESTEC_DW",
-      "fqn": ["mestec_semantic_model", "warehouse", "core", "dim_date"],
+      "schema": "SAMPLE_DW",
+      "fqn": ["sample_semantic_model", "warehouse", "core", "dim_date"],
       "description": "Calendar date dimension.",
       "meta": {
         "oac": {
@@ -96,11 +96,11 @@
         "is_weekend": {"meta": {"oac": {"label": "Is Weekend"}}}
       }
     },
-    "model.mestec_semantic_model.stg_oracle__users": {
+    "model.sample_semantic_model.stg_oracle__users": {
       "resource_type": "model",
       "name": "stg_oracle__users",
-      "schema": "MESTEC_DW",
-      "fqn": ["mestec_semantic_model", "staging", "oracle", "stg_oracle__users"],
+      "schema": "SAMPLE_DW",
+      "fqn": ["sample_semantic_model", "staging", "oracle", "stg_oracle__users"],
       "description": "Staging — should be EXCLUDED by the warehouse layer filter.",
       "meta": {},
       "columns": {}

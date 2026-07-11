@@ -433,7 +433,7 @@ Reverse ETL Audit — Hightouch Sync Catalogue
 
 :::tip[Why source resolution matters]
 
-Before v3.10.0 the reverse ETL audit only parsed `rawSql` models, so `table` and `custom` syncs landed with blank `warehouse_objects` — in a real Carwow audit that left 37% of active syncs with no recorded source object, and no way to know which ones touched a column that would drift between platforms. The audit now resolves all four model types and reports a coverage metric, so unresolved syncs are listed explicitly rather than silently dropped.
+Before v3.10.0 the reverse ETL audit only parsed `rawSql` models, so `table` and `custom` syncs landed with blank `warehouse_objects` — in a real audit (client anonymized) that left 37% of active syncs with no recorded source object, and no way to know which ones touched a column that would drift between platforms. The audit now resolves all four model types and reports a coverage metric, so unresolved syncs are listed explicitly rather than silently dropped.
 
 :::
 

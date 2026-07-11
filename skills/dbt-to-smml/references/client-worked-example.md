@@ -1,15 +1,14 @@
-# Worked example: eyelit-dbt → eyelit_smml
+# Worked example: client-dbt → client_smml
 
-A concrete case study of applying `meta.oac` to a real dbt project, using the
-same pairing that grounds this skill's schema and vocabulary:
-[`eyelit-dbt`](https://github.com/rittmananalytics/eyelit-dbt) (the source
-dbt project) and [`eyelit_smml`](https://github.com/rittmananalytics/eyelit_smml)
-(a real, OAC-imported semantic model built from it). Read this alongside
-`meta-oac-vocabulary.md` — that file documents each tag in the abstract, this
-shows them applied, including the tagging gaps a real project actually had
-and how they got fixed.
+A concrete case study of applying `meta.oac` to a real dbt project (client
+identity anonymized), using the same pairing that grounds this skill's
+schema and vocabulary: `client-dbt` (the source dbt project) and
+`client_smml` (a real, OAC-imported semantic model built from it). Read
+this alongside `meta-oac-vocabulary.md` — that file documents each tag in
+the abstract, this shows them applied, including the tagging gaps a real
+project actually had and how they got fixed.
 
-## What eyelit-dbt's meta.oac originally had
+## What client-dbt's meta.oac originally had
 
 `fact_attendance_log` and `fact_activity_log` both join `dim_date` more than
 once — three date roles on `fact_attendance_log` (account date, clock-in,
@@ -20,11 +19,11 @@ dimension was tagged `role: foreign_key` — the rest (`clock_in_dt`,
 `clock_out_dt`, `end_date_key`, `workflow_node_visit_id`) were tagged
 `role: degenerate`, meaning a generator reading the file would treat them as
 plain fact-table attributes with no dimension relationship at all. Every
-model also shared one flat `subject_area: "MESTEC Operations"` tag.
+model also shared one flat `subject_area: "Client Operations"` tag.
 
 ## What the real, shipped SMML model actually looks like
 
-`eyelit_smml` has none of that flatness. It ships two purpose-built subject
+`client_smml` has none of that flatness. It ships two purpose-built subject
 areas — `Attendance` (7 tables: the fact, its directly-joined dimensions, and
 two of its three date roles) and `Activity` (11 tables, similarly scoped) —
 and it aliases most (not all — see below) of the multi-role dimensions:
@@ -56,8 +55,7 @@ can't recur even if a future `meta.oac` author forgets to tag every column.
 
 ## The tags that closed the gap
 
-Applied to `eyelit-dbt/models/warehouse/core/_warehouse__models.yml` (see
-that repo's own `OAC-SEMANTIC-LAYER-META-TAGS.md` for the full table):
+Applied to `client-dbt/models/warehouse/core/_warehouse__models.yml`:
 
 ```yaml
 - name: fact_attendance_log
@@ -119,10 +117,10 @@ generator specifically guards against — see `generate_smml.py`'s
 ## What still doesn't match, and why that's fine
 
 Even with these tags, a generated model won't be byte-identical to
-`eyelit_smml`:
+`client_smml`:
 
 - `fact_attendance_log.shift_id → dim_shifts` is a normal declared FK and
-  gets joined by default; `eyelit_smml` doesn't join it, for reasons not
+  gets joined by default; `client_smml` doesn't join it, for reasons not
   captured anywhere in `meta.oac`. Left as a normal FK here rather than
   guessing at a business reason to exclude it — see
   `meta-oac-vocabulary.md`'s `include_join` entry if there turns out to be
@@ -130,11 +128,11 @@ Even with these tags, a generated model won't be byte-identical to
 - Dimensions not referenced by either subject area (`dim_departments`,
   `dim_sites`, `dim_shifts`, and others) still get full logical +
   presentation tables generated, since the generator mechanically translates
-  every tagged model. `eyelit_smml` omits them. That's the intended
+  every tagged model. `client_smml` omits them. That's the intended
   behavior — the generator proposes completely, a human curates the final
   subject-area membership before shipping.
 - `dim_date`'s declared `Calendar` hierarchy will actually get built this
-  time; `eyelit_smml` ships it flat. That's a feature addition over what
+  time; `client_smml` ships it flat. That's a feature addition over what
   shipped, not a bug to fix.
 
 See `dbt-to-smml/SKILL.md`'s caveats and `meta-oac-vocabulary.md`'s "Don't

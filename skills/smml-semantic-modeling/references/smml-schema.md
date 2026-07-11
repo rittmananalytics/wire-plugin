@@ -2,7 +2,7 @@
 
 The SMML (Semantic Modeler Markup Language) object model for Oracle Analytics
 Cloud, as actually validated against a real, OAC-imported semantic model
-(`eyelit_smml`, built from the `eyelit-dbt` project) and Oracle's own schema
+(`client_smml`, built from the `client-dbt` project) and Oracle's own schema
 reference (*SMML Schema Reference for Oracle Analytics Cloud*, F38574-15,
 June 2026 — 64pp). Every section below is tagged **[ground truth]** (confirmed
 against the real exported model), **[F38574-15]** (confirmed only against
@@ -61,7 +61,7 @@ Rules:
 - Cross-file references use a **fully-qualified name**:
   `objecttype:fully.qualified.path.name`. Periods *inside* a name segment are
   escaped with `\.`. Example:
-  `physicalColumn:Eyelit_ADW.CORIN_UAT2.DIM_DATE.DATE_KEY`.
+  `physicalColumn:SAMPLE_ADW.SAMPLE_UAT2.DIM_DATE.DATE_KEY`.
 - Attribute names are lowerCamelCase; booleans default to `false`.
 
 ## Physical layer
@@ -70,10 +70,10 @@ Rules:
 
 ```json
 { "database": {
-    "name": "Eyelit_ADW",
+    "name": "SAMPLE_ADW",
     "databaseType": "ORACLE_ADW",
     "connectionPools": [ { "name": "New Connection Pool_1",
-        "connection": "'system'.'CORIN_CC'",
+        "connection": "'system'.'SAMPLE_CC'",
         "remoteConnection": false, "maxConnections": 10,
         "requiresFullyQualifiedTableNames": true,
         "connectionTimeout": 5, "connectionTimeoutUnit": "MINUTES",
@@ -105,7 +105,7 @@ MINUTES|SECONDS|NEVER), multithreaded, supportParams, isolationLevel (string),
 runOnConnectScripts[], runBeforeQueryScripts[], runAfterQueryScripts[],
 runOnDisconnectScripts[], writeBackConfig, permissions[]`.
 
-**`schema`** / **`catalog`** — trivial: `{"schema": {"name": "CORIN_UAT2"}}`.
+**`schema`** / **`catalog`** — trivial: `{"schema": {"name": "SAMPLE_UAT2"}}`.
 Both objects: `name (req), description, tags[], dynamicName`.
 
 ### `physicalTable` — base form **[ground truth + F38574-15]**
@@ -139,7 +139,7 @@ eventPollingFrequency, selectStatements[], physicalColumns[]`.
 
 ```json
 { "physicalTable": { "name": "DIM_ACCOUNT_DATE",
-    "sourceTable": "physicalTable:Eyelit_ADW.CORIN_UAT2.DIM_DATE",
+    "sourceTable": "physicalTable:SAMPLE_ADW.SAMPLE_UAT2.DIM_DATE",
     "overrideSourceCacheSetting": false } }
 ```
 
@@ -162,10 +162,10 @@ how to build one (multiple FKs on one fact pointing at the same dimension).
 Two branches, selected by `useJoinExpression`:
 
 ```json
-{ "rightTable": "physicalTable:Eyelit_ADW.CORIN_UAT2.DIM_ACCOUNT_DATE",
+{ "rightTable": "physicalTable:SAMPLE_ADW.SAMPLE_UAT2.DIM_ACCOUNT_DATE",
   "useJoinExpression": false,
-  "joinConditions": [ { "leftColumn": "physicalColumn:Eyelit_ADW.CORIN_UAT2.FACT_ATTENDANCE_LOG.ACCOUNT_DATE_KEY",
-                         "rightColumn": "physicalColumn:Eyelit_ADW.CORIN_UAT2.DIM_ACCOUNT_DATE.DATE_KEY" } ],
+  "joinConditions": [ { "leftColumn": "physicalColumn:SAMPLE_ADW.SAMPLE_UAT2.FACT_ATTENDANCE_LOG.ACCOUNT_DATE_KEY",
+                         "rightColumn": "physicalColumn:SAMPLE_ADW.SAMPLE_UAT2.DIM_ACCOUNT_DATE.DATE_KEY" } ],
   "joinType": "INNER", "cardinality": "MANY_TO_ONE" }
 ```
 
@@ -203,7 +203,7 @@ Don't conflate it with a dbt `meta.oac.subject_area` tag.
     "primaryKey": ["DATE_KEY"],
     "logicalColumns": [ ... ],
     "logicalTableSources": [ { "name": "DIM_DATE", "disable": false,
-        "tableMapping": { "tables": ["physicalTable:Eyelit_ADW.CORIN_UAT2.DIM_DATE"] },
+        "tableMapping": { "tables": ["physicalTable:SAMPLE_ADW.SAMPLE_UAT2.DIM_DATE"] },
         "combineWithOtherFragments": false, "enableFragmentSelection": false, "distinctValues": false } ] } }
 ```
 
@@ -233,7 +233,7 @@ business keys are preferred over surrogate keys at this layer.
   "logicalColumnSource": { "derivedFrom": "PHYSICAL_COLUMNS",
     "physicalMappings": [ { "logicalTableSource": "DIM_DATE",
         "physicalExpression": { "expressionTemplate": "%1",
-          "expressionObjects": ["physicalColumn:Eyelit_ADW.CORIN_UAT2.DIM_DATE.DATE_KEY"] } } ] } }
+          "expressionObjects": ["physicalColumn:SAMPLE_ADW.SAMPLE_UAT2.DIM_DATE.DATE_KEY"] } } ] } }
 ```
 
 `derivedFrom: "PHYSICAL_COLUMNS"` and `writeable: false` are **required on
@@ -379,7 +379,7 @@ alternateNames[], hideIfTrue, tableOrder[], permissions[], localization`.
 `tableOrder` entries are `{name (req), children[]}` — **not bare FQN
 strings** — and `children` is recursive, so tables can be nested into
 folder-like groupings in the presentation tree. **[F38574-15 adds the
-`children` nesting `eyelit_smml` never used; the `{name: fqn}` wrapper itself
+`children` nesting `client_smml` never used; the `{name: fqn}` wrapper itself
 is ground-truth-confirmed]**
 
 A subject area draws from exactly **one business model**. `implicitFactColumn`

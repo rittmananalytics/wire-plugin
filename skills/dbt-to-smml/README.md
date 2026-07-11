@@ -37,11 +37,11 @@ python3 scripts/generate_smml.py \
   --manifest target/manifest.json \
   --catalog  target/catalog.json \
   --out      smml \
-  --schema          MESTEC_DW \
-  --database-name   "MESTEC ADW" \
+  --schema          SAMPLE_DW \
+  --database-name   "SAMPLE ADW" \
   --database-type   ORACLE_ADW \
-  --business-model  MESTEC \
-  --connection      "MESTEC ADW Connection"
+  --business-model  SAMPLE \
+  --connection      "SAMPLE ADW Connection"
 
 # 3. validate (shared validator lives in the sibling skill)
 python3 ../smml-semantic-modeling/scripts/validate_smml.py smml
@@ -54,10 +54,10 @@ python3 ../smml-semantic-modeling/scripts/validate_smml.py smml
 | `--manifest` | `target/manifest.json` | dbt manifest |
 | `--catalog` | `target/catalog.json` | dbt catalog (column data types) |
 | `--out` | `smml` | output directory |
-| `--database-name` | `MESTEC ADW` | SMML physical database object name |
+| `--database-name` | `SAMPLE ADW` | SMML physical database object name |
 | `--database-type` | `ORACLE_ADW` | `databaseType` — `ORACLE_ADW` or `ORACLE_DATABASE` (on-prem); see the sibling skill's `DatabaseType` enum |
 | `--connection` | `REPLACE_WITH_OAC_CONNECTION` | connection-pool connection name |
-| `--business-model` | `MESTEC` | logical business-model name |
+| `--business-model` | `SAMPLE` | logical business-model name |
 | `--schema` | (from catalog) | override the physical schema name |
 | `--layer` | `warehouse` | dbt layer to expose (`all` for everything) |
 
@@ -104,7 +104,7 @@ with a Calendar hierarchy, and a staging model that gets correctly excluded:
 python3 scripts/generate_smml.py \
   --manifest scripts/sample/manifest.json \
   --catalog  scripts/sample/catalog.json \
-  --out /tmp/smml_demo --schema MESTEC_DW --business-model MESTEC
+  --out /tmp/smml_demo --schema SAMPLE_DW --business-model SAMPLE
 python3 ../smml-semantic-modeling/scripts/validate_smml.py /tmp/smml_demo
 cat /tmp/smml_demo/MODEL.md
 ```
@@ -113,15 +113,15 @@ cat /tmp/smml_demo/MODEL.md
 
 The semantic metadata lives in the dbt `schema.yml` under `meta.oac` — see
 `references/meta-oac-vocabulary.md`. Where it's absent the generator infers
-defaults; `meta.oac` always overrides. `references/eyelit-worked-example.md`
-walks through applying it to a real project, including a real tagging gap
-that was found and fixed.
+defaults; `meta.oac` always overrides. `references/client-worked-example.md`
+walks through applying it to a real project (client identity anonymized),
+including a real tagging gap that was found and fixed.
 
 ## Caveats — validate against a real OAC export before production
 
 - **Object shapes, `DataType`/`DatabaseType` enums, and join shapes are
-  validated** against a real OAC-imported export (`eyelit_smml`) — see the
-  sibling skill's `smml-schema.md` `[ground truth]` tags.
+  validated** against a real OAC-imported export (client identity anonymized)
+  — see the sibling skill's `smml-schema.md` `[ground truth]` tags.
 - **Hierarchies and derived measures are not.** The one real project that
   declared both (a Calendar hierarchy on `dim_date`, four OLE ratio measures)
   never actually shipped either into its SMML export — these constructs are
@@ -145,7 +145,6 @@ that was found and fixed.
 Designed in `.wire/releases/01-poc-productionisation/artifacts/dbt-to-smml-generator-plan.md`.
 Schema and modeling guidance sourced from `.wire/research/sessions/smml-schema-reference-oracle-analytics-cloud.pdf`
 (F38574-15) and `.wire/research/sessions/building-semantic-models-oracle-analytics-cloud.pdf`
-(F42737-41), cross-checked against `eyelit_smml` — a real, OAC-imported
-semantic model built from the `eyelit-dbt` project — wherever the two
-overlap. Candidate to promote into the Wire plugin (`wire:dbt-to-smml` +
+(F42737-41), cross-checked against a real, OAC-imported semantic model
+(client identity anonymized) wherever the two overlap. Candidate to promote into the Wire plugin (`wire:dbt-to-smml` +
 `wire:smml-semantic-modeling`) as reusable RA assets.

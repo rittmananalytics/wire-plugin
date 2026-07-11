@@ -100,11 +100,11 @@ By default every per-run field this spec reads from status.md (`migration.dbt_pr
 
 ```yaml
 migration:
-  dbt_project_path: ".wire/scratch/carwow-source-layer"
+  dbt_project_path: ".wire/scratch/acme-source-layer"
   target_schema: "wire_migration_test"
-  pii_tag_map_path: ".wire/releases/carwow-migration/migration/tag_map_v2.json"
+  pii_tag_map_path: ".wire/releases/acme-migration/migration/tag_map_v2.json"
 data_safety:
-  target_project: "carwow-migration-test-2"
+  target_project: "acme-migration-test-2"
 ```
 
 **`data_safety.production_projects` is never overridable** — that blocklist always comes from status.md, so a `--config` overlay can never be used to route a write around the production-write guard in Step 0 / Step 3.4. If the overlay declares a `data_safety.production_projects` key, ignore it and print a one-line warning; the guard still reads status.md's list.
@@ -173,7 +173,7 @@ If `--config` was not supplied, skip this step; every field resolves from status
 
 ### Step 1: Determine scope
 
-1. Resolve the dbt project(s): read `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if set) and `migration.source_platform` from status.md, honouring the `--config` overlay from Step 0c. Then resolve the actual project(s) and their manifest(s) via `specs/utils/dbt_manifest_parse.md` Steps 1–2 — its nested/multi-project resolution (a single project at the path, or one-level-down subdirectories each with their own `dbt_project.yml`) and hard-fail-on-unresolvable-path behaviour, rather than assuming a single project sits directly at `dbt_project_path`. This matters for a monorepo with more than one dbt project (e.g. a `source_layer` project and a `carwow` project, neither at the parent path) — resolving the wrong single project silently mis-scopes everything downstream. Wherever this spec below reads a manifest node for a given model or macro, locate it by its **project-qualified node ID** (`model.<package_name>.<model_name>`) in whichever resolved project's manifest contains it, per the utility's Step 3 — never assume all models live in one manifest.
+1. Resolve the dbt project(s): read `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if set) and `migration.source_platform` from status.md, honouring the `--config` overlay from Step 0c. Then resolve the actual project(s) and their manifest(s) via `specs/utils/dbt_manifest_parse.md` Steps 1–2 — its nested/multi-project resolution (a single project at the path, or one-level-down subdirectories each with their own `dbt_project.yml`) and hard-fail-on-unresolvable-path behaviour, rather than assuming a single project sits directly at `dbt_project_path`. This matters for a monorepo with more than one dbt project (e.g. a `source_layer` project and an `acme` project, neither at the parent path) — resolving the wrong single project silently mis-scopes everything downstream. Wherever this spec below reads a manifest node for a given model or macro, locate it by its **project-qualified node ID** (`model.<package_name>.<model_name>`) in whichever resolved project's manifest contains it, per the utility's Step 3 — never assume all models live in one manifest.
 2. Determine which models to translate:
    - If `--macros` provided: this is not a model scope. Skip Steps 2–6 entirely and run the **Macro Mode Workflow** below instead.
    - If `--select <selector>` (optionally with `--exclude`) provided: resolve the model set per **Step 1a**.
