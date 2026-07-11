@@ -30,7 +30,7 @@ argument-hint: <custom-spec-name> [--description "use case description"]
 
 ## Purpose
 
-When a custom command spec created by `/wire:custom-release-define` represents a general pattern that other RA engagements would benefit from, this utility generalises it and raises a GitHub issue on the Wire repo proposing it as a new standard command.
+When a custom command spec created by `/wire:custom-define` represents a general pattern that other RA engagements would benefit from, this utility generalises it and raises a GitHub issue on the Wire repo proposing it as a new standard command.
 
 **This command is never automatically offered or suggested by any other Wire command.** It exists as an explicit user action only. See the User Guide for instructions.
 

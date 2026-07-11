@@ -32,7 +32,7 @@ argument-hint: <file-path-or-url> [<file-path-2> ...]
 
 Read one or more source documents (SoW, kick-off notes, agreed delivery plan, proposal) and extract a structured `DeliverableList` object containing deliverables with acceptance criteria, timeline milestones, and stakeholders. Each deliverable is scored against the Wire artifact keyword table to determine whether a standard Wire command can handle it or a custom spec is needed.
 
-Called automatically by `/wire:custom-release-define` (Phase 1). Can also be invoked standalone to preview what Wire would extract before committing to a custom release definition.
+Called automatically by `/wire:custom-define` (Phase 1). Can also be invoked standalone to preview what Wire would extract before committing to a custom release definition.
 
 ## Usage
 
@@ -40,7 +40,7 @@ Called automatically by `/wire:custom-release-define` (Phase 1). Can also be inv
 /wire:utils-doc-analyze path/to/SoW.pdf [path/to/kickoff-notes.md] [path/to/plan.pdf]
 ```
 
-When called internally from `/wire:custom-release-define`, the caller passes pre-read document content rather than re-reading files.
+When called internally from `/wire:custom-define`, the caller passes pre-read document content rather than re-reading files.
 
 ## Prerequisites
 
@@ -140,7 +140,7 @@ For each extracted deliverable, score it against the Wire artifact keyword table
 - `advisory-output` (producing a decision document or recommendation, not code/data)
 - `knowledge-transfer` (structured teaching sessions rather than artifact production)
 
-If the deliverable's implied mode differs from `generate-from-scratch`, set `workflow_mismatch: true` and add a note. This causes `/wire:custom-release-define` to recommend custom even for mid-band scores.
+If the deliverable's implied mode differs from `generate-from-scratch`, set `workflow_mismatch: true` and add a note. This causes `/wire:custom-define` to recommend custom even for mid-band scores.
 
 Record per deliverable:
 ```

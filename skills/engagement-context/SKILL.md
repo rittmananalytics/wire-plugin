@@ -21,7 +21,7 @@ If `.wire/execution_log.md` does not exist, create it with the standard header f
 
 ## When This Skill Activates
 
-This skill fires automatically at the **start of a conversation** in any repository that contains a `.wire/` directory, when the agent has not yet established engagement context. It is the replacement for the deprecated `/wire:session:start` command — context loading is now implicit, not explicit.
+This skill fires automatically at the **start of a conversation** in any repository that contains a `.wire/` directory, when the agent has not yet established engagement context. It is the replacement for the deprecated `/wire:session-start` command — context loading is now implicit, not explicit.
 
 Do NOT fire this skill if:
 - You have already read and summarised the engagement context earlier in this conversation
@@ -71,7 +71,7 @@ Keep this to 4–6 lines. Do not dump the entire status file. If there is no pri
 
 After outputting the context summary, immediately proceed with what the user asked for. Do not ask for permission to continue or offer a menu of options unless the user's request is ambiguous.
 
-If the user asked a specific question or gave a specific instruction, answer it — do not replace their intent with a session plan. Reserve structured planning for `/wire:plan`.
+If the user asked a specific question or gave a specific instruction, answer it — do not replace their intent with a session plan. Reserve structured planning for `/wire:session-plan`.
 
 ## Edge Cases
 
@@ -89,7 +89,7 @@ Load release state only. Note "No engagement context file found" in one line —
 
 ## What This Skill Does Not Do
 
-- It does not enter Plan Mode or propose a session plan (use `/wire:plan` for that)
+- It does not enter Plan Mode or propose a session plan (use `/wire:session-plan` for that)
 - It does not block the user's request while loading context
 - It does not ask the user questions before proceeding
 - It does not replace the content of what the user asked — it prepends context to it

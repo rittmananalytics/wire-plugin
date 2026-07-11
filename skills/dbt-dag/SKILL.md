@@ -149,7 +149,7 @@ graph LR
 ## Wire Project Notes
 
 - **Wire naming conventions**: sources feed `stg_<source>__<entity>` → `int_<entity>` → `<entity>_fct` / `<entity>_dim`. The diagram should reflect this layered flow.
-- **`/wire:conceptual_model:generate`**: the conceptual model command also produces a Mermaid entity diagram. This skill produces a **lineage** diagram (model dependencies), which is different from an entity-relationship diagram.
+- **`/wire:conceptual_model-generate`**: the conceptual model command also produces a Mermaid entity diagram. This skill produces a **lineage** diagram (model dependencies), which is different from an entity-relationship diagram.
 - **Large projects**: Wire projects may have 50+ models. For large DAGs, offer to show only the immediate upstream/downstream of the selected model (1 level each direction) rather than the full graph, to keep the diagram readable.
 
 ---

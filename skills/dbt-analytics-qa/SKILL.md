@@ -1,6 +1,6 @@
 ---
 name: dbt-analytics-qa
-description: Proactive skill for answering business analytics questions using dbt's Semantic Layer, Discovery API, or direct SQL. Auto-activates when a user asks a data or metrics question against a dbt project (e.g. "What were total sales last quarter?", "Show me top customers by revenue"). Uses a 4-level escalation: Semantic Layer first, modified compiled SQL, model discovery, manifest analysis. Always exhausts all options before saying "cannot answer."
+description: Proactive skill for answering business analytics questions using dbt's Semantic Layer, Discovery API, or direct SQL. Auto-activates when a user asks a data or metrics question against a dbt project (e.g. "What were total sales last quarter?", "Show me top customers by revenue"). Uses a 4-level escalation — Semantic Layer first, modified compiled SQL, model discovery, manifest analysis. Always exhausts all options before saying "cannot answer."
 ---
 
 # dbt Analytics Q&A Skill

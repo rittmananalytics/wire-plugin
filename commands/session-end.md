@@ -28,13 +28,13 @@ replaced_by: "Automatic session history rows written by each generate/validate/r
 since: "3.4.20"
 ---
 
-# ⚠️ Deprecated: /wire:session:end
+# ⚠️ Deprecated: /wire:session-end
 
 This command has been deprecated in Wire v3.4.20.
 
 ## Why it was removed
 
-Telemetry analysis showed that `/wire:session:end` was almost never run. The command that was intended to close sessions and record what was done was the most-skipped command in the framework — meaning session history was almost never written. The design placed the responsibility for state persistence on the user, at a moment (end of session) when motivation is lowest.
+Telemetry analysis showed that `/wire:session-end` was almost never run. The command that was intended to close sessions and record what was done was the most-skipped command in the framework — meaning session history was almost never written. The design placed the responsibility for state persistence on the user, at a moment (end of session) when motivation is lowest.
 
 ## What replaces it
 
@@ -46,7 +46,7 @@ The `execution_log.md` (which every command has always written to) remains the a
 
 ## Migration
 
-- Remove any `/wire:session:end` invocations from your workflow
+- Remove any `/wire:session-end` invocations from your workflow
 - Session state will be written automatically after each Wire command completes
 - No action needed to preserve session history
 

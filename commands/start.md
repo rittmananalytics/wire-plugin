@@ -620,28 +620,27 @@ NAVIGATION
   /wire:start                   This command — what do I do next?
   /wire:session-plan            Propose a focused plan for the current session
   /wire:status                  Show where you are across all releases
-  /wire:engagement-context      Summarise the current engagement context
+  (engagement-context skill)    Auto-fires to summarise engagement context — no command needed
 
 DASHBOARD-FIRST RELEASE (most common for RA)
   /wire:mockups-generate        Generate an HTML dashboard mockup
-  /wire:mockups-validate
-  /wire:mockups-review
-  /wire:data-model-generate     Generate the data model from the approved mockup
-  /wire:data-model-validate
-  /wire:data-model-review
+  /wire:mockups-review          mockups is generate+review only — no validate step
+  /wire:data_model-generate     Generate the data model from the approved mockup
+  /wire:data_model-validate
+  /wire:data_model-review
   /wire:dbt-generate            Generate dbt staging/integration/warehouse models
   /wire:dbt-validate
   /wire:dbt-review
-  /wire:semantic-layer-generate Generate LookML views, explores, dashboards
-  /wire:semantic-layer-validate
-  /wire:semantic-layer-review
+  /wire:semantic_layer-generate Generate LookML views, explores, dashboards
+  /wire:semantic_layer-validate
+  /wire:semantic_layer-review
 
 DISCOVERY RELEASE
   /wire:requirements-generate   Generate requirements specification
   /wire:requirements-validate
   /wire:requirements-review
-  /wire:conceptual-model-generate  Generate conceptual data model
-  /wire:pipeline-design-generate   Generate pipeline architecture design
+  /wire:conceptual_model-generate  Generate conceptual data model
+  /wire:pipeline_design-generate   Generate pipeline architecture design
 
 UTILITIES
   /wire:utils-jira-sync         Sync Wire artifact states to Jira tickets

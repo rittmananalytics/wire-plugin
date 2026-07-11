@@ -66,7 +66,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 
 | Command | Arguments | Description |
 |---------|-----------|-------------|
-| `/wire:session-start` | `(optional: release-folder)` | DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:plan for optional structured planning |
+| `/wire:session-start` | `(optional: release-folder)` | DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:session-plan for optional structured planning |
 | `/wire:session-end` | `(optional: release-folder)` | DEPRECATED — session state is now written automatically after each Wire command completes |
 | `/wire:session-plan` | `(optional: release-folder)` | Optional planning ritual — propose a focused 3–5 step plan before starting work |
 
@@ -138,6 +138,12 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:dbt-generate` | `<project-folder>` | Generate dbt models |
 | `/wire:dbt-validate` | `<project-folder>` | Run dbt tests and validation |
 | `/wire:dbt-review` | `<project-folder>` | Review dbt code |
+| `/wire:dbt-staging-generate` | `<project-folder>` | Generate dbt staging-layer models only (alternative to the monolithic dbt-generate) |
+| `/wire:dbt-staging-validate` | `<project-folder>` | Validate dbt staging-layer models |
+| `/wire:dbt-integration-generate` | `<project-folder>` | Generate dbt integration-layer models only (alternative to the monolithic dbt-generate) |
+| `/wire:dbt-integration-validate` | `<project-folder>` | Validate dbt integration-layer models |
+| `/wire:dbt-warehouse-generate` | `<project-folder>` | Generate dbt warehouse-layer models only (alternative to the monolithic dbt-generate) |
+| `/wire:dbt-warehouse-validate` | `<project-folder>` | Validate dbt warehouse-layer models |
 | `/wire:dashboards-generate` | `<project-folder>` | Generate dashboards |
 | `/wire:dashboards-validate` | `<project-folder>` | Validate dashboards |
 | `/wire:dashboards-review` | `<project-folder>` | Review dashboards |
@@ -189,11 +195,6 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | Command | Arguments | Description |
 |---------|-----------|-------------|
 | `/wire:utils-run-dbt` | `<project-folder>` | Run dbt models |
-| `/wire:utils-test-pipeline` | `<project-folder>` | Test data pipeline |
-| `/wire:utils-deploy-to-dev` | `<project-folder>` | Deploy to dev environment |
-| `/wire:utils-deploy-to-prod` | `<project-folder>` | Deploy to production |
-| `/wire:utils-create-pr` | `<project-folder>` | Create pull request |
-| `/wire:utils-monitor` | `<project-folder>` | Check monitoring and alerts |
 | `/wire:utils-meeting-context` | `<project-folder> [artifact-name]` | Retrieve Fathom meeting context for artifact reviews |
 | `/wire:utils-client-context` | `<client-name>` | Gather external client context from Slack, HubSpot, Harvest, Jira, Confluence and Fathom |
 | `/wire:utils-atlassian-search` | `<project-folder> [artifact-name]` | Search Confluence and Jira for project context |
@@ -208,7 +209,10 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:utils-docstore-fetch` | `<project-folder> <artifact>` | Fetch document store content and comments for review |
 | `/wire:utils-migration-agent-delegate` | `(internal — called by migration generate commands)` | Auto-delegation protocol for migration generate commands — dispatch to migration-specialist subagent when available |
 | `/wire:utils-session-summary` | `<release-folder> [scope]` | Draft a Slack-shaped session summary from a release's execution log |
-| `/wire:utils-git-workflow` | `<release-folder> <artifact-id> <action>` | Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR |
+| `/wire:utils-commit` | `<release-folder> <artifact> <action>` | Stage and commit generated or validated Wire artifacts to git |
+| `/wire:utils-pr-create` | `[release-folder]` | Create a Wire-aware GitHub pull request pre-populated from session artifacts |
+| `/wire:utils-pipeline-status` | `<release-folder>` | Check configured pipeline tool connection status |
+| `/wire:utils-git-workflow` | `<release-folder> <artifact-id> <action>` | Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR (composes utils-commit and utils-pr-create) |
 | `/wire:utils-delivery-forecast` | `<client-name> [--release <folder>]` | Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates |
 | `/wire:utils-doc-analyze` | `<file-path-or-url> [<file-path-2> ...]` | Extract deliverables, acceptance criteria, and timeline from SoW or project documents |
 
@@ -316,6 +320,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 
 | Command | Arguments | Description |
 |---------|-----------|-------------|
+| `/wire:delegate` | `<release-folder>` | Decompose a release's pending work into typed tasks and dispatch to specialist local subagents |
 | `/wire:playbook-generate` | `<release-folder>` | Generate a step-by-step BPMN delivery playbook for any Wire release |
 | `/wire:conceptual_model-generate` | `<project-folder>` | Generate conceptual entity model from requirements |
 | `/wire:conceptual_model-validate` | `<project-folder>` | Validate conceptual model completeness and correctness |
@@ -339,6 +344,9 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:adopt` | `[repo-path-or-url]` | Adopt an in-flight project into Wire — assess repo and external sources, map existing work to artifacts, set up engagement structure, generate adoption playbook |
 | `/wire:custom-define` | `<release-folder>` | Define a custom release type from SoW or project documents — map deliverables to Wire commands or generate bespoke specs |
 | `/wire:custom-feature-request` | `<custom-spec-name>` | Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition |
+| `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N]` | Present migration batch acceptance pack for stakeholder sign-off |
+| `/wire:migration-source-register` | `<release-folder> <source_type> <github_url>` | Register a source repository for a given migration source type |
+| `/wire:migration-source-refresh` | `<release-folder> <source_type>` | Pull a fresh local snapshot of a registered migration source |
 | `/wire:ads-audit-all` | `<release-folder>` | Run all three agentic data stack audits in parallel |
 | `/wire:ads_dataset-audit-generate` | `<release-folder>` | Inventory warehouse tables, identify duplicates, grade governance maturity |
 | `/wire:ads_dataset-audit-validate` | `<release-folder>` | Verify dataset audit completeness and tier classifications |

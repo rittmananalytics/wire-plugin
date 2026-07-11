@@ -23,7 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Manage and configure MCP server connections for the Wire Framework
-argument-hint: [list/view/check] [server-name or release-folder]
+argument-hint: "[list/view/check] [server-name or release-folder]"
 ---
 
 # Wire MCP Command

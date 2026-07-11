@@ -1,9 +1,9 @@
 ---
-description: DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:plan for optional structured planning
+description: DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:session-plan for optional structured planning
 argument-hint: (optional: release-folder)
 ---
 
-# DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:plan for optional structured planning
+# DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:session-plan for optional structured planning
 
 ## User Input
 
@@ -22,13 +22,13 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: "DEPRECATED — session:start has been replaced by the engagement-context skill and /wire:plan"
+description: "DEPRECATED — session:start has been replaced by the engagement-context skill and /wire:session-plan"
 deprecated: true
-replaced_by: "engagement-context skill (auto-fires) + /wire:plan (optional planning ritual)"
+replaced_by: "engagement-context skill (auto-fires) + /wire:session-plan (optional planning ritual)"
 since: "3.4.20"
 ---
 
-# ⚠️ Deprecated: /wire:session:start
+# ⚠️ Deprecated: /wire:session-start
 
 This command has been deprecated in Wire v3.4.20.
 
@@ -40,12 +40,12 @@ Telemetry analysis across six Wire engagements showed that session:start was rar
 
 **Context loading** is now handled by the **engagement-context skill**, which activates automatically whenever Claude detects a `.wire/` directory and has not yet established engagement context in the current conversation. No invocation required.
 
-**Structured session planning** is available on demand via `/wire:plan`, for consultants who want the 3–5 step session plan before starting work. This is optional, not mandatory.
+**Structured session planning** is available on demand via `/wire:session-plan`, for consultants who want the 3–5 step session plan before starting work. This is optional, not mandatory.
 
 ## Migration
 
-- Remove any `/wire:session:start` invocations from your workflow
+- Remove any `/wire:session-start` invocations from your workflow
 - Context will be loaded automatically when you begin work in a Wire engagement
-- Run `/wire:plan` at the start of a session if you want an explicit plan before proceeding
+- Run `/wire:session-plan` at the start of a session if you want an explicit plan before proceeding
 
 Execute the complete workflow as specified above.

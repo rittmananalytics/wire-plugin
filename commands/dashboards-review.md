@@ -22,15 +22,15 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Record stakeholder review feedback on dashuoards
+description: Record stakeholder review feedback on dashboards
 argument-hint: <project-folder>
 ---
 
-# dashuoards Review Command
+# dashboards Review Command
 
 ## Purpose
 
-Record stakeholder feedback on the dashuoards. Captures approval or change requests.
+Record stakeholder feedback on the dashboards. Captures approval or change requests.
 
 ## Usage
 
@@ -40,7 +40,7 @@ Record stakeholder feedback on the dashuoards. Captures approval or change reque
 
 ## Prerequisites
 
-- dashuoards must exist and pass validation
+- dashboards must exist and pass validation
 - `dashboards.validate` should be `pass`
 
 ## Workflow
@@ -53,7 +53,7 @@ Record stakeholder feedback on the dashuoards. Captures approval or change reque
 
 **If validation not pass**:
 ```
-Warning: dashuoards has not passed validation yet.
+Warning: dashboards has not passed validation yet.
 
 Run `/wire:dashboards-validate <project>` before review.
 
@@ -64,12 +64,12 @@ Proceed anyway? (y/n)
 
 **Output**:
 ```
-## dashuoards Review Session
+## dashboards Review Session
 
 **Project:** [PROJECT_NAME]
 **Files:** [List files being reviewed]
 
-Please review the dashuoards and provide feedback.
+Please review the dashboards and provide feedback.
 ```
 
 ### Step 2.5: Retrieve External Context (Optional)
@@ -100,8 +100,8 @@ This step enriches the review with context from meeting recordings, Confluence d
     "question": "What is the review outcome?",
     "header": "Review Status",
     "options": [
-      {"label": "Approved", "description": "dashuoards is complete and approved"},
-      {"label": "Changes requested", "description": "dashuoards needs revisions"},
+      {"label": "Approved", "description": "dashboards is complete and approved"},
+      {"label": "Changes requested", "description": "dashboards needs revisions"},
       {"label": "Needs discussion", "description": "Requires clarification"}
     ],
     "multiSelect": false
@@ -113,7 +113,7 @@ This step enriches the review with context from meeting recordings, Confluence d
 
 **Ask for reviewer**:
 ```
-Who approved the dashuoards? (Name and role)
+Who approved the dashboards? (Name and role)
 ```
 
 **Update status**:
@@ -128,7 +128,7 @@ dashboards:
 
 **Suggest next steps**:
 ```
-## dashuoards Approved ✅
+## dashboards Approved ✅
 
 **Reviewed by:** [Reviewer]
 
@@ -156,7 +156,7 @@ dashboards:
 
 **Suggest iteration**:
 ```
-## dashuoards Changes Requested 🔄
+## dashboards Changes Requested 🔄
 
 ### Change Requests:
 [Feedback]
@@ -195,6 +195,10 @@ Execute the complete workflow as specified above.
 ## Execution Logging
 
 After completing the workflow, append a log entry to the project's execution_log.md:
+
+---
+description: Internal utility — appends a log entry to the project's execution log after any generate/validate/review workflow or skill activation
+---
 
 # Execution Log — Command and Skill Logging
 
@@ -283,7 +287,7 @@ This makes skill activations visible in the same log that captures command invoc
 Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
 
 **Process**:
-1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration-inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
 2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
 3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
 4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).

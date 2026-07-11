@@ -41,6 +41,10 @@ The VSCode extension (`wire-vscode/`) lives in the same repo but
 is versioned independently. The build script is `wire/scripts/build-packages.sh`.
 A release automation script exists at `wire/scripts/release.sh` — it handles patch bumps,
 CHANGELOG, RELEASE_NOTES, USER_GUIDE, build, and remote pushes. This skill wraps and extends it.
+`release.sh` runs the full test suite (`wire/tests/run_all.sh`) as its very first action and
+aborts before touching anything if it fails — this applies to every invocation, including
+`--dry-run` and `--push-only`. The minor/major bump path below runs `build-packages.sh` directly
+instead of `release.sh`, so it has its own explicit test-suite step — don't skip it.
 
 ---
 
@@ -347,6 +351,15 @@ After manually setting versions, run `build-packages.sh` directly:
 bash wire/scripts/build-packages.sh
 ```
 
+**Run the test suite before committing** — this path bypasses `release.sh`, which is where the
+test gate normally lives:
+```bash
+bash wire/tests/run_all.sh
+```
+Do not proceed to commit/push/PR if this fails. Fix the failures (or, if a check is
+intentionally allowed to fail — see `wire/tests/agentic_data_stack/README.md` for any such
+case — confirm it's still the expected, documented failure) before continuing.
+
 Then commit, push, and raise the PR manually (see Step 7).
 
 ---
@@ -383,6 +396,12 @@ asked to do so.
 
 After the release completes, verify:
 
+0. Test suite passed for this release. `release.sh` already gates on this and would have aborted
+   before reaching this point if it failed — this check is for the minor/major manual path, which
+   has its own test-suite step above but doesn't otherwise leave a record here. If in doubt, re-run:
+   ```bash
+   bash wire/tests/run_all.sh
+   ```
 1. `plugin.json` version matches the intended release version:
    ```bash
    cat wire/packaging/claude-plugin/.claude-plugin/plugin.json | grep version

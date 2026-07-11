@@ -1,3 +1,8 @@
+---
+name: lookml-content-authoring
+description: LookML authoring on the local filesystem with Looker MCP server integration for live schema discovery, deployment, and query validation
+---
+
 # LookML Content Authoring Skill for Claude Code
 
 ## On Activation

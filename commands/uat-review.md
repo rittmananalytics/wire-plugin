@@ -40,8 +40,8 @@ Record stakeholder feedback on the uat. Captures approval or change requests.
 
 ## Prerequisites
 
-- uat must exist and pass validation
-- `uat.validate` should be `pass`
+- uat must exist
+- `uat.generate` should be `complete` (uat is a generate+review artifact — there is no validate step; sign-off happens directly in review)
 
 ## Workflow
 
@@ -49,13 +49,13 @@ Record stakeholder feedback on the uat. Captures approval or change requests.
 
 **Process**:
 1. Read `status.md`
-2. Check that `uat.validate == pass`
+2. Check that `uat.generate == complete`
 
-**If validation not pass**:
+**If generate not complete**:
 ```
-Warning: uat has not passed validation yet.
+Warning: uat has not been generated yet.
 
-Run `/wire:uat-validate <project>` before review.
+Run `/wire:uat-generate <project>` before review.
 
 Proceed anyway? (y/n)
 ```
@@ -120,7 +120,6 @@ Who approved the uat? (Name and role)
 ```yaml
 uat:
   generate: complete
-  validate: pass
   review: approved
   reviewed_by: "[Reviewer]"
   reviewed_date: 2026-02-13
@@ -148,7 +147,6 @@ What changes are needed?
 ```yaml
 uat:
   generate: complete
-  validate: pass
   review: changes_requested
   feedback: "[Feedback]"
   reviewed_date: 2026-02-13
@@ -164,7 +162,7 @@ uat:
 ### Next Steps
 
 1. Address feedback
-2. Re-validate: `/wire:uat-validate <project>`
+2. Re-generate: `/wire:uat-generate <project>`
 3. Re-submit for review
 ```
 
@@ -195,6 +193,10 @@ Execute the complete workflow as specified above.
 ## Execution Logging
 
 After completing the workflow, append a log entry to the project's execution_log.md:
+
+---
+description: Internal utility — appends a log entry to the project's execution log after any generate/validate/review workflow or skill activation
+---
 
 # Execution Log — Command and Skill Logging
 
@@ -283,7 +285,7 @@ This makes skill activations visible in the same log that captures command invoc
 Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
 
 **Process**:
-1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration-inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
 2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
 3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
 4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).

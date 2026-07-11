@@ -717,7 +717,7 @@ Store `warehouse` and `droughty_context`.
    - `{{CREATED_DATE}}` → today's date
    - `{{LAST_UPDATED}}` → today's date
    - `{{RELEASE_FOLDER}}` → release_folder
-   - `{{SOURCE_DOCUMENTS}}` → "TBD — provided in /wire:custom-release-define"
+   - `{{SOURCE_DOCUMENTS}}` → "TBD — provided in /wire:custom-define"
 3. Write to `.wire/releases/[release_folder]/status.md`
 4. **Invoke `wire/specs/custom/define.md`** to handle document ingestion, deliverable mapping, custom spec generation, and `.claude/commands/` wrapper creation. The `define` command handles all remaining scaffolding — do not write a standard deliverables section to status.md; `define` does this after the user confirms the proposed structure.
 
@@ -768,7 +768,7 @@ When **Both** is selected, run both workflows. They operate independently — fa
    /wire:problem-definition-generate [release_folder]
 
 2. Or start a session first:
-   /wire:session:start [release_folder]
+   /wire:session-start [release_folder]
 
 [If `sop_discovery`]:
 1. Draft the engagement brief from the signed SoW and deal record:
@@ -778,7 +778,7 @@ When **Both** is selected, run both workflows. They operate independently — fa
    /wire:stakeholder-map-generate [release_folder]
 
 3. Or start a session first:
-   /wire:session:start [release_folder]
+   /wire:session-start [release_folder]
 
 [If delivery release type]:
 1. Add source materials to .wire/releases/[release_folder]/artifacts/
@@ -786,7 +786,7 @@ When **Both** is selected, run both workflows. They operate independently — fa
    /wire:requirements-generate releases/[release_folder]
 
 3. Or start a session first:
-   /wire:session:start [release_folder]
+   /wire:session-start [release_folder]
 
 [If `droughty` release type]:
 1. Configure Droughty — install and connect to the warehouse:
@@ -796,7 +796,7 @@ When **Both** is selected, run both workflows. They operate independently — fa
    /wire:droughty-generate releases/[release_folder]
 
 [If `custom` release type]:
-Custom spec generation is already underway via /wire:custom-release-define.
+Custom spec generation is already underway via /wire:custom-define.
 Once complete, invoke your first custom generate command:
   /[first-artifact-name]-generate [release_folder]
 
@@ -807,7 +807,7 @@ Or check what commands were created:
 
 | Command | Purpose |
 |---------|---------|
-| `/wire:session:start [folder]` | Start a focused working session |
+| `/wire:session-start [folder]` | Start a focused working session |
 | `/wire:status releases/[folder]` | Check release status |
 | `/wire:problem-definition-generate [folder]` | [discovery] Start the Shape Up workflow |
 | `/wire:engagement-brief-generate [folder]` | [sop_discovery] Start the SOP discovery workflow |
@@ -815,9 +815,9 @@ Or check what commands were created:
 | `/wire:migration-audit-all [folder]` | [platform_migration] Run all 5 source platform audits in parallel |
 | `/wire:ingestion-audit-generate [folder]` | [platform_migration] Audit Fivetran connectors on source platform |
 | `/wire:ads-audit-all [folder]` | [agentic_data_stack] Run all three audits in parallel |
-| `/wire:aa_dataset-audit-generate [folder]` | [agentic_data_stack] Inventory warehouse tables and grade governance maturity |
-| `/wire:aa_metric-audit-generate [folder]` | [agentic_data_stack] Inventory metric definitions and coverage gaps |
-| `/wire:aa_query-audit-generate [folder]` | [agentic_data_stack] Analyse query history for question patterns |
+| `/wire:ads_dataset-audit-generate [folder]` | [agentic_data_stack] Inventory warehouse tables and grade governance maturity |
+| `/wire:ads_metric-audit-generate [folder]` | [agentic_data_stack] Inventory metric definitions and coverage gaps |
+| `/wire:ads_query-audit-generate [folder]` | [agentic_data_stack] Analyse query history for question patterns |
 | `/wire:droughty-setup [folder]` | [droughty] Install Droughty and generate profile.yaml + droughty_project.yaml |
 | `/wire:droughty-generate [folder]` | [droughty] Run the full Droughty phase in sequence |
 ```
@@ -855,6 +855,10 @@ Execute the complete workflow as specified above.
 ## Execution Logging
 
 After completing the workflow, append a log entry to the project's execution_log.md:
+
+---
+description: Internal utility — appends a log entry to the project's execution log after any generate/validate/review workflow or skill activation
+---
 
 # Execution Log — Command and Skill Logging
 
@@ -943,7 +947,7 @@ This makes skill activations visible in the same log that captures command invoc
 Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
 
 **Process**:
-1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration-inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
 2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
 3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
 4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).

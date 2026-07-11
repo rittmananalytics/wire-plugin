@@ -132,7 +132,7 @@ If the template file cannot be found, surface a clear error:
 Template not found for release_type: <type>
 Expected: <path>
 
-If this is a custom release type, run /wire:custom/define <release-folder> to update it.
+If this is a custom release type, run /wire:custom-define <release-folder> to update it.
 ```
 
 Read and parse the template YAML frontmatter as `template_schema`.
@@ -210,8 +210,8 @@ Based on `release_type` and the detected additions, report any commands that are
 | v3.9.0 | `/wire:delegate` | all — batch dispatch to specialist local subagents for pending artifact work |
 | v3.8.0 | `/wire:droughty-*` (9 commands) | all — can be added to any release as an optional phase |
 | v3.8.1 | `/wire:dbt-migration-lint` | `platform_migration`, `data_warehouse_migration`, `dbt_development` |
-| v3.7.x | `/wire:utils/delivery-forecast` | all |
-| v3.5.x | `/wire:utils/doc-analyze`, `/wire:custom/define` | all |
+| v3.7.x | `/wire:utils-delivery-forecast` | all |
+| v3.5.x | `/wire:utils-doc-analyze`, `/wire:custom-define` | all |
 
 Only surface commands where the release's `wire_plugin_version` (before this upgrade) is older than the version in which the command was added. If `wire_plugin_version` was absent (first upgrade), surface all commands not already reflected in the status.md structure.
 
@@ -274,6 +274,10 @@ Execute the complete workflow as specified above.
 ## Execution Logging
 
 After completing the workflow, append a log entry to the project's execution_log.md:
+
+---
+description: Internal utility — appends a log entry to the project's execution log after any generate/validate/review workflow or skill activation
+---
 
 # Execution Log — Command and Skill Logging
 
@@ -362,7 +366,7 @@ This makes skill activations visible in the same log that captures command invoc
 Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
 
 **Process**:
-1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration-inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
 2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
 3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
 4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).

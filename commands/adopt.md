@@ -788,7 +788,7 @@ Next command: /wire:[first_priority_artifact]-[action] [release_folder]
 
 If `remote_repo: true`, instead output the assessment and playbook content to the terminal and clean up the temporary clone directory.
 
-**Companion skill**: For a deeper delivery health picture anchored on SOW milestones, sprint velocity, and named ticket/MR status, the `client-delivery-status-report` skill (`wire/skills/engagement-status-report/client-delivery-status-report.skill`) can be run alongside `/wire:adopt`. It is particularly valuable for steady-state sprint and closeout/suspension states where delivery-level detail matters. `/wire:adopt` establishes the Wire framework structure; the delivery status skill explains what the team has actually been doing and how healthy the delivery is.
+**Companion skill**: For a deeper delivery health picture anchored on SOW milestones, sprint velocity, and named ticket/MR status, the `engagement-status-report` skill (`wire/skills/engagement-status-report/SKILL.md`) can be run alongside `/wire:adopt`. It is particularly valuable for steady-state sprint and closeout/suspension states where delivery-level detail matters. `/wire:adopt` establishes the Wire framework structure; the delivery status skill explains what the team has actually been doing and how healthy the delivery is.
 
 ---
 
@@ -848,6 +848,10 @@ Execute the complete workflow as specified above.
 ## Execution Logging
 
 After completing the workflow, append a log entry to the project's execution_log.md:
+
+---
+description: Internal utility — appends a log entry to the project's execution log after any generate/validate/review workflow or skill activation
+---
 
 # Execution Log — Command and Skill Logging
 
@@ -936,7 +940,7 @@ This makes skill activations visible in the same log that captures command invoc
 Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
 
 **Process**:
-1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration-inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
 2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
 3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
 4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).

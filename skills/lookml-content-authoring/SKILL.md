@@ -1,3 +1,8 @@
+---
+name: lookml-content-authoring
+description: Activates when creating or modifying LookML views, explores, and dashboards directly on the local filesystem
+---
+
 # LookML Content Authoring Skill for Claude Code
 
 ## On Activation

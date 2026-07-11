@@ -67,7 +67,7 @@ Examples:
 
 Store both `client_name` (display) and `client_slug` (search).
 
-**Client directory fast-path**: Before doing any fuzzy channel searching, check whether a client directory is available at `wire/skills/engagement-status-report/client-delivery-status-report.skill` (extract and read `references/client_directory.md`). If the client name matches a known entry, use the pre-confirmed values directly:
+**Client directory fast-path**: Before doing any fuzzy channel searching, check whether a client directory is available at `wire/skills/engagement-status-report/references/client_directory.md`. If the client name matches a known entry, use the pre-confirmed values directly:
 - `email_domain` — used for Fathom domain-filtered listing
 - `slack_channel` and `slack_channel_internal` — exact channel names or IDs, skip fuzzy search
 - `jira_project_key` — skip Jira text search, query by key directly

@@ -32,6 +32,8 @@ argument-hint: <project-folder>
 
 Validate generated dbt models by running dbt tests, checking naming conventions, verifying SQL structure, model configuration, testing coverage, documentation coverage, and optionally running sqlfluff. Produces a structured validation report with severity-rated issues.
 
+> **Per-layer alternative**: If the dbt project was built layer-by-layer instead of via `/wire:dbt-generate`, validate each layer with its own command instead: `/wire:dbt-staging-validate`, `/wire:dbt-integration-validate`, `/wire:dbt-warehouse-validate` — run after the corresponding `/wire:dbt-*-generate` command.
+
 ## Usage
 
 ```bash
@@ -549,6 +551,10 @@ Execute the complete workflow as specified above.
 
 After completing the workflow, append a log entry to the project's execution_log.md:
 
+---
+description: Internal utility — appends a log entry to the project's execution log after any generate/validate/review workflow or skill activation
+---
+
 # Execution Log — Command and Skill Logging
 
 ## Purpose
@@ -636,7 +642,7 @@ This makes skill activations visible in the same log that captures command invoc
 Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
 
 **Process**:
-1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration-inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
 2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
 3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
 4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).

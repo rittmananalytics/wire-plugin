@@ -76,6 +76,19 @@ For each duplicate group where the canonical candidate is already a dbt model:
          tags: ['deprecated']
    ```
 
+   Then **physically relocate the model's `.sql` file to `models/deprecated/`**, mirroring
+   its prior subfolder structure if it had one (e.g. `models/marts/finance/orders_raw.sql`
+   → `models/deprecated/finance/orders_raw.sql`). Use `git mv` so history is preserved.
+   This is required, not optional: `ref()` resolves by model name, not file path, so
+   downstream references are unaffected by the move — but Step 4's folder-based
+   `dbt_project.yml` config only tags a model `deprecated` if it's actually located under
+   `models/deprecated/`. A model left in `models/marts/` would still match the `marts:`
+   folder rule and get tagged `canonical` as well as `deprecated`, which is a contradiction:
+   a table can't simultaneously be the live canonical source for its domain and be marked
+   for sunset. Physically segregating deprecated models by folder is also what makes the
+   eventual removal trivial once the sunset date passes — delete the file (and its
+   schema.yml entry), nothing else to hunt down.
+
 3. If the canonical model does not yet exist (consolidation required):
    - Create a new mart model combining the relevant sources
    - Follow Wire dbt naming conventions (fct_ prefix for facts, dim_ for dimensions)
@@ -108,6 +121,8 @@ models:
     +meta:
       sunset_date: "YYYY-MM-DD"
 ```
+
+This is safe to apply in bulk precisely because Step 2 already relocated every sunset model to `models/deprecated/` — the two folders are mutually exclusive by construction, so no model can pick up both the `canonical` and `deprecated` tags.
 
 ### Step 5: Run dbt and Verify
 
@@ -160,6 +175,10 @@ Execute the complete workflow as specified above.
 ## Execution Logging
 
 After completing the workflow, append a log entry to the project's execution_log.md:
+
+---
+description: Internal utility — appends a log entry to the project's execution log after any generate/validate/review workflow or skill activation
+---
 
 # Execution Log — Command and Skill Logging
 
@@ -248,7 +267,7 @@ This makes skill activations visible in the same log that captures command invoc
 Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
 
 **Process**:
-1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration_inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
+1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration-inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
 2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
 3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
 4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).

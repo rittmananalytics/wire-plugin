@@ -22,42 +22,80 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Report on all project statuses
+description: Report on all release statuses in the current engagement
 ---
 
-# Data Platform Project Status Report
+# Wire Engagement Status Report
 
 ## Purpose
 
-Generate a concise status report showing artifact lifecycle progress. Outputs a table format with minimal verbosity.
+Generate a concise status report showing artifact lifecycle progress for every release in the current engagement (or for one specific release). Outputs a table format with minimal verbosity.
+
+Wire is one-engagement-per-repo: a single `.wire/engagement/context.md` holds engagement-wide metadata (client, SOW, etc.), and each unit of delivery lives in its own `.wire/releases/<release_folder>/` (e.g. `01-discovery`, `02-full-platform`). `/wire:status` reports across all releases in that one engagement.
 
 ## Usage
 
 ```bash
-/wire:status                    # Show all project statuses
-/wire:status 20260210_rowcal    # Show detailed status for specific project
-/wire:status --archived         # Show archived projects
+/wire:status                    # Show all releases in this engagement
+/wire:status 01-discovery       # Show detailed status for a specific release
+/wire:status --archived         # Show archived releases (see /wire:archive)
 ```
 
 ## Workflow
 
-### Step 1: Scan Project Folders
+### Step 1: Read Engagement Context and Scan Release Folders
 
 **Process**:
-1. If `--archived` flag is present, use Glob: `.wire/archive/[0-9]*_*/status.md`
-2. Otherwise, use Glob to find all status files: `.wire/[0-9]*_*/status.md`
-3. Extract folder names from the matched file paths
-4. Build list of all projects
+1. Read `.wire/engagement/context.md` if it exists and parse its frontmatter for `client_name`, `engagement_name`, and similar engagement-wide fields. These are shown once in the report header — they are no longer duplicated per-release the way `client` used to be repeated in every old per-project `status.md`. If the file is missing, proceed without it (older or partially-set-up repos).
+2. If the `--archived` flag is present, use Glob: `.wire/releases/_archive/*/status.md`
+3. Otherwise, use Glob to find every release in the current engagement: `.wire/releases/*/status.md`
+4. Extract the release folder name (e.g. `01-discovery`) from each matched path
+5. Build the list of all releases to report on
 
-### Step 2: Parse Status Files
+### Step 2: Parse Release Status Files
 
-**For each project**:
+**For each release**:
 1. Read `status.md`
 2. Parse YAML frontmatter to extract:
-   - `project_id`, `project_name`, `client`
+   - `release_id`, `release_name`, `release_type`
    - `current_phase`
    - `jira` section (if configured): `epic_key`, artifact issue keys
-   - `artifacts` lifecycle states
+   - the artifact lifecycle states (see below — the shape of this varies by release type)
+
+**Reading artifacts generically**
+
+Different release types have genuinely different artifact sets and even different status-tracking shapes (compare `wire/TEMPLATES/status-template.md` to `wire/TEMPLATES/discovery-status-template.md` to `wire/TEMPLATES/droughty-status-template.md`). Rather than hardcoding a fixed artifact list, always read whatever is actually present in the release's own `status.md`:
+
+**Standard shape** (used by `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `dashboard_first`, `enablement`, `discovery`, `sop_discovery`, `custom`, and `platform_migration`): a top-level `artifacts:` YAML map. Each key is an artifact name (e.g. `data_model`, `dbt`, `semantic_layer`, `problem_definition`). Iterate over the map **in the order its keys appear in the file** — every current template's frontmatter key order matches its own phase/dependency order (verified against `wire/TEMPLATES/status-template.md`, whose YAML key order matches its own Artifact Status Summary table order exactly), so no separate ordering rule is needed.
+
+For each artifact entry, look at which of the `generate` / `validate` / `review` keys are actually present on it — the lifecycle progression is simply **whichever of those three keys exist, in that relative order, skipping whichever are absent**:
+- All three present → full lifecycle: generate → validate → review (e.g. `data_model`, `dbt`, `requirements`)
+- `generate` + `review` only (no `validate` key) → generate+review-only (same idiom as `mockups` and `uat` — see `wire/specs/design/mockups/review.md`, which documents "mockups is a generate+review artifact — there is no validate step")
+- `generate` only (no `validate`, no `review`) → generate-only (same idiom as `viz_catalog` and `lineage_view` — see `wire/specs/design/viz_catalog/generate.md`, which documents "This is a generate-only artifact (no validate or review steps)")
+- `validate` + `review` only (no `generate`) — a gate-check artifact with nothing to generate (seen in the `agentic_data_stack` release type's `launch_gate` — see Special Cases below)
+
+The artifact's own key name derives its command — but the exact transform is not identical across every release type, so consult the table in "Command derivation" below rather than assuming one universal rule.
+
+**Special cases** (differently-shaped status tracking — do not force these through the standard-shape logic above):
+
+- **`droughty`**: has no top-level `artifacts:` map at all. Instead it has a `droughty:` section keyed by step name (`setup`, `introspect`, `dbml`, `docs`, `qa`, `stage`, `dbt_tests`, `lookml`), each with a single `status: not_started | complete` field rather than a generate/validate/review triad — these are single-action commands, not three-step lifecycles. Read steps in the order they appear in `wire/TEMPLATES/droughty-status-template.md` (setup → introspect → dbml → docs → qa → stage → dbt_tests → lookml, matching its own Phase headings). The `stage` step is BigQuery-only; if its status reads `not_applicable` (Snowflake warehouse), skip it when determining the next action. See "Command derivation" below for how step names map to commands.
+- **`agentic_data_stack`**: has no top-level `artifacts:` map either. Each artifact's generate/validate/review state is tracked as a YAML code block embedded in the markdown body under its own `###` heading (see `wire/TEMPLATES/agentic_data_stack/status_agentic_data_stack.md`), in document order: `dataset_audit` → `metric_audit` → `query_audit` → `governance_design` → `semantic_layer_design` → `canonical_models` → `lookml_views` → `semantic_layer` → `knowledge_skill` → `agent_config` → `eval_suite` → `adversarial_config` → `launch_gate` → `enablement`. Parse each fenced `yaml` block the same generic generate/validate/review way described above (`launch_gate` has no `generate` key — it's validate+review only). See "Command derivation" below for how artifact keys map to commands, including a naming exception on `enablement`.
+- **`custom`**: artifact keys and their file paths are whatever `/wire:custom-define` decided for this specific engagement — there's no fixed template or predictable command-name transform at all. Its commands are freshly generated per engagement as `.claude/commands/` wrappers, not entries in `wire/scripts/build-packages.sh`. Read the actual generated command names from `.wire/releases/<release_folder>/custom-commands/` rather than deriving them.
+
+**Command derivation**
+
+The artifact key's transform into a command name is **not identical across every release type** — spot-checked directly against `wire/scripts/build-packages.sh`'s COMMANDS array:
+
+| Release type(s) | Transform | Example |
+|---|---|---|
+| `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `dashboard_first`, `enablement` (i.e. anything built from `wire/TEMPLATES/status-template.md`) | Key used verbatim — underscores are **kept**, not hyphenated | `data_model` → `/wire:data_model-generate`; `semantic_layer` → `/wire:semantic_layer-review`; `viz_catalog` (generate-only) → `/wire:viz_catalog-generate` |
+| `discovery`, `sop_discovery` | Multi-word keys are **hyphenated** | `problem_definition` → `/wire:problem-definition-generate`; `engagement_brief` → `/wire:engagement-brief-generate`; `stakeholder_map` → `/wire:stakeholder-map-generate`. Exception: `kickoff_deck` is renamed outright, not hyphenated → `/wire:kickoff-generate` |
+| `platform_migration` | Multi-word keys are **hyphenated** | `dbt_audit` → `/wire:dbt-audit-generate`; `ingestion_migration` → `/wire:ingestion-migration-generate`; `cutover` (single word, unaffected) → `/wire:cutover-generate` |
+| `agentic_data_stack` | `ads_` prefix, then the key's underscores **hyphenated** | `dataset_audit` → `/wire:ads_dataset-audit-generate`; `semantic_layer_design` → `/wire:ads_semantic-layer-design-generate`. Exception: `enablement` does not follow the mechanical transform — it maps to `/wire:ads_analytics-enablement-generate` (and `-validate`/`-review`), never a bare "ads_" + "enablement" form |
+| `droughty` | `droughty-` prefix, step name **hyphenated**, single action (no generate/validate/review suffix) | `dbt_tests` → `/wire:droughty-dbt-tests`; also a composite `/wire:droughty-generate` that runs the whole phase in sequence — prefer suggesting that when several steps remain |
+| `custom` | No fixed transform — see the Special Case above | n/a |
+
+If a release type isn't covered above (new release types get added over time), don't guess a transform — confirm the exact command by matching the artifact's `<category>/<artifact_key>/<step>` against the `spec_path` column of a `wire/scripts/build-packages.sh` COMMANDS entry, then take that entry's own first field (before the pipe), replacing `/` with `-`.
 
 **Artifact State Mapping**:
 ```
@@ -67,14 +105,10 @@ review:   not_started → ⬜, pending → ⏳, approved → ✅, changes_reques
 ready:    auto-calculated from above
 ```
 
-**Ready Calculation**:
+**Ready Calculation** (generic — derived from whichever steps the artifact actually has):
 ```
-# Standard artifacts (brief, wireframe, schema, lookml):
-ready = ✅ if (generate=complete AND validate=pass AND review=approved)
-ready = ⬜ otherwise
-
-# Mock data (requires Snowflake table):
-ready = ✅ if (generate=complete AND validate=pass AND review=approved AND snowflake_table is set)
+ready = ✅ if every lifecycle step the artifact actually has is in its "done" state
+        (generate=complete, and validate=pass if present, and review=approved if present)
 ready = ⬜ otherwise
 ```
 
@@ -82,236 +116,129 @@ ready = ⬜ otherwise
 
 Both overview and detail modes use the same artifact lifecycle table format.
 
-**Artifact lifecycle table** (used in both modes):
+**Artifact lifecycle table** (used in both modes — columns present in a given release depend on what that release's artifacts actually track):
 
 ```
-| Artifact   | Generate   | Validate   | Review       | Ready |
-|------------|------------|------------|--------------|-------|
-| Brief      | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Wireframe  | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Catalog    | ✅          | -          | -            | ✅     |
-| Schema     | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Mock Data  | ✅ complete | ⬜          | ⬜            | ⬜     |
-| LookML     | ⬜          | ⬜          | ⬜            | ⬜     |
+| Artifact         | Generate    | Validate   | Review       | Ready |
+|------------------|-------------|------------|--------------|-------|
+| requirements     | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| workshops        | ✅ complete | -          | ✅ approved   | ✅     |
+| conceptual_model | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| data_model       | ✅ complete | ✅ pass     | ⬜            | ⬜     |
+| mockups          | ✅ complete | -          | ⬜            | ⬜     |
+| viz_catalog      | ⬜          | -          | -            | ⬜     |
 ```
 
 **Notes:**
-- Catalog row shows "-" for Validate and Review columns since it's a generate-only artifact.
-- Mock Data requires `snowflake_table` to be set for "Ready" status (shown in Highlights if missing)
-- Artifacts with `not_applicable` state are hidden from the table
+- A row shows "-" in the Validate column when the artifact has no `validate` key (generate+review-only, e.g. `workshops`, `mockups`, `uat`), and "-" in both Validate and Review when it has neither (generate-only, e.g. `viz_catalog`, `lineage_view`).
+- Artifacts with `not_applicable` state (e.g. droughty's `stage` step on Snowflake) are hidden from the table.
 - If `jira.epic_key` exists, add a "Jira" column showing the artifact's `task_key` (e.g., `PROJ-124`)
-- In overview mode, if Jira is configured, show the Epic key in the project header: `## name (ID | type | client | phase | PROJ-123)`
+- In overview mode, if Jira is configured, show the Epic key in the release header: `## release_folder (release_type | current_phase | PROJ-123)`
 
 ---
 
-**If no specific project** (overview mode):
-
-For each project, show a project header followed by the artifact lifecycle table and a Next action line:
+**If no specific release is given** (overview mode) — show every release in the current engagement (there is only ever one client per `.wire/` root now, so this is no longer "one row per client project"):
 
 ```
-# Data Platform Status
+# Acme Corporation — Engagement Status
 
-## omni_channel_retail_aws (20260205 | new_template | Internal | Prep)
+**Engagement:** acme_data_platform
 
-| Artifact   | Generate   | Validate   | Review       | Ready |
-|------------|------------|------------|--------------|-------|
-| Brief      | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Wireframe  | ✅ complete | ✅ pass     | ⬜            | ⬜     |
-| Catalog    | ✅          | -          | -            | ✅     |
-| Schema     | ✅ complete | ✅ pass     | ⬜            | ⬜     |
-| Mock Data  | ⬜          | ⬜          | ⬜            | ⬜     |
-| LookML     | ⬜          | ⬜          | ⬜            | ⬜     |
+## 01-discovery (discovery | Discovery)
 
-**Next:** `/wire:wireframe-review 20260205_omni_channel_retail_aws`
+| Artifact           | Generate    | Validate   | Review       | Ready |
+|---------------------|-------------|------------|--------------|-------|
+| problem_definition | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| pitch              | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| release_brief      | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| sprint_plan        | ⬜          | ⬜          | ⬜            | ⬜     |
+
+**Next:** `/wire:sprint-plan-generate 01-discovery`
 
 ---
 
-Summary: 1 project(s) | 0 ready for Prod
+## 02-full-platform (full_platform | Requirements)
+
+| Artifact     | Generate    | Validate   | Review | Ready |
+|--------------|-------------|------------|--------|-------|
+| requirements | ✅ complete | ✅ pass     | ⬜      | ⬜     |
+| workshops    | ⬜          | -          | ⬜      | ⬜     |
+
+**Next:** `/wire:requirements-review 02-full-platform`
+
+---
+
+Summary: 2 release(s) | 0 ready for Prod
 ```
 
 **Overview format rules:**
-- Each project gets an H2 header: `## name (ID | type | client | phase)`
+- A single engagement-level header up top (client + engagement name, from `.wire/engagement/context.md`)
+- Each release gets an H2 header: `## release_folder (release_type | current_phase)`
 - Followed by the standard artifact lifecycle table
 - Followed by a single **Next:** line with the suggested command
-- Projects separated by horizontal rules
+- Releases separated by horizontal rules, in ascending release-folder order (`01-...` before `02-...`)
 - Summary line at the bottom
 
 ---
 
-**If specific project requested** (detail mode):
+**If a specific release is requested** (detail mode):
 
 Same artifact lifecycle table, plus a Highlights section with additional context:
 
 ```
-# omni_channel_retail_aws - Status
+# 02-full-platform — Status
 
-| Artifact   | Generate   | Validate   | Review       | Ready |
-|------------|------------|------------|--------------|-------|
-| Brief      | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Wireframe  | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Catalog    | ✅          | -          | -            | ✅     |
-| Schema     | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Mock Data  | ✅ complete | ⬜          | ⬜            | ⬜     |
-| LookML     | ⬜          | ⬜          | ⬜            | ⬜     |
+**Client:** Acme Corporation
+
+| Artifact     | Generate    | Validate   | Review       | Ready |
+|--------------|-------------|------------|--------------|-------|
+| requirements | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| workshops    | ✅ complete | -          | ✅ approved   | ✅     |
+| data_model   | ✅ complete | ⬜          | ⬜            | ⬜     |
 
 ### Highlights
 
-- **Next:** Run `/wire:mockdata-validate 20260210_rowcal` to validate mock data
-- **Wireframe:** https://lovable.dev/projects/[ID]
-- **Snowflake:** Mock data not loaded yet (run `/wire:utils-load-mock-data` when ready)
+- **Next:** Run `/wire:data_model-validate 02-full-platform` to validate the data model
+- **Jira:** Epic PROJ-101 — 5 of 16 artifact tasks complete
+- **dbt:** 12 files generated
 ```
 
 **Highlights section rules:**
-- Always include "Next:" with the suggested command
-- Include "Jira:" line if `jira.epic_key` exists, showing Epic key and link
-- Include "Wireframe:" line only if a Lovable URL exists in status.md
-- Include "Snowflake:" line if mock data generated but `snowflake_table` not set
-- Include "LookML:" line if LookML generated, showing file count (from `generated_files` array length)
-- Include "Blockers:" only if there are open clarification items
-- Include other notable items (e.g., "Brief approved by [stakeholder] on [date]")
+- Always include a "Next:" line with the suggested command
+- Include a "Jira:" line if `jira.epic_key` exists, showing the Epic key and rough progress
+- Include a "Docstore:" line if `docstore.provider` is set, noting the target space/page
+- For any artifact whose entry has a non-empty `generated_files` array, optionally mention the file count (e.g. "**dbt:** 12 files generated")
+- For any artifact whose entry contains a URL-like field, surface it under that artifact's name
+- Include "Blockers:" only if `blockers` in frontmatter is non-empty
+- Include other notable items (e.g., "requirements approved by [stakeholder] on [date]")
 - Keep to 2-5 bullet points max
 
 ### Step 4: Determine Next Action
 
-**Logic for next action**:
+**Logic for next action** — fully data-driven from whatever the release's own `status.md` documents. Do not hardcode a fixed artifact list here; different release types genuinely differ (see Step 2's "Reading artifacts generically").
 
-First, read the `project_type` from status.md frontmatter. Use the appropriate phase ordering:
+**For standard-shape releases** (has a top-level `artifacts:` map):
+1. Walk the artifacts in the order their keys appear in the frontmatter (this is the release's own phase order — see Step 2).
+2. For each artifact, walk its own present lifecycle steps in `generate → validate → review` order (skipping any step key the artifact doesn't have):
+   - If that step's local state is not yet in its "done" value (`generate` ≠ `complete`, `validate` ≠ `pass`, `review` ≠ `approved`): that artifact key and step is the next action — derive the command using the "Command derivation" table in Step 2, and stop.
+   - If every present step on this artifact is done, move to the next artifact.
+3. If every artifact's every present step is done, the release is complete — say so, and suggest starting or resuming the next release (`/wire:status` overview will show what's next) or, if this is the last configured release, wrapping up the engagement.
 
-**Default ordering**: brief → wireframe → catalog → schema → mockdata → lookml (or for newer projects: requirements → workshops → pipeline_design → data_model → mockups → pipeline → dbt → semantic_layer → dashboards → data_quality → uat → deployment → training → documentation)
+**For `droughty` releases**: walk the `droughty:` steps in template order (setup → introspect → dbml → docs → qa → stage → dbt_tests → lookml, skipping any marked `not_applicable`); the first step whose `status` isn't `complete` is the next action — derive its command from the "Command derivation" table in Step 2.
 
-**Dashboard-first ordering** (for `dashboard_first` projects): requirements → mockups → viz_catalog → data_model → seed_data → dbt → semantic_layer → dashboards → data_refactor → data_quality → uat → deployment → training → documentation
-
-For each artifact in the appropriate phase order:
-
-**For Brief, Wireframe, Schema** (full lifecycle):
-1. If `generate` is not `complete`: suggest generate command
-2. Else if `validate` is not `pass`: suggest validate command
-3. Else if `review` is not `approved`: suggest review command
-4. Else: artifact is ready, check next artifact
-
-**For Catalog** (generate-only):
-1. If `generate` is not `complete`: suggest generate command
-2. Else: artifact is ready, check next artifact
-
-**For Mock Data** (full lifecycle + snowflake_table for ready):
-1. If `generate` is not `complete`: suggest generate command
-2. Else if `validate` is not `pass`: suggest validate command
-3. Else if `review` is not `approved`: suggest review command
-4. Else if `snowflake_table` is not set: artifact NOT ready (show in Highlights)
-5. Else: artifact is ready, check next artifact
-
-**Note:** The load utility (`/wire:utils-load-mock-data`) is shown in Highlights when `snowflake_table` is not set, but does NOT block the normal lifecycle progression.
-
-**For LookML** (full lifecycle):
-1. If `generate` is not `complete`: suggest generate command
-2. Else if `validate` is not `pass`: suggest validate command
-3. Else if `review` is not `approved`: suggest review command
-4. Else: artifact is ready, all Dev phase artifacts complete!
-
-**Note:** When LookML is generated, show file count in Highlights (e.g., "LookML: 7 files generated").
-
-**For Viz Catalog** (generate-only, `dashboard_first` projects only):
-1. If `generate` is not `complete`: suggest generate command
-2. Else: artifact is ready, check next artifact
-
-**For Seed Data** (full lifecycle, `dashboard_first` projects only):
-1. If `generate` is not `complete`: suggest generate command
-2. Else if `validate` is not `pass`: suggest validate command
-3. Else if `review` is not `approved`: suggest review command
-4. Else: artifact is ready, check next artifact
-
-**For Data Refactor** (full lifecycle, `dashboard_first` projects only):
-1. If `generate` is not `complete`: suggest generate command
-2. Else if `validate` is not `pass`: suggest validate command
-3. Else if `review` is not `approved`: suggest review command
-4. Else: artifact is ready, check next artifact
-
-**Command Mapping**:
-```
-Artifacts:
-  brief.generate       → /wire:brief-generate
-  brief.validate       → /wire:brief-validate
-  brief.review         → /wire:brief-review
-  wireframe.generate   → /wire:wireframe-generate
-  wireframe.validate   → /wire:wireframe-validate
-  wireframe.review     → /wire:wireframe-review
-  catalog.generate     → /wire:catalog-generate
-  schema.generate      → /wire:schema-generate
-  schema.validate      → /wire:schema-validate
-  schema.review        → /wire:schema-review
-  mockdata.generate    → /wire:mockdata-generate
-  mockdata.load        → /wire:utils-load-mock-data  ← utility, not lifecycle step
-  mockdata.validate    → /wire:mockdata-validate
-  mockdata.review      → /wire:mockdata-review
-  lookml.generate      → /wire:lookml-generate
-  lookml.validate      → /wire:lookml-validate
-  lookml.review        → /wire:lookml-review
-
-Dashboard-first artifacts:
-  viz_catalog.generate    → /wire:viz_catalog-generate     ← generate-only (like catalog)
-  seed_data.generate      → /wire:seed_data-generate
-  seed_data.validate      → /wire:seed_data-validate
-  seed_data.review        → /wire:seed_data-review
-  data_refactor.generate  → /wire:data_refactor-generate
-  data_refactor.validate  → /wire:data_refactor-validate
-  data_refactor.review    → /wire:data_refactor-review
-```
-
-### Output Examples
-
-**Overview (all projects)**:
-```
-# Data Platform Status
-
-## rowcal (0001 | new_client | RowCal | Dev)
-
-| Artifact   | Generate   | Validate   | Review       | Ready |
-|------------|------------|------------|--------------|-------|
-| Brief      | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Wireframe  | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Catalog    | ✅          | -          | -            | ✅     |
-| Schema     | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Mock Data  | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| LookML     | ⬜          | ⬜          | ⬜            | ⬜     |
-
-**Next:** `/wire:lookml-generate 0001_rowcal`
-
----
-
-Summary: 1 project(s) | 0 ready for Prod
-```
-
-**Detail (specific project)**:
-```
-# rowcal - Status
-
-| Artifact   | Generate   | Validate   | Review       | Ready |
-|------------|------------|------------|--------------|-------|
-| Brief      | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Wireframe  | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Catalog    | ✅          | -          | -            | ✅     |
-| Schema     | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| Mock Data  | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
-| LookML     | ✅ complete | ⬜          | ⬜            | ⬜     |
-
-### Highlights
-
-- **Next:** Run `/wire:lookml-validate 0001_rowcal` to validate LookML
-- **Wireframe:** https://lovable.dev/projects/c3dbf5fc-a317-4698-a9b5-c6f0c82e9ff7
-- **LookML:** 7 files generated (3 views, 1 explore, 3 dashboards)
-```
+**For `agentic_data_stack` releases**: walk the embedded YAML blocks in document order (see Step 2's Special Cases); apply the same generate→validate→review-present-steps-only rule per block, deriving the command from the "Command derivation" table in Step 2.
 
 ### Step 4.5: Sync Jira Status (Optional)
 
-If `jira` section exists in `status.md` and `jira.epic_key` is not null:
+If `jira` section exists in a release's `status.md` and `jira.epic_key` is not null:
 
 1. Follow the full reconciliation workflow in `specs/utils/jira_status_sync.md`
-2. Pass the project folder
+2. Pass the release folder (e.g. `01-discovery`), so the utility operates on `.wire/releases/<release_folder>/status.md`
 3. The utility will sync all local artifact states to Jira Sub-tasks, Tasks, and Epic
 4. If any discrepancies are found, add them to the Highlights section
 5. If Atlassian MCP is unavailable, skip silently
 
-This ensures Jira stays in sync every time `/wire:status` is run.
+Run this for every release being reported on (overview mode) or the one release being reported on (detail mode). This ensures Jira stays in sync every time `/wire:status` is run.
 
 ## State Icons Reference
 
@@ -325,8 +252,8 @@ This ensures Jira stays in sync every time `/wire:status` is run.
 
 ## Error Handling
 
-- **No projects found**: Display message suggesting to create a project folder
-- **Invalid status file**: Skip project with warning
+- **No releases found in this engagement**: Display a message suggesting `/wire:new` to create a release (and, if `.wire/engagement/context.md` is also missing, that no engagement has been set up in this repo yet)
+- **Invalid status file**: Skip that release with a warning
 - **Missing frontmatter**: Use default "not_started" states
 
 ## Design Philosophy
@@ -338,6 +265,6 @@ Key principles:
 2. **Icon-driven**: Use emoji for quick visual scanning
 3. **Next action**: Always show what to do next
 4. **Auto-calculate Ready**: Don't require manual "ready" state management
-5. **Phase awareness**: Group artifacts by their relevant phase
+5. **Data-driven, not hardcoded**: Read each release's own artifact set and lifecycle shape from its `status.md` rather than assuming a fixed vocabulary — release types genuinely differ (see `wire/TEMPLATES/*.md`)
 
 Execute the complete workflow as specified above.
