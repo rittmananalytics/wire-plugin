@@ -433,16 +433,17 @@ A platform migration runs in one of two scopes, set by `migration.scope` in `sta
 
 The carve-out is a variant on this release type, not a new one — it reuses the whole command set and adds tenant scoping where it matters. Equivalency threads the predicate through the existing checks on both source and target (no new check types — min/max already lives in value sampling, checksum and aggregate totals already exist; schema stays structural). The security chain narrows with it: the security audit classifies roles/grants as tenant-scoped vs shared and flags the tenant key per table, the strategy maps these to a two-project / tenant-scoped IAM model with a row-level security predicate, and `target_setup` emits tenant-scoped GRANTs and the RLS policy into `04_security.sql`, reusing the existing PII policy-tag taxonomy.
 
-Four commands are specific to the carve-out flow:
+Four commands are specific to the carve-out flow, plus a fifth that only applies when the carve-out is staged after its parent migration has already landed:
 
 | Command | Phase | Purpose |
 |---|---|---|
-| `/wire:region-tagging-*` | After audits | Classify every in-scope item into confident-region / shared-row-level / global-deferred buckets. Produces **candidates** for adjudication — never a binary include/exclude, never auto-removal. Region is a parameter (`--region <code>`). `-review` is the human adjudication gate. |
+| `/wire:region-tagging-*` | After audits | Classify every in-scope item into confident-region / shared-row-level / global-deferred buckets. Produces **candidates** for adjudication — never a binary include/exclude, never auto-removal. Region is a parameter (`--region <code>`). `-review` is the human adjudication gate, and it emits `region_tags_adjudicated.csv` (`adjudicated_ruling`: `carve_in`/`split`/`defer`/`reassign`) as the real, checked input every downstream carve-out command consumes. |
 | `/wire:data-residency-assessment-*` | Alongside strategy | The GDPR and data-residency assessment, including the legal review of the historical data window being migrated. RA prepares it as data processor and flags every point needing the client's DPO/legal determination — lawful basis and retention ruling above all. `-review` is the client DPO/legal sign-off gate. |
 | `/wire:bulk-copy-migration-*` | Migration | Snowflake→BigQuery bulk historical copy (BigQuery Data Transfer Service / GCS-staged) **in place of re-ingestion**. Two-stage copy with an equivalency gate between pilot partition and remainder, run under a scoped service account with a tenant guard. `-review` is a safety gate before the first copy. |
+| `/wire:dbt-carveout-relocate-*` | Migration — **only when the carve-out is staged after the parent migration has already landed** | Relocates already-translated, already-correct target-dialect dbt SQL into the carve-out's own dbt project **in place of re-translation** (`dbt-migration`'s relocation-only counterpart, the same relationship `bulk-copy-migration` has to `ingestion-migration`). Copies tenant-exclusive (`confident-region`) models unchanged; injects a `WHERE {tenant_predicate}` clause into shared (`shared-row-level`) models only where the injection point is unambiguous, flagging anything ambiguous `manual_review_required` rather than guessing. `-validate` re-derives every claim from the adjudicated CSV and the relocated files on disk, never from the manifest's own report. `-review` blocks on any unresolved `manual_review_required` model. |
 | `/wire:logical-access-uat-*` | Before cutover | Region-scoped logical-access UAT proving users in the tenant's project reach only that project. Positive and negative tests per role; `-validate` requires at least one negative test per IAM boundary in `04_security.sql`; `-review` is the isolation-proof sign-off gate. |
 
-A worked example of the carve-out flow is in the [Tutorial: Tenant Carve-out](../tutorials/platform-migration-tenant-carveout).
+A worked example of the carve-out flow — including both the concurrent-with-parent-migration case (`dbt-migration`) and the staged-after-parent-migration case (`dbt-carveout-relocate`) — is in the [Tutorial: Tenant Carve-out](../tutorials/platform-migration-tenant-carveout).
 
 ### Branching strategy
 
@@ -564,7 +565,7 @@ Both build on the `smml-semantic-modeling` and `dbt-to-smml` skills (`wire/skill
 
 ### Carve-out and reporting-layer additions
 
-For a `tenant_carveout` release, these slot into the sequence: region tagging after the audits, the data-residency assessment alongside strategy, the bulk copy in place of ingestion migration, and logical-access UAT before cutover. Metabase commands run for any migration where `reporting_tool: metabase`; Omni commands run where `reporting_tool: omni`; OAC commands run where `reporting_tool: oac`.
+For a `tenant_carveout` release, these slot into the sequence: region tagging after the audits, the data-residency assessment alongside strategy, the bulk copy in place of ingestion migration, and logical-access UAT before cutover. Metabase commands run for any migration where `reporting_tool: metabase`; Omni commands run where `reporting_tool: omni`; OAC commands run where `reporting_tool: oac`. When the carve-out is staged after its parent migration has already landed, `dbt-carveout-relocate` replaces `dbt-migration` in the sequence — everything else here is unchanged.
 
 ```
 # ── after audits, before inventory ──────────────────────────────
@@ -593,6 +594,14 @@ For a `tenant_carveout` release, these slot into the sequence: region tagging af
 /wire:bulk-copy-migration-generate <release>
 /wire:bulk-copy-migration-validate <release>
 /wire:bulk-copy-migration-review <release>           # safety gate before first copy
+
+# ── in place of dbt-migration, only when the carve-out is staged ──
+# ── after its parent migration has already landed ──────────────────
+/wire:dbt-carveout-relocate-generate <release> [--wave id] \
+    --source-dbt-project-path <path> --target-dbt-project-path <path> \
+    --target-project <name>
+/wire:dbt-carveout-relocate-validate <release> --target-dbt-project-path <path>
+/wire:dbt-carveout-relocate-review <release>         # blocks on unresolved manual_review_required models
 
 # ⚠ before cutover — proves tenant isolation
 /wire:logical-access-uat-generate <release> [--region <code>]

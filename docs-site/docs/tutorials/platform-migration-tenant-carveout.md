@@ -132,6 +132,40 @@ Stage 2 — remainder
 
 `-review` is a safety gate: written approval authorises the first copy execution, Stage 1 only.
 
+## Step 4a — dbt model relocation, when the carve-out is staged after its parent migration
+
+Meridian's carve-out above runs **alongside** the parent Snowflake→BigQuery migration — the tenant's dbt models still need translating, so `dbt-migration` stays in the sequence exactly as shown in Step 4 above and the "Where the carve-out lands" diagram below.
+
+A different, common shape: the carve-out is scoped as a **second release, after the parent platform migration has already landed** — the whole estate is already on BigQuery, and the tenant's dbt models are already correct, already-translated target-dialect SQL sitting in the parent release's dbt repo. Re-running `dbt-migration`'s translate-and-equivalency loop against SQL that's already correct is pointless work re-deriving the same answer. This is where `dbt-carveout-relocate` replaces `dbt-migration` in the sequence — it relocates the already-correct SQL into the carve-out's own dbt project instead of re-translating it, injecting the tenant row filter only where a model is genuinely shared:
+
+```
+/wire:dbt-carveout-relocate-generate 02-tenant-carveout --wave B01 \
+    --source-dbt-project-path ../01-lift-and-shift/dbt \
+    --target-dbt-project-path ../tenant-north-dbt \
+    --target-project meridian-north-data-playground
+```
+
+For each model in the wave, it reads the bucket `region-tagging-review` adjudicated it into (`migration/region_tags_adjudicated.csv`, filtered to `adjudicated_ruling: carve_in`):
+
+- **`confident-region`** (tenant-exclusive, e.g. `stg_orders_north`) — the `.sql` and its companion schema YAML are copied unchanged.
+- **`shared-row-level`** (e.g. `dim_customers`) — copied, then `WHERE tenant_id = 1042` is injected into the model's outermost `SELECT`. Where the injection point isn't clean — a top-level `UNION`, no single top-level `SELECT` — the model is copied unmodified and flagged `manual_review_required` rather than guessed.
+
+```
+/wire:dbt-carveout-relocate-validate 02-tenant-carveout --target-dbt-project-path ../tenant-north-dbt
+✓ Check 1 — every carve_in model has a relocated file
+✓ Check 2 — every shared-row-level model's file independently re-derives the predicate
+✓ Check 3 — no confident-region model carries an unexpected predicate
+✓ Check 5 — target project compiles cleanly
+```
+
+Check 2 re-reads the relocated file's own text rather than trusting the generate run's manifest — the same "re-derive, don't trust the report" posture `dbt-audit-validate` and `migration-batching-validate` use elsewhere. `-review` is the human approval gate: it blocks on any unresolved `manual_review_required` model, and presents a diff sample of the injected predicates so the reviewer confirms them by eye, not just by check result.
+
+```
+/wire:dbt-carveout-relocate-review 02-tenant-carveout
+```
+
+Run this once per environment — playground first, then production once playground equivalency passes, by re-running `-generate` with `--target-project meridian-north-data-source` (or wherever production resolves).
+
 ## Step 5 — Logical-access UAT (before cutover)
 
 Before cutover, prove the isolation actually holds.
@@ -171,6 +205,16 @@ audits → region-tagging → inventory
        → dbt-migration → metabase-migration
        → equivalency (tenant-scoped)
        → logical-access-uat → cutover → migration-report
+```
+
+If the carve-out is staged **after** its parent migration has already landed (Step 4a), `dbt-carveout-relocate` takes `dbt-migration`'s place in that line — everything else in the sequence is unchanged:
+
+```
+       ...
+       → bulk-copy-migration   (in place of ingestion-migration)
+       → dbt-carveout-relocate (in place of dbt-migration) → metabase-migration
+       → equivalency (tenant-scoped)
+       ...
 ```
 
 Everything not listed here runs exactly as in the standard [Platform Migration tutorial](./platform-migration).

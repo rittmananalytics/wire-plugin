@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.8 — dbt-carveout-relocate, for a tenant carve-out staged after its parent migration
+
+**Released**: July 2026
+
+A tenant carve-out scoped **after** its parent platform migration has already landed doesn't need `dbt-migration`'s translate-and-equivalency loop — the target-dialect SQL for the carved-out tenant's models is already correct, sitting in the parent migration's dbt repo. This release adds the command that relocates it instead of re-deriving it.
+
+**New `dbt-carveout-relocate-generate`/`-validate`/`-review` command triple.** Scope resolution mirrors `dbt-migration-generate`'s `--wave`/`--batch`/`--select` grammar, then filters to `region-tagging`'s adjudicated output (`item_type=dbt_model` and `adjudicated_ruling=carve_in`). Tenant-exclusive (`confident-region`) models are copied unchanged; models shared across every tenant (`shared-row-level`) get a `WHERE {tenant_predicate}` clause injected into their outermost `SELECT` — but only where the injection point is genuinely unambiguous (exactly one top-level `SELECT`, no top-level `UNION`/`INTERSECT`/`EXCEPT`). Anything more ambiguous is flagged `manual_review_required` rather than guessed, and any bucket that shouldn't have reached this scope at all aborts instead of being silently relocated. `-validate` re-derives every claim independently from the adjudicated CSV and the files actually on disk, never from the generate run's own report; `-review` is the human approval gate, blocked until every `manual_review_required` model is resolved.
+
+**`region-tagging-review` now formalizes `region_tags_adjudicated.csv`** (`adjudicated_ruling`: `carve_in`/`split`/`defer`/`reassign`) as a real output artifact — this was previously only a manual spreadsheet convention on live carve-out engagements, and is now `dbt-carveout-relocate-generate`'s actual, checked input contract.
+
+Ships with new Tier 1 behavioural tests covering the scope filter, the bucket-routing decision, and the round trip between generate's predicate injection and validate's independent re-derivation from the relocated file's own text — see [Testing Wire Itself](./testing).
+
+---
+
 ## v3.10.7 — A tiered automated test suite for Wire itself
 
 **Released**: July 2026
