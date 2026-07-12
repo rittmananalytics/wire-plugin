@@ -71,7 +71,7 @@ at the end.
 ### 1. Identify the client and time window
 
 Extract the client name from the request. If ambiguous (e.g. "Client C" could
-mean Project Quattro specifically or the broader engagement), confirm with Mark.
+mean a specific carve-out sub-project or the broader engagement), confirm with Mark.
 
 Default time window: **past 5 working days**, ending on the most recent working
 day. Calculate from today, excluding weekends and UK bank holidays. User can

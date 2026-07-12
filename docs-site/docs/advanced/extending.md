@@ -66,6 +66,8 @@ A spec file is a Markdown document that Claude reads as an instruction set for t
 - How to classify each check (blocking vs. advisory)
 - The PASS/FAIL summary format
 
+If the artifact's generate/validate logic embeds a deterministic decision rule (a classification scheme, a gating condition, a selection grammar), extract it into a Tier 1 behavioural test alongside the spec — see [Testing Wire Itself](../reference/testing.md) for the pattern every release type follows.
+
 **For review specs:**
 - The document to present
 - The context to gather (validation results, meeting transcripts, prior decisions)

@@ -80,6 +80,7 @@ const sidebars = {
         'reference/troubleshooting',
         'reference/management-commands',
         'reference/release-notes',
+        'reference/testing',
       ],
     },
   ],
