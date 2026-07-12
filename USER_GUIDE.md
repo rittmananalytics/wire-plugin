@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.10.7 | **Date**: July 2026
+**Version**: 3.10.8 | **Date**: July 2026
 
 ---
 
@@ -2115,7 +2115,7 @@ graph TD
 *Pending review by `/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1`*
 
 ---
-*Generated automatically by Wire Framework v3.10.7 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
+*Generated automatically by Wire Framework v3.10.8 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
 ````
 
 After `/wire:migration-acceptance-pack-review` is run, the reviewer's decision is appended to the same file:
@@ -4999,7 +4999,7 @@ Recent release history for the Wire Framework. Full changelog from v3.0.0 onward
 
 ---
 
-### v3.10.7 — Batch-zero macro & UDF pass, single-SCC batching fallback (July 2026)
+### v3.10.8 — Batch-zero macro & UDF pass, single-SCC batching fallback (July 2026)
 
 Completes the batch-zero pass `dbt-audit` has planned all along but nothing consumed, and makes migration batching reproduce the build-ordered plan that SCC-heavy estates always needed by hand.
 

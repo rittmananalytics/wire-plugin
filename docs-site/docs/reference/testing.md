@@ -29,6 +29,8 @@ Wire's specs are markdown files that an LLM reads and follows — there's no com
 - The generate/validate/review triad shape — every artifact should have all three commands, unless it's a documented exception (see `known_exceptions.yaml` below)
 - Cross-references that actually resolve (a spec referencing `specs/utils/foo.md` must have that file exist)
 - Command registration in `wire/scripts/build-packages.sh` — a spec file with no corresponding entry in the `COMMANDS` array will never actually install as a slash command
+- Version consistency — `docs-site/docs/intro.md`'s homepage version badge must match `plugin.json`'s version. This exists because the badge silently drifted for four straight releases (v3.10.3–v3.10.6) before anything caught it; `release.sh` now bumps it automatically, and this check is the backstop if that step is ever skipped or the badge is edited by hand
+- Client-name leakage — every file that ships in a plugin package, or lives in this repo's specs/skills/docs/changelogs, is scanned against `wire/tests/known_client_names.yaml`, a curated (deliberately non-exhaustive) blocklist of real client names, engagement codenames, and client-side individual names confirmed to have leaked into shipped content before. A hit fails the build. Add an entry here the moment a real name is confirmed to have leaked — don't add speculative names, since an over-broad blocklist just trains people to ignore Tier 0 failures
 
 **How it runs**: `wire/tests/lint_specs.py`, invoked as part of `run_all.sh`.
 

@@ -163,6 +163,9 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:orchestration-migration-generate` | `<release-folder>` | Generate orchestration job migration runbook |
 | `/wire:orchestration-migration-validate` | `<release-folder>` | Validate orchestration migration runbook |
 | `/wire:orchestration-migration-review` | `<release-folder>` | Safety-gated approval before activating jobs on target |
+| `/wire:dbt-carveout-relocate-generate` | `<release-folder> [--wave id \` | Relocate already-translated dbt models into a post-migration tenant carve-out instead of re-translating them |
+| `/wire:dbt-carveout-relocate-validate` | `<release-folder> --target-dbt-project-path <path>` | Validate relocated carve-out dbt models — files present, predicates re-derived from disk, target compiles |
+| `/wire:dbt-carveout-relocate-review` | `<release-folder>` | Human adjudication gate for relocated carve-out dbt models |
 
 ### TESTING
 

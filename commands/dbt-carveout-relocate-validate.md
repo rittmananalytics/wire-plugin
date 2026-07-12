@@ -1,9 +1,9 @@
 ---
-description: Human adjudication gate for region tags
-argument-hint: <release-folder>
+description: Validate relocated carve-out dbt models — files present, predicates re-derived from disk, target compiles
+argument-hint: <release-folder> --target-dbt-project-path <path>
 ---
 
-# Human adjudication gate for region tags
+# Validate relocated carve-out dbt models — files present, predicates re-derived from disk, target compiles
 
 ## User Input
 
@@ -22,103 +22,55 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Human adjudication gate for region tags — rule on the shared-row-level and low-confidence pile
+description: Validate relocated carve-out dbt models — every carve_in model present, predicates independently re-derived from file contents, no bucket misclassification, target compiles
+argument-hint: <release-folder> [--wave id | --batch N | --select selector] --target-dbt-project-path <path>
 ---
 
-# Region Tagging — Review
+# dbt Carveout Relocate — Validate
 
 ## Purpose
 
-The human adjudication gate for region tagging. `generate` produced candidates; this is where a person rules on them. The reviewer works the adjudication pile — every `shared-row-level` item and every low-confidence candidate — and decides, item by item, how it belongs to the carve-out. The tool never made that call; this gate does.
+Validates a `dbt-carveout-relocate-generate` run. Every check re-derives its answer independently from the adjudicated CSV and the files actually on disk under `--target-dbt-project-path` — it does not trust `dbt_carveout_relocate_manifest.md`'s own claims about what it did.
 
-Confident-region and global-deferred items at high confidence are confirmed in bulk unless the reviewer flags one. The shared-row-level items are the real work: each needs a lineage trace and row inspection before it can be ruled in, split, or deferred.
+## Flags
 
-## Prerequisites
+- `--wave <id>` / `--batch N` / `--select <selector>` — same scope this generate run was invoked with; resolved identically (see `dbt-carveout-relocate-generate` Step 1). If omitted, validate every model recorded under `artifacts.dbt_carveout_relocate` in status.md across all prior runs for this release.
+- `--target-dbt-project-path <path>` — **required.** The dbt project relocated models were written into.
 
-- `migration/region_tagging.md` with `validate: pass`
+## Validation Checks
 
-## Workflow
+Read `migration/region_tags_adjudicated.csv`, filter to `item_type == "dbt_model" AND adjudicated_ruling == "carve_in"`, intersected with the resolved scope — this is the ground-truth set every check below validates against, independent of what the manifest claims was relocated.
 
-### Step 1: Load meeting context
+**Check 1 — Every carve_in model resolves to a file that exists**
+For every model in the ground-truth set, confirm the corresponding `.sql` file exists under `--target-dbt-project-path` at the expected mirrored path.
+PASS: every model has a file. FAIL: list models with no file — a silent drop during relocation.
 
-Follow `specs/utils/meeting_context.md` to surface any Fathom recordings touching the carve-out region, market boundaries, or data-residency scope.
+**Check 2 — Every shared-row-level model actually contains the injected predicate**
+For every model in the ground-truth set with `bucket == shared-row-level` and no `predicate_injection: manual_review_required` flag, read the relocated `.sql` file directly and independently confirm it contains a `WHERE` clause referencing `migration.tenant_predicate` on the outermost `SELECT` — do not read this from the manifest's own `predicate_injection: injected` claim; re-derive it from the file text.
+PASS: predicate confirmed present in the file for every such model. FAIL: list models where the manifest claims injection but the file doesn't show it (or shows it on the wrong query level).
 
-### Step 2: Present the tagging summary
+**Check 3 — No confident-region model carries an injected predicate**
+For every model in the ground-truth set with `bucket == confident-region`, confirm its relocated `.sql` file does **not** contain a `WHERE` clause referencing `migration.tenant_predicate` that wasn't already present in the source file. A predicate showing up on a `confident-region` model indicates a bucket misclassification upstream (in `region-tagging-generate`/`-review`), not something this command should silently accept.
+PASS: no unexpected predicate found. FAIL: list models with an unexpected predicate, flagged for region-tagging re-adjudication, not for re-running this command.
 
-Display:
-- Target region and tenant predicate used
-- Bucket counts: confident-region / shared-row-level / global-deferred
-- The adjudication pile, grouped by bucket, each item with its signal and confidence score
+**Check 4 — Manual-review-required list is empty, or every entry is explicitly signed off**
+Read the manifest's manual-review-required list. For each entry, confirm either it no longer applies (the file has since been hand-edited and Check 2 now passes for it) or `dbt-carveout-relocate-review` recorded an explicit sign-off for that specific model (see that spec's Step 3).
+PASS: list is empty, or every entry has a matching sign-off record. FAIL: list any entry with neither.
 
-Reaffirm to the reviewer that nothing has been included, excluded, or removed — these are candidates, and this gate is the first point where a scope decision is made.
+**Check 5 — Target project compiles cleanly**
+Run `dbt parse` (or `dbt compile`) against `--target-dbt-project-path` for the ground-truth model set, via the same scratch-directory pattern as generate's Step 4.
+PASS: all models compile without errors. FAIL: list compilation errors per model.
 
-### Step 3: Adjudicate the pile
-
-For each **shared-row-level** item: review its lineage and a row sample, then rule:
-- **carve in** — the target region's rows are extracted (record the row-level predicate to apply)
-- **split** — the object is shared; define how the region's slice is separated
-- **defer** — move to global-deferred for a later decision
-
-For each **low-confidence** confident-region or global-deferred candidate: confirm the bucket or reassign it.
-
-High-confidence confident-region and global-deferred items: confirm in bulk, or pull any individual item into the pile if the reviewer disagrees.
-
-### Step 4: Apply adjudication and record decision
-
-Update `region_tagging.md` (and the relevant `region_tags.csv` rows, e.g. reassigned buckets) to reflect the adjudicated outcomes. Append:
-
-```markdown
-## Review — Adjudication
-
-**Internal reviewer**: {{RA_REVIEWER}}
-**Client attendees**: {{CLIENT_NAMES}}
-**Review date**: {{TODAY}}
-**Target region**: {{REGION}}
-**Decision**: approved | changes_requested
-
-### Adjudicated items
-[Per item: id, prior bucket, ruling (carve in / split / defer / reassign), and rationale]
-
-### Open items
-[Items still needing lineage/row inspection before strategy can proceed]
-```
-
-### Step 4a: Emit the adjudicated CSV
-
-**Output location**: `.wire/releases/$ARGUMENTS/migration/region_tags_adjudicated.csv`
-
-Downstream commands (e.g. `dbt-carveout-relocate-generate`) consume adjudicated rulings programmatically and must not have to parse `region_tagging.md`'s prose to get them. Write every row from `region_tags.csv` (with any bucket reassignments from this review already applied) plus two new columns:
-
-```
-item_id,item_type,source_audit,bucket,signal,confidence_score,adjudicated_ruling,adjudication_note
-```
-
-`adjudicated_ruling` is one of `carve_in | split | defer | reassign`, snake_case, matching this step's rulings exactly:
-- Every **shared-row-level** item ruled on in Step 3 gets its ruling (`carve_in`, `split`, or `defer`) and, for `carve_in`, the row-level predicate applied in `adjudication_note`.
-- Every **confident-region** or **global-deferred** item confirmed in bulk gets `carve_in` (confident-region) or `defer` (global-deferred) by default, unless the reviewer pulled it into the pile and ruled otherwise (`reassign`, with the new bucket named in `adjudication_note`).
-- This is a full re-emit of every classified item, not just the adjudication pile — a downstream filter for `item_type=dbt_model AND adjudicated_ruling=carve_in` must see every dbt model that belongs in the carve-out, not only the ones that needed a human ruling.
-
-### Step 5: Update status
+### Update status
 
 ```yaml
 artifacts:
-  region_tagging:
-    review: approved | changes_requested
-    reviewed_by: "{{REVIEWER_NAME}}"
-    reviewed_date: "{{TODAY}}"
-    adjudicated_data_file: migration/region_tags_adjudicated.csv
+  dbt_carveout_relocate:
+    validate: pass | fail
+    validated_date: "{{TODAY}}"
+    wave_validate:                # set only when run with --wave, keyed by wave id
+      B01: pass | fail
 ```
-
-### Step 6: Output next command
-
-If approved:
-```
-/wire:migration-strategy-generate $ARGUMENTS
-```
-
-## Review Gate
-
-This review is the point where region candidates become scope decisions. The carve-out strategy and the tenant-scoped bulk copy are built against the adjudicated tags. Re-running `region-tagging-generate` after this gate re-proposes candidates and requires re-adjudication.
 
 
 ## Post-Execution Hooks
@@ -127,11 +79,11 @@ After updating `status.md`, run these in sequence:
 
 1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `region_tagging` as artifact, `review` as action.
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `dbt_carveout_relocate` as artifact, `validate` as action.
 
-3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `region_tagging` as artifact_id, `Region Tagging` as artifact_name, and the `file` value from `artifacts.region_tagging` in status.md as file_path.
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `dbt_carveout_relocate` as artifact_id, `dbt Carveout Relocate` as artifact_name, and the `file` value from `artifacts.dbt_carveout_relocate` in status.md as file_path.
 
-4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `region_tagging` as artifact, `review` as action.
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `dbt_carveout_relocate` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 

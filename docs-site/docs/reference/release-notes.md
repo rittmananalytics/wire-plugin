@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.7 — A tiered automated test suite for Wire itself
+
+**Released**: July 2026
+
+Wire's own workflow specs had never been tested against anything but eyeballing — this release builds a tiered automated test suite (Tier 0–3) covering every release type, fixes the dozen-plus spec bugs that testing immediately surfaced, aligns dbt conventions repo-wide against the company's canonical framework, and closes out a full verification pass of a real-engagement migration remediation.
+
+**Tier 0 and Tier 1 now run on every push and PR, and gate `release.sh` itself.** Tier 0 (`wire/tests/lint_specs.py`) lints the whole spec corpus — frontmatter validity, the generate/validate/review triad shape, cross-references that actually resolve, and command registration in the packaging build script. Tier 1 extracts the deterministic logic embedded in spec prose (a coverage-classification rule, a tagging rule, a graph-selection grammar, a gating condition) into runnable Python fixture + expected-output tests, covering eight release types end to end — 28 checks in total via `wire/tests/run_all.sh`. `release.sh` now refuses to cut a release unless the full suite passes, and CLAUDE.md mandates a test for every new command, artifact, decision rule, or skill change going forward.
+
+**That testing work surfaced and fixed a dozen-plus real spec bugs.** The dbt-development skill and all eight `dbt_*` workflow specs were quietly using a simpler, incomplete naming convention than the company's own canonical `ra_fw_core` dbt framework — realigned repo-wide, ~17 files. `droughty/generate.md` had a mode-determination bug that ignored an explicitly-set context; `workshops_review.md` was missing a meeting-context step every sibling spec has; `sprint_plan/validate.md` had two contradictory point-ceiling checks; four stub `validate.md`/`generate.md` templates had never been filled in with real content. Plus a command-registry cleanup (8 real commands added, 5 phantom ones removed) and several smaller typo/placeholder fixes.
+
+**A real-engagement platform-migration remediation (wire#113) got a full verification pass.** All 23 tracked Wire-side fixes (W-1 through W-23) were checked against the actual codebase rather than trusting changelog prose — 21 confirmed fully implemented, 1 correctly not started and tracked separately (W-20, gated on a client decision), and the 2 that verification found partial were completed in this release.
+
+**Two new Tier 0 regression guards close out gaps this release's own drafting process exposed.** The docs-site homepage version badge had silently drifted from the actual package version across four straight releases, because nothing in `release.sh` ever touched it — fixed at the root, and `lint_specs.py` now fails the build if the badge and the plugin manifest ever disagree again. Separately, a real client's name and engagement codename briefly leaked into this changelog, several skill files, and GitHub wiki pages during drafting — scrubbed throughout, and `lint_specs.py` gained a second permanent check that greps shipped content against a curated blocklist of confirmed-real client names so a leak like this can't ship unnoticed again. See [Testing Wire Itself](./testing) for how both checks fit into the full Tier 0–3 suite.
+
+---
+
 ## v3.10.6 — Migration-lifecycle hardening from a real platform-migration delivery
 
 **Released**: July 2026
