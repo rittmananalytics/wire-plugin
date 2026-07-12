@@ -27,7 +27,7 @@ data-residency assessment including a legal review of the historical window.
 
 ## Setting up the carve-out
 
-At `/wire:new`, choose **Platform Migration**, then answer the scope question:
+At [`/wire:new`](../reference/commands#session-and-management-commands), choose **Platform Migration**, then answer the scope question:
 
 ```
 Migration scope?
@@ -56,7 +56,7 @@ One branching note before you start cutting branches: `01-tenant-carveout` track
 
 ## Step 1 — Region tagging (after the audits)
 
-Once the five audits are approved, classify every in-scope item by whether it belongs to the regional tenant being carved out.
+Once the five audits are approved, classify every in-scope item by whether it belongs to the regional tenant being carved out, with [`/wire:region-tagging-generate`](../release-types/platform-migration#tenant-carve-out-variant).
 
 ```
 /wire:region-tagging-generate 01-tenant-carveout --region north
@@ -86,7 +86,7 @@ The command produces **candidates, not decisions** — it never emits an include
 
 ## Step 2 — Data-residency assessment (alongside strategy)
 
-This is the Stage 1 contractual deliverable. RA prepares it **as data processor** — it structures the GDPR and residency questions and the legal review of the ~3-year window, and flags every legal determination for the client's DPO.
+This is the Stage 1 contractual deliverable. RA prepares it **as data processor** with [`/wire:data-residency-assessment-generate`](../release-types/platform-migration#tenant-carve-out-variant) — it structures the GDPR and residency questions and the legal review of the ~3-year window, and flags every legal determination for the client's DPO.
 
 ```
 /wire:data-residency-assessment-generate 01-tenant-carveout
@@ -105,7 +105,7 @@ This is the Stage 1 contractual deliverable. RA prepares it **as data processor*
 
 ## Step 3 — Metabase reporting layer
 
-Because `reporting_tool: metabase`, audit and migrate the reporting layer alongside the warehouse work.
+Because `reporting_tool: metabase`, audit and migrate the reporting layer alongside the warehouse work with [`/wire:metabase-audit-generate` and `/wire:metabase-migration-generate`](../release-types/platform-migration#metabase-reporting-layer-migration).
 
 ```
 /wire:metabase-audit-generate 01-tenant-carveout
@@ -116,7 +116,7 @@ The audit catalogues collections, dashboards, cards (with their SQL), database c
 
 ## Step 4 — Bulk copy, in place of re-ingestion
 
-A carve-out copies the tenant's existing history rather than re-ingesting it. `bulk-copy-migration` replaces `ingestion-migration` in the flow.
+A carve-out copies the tenant's existing history rather than re-ingesting it. [`bulk-copy-migration`](../release-types/platform-migration#tenant-carve-out-variant) replaces [`ingestion-migration`](../release-types/platform-migration#ingestion-migration-mcp-driven-execution) in the flow.
 
 ```
 /wire:bulk-copy-migration-generate 01-tenant-carveout
@@ -134,9 +134,9 @@ Stage 2 — remainder
 
 ## Step 4a — dbt model relocation, when the carve-out is staged after its parent migration
 
-Meridian's carve-out above runs **alongside** the parent Snowflake→BigQuery migration — the tenant's dbt models still need translating, so `dbt-migration` stays in the sequence exactly as shown in Step 4 above and the "Where the carve-out lands" diagram below.
+Meridian's carve-out above runs **alongside** the parent Snowflake→BigQuery migration — the tenant's dbt models still need translating, so [`dbt-migration`](../release-types/platform-migration#dbt-migration-parallel-agents-batches-and-folder-structure) stays in the sequence exactly as shown in Step 4 above and the "Where the carve-out lands" diagram below.
 
-A different, common shape: the carve-out is scoped as a **second release, after the parent platform migration has already landed** — the whole estate is already on BigQuery, and the tenant's dbt models are already correct, already-translated target-dialect SQL sitting in the parent release's dbt repo. Re-running `dbt-migration`'s translate-and-equivalency loop against SQL that's already correct is pointless work re-deriving the same answer. This is where `dbt-carveout-relocate` replaces `dbt-migration` in the sequence — it relocates the already-correct SQL into the carve-out's own dbt project instead of re-translating it, injecting the tenant row filter only where a model is genuinely shared:
+A different, common shape: the carve-out is scoped as a **second release, after the parent platform migration has already landed** — the whole estate is already on BigQuery, and the tenant's dbt models are already correct, already-translated target-dialect SQL sitting in the parent release's dbt repo. Re-running `dbt-migration`'s translate-and-equivalency loop against SQL that's already correct is pointless work re-deriving the same answer. This is where [`dbt-carveout-relocate`](../release-types/platform-migration#tenant-carve-out-variant) replaces `dbt-migration` in the sequence — it relocates the already-correct SQL into the carve-out's own dbt project instead of re-translating it, injecting the tenant row filter only where a model is genuinely shared:
 
 ```
 /wire:dbt-carveout-relocate-generate 02-tenant-carveout --wave B01 \
@@ -168,7 +168,7 @@ Run this once per environment — playground first, then production once playgro
 
 ## Step 5 — Logical-access UAT (before cutover)
 
-Before cutover, prove the isolation actually holds.
+Before cutover, prove the isolation actually holds with [`/wire:logical-access-uat-generate`](../release-types/platform-migration#tenant-carve-out-variant).
 
 ```
 /wire:logical-access-uat-generate 01-tenant-carveout --region north
