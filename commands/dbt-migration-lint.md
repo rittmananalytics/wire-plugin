@@ -61,6 +61,7 @@ The two are complementary and must not be merged:
 - `--severity error|warn|info` — minimum severity to report (default: `info`)
 - `--format md|json` — report format (default: `md`; `json` for CI gating)
 - `--config <path>` — load a per-run config overlay file overriding status.md-sourced fields (`migration.dbt_project_path`, `migration.source_platform`/`migration.target_platform`, `migration.materialization_overrides_path`, etc.) for this invocation only — never written back to status.md. Mirrors `dbt_migration-generate`'s `--config` overlay exactly; see that spec's **Config overlay** section for the mechanism and the `data_safety.production_projects` exclusion. Orthogonal to scope — combine freely with `--batch`, `--wave`, `--model`, or `--macros`.
+- `--tag-map <path>` / `--target-dataset <name>` / `--dbt-project-path <path>` — discrete single-field overlay shorthands (for `migration.pii_tag_map_path` / `migration.target_schema` / `migration.dbt_project_path` respectively). Mirror `dbt_migration-generate`'s equivalents exactly; see that spec's **Config overlay** section.
 
 `--macros` is a standalone scope — abort if combined with `--batch`, `--wave`, or `--model`: `[wire] --macros is a standalone scope. Run it on its own; do not combine with --batch/--wave/--model.`
 
@@ -79,6 +80,7 @@ The two are complementary and must not be merged:
 - The resolved source manifest(s) (per Step 1's `dbt_manifest_parse.md` resolution) — the source `config.materialized` per model, for `MATERIALIZATION_DRIFT`; when the manifest is unavailable, fall back to the `dbt_project.yml` + in-file config scan and note the reduced confidence per model
 - The engagement's materialisation overrides file at `migration.materialization_overrides_path` (status.md, or the `--config` overlay), if set — declared overrides suppress `MATERIALIZATION_DRIFT` hits
 - **`--config <path>` overlay (optional)**: see `dbt_migration-generate`'s **Config overlay** section — same mechanism, same fields, held in memory for this invocation only
+- **`--tag-map <path>` / `--target-dataset <name>` / `--dbt-project-path <path>` (optional)**: discrete single-field overlay shorthands — see `dbt_migration-generate`'s **Config overlay** section
 
 ## Engines
 

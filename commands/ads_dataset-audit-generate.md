@@ -191,7 +191,17 @@ dataset_audit:
   overall_grade: B
 ```
 
-### Step 8: Confirm and Suggest Next Steps
+### Step 8: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `dataset_audit`
+- `artifact_name`: `Dataset Audit`
+- `file_path`: `.wire/[release_folder]/artifacts/dataset_audit.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 9: Confirm and Suggest Next Steps
 
 ```
 ## Dataset Audit Generated ✓

@@ -22,7 +22,7 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Validate dbt warehouse models — compile, test referential integrity, and check dimensional conventions
+description: Validate dbt warehouse models — compile, test referential integrity, and check dimensional conventions (_dim/_fact/_agg/_xa)
 argument-hint: <project-folder>
 ---
 
@@ -30,7 +30,7 @@ argument-hint: <project-folder>
 
 ## Purpose
 
-Validate the warehouse layer: compile all `_dim`/`_fct`/`_agg` models, verify referential integrity (FK → dim PK), check materialization settings, and ensure full schema documentation coverage.
+Validate the warehouse layer: compile all `_dim`/`_fact`/`_agg`/`_xa` models, verify referential integrity (FK → dim PK), check materialization settings, and ensure full schema documentation coverage.
 
 ## Prerequisites
 
@@ -46,17 +46,24 @@ List and read all files in `dbt/models/warehouse/`.
 
 For each warehouse model verify:
 - [ ] Only `{{ ref() }}` calls — no `{{ source() }}`
-- [ ] Dimensions reference `int__*` models
-- [ ] Facts reference `_dim` and/or `int__*` models
+- [ ] Dimensions reference `int_<group>__*` models
+- [ ] Facts reference `_dim` and/or `int_<group>__*` models
+- [ ] Cross-attribute / bridge (`_xa`) models reference the correct pair (or more) of dimensions
 - [ ] No circular dependencies
 
 ### Step 3: Naming Convention Checks
 
-- [ ] Dimension files end in `_dim.sql`
-- [ ] Fact files end in `_fct.sql`
-- [ ] Aggregate files end in `_agg.sql`
-- [ ] Primary keys named `<entity>_pk`
-- [ ] Foreign keys named `<entity>_fk`
+- [ ] Dimension files match `wh_<group>__<entity>_dim.sql`
+- [ ] Fact files match `wh_<group>__<entity>_fact.sql` (note: `_fact`, not `_fct`)
+- [ ] Aggregate files match `wh_<group>__<entity>_agg.sql`
+- [ ] Cross-attribute / bridge files match `wh_<group>__<entity>_xa.sql`
+- [ ] Primary keys named `<entity>_pk`, generated via `dbt_utils.generate_surrogate_key(...)`
+- [ ] Foreign keys named `<referenced_entity>_fk`, generated via `dbt_utils.generate_surrogate_key(...)`
+- [ ] Dates end in `_dt`; timestamps end in `_ts` (UTC) or `_<tz>_ts` (non-UTC, timezone before `_ts`)
+- [ ] Booleans use `is_`, `has_`, or `was_`
+- [ ] Revenue / money columns use the `_amount` suffix
+- [ ] Type casts use `{{ dbt.type_*() }}` / `{{ type_date() }}` macros, not raw SQL types
+- [ ] Field ordering: keys → attributes → indexes/ranks → metrics → booleans → temporal data types
 - [ ] Dimensions materialized as `table`, facts as `table`
 
 ### Step 4: Referential Integrity
@@ -65,7 +72,7 @@ For each `_fk` in fact tables, verify a corresponding `relationships` test exist
 
 ### Step 5: Schema.yml Coverage
 
-- [ ] Every `_dim` and `_fct` has a `.yml` entry (100% documentation required)
+- [ ] Every `_dim`, `_fact`, `_agg`, and `_xa` model has a `.yml` entry (100% documentation required)
 - [ ] Primary keys have `unique` + `not_null` tests
 - [ ] Foreign keys have `relationships` tests where applicable
 
@@ -83,8 +90,8 @@ For each `_fk` in fact tables, verify a corresponding `relationships` test exist
 
 | Model | Type | Compile | FK Tests | Docs | Status |
 |-------|------|---------|----------|------|--------|
-| customer_dim | dimension | ✓ | ✓ | ✓ | PASS |
-| orders_fct | fact | ✓ | ✓ | ✓ | PASS |
+| wh_core__customer_dim | dimension | ✓ | ✓ | ✓ | PASS |
+| wh_sales__order_fact | fact | ✓ | ✓ | ✓ | PASS |
 
 ## Issues Found
 <list any failures>

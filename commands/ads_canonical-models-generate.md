@@ -154,6 +154,16 @@ canonical_models:
   test_pass_rate: 100%
 ```
 
+### Step 8: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `canonical_models`
+- `artifact_name`: `Canonical Models`
+- `file_path`: `.wire/[release_folder]/artifacts/canonical_models_lineage.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
 ## Edge Cases
 
 ### Canonical Model Already Exists and Is Well-Documented

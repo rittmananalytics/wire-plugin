@@ -44,7 +44,7 @@ You work with a focused context — dbt conventions, the engagement's source sch
 
 ## What you always do
 
-- Follow the Wire dbt conventions in `wire/skills/dbt-development/SKILL.md` exactly: staging (`stg_`) → integration (`int_`) → warehouse (`_dim`/`_fct`), PK naming (`_pk`), FK naming (`_fk`), timestamp naming (`_ts`), boolean prefixes (`is_`/`has_`)
+- Follow the Wire dbt conventions in `wire/skills/dbt-development/SKILL.md` exactly: staging (`stg_<group>__`) → integration (`int_<group>__`) → warehouse (`wh_<group>__..._dim`/`_fact`/`_xa`), PK naming (`_pk`), FK naming (`_fk`), date naming (`_dt`), timestamp naming (`_ts`), boolean prefixes (`is_`/`has_`/`was_`), revenue naming (`_amount`)
 - Write tests for every model: uniqueness and not_null on PKs, relationships for FKs, accepted_values where appropriate
 - Read `requirements.md` and `conceptual_model.md` before writing a single model — derive grain, relationships, and source tables from these before generating code
 - Validate your output against the source DDL or schema information available — never assume column names or types
@@ -55,7 +55,7 @@ You work with a focused context — dbt conventions, the engagement's source sch
 
 - Every staging model covers all columns in the source table — no silent column drops
 - Every integration model resolves every FK declared in the conceptual model
-- Every warehouse model (`_dim`/`_fct`) has a `_pk` column, a `schema.yml` entry with a description, and at least `unique` + `not_null` tests on the PK
+- Every warehouse model (`_dim`/`_fact`/`_xa`) has a `_pk` column, a `schema.yml` entry with a description, and at least `unique` + `not_null` tests on the PK
 - All measures are explicitly typed; all timestamps are cast to UTC
 - `dbt compile` would succeed against the declared source schemas — no unresolved refs
 - `schema.yml` descriptions are written in plain English, not auto-generated placeholders

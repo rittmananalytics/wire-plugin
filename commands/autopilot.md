@@ -1185,7 +1185,7 @@ No specific validation checks.
 - [ ] Every source system from requirements appears in source analysis
 - [ ] Every source has a replication method specified
 - [ ] All staging models follow `stg_<source>__<entity>` naming
-- [ ] All warehouse models follow `<entity>_fct` or `<entity>_dim` naming
+- [ ] All warehouse models follow `wh_<group>__<entity>_fact` or `wh_<group>__<entity>_dim` naming
 - [ ] Error handling specified
 - [ ] Scheduling defined with refresh cadences
 - [ ] Technology stack complete
@@ -1217,10 +1217,10 @@ No specific validation checks.
 **Process**:
 1. Define source definitions with freshness thresholds
 2. Design staging models: `stg_<source>__<entity>`, view materialization, surrogate key composition, column renames, derived columns, tests
-3. Design integration models: `int__<subject>__<description>`, ephemeral/view, for cross-system joins
+3. Design integration models: `int_<group>__<subject>__<description>`, ephemeral/view, for cross-system joins
 4. Design warehouse models:
-   - Fact tables: `<entity>_fct`, grain, surrogate key, foreign keys, measures
-   - Dimension tables: `<entity>_dim`, SCD Type 1 or 2
+   - Fact tables: `wh_<group>__<entity>_fact`, grain, surrogate key, foreign keys, measures
+   - Dimension tables: `wh_<group>__<entity>_dim`, SCD Type 1 or 2
    - Aggregates: `<subject>_<grain>`, pre-aggregated measures
 5. Specify seed files for configurable business logic
 6. Generate physical ERD as Mermaid erDiagram with all warehouse models, columns, PKs, FKs
@@ -1232,7 +1232,7 @@ No specific validation checks.
 
 **Checks**:
 - [ ] Staging follows `stg_<source>__<entity>` with double underscore
-- [ ] Warehouse facts use `<entity>_fct`, dimensions use `<entity>_dim`
+- [ ] Warehouse facts use `wh_<group>__<entity>_fact`, dimensions use `wh_<group>__<entity>_dim`
 - [ ] Surrogate keys follow `<entity>_pk`, foreign keys follow `<entity>_fk`
 - [ ] All columns in snake_case
 - [ ] Every conceptual entity appears as a warehouse model
@@ -1395,13 +1395,13 @@ No specific validate step.
    - `stg_<source_system>.yml` — model docs and tests
    - Materialized as view
 4. Generate integration models in `dbt/models/integration/`:
-   - `int__<entity>.sql` — one per entity, consolidating staging inputs
-   - `int__<entity>__<description>.sql` — optional intermediate models
+   - `int_<group>__<entity>.sql` — one per entity, consolidating staging inputs
+   - `int_<group>__<entity>__<action>.sql` — optional intermediate models
    - **Always create integration models**, even if simple pass-throughs
-5. Generate warehouse models in `dbt/models/warehouse/core/`:
-   - `<entity>_dim.sql` — dimensions with SCD handling
-   - `<entity>_fct.sql` — facts with measures, FKs
-   - `<entity>_agg.sql` — pre-aggregated tables if needed
+5. Generate warehouse models in `dbt/models/warehouse/wh_<group>/`:
+   - `wh_<group>__<entity>_dim.sql` — dimensions with SCD handling
+   - `wh_<group>__<entity>_fact.sql` — facts with measures, FKs
+   - `wh_<group>__<entity>_agg.sql` — pre-aggregated tables if needed
    - Table materialization
 6. Generate schema.yml files with model descriptions, column descriptions, and tests
 7. Generate `dbt/dbt_project.yml` if new project
@@ -1420,11 +1420,11 @@ No specific validate step.
 
 **Checks — Naming**:
 - [ ] Staging: `stg_<source>__<entity>.sql`
-- [ ] Integration: `int__<object>.sql` or `int__<object>__<action>.sql`
-- [ ] Dimensions: `<object>_dim.sql`
-- [ ] Facts: `<object>_fct.sql`
+- [ ] Integration: `int_<group>__<object>.sql` or `int_<group>__<object>__<action>.sql`
+- [ ] Dimensions: `wh_<group>__<object>_dim.sql`
+- [ ] Facts: `wh_<group>__<object>_fact.sql`
 - [ ] PKs: `<object>_pk`, FKs: `<referenced_object>_fk`
-- [ ] Timestamps: `<event>_ts`, Booleans: `is_`/`has_`
+- [ ] Dates: `<event>_dt`, Timestamps: `<event>_ts` (UTC) or `<event>_<tz>_ts` (non-UTC), Booleans: `is_`/`has_`/`was_`, Revenue: `_amount`
 - [ ] All snake_case, singular names
 
 **Checks — SQL Structure**:
@@ -1446,14 +1446,14 @@ No specific validate step.
 - [ ] Column descriptions use business terminology
 
 **Checks — Architecture Completeness**:
-- [ ] Integration layer exists: at least one `int__*.sql` file is present
-- [ ] Every warehouse model references an integration model via `ref('int__...')`
+- [ ] Integration layer exists: at least one `int_<group>__*.sql` file is present
+- [ ] Every warehouse model references an integration model via `ref('int_<group>__...')`
 - [ ] Every staging entity that feeds a warehouse model has a corresponding integration model
 
 **Checks — Directory Structure**:
 - [ ] All staging models in `dbt/models/staging/<source_system>/`
-- [ ] All integration models in `dbt/models/integration/`
-- [ ] All warehouse models in `dbt/models/warehouse/core/`
+- [ ] All integration models in `dbt/models/integration/int_<group>/`
+- [ ] All warehouse models in `dbt/models/warehouse/wh_<group>/`
 - [ ] No `.sql` model files inside `.wire/` (documentation only goes there)
 - [ ] `dbt/dbt_project.yml` exists
 

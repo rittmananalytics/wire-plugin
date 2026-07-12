@@ -104,32 +104,35 @@ dbt test
 | Check | Rule | Example | Severity |
 |-------|------|---------|----------|
 | Singular names | All objects are SINGULAR | `user` not `users` | Critical |
-| Staging models | `stg_<source>__<object>.sql` | `stg_salesforce__user.sql` | Critical |
-| Integration models | `int__<object>.sql` | `int__user.sql` | Critical |
-| Intermediate models | `int__<object>__<action>.sql` (past tense verbs) | `int__user__unioned.sql` | Critical |
-| Warehouse dimensions | `<object>_dim.sql` or `<warehouse>_<object>_dim.sql` | `user_dim.sql`, `finance_revenue_dim.sql` | Critical |
-| Warehouse facts | `<object>_fct.sql` or `<warehouse>_<object>_fct.sql` | `transaction_fct.sql` | Critical |
-| Aggregate tables | Must end with `_agg` | `course_summary_by_year_agg.sql` | Critical |
-| Files | Lowercase with underscores only | ✅ `student_dim.sql` ❌ `StudentDim.sql` | Critical |
+| Staging models | `stg_<group>__<entity>.sql` | `stg_salesforce__user.sql` | Critical |
+| Integration models | `int_<group>__<entity>.sql` | `int_core__user.sql` | Critical |
+| Intermediate models | `int_<group>__<entity>__<action>.sql` (past tense verbs) | `int_core__user__unioned.sql` | Critical |
+| Warehouse dimensions | `wh_<group>__<entity>_dim.sql` | `wh_core__user_dim.sql` | Critical |
+| Warehouse facts | `wh_<group>__<entity>_fact.sql` | `wh_finance__transaction_fact.sql` | Critical |
+| Warehouse cross-attribute | `wh_<group>__<entity>_xa.sql` (bridge / many-to-many / cross-entity attribute models) | `wh_core__user_role_xa.sql` | Critical |
+| Aggregate tables | `wh_<group>__<entity>_agg.sql` | `wh_core__course_summary_by_year_agg.sql` | Critical |
+| Files | Lowercase with underscores only | ✅ `wh_core__user_dim.sql` ❌ `StudentDim.sql` | Critical |
 
 **Directory Structure Check**:
 ```
 models/
 ├── staging/
-│   └── <source>/
-│       ├── stg_<source>.yml
-│       └── stg_<source>__<object>.sql
+│   └── <group>/
+│       ├── stg_<group>.yml
+│       └── stg_<group>__<entity>.sql
 ├── integration/
-│   ├── intermediate/
-│   │   ├── intermediate.yml
-│   │   └── int__<object>__<action>.sql
-│   ├── int__<object>.sql
-│   └── integration.yml
+│   ├── int_<group>/
+│   │   ├── intermediate/
+│   │   │   ├── intermediate.yml
+│   │   │   └── int_<group>__<entity>__<action>.sql
+│   │   ├── int_<group>__<entity>.sql
+│   │   └── integration.yml
 └── warehouse/
-    └── <warehouse>/
-        ├── <warehouse>.yml
-        ├── <object>_dim.sql
-        └── <object>_fct.sql
+    └── wh_<group>/
+        ├── wh_<group>.yml
+        ├── wh_<group>__<entity>_dim.sql
+        ├── wh_<group>__<entity>_fact.sql
+        └── wh_<group>__<entity>_xa.sql
 ```
 
 **Violations to Flag:**
@@ -144,13 +147,19 @@ For each model, check ALL fields against these conventions:
 
 | Type | Pattern | Example | Severity |
 |------|---------|---------|----------|
-| Primary Key | `<object>_pk` | `user_pk`, `transaction_pk` | Critical |
-| Foreign Key | `<referenced_object>_fk` | `user_fk`, `account_fk` | Critical |
+| Primary Key | `<entity>_pk`, generated via `dbt_utils.generate_surrogate_key(...)` | `user_pk`, `transaction_pk` | Critical |
+| Foreign Key | `<referenced_entity>_fk`, generated via `dbt_utils.generate_surrogate_key(...)` | `user_fk`, `account_fk` | Critical |
 | Natural Key | `<descriptive_name>_natural_key` | `salesforce_user_natural_key` | Important |
-| Timestamp | `<event>_ts` | `created_ts`, `updated_ts` | Important |
-| Boolean | `is_<state>` or `has_<thing>` | `is_active`, `has_subscription` | Important |
-| Price/Revenue | Decimal format | `price` (not `price_in_cents`) | Info |
+| Date | `<event>_dt` | `user_created_dt` | Important |
+| Timestamp (UTC) | `<event>_ts` — always assumed UTC unless otherwise indicated | `created_ts`, `updated_ts` | Important |
+| Timestamp (non-UTC) | `<event>_<tz>_ts` — timezone tag inserted before `_ts` | `created_cet_ts`, `created_pt_ts` | Important |
+| Boolean | `is_<state>`, `has_<thing>`, or `was_<event>` | `is_active`, `has_subscription`, `was_refunded` | Important |
+| Revenue / Money | `<entity>_<measure>_amount` — decimal currency, converted from cents at the staging layer | `user_account_balance_amount` (not `price_in_cents`) | Important |
 | Common fields | `<entity>_<field>` prefix | `customer_name` (not just `name`) | Important |
+
+**Type Casting:**
+- Always use dbt's type-cast macros, never raw SQL types: `{{ dbt.type_string() }}`, `{{ dbt.type_numeric() }}`, `{{ dbt.type_boolean() }}`, `{{ dbt.type_timestamp() }}`, `{{ type_date() }}` (community macro, no `dbt.` prefix)
+- This keeps models portable across warehouses (BigQuery / Snowflake / Databricks / Postgres)
 
 **General Rules:**
 - All names in `snake_case`
@@ -160,20 +169,23 @@ For each model, check ALL fields against these conventions:
 
 **Violations to Flag:**
 - Inconsistent naming patterns across models
-- Missing `_pk` or `_fk` suffixes
-- Timestamps without `_ts` suffix
-- Booleans without `is_`/`has_` prefix
+- Missing `_pk`/`_fk` suffixes; PKs/FKs not generated via `dbt_utils.generate_surrogate_key`
+- Timestamps without `_ts` suffix; dates without `_dt` suffix; non-UTC timestamps without a timezone tag before `_ts`
+- Booleans without `is_`/`has_`/`was_` prefix
+- Revenue columns without `_amount` suffix
+- Raw SQL type casts instead of `dbt.type_*()` macros
 - Reserved words as column names
 
 #### 3.3 Field Ordering
 
-Check that fields in each model follow this ordering:
+Check that fields in each model's `select` list follow this ordering:
 
-1. **Keys**: pk, fks, natural keys
-2. **Dates and timestamps**: All `_ts` fields
-3. **Attributes**: Dimensions/slicing fields (alphabetical within)
-4. **Metrics**: Measures/aggregatable values (alphabetical within)
-5. **Metadata**: `insert_ts`, `updated_ts`, `source_updated_ts`, etc.
+1. **Keys** — pk, fks, natural keys
+2. **Attributes** — dimensions, slicing fields, descriptive columns
+3. **Indexes / ranks** — `row_number()`, rank columns, sequence positions
+4. **Metrics** — measures, aggregatable values, `_amount` columns
+5. **Booleans** — `is_*`, `has_*`, `was_*` flags
+6. **Temporal data types** — `_dt`, `_ts` columns last
 
 ### Step 3.5: Validate SQL Structure
 
@@ -516,7 +528,7 @@ To use project-specific conventions, create one of:
 - Leave staging/warehouse models undocumented
 - Select from sources in non-staging models
 - Use `union distinct` without good reason
-- Look up PKs in separate queries (generate with `surrogate_key`)
+- Look up PKs in separate queries (generate with `dbt_utils.generate_surrogate_key()`)
 
 ✅ **Do:**
 - Use singular names
@@ -528,7 +540,8 @@ To use project-specific conventions, create one of:
 - Document staging and warehouse 100%
 - Respect layer boundaries
 - Prefer `union all`
-- Generate PKs with `dbt_utils.surrogate_key()`
+- Generate PKs/FKs with `dbt_utils.generate_surrogate_key()`
+- Use `dbt.type_*()` macros for all type casting
 
 ## Output
 

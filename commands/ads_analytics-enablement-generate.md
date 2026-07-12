@@ -168,6 +168,17 @@ enablement:
   maintenance_guide: complete
 ```
 
+### Step 4: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `enablement`
+- `artifact_name`: `Enablement`
+- `file_path`: `.wire/[release_folder]/artifacts/agentic_data_stack_user_guide.md`
+- Also sync: `.wire/[release_folder]/artifacts/agentic_data_stack_maintenance_guide.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
 ## Output
 
 - `.wire/<release-folder>/artifacts/agentic_data_stack_user_guide.md`

@@ -22,7 +22,7 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Generate dbt warehouse models (_dim/_fct/_agg) ready for BI consumption
+description: Generate dbt warehouse models (_dim/_fact/_agg/_xa) ready for BI consumption
 argument-hint: <project-folder>
 ---
 
@@ -30,7 +30,7 @@ argument-hint: <project-folder>
 
 ## Purpose
 
-Generate the warehouse layer: dimension tables (`_dim`), fact tables (`_fct`), and aggregate tables (`_agg`) that reference only integration models. These are the final materialized tables consumed by the semantic layer and BI tools.
+Generate the warehouse layer: dimension tables (`_dim`), fact tables (`_fact`), aggregate tables (`_agg`), and cross-attribute / bridge tables (`_xa`) that reference only integration models. These are the final materialized tables consumed by the semantic layer and BI tools.
 
 ## Prerequisites
 
@@ -48,7 +48,7 @@ This is the third and final step of the per-layer alternative to the monolithic 
 
 ### Step 2: Generate Dimension Tables
 
-**File:** `dbt/models/warehouse/core/<entity>_dim.sql`
+**File:** `dbt/models/warehouse/wh_<group>/wh_<group>__<entity>_dim.sql`
 
 **SCD Type 1 (current state):**
 ```sql
@@ -63,16 +63,24 @@ This is the third and final step of the per-layer alternative to the monolithic 
 with
 
 s_<entity> as (
-    select * from {{ ref('int__<entity>') }}
+    select * from {{ ref('int_<group>__<entity>') }}
 ),
 
 final as (
     select
+        -- Keys
         <entity>_pk,
-        <entity>_id,
+        <entity>_natural_key,
+
+        -- Attributes
         <attribute_1>,
         <attribute_2>,
-        current_timestamp() as dbt_updated_at
+
+        -- Booleans
+        is_current,
+
+        -- Temporal data types
+        current_timestamp() as dbt_updated_ts
     from s_<entity>
 )
 
@@ -83,7 +91,7 @@ select * from final
 
 ### Step 3: Generate Fact Tables
 
-**File:** `dbt/models/warehouse/core/<entity>_fct.sql`
+**File:** `dbt/models/warehouse/wh_<group>/wh_<group>__<entity>_fact.sql`
 
 ```sql
 {{
@@ -97,20 +105,25 @@ select * from final
 with
 
 s_<event> as (
-    select * from {{ ref('int__<event>') }}
+    select * from {{ ref('int_<group>__<event>') }}
 ),
 
 s_<dim> as (
-    select * from {{ ref('<dim>_dim') }}
+    select * from {{ ref('wh_<group>__<dim>_dim') }}
 ),
 
 final as (
     select
+        -- Keys
         {{ dbt_utils.generate_surrogate_key(['<id_columns>']) }} as <fact>_pk,
         s_<dim>.<dim>_pk as <dim>_fk,
+
+        -- Metrics
         s_<event>.<measure_1>,
-        s_<event>.<measure_2>,
-        current_timestamp() as dbt_updated_at
+        s_<event>.<measure_2_amount>,
+
+        -- Temporal data types
+        current_timestamp() as dbt_updated_ts
     from s_<event>
     left join s_<dim> on s_<event>.<dim>_id = s_<dim>.<dim>_id
 )
@@ -120,7 +133,7 @@ select * from final
 
 ### Step 4: Generate Aggregate Tables (if required)
 
-**File:** `dbt/models/warehouse/analytics/<entity>_agg.sql`
+**File:** `dbt/models/warehouse/wh_<group>/wh_<group>__<entity>_agg.sql`
 
 ```sql
 {{
@@ -133,14 +146,14 @@ select * from final
 with
 
 s_fact as (
-    select * from {{ ref('<entity>_fct') }}
+    select * from {{ ref('wh_<group>__<entity>_fact') }}
 ),
 
 final as (
     select
         <dimension_fk>,
         count(*) as total_count,
-        sum(<measure>) as total_<measure>
+        sum(<measure>) as total_<measure>_amount
     from s_fact
     group by 1
 )
@@ -148,23 +161,29 @@ final as (
 select * from final
 ```
 
+### Step 4.5: Generate Cross-Attribute / Bridge Tables (if required)
+
+**File:** `dbt/models/warehouse/wh_<group>/wh_<group>__<entity>_xa.sql` — for bridge / many-to-many / cross-entity attribute models (e.g. user-to-role, product-to-category).
+
 ### Step 5: Generate Macros (if needed)
 
 **File:** `dbt/macros/<macro_name>.sql` — for shared business logic (e.g., date spine helpers, derived field calculations).
 
 ### Step 6: Generate Schema Documentation
 
-**Files:**
-- `dbt/models/warehouse/core/core.yml` — dimensions and facts with relationship tests
-- `dbt/models/warehouse/analytics/analytics.yml` — aggregates
+**File:** `dbt/models/warehouse/wh_<group>/wh_<group>.yml` — dimensions, facts, aggregates, and cross-attribute tables with relationship tests.
 
-Include relationship tests: `relationships: to: ref('<dim>_dim'), field: <dim>_pk`.
+Include relationship tests: `relationships: to: ref('wh_<group>__<dim>_dim'), field: <dim>_pk`.
+
+**Type Casting:** always use dbt's type-cast macros, never raw SQL types: `{{ dbt.type_string() }}`, `{{ dbt.type_numeric() }}`, `{{ dbt.type_boolean() }}`, `{{ dbt.type_timestamp() }}`, `{{ type_date() }}` (community macro, no `dbt.` prefix).
+
+**Field ordering in `select` lists:** keys → attributes → indexes/ranks → metrics → booleans → temporal data types (dates/timestamps last).
 
 ### Step 7: Create Summary Document
 
 **File:** `.wire/<project_id>/dev/dbt_warehouse_summary.md`
 
-Include: list of dimensions, facts, and aggregates created with row-grain descriptions.
+Include: list of dimensions, facts, aggregates, and cross-attribute tables created with row-grain descriptions.
 
 ### Step 8: Update Status
 
@@ -173,14 +192,25 @@ dbt_warehouse:
   generate: complete
 ```
 
-### Step 9: Suggest Next Steps
+### Step 9: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `dbt_warehouse`
+- `artifact_name`: `dbt Warehouse Summary`
+- `file_path`: `.wire/<project_id>/dev/dbt_warehouse_summary.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 10: Suggest Next Steps
 
 ```
 ## Warehouse Models Generated
 
-- <count> dimension tables in dbt/models/warehouse/core/
-- <count> fact tables in dbt/models/warehouse/core/
-- <count> aggregate tables in dbt/models/warehouse/analytics/
+- <count> dimension tables in dbt/models/warehouse/wh_<group>/
+- <count> fact tables in dbt/models/warehouse/wh_<group>/
+- <count> aggregate tables in dbt/models/warehouse/wh_<group>/
+- <count> cross-attribute / bridge tables in dbt/models/warehouse/wh_<group>/
 
 Next steps:
 1. /wire:dbt-warehouse-validate <project_id>

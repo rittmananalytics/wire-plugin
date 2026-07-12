@@ -30,7 +30,7 @@ argument-hint: <project-folder>
 
 ## Purpose
 
-Validate the integration layer: compile all `int__*` models, verify they only reference staging models or other integration models (no `{{ source() }}`), and check business logic correctness.
+Validate the integration layer: compile all `int_<group>__*` models, verify they only reference staging models or other integration models (no `{{ source() }}`), and check business logic correctness.
 
 ## Prerequisites
 
@@ -44,21 +44,26 @@ List and read all files in `dbt/models/integration/`.
 
 ### Step 2: Dependency Check
 
-For each `int__` model verify:
+For each `int_<group>__` model verify:
 - [ ] No `{{ source() }}` calls — only `{{ ref() }}`
-- [ ] All `{{ ref() }}` targets are `stg_*` or `int__*` models (not warehouse)
+- [ ] All `{{ ref() }}` targets are `stg_*` or `int_<group>__*` models (not warehouse)
 - [ ] CTEs at top with `s_` prefix for refs
 - [ ] `final` CTE exists and is selected from
 
 ### Step 3: Naming Convention Checks
 
-- [ ] Filename matches `int__<entity>.sql` or `int__<entity>__<description>.sql`
-- [ ] File is in `dbt/models/integration/` (or `integration/intermediate/`)
-- [ ] Primary key field named `<entity>_pk`
+- [ ] Filename matches `int_<group>__<entity>.sql` or `int_<group>__<entity>__<action>.sql` (action is a past-tense verb)
+- [ ] File is in `dbt/models/integration/int_<group>/` (or `int_<group>/intermediate/`)
+- [ ] Primary key field named `<entity>_pk`, generated via `dbt_utils.generate_surrogate_key(...)`
+- [ ] Dates end in `_dt`; timestamps end in `_ts` (UTC) or `_<tz>_ts` (non-UTC, timezone before `_ts`)
+- [ ] Booleans use `is_`, `has_`, or `was_`
+- [ ] Revenue / money columns use the `_amount` suffix
+- [ ] Type casts use `{{ dbt.type_*() }}` / `{{ type_date() }}` macros, not raw SQL types
+- [ ] Field ordering: keys → attributes → indexes/ranks → metrics → booleans → temporal data types
 
 ### Step 4: Schema.yml Coverage
 
-- [ ] `integration.yml` exists with at least one model entry
+- [ ] `int_<group>/integration.yml` exists with at least one model entry
 - [ ] Complex transformation models are documented
 
 ### Step 5: Produce Validation Report
@@ -75,7 +80,7 @@ For each `int__` model verify:
 
 | Model | Compile | No Sources | Naming | Status |
 |-------|---------|------------|--------|--------|
-| int__... | ✓ | ✓ | ✓ | PASS |
+| int_core__... | ✓ | ✓ | ✓ | PASS |
 
 ## Issues Found
 <list any failures>

@@ -32,7 +32,7 @@ Follow `specs/utils/delivery_lead_delegate.md` before executing the workflow bel
 
 ## Purpose
 
-Generate deployment based on requirements and design specifications.
+Generate a deployment plan that takes the platform from "built" to "live": environment and credentials setup, a pre-flight pipeline health check, an ordered cutover sequence, and — for every step in that sequence — an explicit rollback action. `deployment/validate.md` already gates on pipeline connection health being checked before go-live; this command is what produces the plan that gate validates.
 
 ## Usage
 
@@ -44,26 +44,76 @@ Generate deployment based on requirements and design specifications.
 
 - Requirements must be approved
 - Relevant design artifacts should be complete
+- At least one of `pipeline`, `orchestration`, `dbt`, `semantic_layer`, `dashboards` should be complete (there's nothing to deploy otherwise)
 
 ## Workflow
 
 ### Step 1: Read Inputs
 
 **Process**:
-1. Read `requirements/requirements_specification.md`
-2. Read relevant design documents
-3. Identify what needs to be generated
+1. Read `requirements/requirements_specification.md` — extract environment names, access/credential requirements, and any stated go-live date or maintenance window
+2. Read `status.md` to identify which development artifacts (`pipeline`, `orchestration`, `dbt`, `semantic_layer`, `dashboards`) are complete and need to be included in the cutover sequence
+3. If `pipeline.generate == complete`, follow `wire/specs/utils/pipeline_tool_status.md` to get the current pipeline connection list and health — the deployment plan's connection references must match this, not be independently re-derived
 
-### Step 2: Generate deployment
+### Step 2: Generate Environment & Credentials Section
 
-**Process**:
-1. Apply templates and best practices
-2. Generate structured output
-3. Save to appropriate location
+- List each environment (e.g. dev/staging/prod, or client-specific names from requirements)
+- List the credentials/access required per environment (warehouse service account, BI tool admin access, pipeline tool API keys) — sourced from `requirements_specification.md`'s stated scope, not invented
+- Flag any credential requirement mentioned in requirements that has no corresponding environment entry yet
 
-[Detailed generation logic here - specific to artifact type]
+### Step 3: Generate Cutover Sequence
 
-### Step 3: Update Status
+For every development artifact that's complete, add an ordered cutover step. Each step **must** have a paired rollback action — a step with no way to undo it needs an explicit "no rollback possible; requires [specific manual recovery]" note rather than a blank:
+
+| Order | Step | Artifact | Rollback |
+|-------|------|----------|----------|
+| 1 | Verify pipeline connections healthy | pipeline | N/A — pre-flight check, not a cutover action |
+| 2 | Deploy dbt models to production schema | dbt | `dbt run --target prod` failure: revert to previous production schema snapshot / re-point views to prior dataset |
+| 3 | Switch orchestration schedule to production cadence | orchestration | Revert schedule to previous cadence / pause new jobs |
+| 4 | Publish semantic layer / LookML to production | semantic_layer | Revert to previous LookML project commit |
+| 5 | Point dashboards at production semantic layer | dashboards | Repoint dashboards at previous explore/model |
+
+Order matters: pipeline health is always checked first (nothing downstream is trustworthy if ingestion is broken), dbt before semantic layer (the semantic layer depends on the warehouse), semantic layer before dashboards (dashboards depend on the semantic layer).
+
+### Step 4: Generate Deployment Plan
+
+**File**: `.wire/releases/[release_folder]/deploy/deployment_plan.md`
+
+```markdown
+# Deployment Plan: [Project Name]
+
+**Generated**: [Date]
+**Go-live date**: [from requirements, if stated]
+
+## Environments & Credentials
+
+| Environment | Purpose | Credentials Required |
+|--------------|---------|------------------------|
+| [prod] | [Live client-facing platform] | [Warehouse service account, BI admin access] |
+
+## Pre-flight: Pipeline Connection Health
+
+Per `wire/specs/utils/pipeline_tool_status.md`, current connection status:
+
+| Connection | Status | Last Sync |
+|------------|--------|-----------|
+| [from pipeline_tool_status.md] | | |
+
+**Gate**: deployment must not proceed past this section if any connection is `unhealthy` (see `deployment/validate.md` Step 2).
+
+## Cutover Sequence
+
+[Table from Step 3, in dependency order]
+
+## Post-Cutover Verification
+
+- [ ] Confirm dbt models materialized in production schema
+- [ ] Confirm orchestration ran successfully on new schedule
+- [ ] Confirm dashboards load and reflect production data
+- [ ] Confirm no pipeline connection health regression since pre-flight
+```
+
+### Step 5: Update Status
 
 **Process**:
 1. Read `status.md`
@@ -77,14 +127,14 @@ Generate deployment based on requirements and design specifications.
    ```
 3. Write updated status.md
 
-### Step 4: Sync to Jira (Optional)
+### Step 6: Sync to Jira (Optional)
 
 Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 - Artifact: `deployment`
 - Action: `generate`
 - Status: the generate state just written to status.md
 
-### Step 5: Sync to Document Store (Optional)
+### Step 7: Sync to Document Store (Optional)
 
 If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
 - `artifact_id`: `deployment`
@@ -94,13 +144,16 @@ If a document store is configured for this project, follow the workflow in `spec
 
 If docstore sync fails, log the error and continue — do not block the generate command.
 
-### Step 6: Confirm and Suggest Next Steps
+### Step 8: Confirm and Suggest Next Steps
 
 **Output**:
 ```
 ## deployment Generated Successfully
 
-**File(s):** [list generated files]
+**Cutover steps**: [N]
+**Steps with no rollback path**: [N] (flagged for manual recovery)
+
+**File(s):** .wire/releases/[release_folder]/deploy/deployment_plan.md
 
 ### Next Steps
 
@@ -121,10 +174,28 @@ Current status: [status]
 Complete requirements approval: /wire:requirements-review <project>
 ```
 
+### No Development Artifacts Complete
+
+If none of `pipeline`, `orchestration`, `dbt`, `semantic_layer`, `dashboards` are complete:
+```
+Error: No development artifacts are complete yet, so there's nothing to deploy.
+
+Complete at least one development artifact before generating a deployment plan.
+```
+
+### Pipeline Connections Already Unhealthy at Generation Time
+
+If `pipeline_tool_status.md` reports `unhealthy` connections while generating the plan:
+```
+Warning: One or more pipeline connections are currently unhealthy: [list]
+
+The deployment plan will still be generated, but /wire:deployment-validate will fail its pre-flight check until these are fixed. Fix connections now, or proceed with plan generation? (y/n)
+```
+
 ## Output
 
 This command creates:
-- [List of output files specific to artifact]
+- `.wire/releases/[release_folder]/deploy/deployment_plan.md` — environments/credentials, pipeline pre-flight status, ordered cutover sequence with paired rollback actions, and post-cutover verification checklist
 - Updates `status.md`
 
 Execute the complete workflow as specified above.

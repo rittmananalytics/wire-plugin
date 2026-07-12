@@ -125,7 +125,7 @@ Generate problem definition:
 
 ## Downstream Releases
 
-[Populated by /wire:release:spawn after sprint plan is approved]
+[Populated by /wire:release-spawn after sprint plan is approved]
 
 ## Notes
 

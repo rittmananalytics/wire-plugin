@@ -40,10 +40,12 @@ Search Fathom for any prior conversations about the agentic data stack launch ti
 
 ### Step 2: Present Launch Gate Report
 
-Present the output of launch_gate validate. Do not negotiate the blocked domains — only cleared domains launch.
+Present the output of launch_gate validate. Do not negotiate the blocked domains — only cleared domains launch. If `adversarial_calibration_gate: blocked` in status.md, lead with that — it blocks every domain regardless of individual eval pass rates, so there's nothing to negotiate per-domain until it's resolved.
 
 ```
 ## Launch Gate Review
+
+Adversarial calibration gate: [CLEARED / BLOCKED / not applicable]
 
 Ready to launch: [N] domains ([list])
 Blocked (second wave): [N] domains — [brief reason each]
@@ -51,7 +53,7 @@ Blocked (second wave): [N] domains — [brief reason each]
 For cleared domains, we recommend announcing to [audience] on [date].
 ```
 
-### Step 2: Agree Launch Communications
+### Step 3: Agree Launch Communications
 
 Draft the internal announcement for cleared domains:
 
@@ -75,11 +77,11 @@ figures against your canonical dashboard before including in external reports.
 Questions or issues? Contact [data-platform-owner].
 ```
 
-### Step 3: Schedule Second Wave
+### Step 4: Schedule Second Wave
 
 Set a date for the second wave (blocked domains). Typical gap: 2 weeks for metric fixes, 4 weeks if significant semantic layer changes are required.
 
-### Step 4: Record Sign-off
+### Step 5: Record Sign-off
 
 ```yaml
 launch_gate:

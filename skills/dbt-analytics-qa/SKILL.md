@@ -113,7 +113,7 @@ When no Semantic Layer but `get_mart_models` / `get_model_details` are available
 3. Write SQL using `{{ ref('model_name') }}`
 4. Execute with `dbt show --inline "..."` or `execute_sql`
 
-Wire naming conventions to look for: `_dim` / `_fct` suffix models are marts; `stg_` are staging; `int_` are integration. Prefer `_fct` and `_dim` models for analytics queries.
+Wire naming conventions to look for: `_dim` / `_fact` suffix models are marts; `stg_` are staging; `int_` are integration. Prefer `_fact` and `_dim` models for analytics queries.
 
 ---
 
@@ -126,7 +126,7 @@ When in a dbt project directory but no MCP server:
 
 ```bash
 # Find mart models
-jq '.nodes | to_entries | map(select(.key | startswith("model.") and (contains("_fct") or contains("_dim")))) | .[].value | {name: .name, schema: .schema, database: .database}' target/manifest.json
+jq '.nodes | to_entries | map(select(.key | startswith("model.") and (contains("_fact") or contains("_dim")))) | .[].value | {name: .name, schema: .schema, database: .database}' target/manifest.json
 
 # Get column info for a specific model
 jq '.nodes["model.PROJECT_NAME.MODEL_NAME"].columns' target/catalog.json
@@ -157,7 +157,7 @@ Stay at the semantic model level — do **not** suggest database schema changes,
 |---|---|
 | Saying "cannot answer" without trying Level 2–4 | Work through all 4 levels |
 | Writing SQL before checking the Semantic Layer | Always check Semantic Layer first |
-| Querying staging models (`stg_`) | Use mart models (`_fct`, `_dim`) |
+| Querying staging models (`stg_`) | Use mart models (`_fact`, `_dim`) |
 | Reading full `manifest.json` without filtering | Use `jq` to extract just what you need |
 | Suggesting ETL changes for a missing metric | Suggest adding it to the semantic model |
 
@@ -166,7 +166,7 @@ Stay at the semantic model level — do **not** suggest database schema changes,
 ## Wire Project Notes
 
 - Wire projects use BigQuery. SQL syntax should use BigQuery dialect (backtick identifiers, `DATE_TRUNC`, `DATE_SUB`, `TIMESTAMP_TRUNC`, etc.)
-- Wire's standard mart naming: `orders_fct`, `customers_dim`, `products_dim`. Staging: `stg_<source>__<entity>`. Integration: `int_<entity>`.
+- Wire's standard mart naming: `wh_sales__order_fact`, `wh_core__customer_dim`, `wh_core__product_dim`. Staging: `stg_<source>__<entity>`. Integration: `int_<group>__<entity>`.
 - The dbt MCP server (see `dbt-mcp-server` skill) unlocks Levels 1–3. Without it, Level 4 (manifest parsing) is the fallback.
 - Wire projects that use the Semantic Layer via `/wire:semantic_layer-generate` produce LookML (Looker) by default. If the project has also set up dbt Semantic Layer (MetricFlow), the `dbt-semantic-layer` skill covers that path.
 

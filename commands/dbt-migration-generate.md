@@ -23,7 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Translate dbt models batch by batch to target dialect with inline equivalency validation
-argument-hint: <release-folder> [--batch N] [--wave id] [--model name] [--select selector] [--exclude selector] [--macros] [--config path]
+argument-hint: <release-folder> [--batch N] [--wave id] [--model name] [--select selector] [--exclude selector] [--macros] [--config path] [--tag-map path] [--target-dataset name] [--dbt-project-path path]
 ---
 
 ## Auto-Delegation
@@ -82,7 +82,12 @@ Works in batches as defined in the dbt audit, or in waves as defined by the auth
 - `--exclude <selector>` — companion to `--select`; removes matching models from the resolved set. Same grammar. Optional.
 - `--macros` — **batch-zero macro pass.** Translate the shared Jinja / dispatched *macro definition* files listed in `audit/batch_zero_plan.json`, in tier order, instead of the model graph. This is the pass that must land before model batch 1: a widely-used macro is expanded by models scattered across every batch, so it is rewritten once, up front, and every downstream model then compiles against the already-translated macro. See **Macro Mode Workflow** below. UDF-layer entries (`layer: udf`) are **not** in scope here — they are `CREATE FUNCTION` DDL deployed by `/wire:target-setup-generate`.
 - `--config <path>` — load a per-run config overlay file; see **Config overlay** below. Orthogonal to scope — combine freely with `--batch`, `--wave`, `--model`/`--models`, `--select`/`--exclude`, or `--macros`.
+- `--tag-map <path>` — shorthand for a `--config` overlay that sets only `migration.pii_tag_map_path`. Equivalent to `--config` with a one-key overlay file; use this when the *only* thing an isolated run needs to override is the PII tag map, without writing a throwaway YAML file first.
+- `--target-dataset <name>` — shorthand for a `--config` overlay that sets only `migration.target_schema`. Use for a one-off run against a scratch/test dataset without touching the release's real target schema.
+- `--dbt-project-path <path>` — shorthand for a `--config` overlay that sets only `migration.dbt_project_path`. Use to point a single run at a different project root (e.g. a scratch checkout) without a full overlay file.
 - No flag — process the next incomplete batch (read from status.md `dbt_migration.current_batch`)
+
+**Discrete overlay flags vs. `--config`**: `--tag-map`/`--target-dataset`/`--dbt-project-path` are convenience aliases — each is exactly equivalent to `--config` pointed at a one-key overlay file setting that single field, read at Step 0c the same way, in memory for this invocation only, never written back to status.md. They compose freely with each other and with `--config` itself (later flags on the command line win on a per-key basis if the same key is set more than once — e.g. `--config base.yml --target-dataset scratch_v2` uses every key from `base.yml` except `target_schema`, which `--target-dataset` overrides). Use the discrete flags for a single-field override where writing a whole overlay file would be overkill; use `--config` when overriding several fields at once (e.g. `dbt_project_path` and `target_schema` and `pii_tag_map_path` together for a full scratch-project run).
 
 `--select`/`--exclude` is a different scoping model from `--batch`, `--wave`, and `--model`/`--models` — abort if `--select` is supplied alongside any of `--batch`, `--wave`, `--model`, or `--models`. `--batch` and `--wave` are themselves mutually exclusive with each other (two different numbering schemes over the same models — see below), but each independently composes with `--model`/`--models` exactly as `--batch` always has: `--model`/`--models` narrows the batch or wave down to a named subset (this is what the parallel-dispatch layer uses to hand each agent its slice of a batch **or** a wave), it does not replace it. `--model`/`--models` supplied with neither `--batch` nor `--wave` still works as its own scope (a single model or named subset, independent of any batch/wave), unchanged from today.
 
@@ -92,7 +97,7 @@ A bare name (`--select vehicles`) resolves to that single model, identical to `-
 
 Full grammar and resolution algorithm: `wire/docs/specs/dbt-node-selection.md`.
 
-### Config overlay (`--config`)
+### Config overlay (`--config`, `--tag-map`, `--target-dataset`, `--dbt-project-path`)
 
 By default every per-run field this spec reads from status.md (`migration.dbt_project_path`, `migration.pii_tag_map_path`, `migration.target_schema`, `migration.source_platform`, `migration.target_platform`, `migration.materialization_overrides_path`, `migration.transformation_log_table`, `data_safety.target_project`, and any other status.md-sourced field referenced below) comes from the release's `status.md`. That forces an isolated or one-off run (e.g. validating against a different schema, or a scratch project without a status.md yet fully wired up) to hand-edit status.md first.
 
@@ -107,7 +112,9 @@ data_safety:
   target_project: "acme-migration-test-2"
 ```
 
-**`data_safety.production_projects` is never overridable** — that blocklist always comes from status.md, so a `--config` overlay can never be used to route a write around the production-write guard in Step 0 / Step 3.4. If the overlay declares a `data_safety.production_projects` key, ignore it and print a one-line warning; the guard still reads status.md's list.
+`--tag-map <path>`, `--target-dataset <name>`, and `--dbt-project-path <path>` are discrete, single-field shorthands for the three overlay keys used most often in practice — `migration.pii_tag_map_path`, `migration.target_schema`, and `migration.dbt_project_path` respectively. Each is read and applied at Step 0c exactly like a one-key `--config` overlay: in memory for this invocation only, never written back to status.md. If both a discrete flag and a `--config` overlay set the same key, the discrete flag wins (it's the more specific, later-considered override) — every other key from the `--config` overlay still applies normally.
+
+**`data_safety.production_projects` is never overridable** — that blocklist always comes from status.md, so no overlay (whether `--config` or a discrete flag) can ever be used to route a write around the production-write guard in Step 0 / Step 3.4. If the `--config` overlay declares a `data_safety.production_projects` key, ignore it and print a one-line warning; the guard still reads status.md's list. (There is no discrete-flag equivalent for this key — it is deliberately only reachable, if at all, through `--config`, and even there it's ignored.)
 
 ## Inputs
 
@@ -116,6 +123,7 @@ data_safety:
 - `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json` — consumed only by `--macros` mode (the `layer: macro`, `action: translate` entries, tiered)
 - `.wire/releases/$ARGUMENTS/status.md` — dbt_migration.current_batch
 - **`--config <path>` overlay (optional)**: a YAML/JSON file overriding status.md-sourced per-run fields for this invocation only — see **Config overlay** above
+- **`--tag-map <path>` / `--target-dataset <name>` / `--dbt-project-path <path>` (optional)**: discrete single-field overlay shorthands for `migration.pii_tag_map_path` / `migration.target_schema` / `migration.dbt_project_path` respectively — see **Config overlay** above
 - Source dbt model SQL files **and their companion schema/properties YAML** (`schema.yml` / `_models.yml` / `sources.yml`) at `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if registered)
 - PII tag map (optional): the file at `migration.pii_tag_map_path` in status.md, defaulting to `.wire/releases/$ARGUMENTS/migration/tag_map.json` — a flat `{source_masking_policy_name: target_policy_tag_resource_path}` JSON map, loaded in Step 2 and consumed in Step 3b item 4
 - Canonical platform pair files:
@@ -165,11 +173,17 @@ Read `migration_sources.dbt` from status.md (if the block exists):
   ```
   Do not block. Continue after the warning.
 
-### Step 0c: Load per-run config overlay (`--config`)
+### Step 0c: Load per-run config overlay (`--config`, `--tag-map`, `--target-dataset`, `--dbt-project-path`)
 
 If `--config <path>` was supplied: read and parse the file (YAML or JSON by extension/content-sniff). If it does not exist or fails to parse, abort: `[wire] --config file <path> not found or invalid. Aborting.` Hold the parsed overlay in memory as the override layer for this invocation — every subsequent step that reads a status.md field checks the overlay first, then falls back to status.md. Never write the overlay's values back to status.md. Drop (with a warning) any `data_safety.production_projects` key the overlay declares, per **Config overlay** above.
 
-If `--config` was not supplied, skip this step; every field resolves from status.md exactly as today.
+If `--tag-map <path>` was supplied: set `migration.pii_tag_map_path` in the in-memory overlay to `<path>`, overwriting whatever `--config` set for that key (if any).
+
+If `--target-dataset <name>` was supplied: set `migration.target_schema` in the in-memory overlay to `<name>`, overwriting whatever `--config` set for that key (if any).
+
+If `--dbt-project-path <path>` was supplied: set `migration.dbt_project_path` in the in-memory overlay to `<path>`, overwriting whatever `--config` set for that key (if any).
+
+If none of `--config`/`--tag-map`/`--target-dataset`/`--dbt-project-path` were supplied, skip this step; every field resolves from status.md exactly as today.
 
 ### Step 1: Determine scope
 

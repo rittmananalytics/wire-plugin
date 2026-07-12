@@ -22,7 +22,7 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Generate dbt integration-layer models (int__) applying business logic and cross-source joins
+description: Generate dbt integration-layer models (int_<group>__) applying business logic and cross-source joins
 argument-hint: <project-folder>
 ---
 
@@ -30,7 +30,7 @@ argument-hint: <project-folder>
 
 ## Purpose
 
-Generate the integration layer: `int__` models that apply business logic, cross-source joins, deduplication, and entity resolution on top of validated staging models. No `{{ source() }}` calls — only `{{ ref() }}` to staging models.
+Generate the integration layer: `int_<group>__` models that apply business logic, cross-source joins, deduplication, and entity resolution on top of validated staging models. No `{{ source() }}` calls — only `{{ ref() }}` to staging models.
 
 ## Prerequisites
 
@@ -50,7 +50,7 @@ This is the second step of the per-layer alternative to the monolithic `/wire:db
 
 For complex multi-step transformations, create intermediate ephemeral models first:
 
-**File:** `dbt/models/integration/intermediate/int__<entity>__<description>.sql`
+**File:** `dbt/models/integration/int_<group>/intermediate/int_<group>__<entity>__<action>.sql` (action is a past-tense verb, e.g. `unioned`, `deduped`)
 
 ```sql
 {{
@@ -63,7 +63,7 @@ For complex multi-step transformations, create intermediate ephemeral models fir
 with
 
 s_<entity> as (
-    select * from {{ ref('stg_<source>__<entity>') }}
+    select * from {{ ref('stg_<group>__<entity>') }}
 ),
 
 final as (
@@ -78,7 +78,7 @@ select * from final
 
 ### Step 3: Generate Final Integration Models
 
-**File:** `dbt/models/integration/int__<entity>.sql`
+**File:** `dbt/models/integration/int_<group>/int_<group>__<entity>.sql`
 
 ```sql
 {{
@@ -125,9 +125,9 @@ If the data model identifies multiple source systems for the same entity, apply 
 
 ### Step 5: Create Schema Documentation
 
-**File:** `dbt/models/integration/integration.yml`
+**File:** `dbt/models/integration/int_<group>/integration.yml`
 
-Document all `int__` models with column descriptions for complex transformations.
+Document all `int_<group>__` models with column descriptions for complex transformations.
 
 ### Step 6: Create Summary Document
 
@@ -142,7 +142,17 @@ dbt_integration:
   generate: complete
 ```
 
-### Step 8: Suggest Next Steps
+### Step 8: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `dbt_integration`
+- `artifact_name`: `dbt Integration Summary`
+- `file_path`: `.wire/<project_id>/dev/dbt_integration_summary.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 9: Suggest Next Steps
 
 ```
 ## Integration Models Generated

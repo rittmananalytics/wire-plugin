@@ -42,6 +42,8 @@ Final accuracy check before the agent is announced to the business. Only domains
 
 - `eval_suite.review: approved` (or `approved_with_conditions`)
 - All domain fixes from eval_suite review have been applied and re-run
+- **If `adversarial_config.client_decision: enabled`** (check status.md — this is the client's own recorded decision from `ads_adversarial-config-generate`): `adversarial_config.validate: complete` and `adversarial_config.review: approved` (or `approved_with_conditions`) must both be true. A release cannot reach launch with adversarial review configured but never validated or signed off — see Step 2.5.
+- If `adversarial_config.client_decision: disabled`, or the artifact doesn't exist yet (older release, adversarial review never configured), skip the Step 2.5 check entirely — there is nothing to gate on.
 
 ## Validation Steps
 
@@ -56,6 +58,17 @@ cd <dbt_project_path> && ./.claude/eval/run_evals.sh all 2>&1 | tee eval_results
 ### Step 2: Check Per-Domain Pass Rates
 
 For each domain, compare current pass rate against `eval_targets.yaml` threshold.
+
+### Step 2.5: Check Adversarial Calibration Gate (if enabled)
+
+Read `adversarial_config.client_decision` from status.md.
+
+**If `enabled`:** read `adversarial_config.calibration_pass_rate` (written by `ads_adversarial-config-generate`, confirmed by `ads_adversarial-config-validate`'s own bar of "at least 4/5 calibration tests passed"). This is a distinct signal from the per-domain eval pass rates above — eval_suite measures whether the agent answers *good* questions correctly, calibration measures whether the adversarial reviewer actually *catches* bad ones. Both must clear independently; one cannot compensate for the other.
+
+- **`calibration_pass_rate` < 80% (i.e. fewer than 4/5 calibration tests passed):** the adversarial safety net is not reliable. **Block the entire launch** (not per-domain — a miscalibrated adversarial reviewer is a cross-domain risk, since it runs on every query regardless of which domain it belongs to), regardless of how the per-domain eval numbers look. Record this in the report and do not proceed to Step 3's "cleared" table until recalibrated and re-validated via `ads_adversarial-config-validate`.
+- **`calibration_pass_rate` >= 80%:** proceed normally to Step 3.
+
+**If `disabled`, or the artifact isn't present:** skip this check — note in the report that adversarial review was not configured for this engagement, so this gate does not apply.
 
 ### Step 3: Compile Launch Gate Report
 
@@ -76,6 +89,14 @@ For each domain, compare current pass rate against `eval_targets.yaml` threshold
 
 **Cleared for launch: 2/4 domains**  
 **Blocked: 2/4 domains**
+
+### Adversarial Calibration Gate
+
+| Adversarial review | Calibration pass rate | Threshold | Status |
+|---|---|---|---|
+| Enabled | 100% (5/5) | 80% (4/5) | ✅ CLEARED |
+
+If blocked here, this overrides the per-domain table above — **no domain launches** until recalibrated, since the adversarial reviewer runs on every query regardless of domain. If adversarial review is disabled for this engagement, state that explicitly instead of this table ("Adversarial review: not configured for this engagement — gate not applicable").
 
 ### Blocked Domain Issues
 
@@ -101,7 +122,11 @@ launch_gate:
   domains_cleared: ["orders", "customers"]
   domains_blocked: ["marketing", "finance"]
   overall_pass_rate: X%
+  adversarial_calibration_gate: cleared   # cleared | blocked | not_applicable
+  adversarial_calibration_pass_rate: X%   # omit or null if not_applicable
 ```
+
+**If `adversarial_calibration_gate: blocked`**, `domains_cleared` must be empty regardless of what the per-domain eval numbers say — the adversarial gate blocks the whole launch, not individual domains.
 
 ## What To Do With Blocked Domains
 

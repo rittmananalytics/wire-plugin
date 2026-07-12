@@ -57,10 +57,9 @@ Varies by mode — see individual command specs. Minimum: `.wire/engagement/cont
 
 Read `.wire/releases/[release]/status.md`.
 
-**If `project_type: droughty`** or `droughty.context: discovery` in status.md:
-- Default to **discovery mode**
+**If `droughty.context` is already set** (`discovery`, `post_dbt`, or `full` — set during `/wire:new`'s droughty setup, or by a prior run of this command): use that context directly. This applies whether the release is a standalone `project_type: droughty` engagement or droughty was invoked from within another release type — a release explicitly configured for `post_dbt` or `full` must not be silently forced back to discovery mode just because `project_type: droughty` also happens to be true.
 
-**If called within another release type** (e.g. `full_platform`, `dbt_development`):
+**If `droughty.context` is not set** (e.g. droughty invoked ad hoc within another release type — `full_platform`, `dbt_development` — without having gone through `/wire:new`'s droughty setup):
 - Ask in chat:
   ```
   What context is this Droughty run for?

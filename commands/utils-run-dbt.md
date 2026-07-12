@@ -158,8 +158,8 @@ dbt run
 
 # Run specific models
 dbt run --select staging.<source_name>.*
-dbt run --select +enrolment_fct  # model and all upstream
-dbt run --select enrolment_fct+  # model and all downstream
+dbt run --select +wh_core__enrolment_fact  # model and all upstream
+dbt run --select wh_core__enrolment_fact+  # model and all downstream
 
 # Run models in specific folders
 dbt run --select warehouse.core.*
@@ -171,7 +171,7 @@ dbt run --full-refresh
 dbt test
 
 # Run tests for specific models
-dbt test --select enrolment_fct
+dbt test --select wh_core__enrolment_fact
 
 # Generate documentation
 dbt docs generate
@@ -220,12 +220,12 @@ dbt run failed with [count] errors:
    - Check SQL syntax in dbt/models/staging/<source_name>/stg_<source_name>__<entity>.sql
    - Verify column names match source schema
 
-❌ Model warehouse.core.enrolment_fct failed
-   Error: Dependency int__student not found
+❌ Model warehouse.core.wh_core__enrolment_fact failed
+   Error: Dependency int_core__student not found
 
    Suggested fix:
    - Ensure upstream model runs first
-   - Check ref() syntax: {{ ref('int__student') }}
+   - Check ref() syntax: {{ ref('int_core__student') }}
 
 To debug:
 1. Review error details: [show full error]
@@ -273,7 +273,7 @@ dbt run --select staging.*
 dbt run --select warehouse.*
 
 # Specific model and dependencies
-dbt run --select +enrolment_fct
+dbt run --select +wh_core__enrolment_fact
 ```
 
 ### Full Refresh
@@ -287,7 +287,7 @@ dbt run --full-refresh
 
 **Run tests for specific models:**
 ```bash
-dbt test --select enrolment_fct
+dbt test --select wh_core__enrolment_fact
 dbt test --select warehouse.core.*
 ```
 

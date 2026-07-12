@@ -52,6 +52,23 @@ Record outcomes from requirements clarification workshop and update the requirem
    - `requirements/workshop_agenda.md`
    - `requirements/workshop_decision_matrix.md`
 
+### Step 1.5: Retrieve External Context (Optional)
+
+The workshop itself is usually a recorded meeting, so this step is unusually likely to have direct evidence — run it before asking the consultant for details in Step 2, so a found transcript can pre-fill/confirm the date and attendees instead of asking from scratch.
+
+**Process**:
+1. Follow the meeting context retrieval workflow defined in `specs/utils/meeting_context.md`
+   - Pass the project folder and artifact name `workshops`
+   - If Fathom MCP is available and a matching meeting is found, present the meeting context summary and extract the workshop date and attendee list from it
+2. Follow the Atlassian search workflow defined in `specs/utils/atlassian_search.md`
+   - Pass the project folder and artifact name `workshops`
+   - If Atlassian MCP is available, search Confluence for prior workshop notes and Jira for related issue comments
+   - Present any relevant findings
+3. If a document store is configured, follow `specs/utils/docstore_fetch.md`:
+   - Pass `artifact_id`, `artifact_name`, `file_path`, and `project_id` for this artifact
+   - Surface any reviewer comments or edits made directly to the document store version
+4. If none of these are available, proceed directly to Step 2 and ask for the workshop date and attendees as normal
+
 ### Step 2: Record Workshop Details
 
 **Ask for basic info**:

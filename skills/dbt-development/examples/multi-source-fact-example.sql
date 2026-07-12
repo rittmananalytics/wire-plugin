@@ -1,6 +1,6 @@
 -- =============================================================================
 -- MULTI-SOURCE FACT TABLE EXAMPLE
--- File: models/warehouse/finance/invoice_fct.sql
+-- File: models/warehouse/finance/invoice_fact.sql
 -- =============================================================================
 -- 
 -- This fact table demonstrates:

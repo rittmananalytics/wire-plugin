@@ -36,10 +36,18 @@ jira:
       generate_key: null
       validate_key: null
       review_key: null
+    seed_data:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
     mockups:
       task_key: null
       generate_key: null
       review_key: null
+    viz_catalog:
+      task_key: null
+      generate_key: null
     pipeline:
       task_key: null
       generate_key: null
@@ -61,6 +69,11 @@ jira:
       validate_key: null
       review_key: null
     dashboards:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    data_refactor:
       task_key: null
       generate_key: null
       validate_key: null
@@ -117,7 +130,15 @@ docstore:
         page_id: null
         page_url: null
         last_synced: null
+      seed_data:
+        page_id: null
+        page_url: null
+        last_synced: null
       mockups:
+        page_id: null
+        page_url: null
+        last_synced: null
+      viz_catalog:
         page_id: null
         page_url: null
         last_synced: null
@@ -133,11 +154,27 @@ docstore:
         page_id: null
         page_url: null
         last_synced: null
+      dbt_staging:
+        page_id: null
+        page_url: null
+        last_synced: null
+      dbt_integration:
+        page_id: null
+        page_url: null
+        last_synced: null
+      dbt_warehouse:
+        page_id: null
+        page_url: null
+        last_synced: null
       semantic_layer:
         page_id: null
         page_url: null
         last_synced: null
       dashboards:
+        page_id: null
+        page_url: null
+        last_synced: null
+      data_refactor:
         page_id: null
         page_url: null
         last_synced: null
@@ -184,7 +221,15 @@ docstore:
         page_id: null
         page_url: null
         last_synced: null
+      seed_data:
+        page_id: null
+        page_url: null
+        last_synced: null
       mockups:
+        page_id: null
+        page_url: null
+        last_synced: null
+      viz_catalog:
         page_id: null
         page_url: null
         last_synced: null
@@ -200,11 +245,27 @@ docstore:
         page_id: null
         page_url: null
         last_synced: null
+      dbt_staging:
+        page_id: null
+        page_url: null
+        last_synced: null
+      dbt_integration:
+        page_id: null
+        page_url: null
+        last_synced: null
+      dbt_warehouse:
+        page_id: null
+        page_url: null
+        last_synced: null
       semantic_layer:
         page_id: null
         page_url: null
         last_synced: null
       dashboards:
+        page_id: null
+        page_url: null
+        last_synced: null
+      data_refactor:
         page_id: null
         page_url: null
         last_synced: null
@@ -269,9 +330,24 @@ artifacts:
     generated_date: null
     generated_files: []
     revision_history: []
+  seed_data:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    generated_files: []
+    revision_history: []
+    seed_file_count: null
   mockups:
     generate: not_started
     review: not_started
+    file: null
+    generated_date: null
+    generated_files: []
+    revision_history: []
+  viz_catalog:
+    generate: not_started
     file: null
     generated_date: null
     generated_files: []
@@ -317,6 +393,16 @@ artifacts:
     generated_date: null
     generated_files: []
     revision_history: []
+  data_refactor:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    generated_files: []
+    revision_history: []
+    tables_refactored: null
+    staging_models_updated: null
   data_quality:
     generate: not_started
     validate: not_started
@@ -400,11 +486,14 @@ Then run:
 | | pipeline_design | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | data_model | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | mockups | ⏸️ | - | ⏸️ | ❌ |
+| | viz_catalog *(dashboard_first only)* | ⏸️ | - | - | ❌ |
 | **Development** | pipeline | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | orchestration | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | dbt | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| | seed_data *(dashboard_first only)* | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | semantic_layer | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | dashboards | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| | data_refactor *(dashboard_first only)* | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | **Testing** | data_quality | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | uat | ⏸️ | - | ⏸️ | ❌ |
 | **Deployment** | deployment | ⏸️ | ⏸️ | ⏸️ | ❌ |

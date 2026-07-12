@@ -235,10 +235,10 @@ defs = dg.Definitions(
 
 ### Asset key alignment with dbt model names
 
-In Wire projects, dbt models follow the naming convention: `stg_<source>__<entity>`, `int_<entity>`, `<entity>_dim`/`<entity>_fct`. Dagster-dbt exposes these as asset keys — use these keys when creating downstream assets:
+In Wire projects, dbt models follow the naming convention: `stg_<source>__<entity>`, `int_<group>__<entity>`, `wh_<group>__<entity>_dim`/`wh_<group>__<entity>_fact`. Dagster-dbt exposes these as asset keys — use these keys when creating downstream assets:
 
 ```python
-@dg.asset(deps=[dg.AssetKey("orders_fct")])
+@dg.asset(deps=[dg.AssetKey("wh_sales__order_fact")])
 def orders_report(): ...
 ```
 

@@ -174,6 +174,16 @@ metric_audit:
   coverage_pct: X
 ```
 
+### Step 7: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `metric_audit`
+- `artifact_name`: `Metric Audit`
+- `file_path`: `.wire/[release_folder]/artifacts/metric_audit.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
 ## Edge Cases
 
 ### No Semantic Layer Exists

@@ -57,13 +57,21 @@ Priority order:
 
 | Type | Pattern | Example |
 |------|---------|---------|
-| Primary Key | `<object>_pk` | `user_pk` |
-| Foreign Key | `<referenced_object>_fk` | `account_fk` |
-| Natural Key | `<source>_<entity>_natural_key` | `salesforce_user_natural_key` |
-| Timestamp | `<event>_ts` | `created_ts` |
-| Boolean | `is_<state>` / `has_<thing>` | `is_active` |
+| Primary Key | `<entity>_pk`, generated via `dbt_utils.generate_surrogate_key(...)` | `user_pk`, `transaction_pk` |
+| Foreign Key | `<referenced_entity>_fk`, generated via `dbt_utils.generate_surrogate_key(...)` | `user_fk`, `account_fk` |
+| Natural Key | `<descriptive_name>_natural_key` | `salesforce_user_natural_key` |
+| Date | `<event>_dt` | `user_created_dt` |
+| Timestamp (UTC) | `<event>_ts` — always assumed UTC unless otherwise indicated | `created_ts`, `updated_ts` |
+| Timestamp (non-UTC) | `<event>_<tz>_ts` — timezone tag inserted before `_ts` | `created_cet_ts`, `created_pt_ts` |
+| Boolean | `is_<state>`, `has_<thing>`, or `was_<event>` | `is_active`, `has_subscription`, `was_refunded` |
+| Revenue / Money | `<entity>_<measure>_amount` — decimal currency, converted from cents at the staging layer | `user_account_balance_amount` (not `price_in_cents`) |
+| Common fields | `<entity>_<field>` prefix | `customer_name` (not just `name`) |
+
+**Type Casting:** always use dbt's type-cast macros, never raw SQL types: `{{ dbt.type_string() }}`, `{{ dbt.type_numeric() }}`, `{{ dbt.type_boolean() }}`, `{{ dbt.type_timestamp() }}`, `{{ type_date() }}` (community macro, no `dbt.` prefix).
 
 **SQL style:** 4-space indent, lowercase, explicit joins, all refs in CTEs prefixed `s_`, final CTE always named `final`.
+
+**Field ordering in `select` lists:** keys → attributes → indexes/ranks → metrics → booleans → temporal data types (dates/timestamps last).
 
 ### Step 3: Determine dbt Project Location
 
@@ -96,13 +104,14 @@ final as (
             as <table>_pk,
         <id_column> as <source>_<table>_natural_key,
 
-        -- Timestamps
-        cast(<date_column> as timestamp) as <event>_ts,
-
         -- Attributes
         lower(trim(<source_column>)) as <standard_name>,
 
-        -- Metadata
+        -- Booleans
+        cast(<status_column> as {{ dbt.type_boolean() }}) as is_<state>,
+
+        -- Temporal data types
+        cast(<date_column> as {{ dbt.type_timestamp() }}) as <event>_ts,
         current_timestamp() as dbt_loaded_ts
 
     from s_<source_system>_<table>
@@ -131,7 +140,17 @@ dbt_staging:
   generate: complete
 ```
 
-### Step 8: Suggest Next Steps
+### Step 8: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `dbt_staging`
+- `artifact_name`: `dbt Staging Summary`
+- `file_path`: `.wire/<project_id>/dev/dbt_staging_summary.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
+### Step 9: Suggest Next Steps
 
 ```
 ## Staging Models Generated

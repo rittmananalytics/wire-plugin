@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.10.6 | **Date**: July 2026
+**Version**: 3.10.7 | **Date**: July 2026
 
 ---
 
@@ -585,7 +585,7 @@ graph LR
 /wire:sprint-plan-review 01-discovery              # team approval
 
 # Spawn the downstream delivery releases:
-/wire:release:spawn 01-discovery
+/wire:release-spawn 01-discovery
 
 # End each session:
 ```
@@ -678,12 +678,12 @@ Validates that: no single story is 13 points or more, total points fit the appet
 /wire:sprint-plan-review 01-discovery
 ```
 
-Team review and approval. Once approved, the sprint plan marks the discovery release as complete. The AI suggests running `release:spawn`.
+Team review and approval. Once approved, the sprint plan marks the discovery release as complete. The AI suggests running `release-spawn`.
 
 ### Spawning delivery releases
 
 ```
-/wire:release:spawn 01-discovery
+/wire:release-spawn 01-discovery
 ```
 
 Reads the approved release brief to identify the planned downstream delivery releases, then creates the folder structure and `status.md` for each one:
@@ -775,7 +775,7 @@ A new engagement with an uncertain scope:
 /wire:sprint-plan-validate 01-discovery    → PASS
 /wire:sprint-plan-review 01-discovery      → Team approved
 
-/wire:release:spawn 01-discovery
+/wire:release-spawn 01-discovery
 → Creates .wire/releases/02-acme-data-foundation/ (full_platform)
 → Creates .wire/releases/03-acme-enablement/ (enablement)
 → Both releases ready to start
@@ -2115,7 +2115,7 @@ graph TD
 *Pending review by `/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1`*
 
 ---
-*Generated automatically by Wire Framework v3.10.6 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
+*Generated automatically by Wire Framework v3.10.7 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
 ````
 
 After `/wire:migration-acceptance-pack-review` is run, the reviewer's decision is appended to the same file:
@@ -3748,7 +3748,7 @@ Proceed with autonomous execution?
 
 For each planned delivery release, Autopilot:
 
-1. Creates the release folder structure (equivalent to `/wire:release:spawn`)
+1. Creates the release folder structure (equivalent to `/wire:release-spawn`)
 2. Creates the release `status.md` with the correct artifact scope for the release type
 3. Runs the full artifact sequence for that release type
 4. Commits all artifacts after the release is complete before moving to the next
@@ -4706,7 +4706,7 @@ The `/wire:*` command system requires a CLI-based AI coding agent (Claude Code o
 
 **Q: How do I know when a release is complete?**
 
-Run `/wire:status <release-folder>`. When all in-scope artifacts show `review: approved` (or `not_applicable` for out-of-scope artifacts), the release is complete. Run `/wire:archive <release-folder>` to close it out. For a discovery release, completion means the sprint plan is approved and downstream releases have been spawned via `/wire:release:spawn`.
+Run `/wire:status <release-folder>`. When all in-scope artifacts show `review: approved` (or `not_applicable` for out-of-scope artifacts), the release is complete. Run `/wire:archive <release-folder>` to close it out. For a discovery release, completion means the sprint plan is approved and downstream releases have been spawned via `/wire:release-spawn`.
 
 ---
 
@@ -4820,7 +4820,7 @@ Shape Up is a product development methodology (from Basecamp) that emphasises fi
 
 **Q: Can I run a discovery release and a delivery release at the same time?**
 
-Not recommended. The discovery release should be completed and delivery releases spawned via `release:spawn` before delivery work begins. Discovery is specifically about determining *what* to build — starting delivery before that is known creates rework risk. If you are joining an engagement mid-stream where discovery has already been done informally, create the delivery release directly without a discovery release.
+Not recommended. The discovery release should be completed and delivery releases spawned via `release-spawn` before delivery work begins. Discovery is specifically about determining *what* to build — starting delivery before that is known creates rework risk. If you are joining an engagement mid-stream where discovery has already been done informally, create the delivery release directly without a discovery release.
 
 ---
 
@@ -4999,7 +4999,7 @@ Recent release history for the Wire Framework. Full changelog from v3.0.0 onward
 
 ---
 
-### v3.10.6 — Batch-zero macro & UDF pass, single-SCC batching fallback (July 2026)
+### v3.10.7 — Batch-zero macro & UDF pass, single-SCC batching fallback (July 2026)
 
 Completes the batch-zero pass `dbt-audit` has planned all along but nothing consumed, and makes migration batching reproduce the build-ordered plan that SCC-heavy estates always needed by hand.
 

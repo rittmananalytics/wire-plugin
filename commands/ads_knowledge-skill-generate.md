@@ -220,6 +220,16 @@ knowledge_skill:
   ci_check_added: true  # or false
 ```
 
+### Step 7: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `knowledge_skill`
+- `artifact_name`: `Knowledge Skill`
+- `file_path`: `.wire/[release_folder]/artifacts/knowledge_skill_index.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
 ## Edge Cases
 
 ### No dbt Project

@@ -21,6 +21,121 @@ domains: []  # populated during dataset_audit
 # Eval configuration
 eval_default_target: 90  # % pass rate required per domain
 adversarial_review: true  # true | false
+
+docstore:
+  provider: null  # confluence | notion | both | null
+  confluence:
+    cloud_id: null
+    space_key: null
+    parent_page_id: null
+    artifacts:
+      dataset_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      metric_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      query_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      governance_design:
+        page_id: null
+        page_url: null
+        last_synced: null
+      semantic_layer_design:
+        page_id: null
+        page_url: null
+        last_synced: null
+      canonical_models:
+        page_id: null
+        page_url: null
+        last_synced: null
+      lookml_views:
+        page_id: null
+        page_url: null
+        last_synced: null
+      semantic_layer:
+        page_id: null
+        page_url: null
+        last_synced: null
+      knowledge_skill:
+        page_id: null
+        page_url: null
+        last_synced: null
+      agent_config:
+        page_id: null
+        page_url: null
+        last_synced: null
+      eval_suite:
+        page_id: null
+        page_url: null
+        last_synced: null
+      adversarial_config:
+        page_id: null
+        page_url: null
+        last_synced: null
+      enablement:
+        page_id: null
+        page_url: null
+        last_synced: null
+  notion:
+    parent_page_id: null
+    artifacts:
+      dataset_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      metric_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      query_audit:
+        page_id: null
+        page_url: null
+        last_synced: null
+      governance_design:
+        page_id: null
+        page_url: null
+        last_synced: null
+      semantic_layer_design:
+        page_id: null
+        page_url: null
+        last_synced: null
+      canonical_models:
+        page_id: null
+        page_url: null
+        last_synced: null
+      lookml_views:
+        page_id: null
+        page_url: null
+        last_synced: null
+      semantic_layer:
+        page_id: null
+        page_url: null
+        last_synced: null
+      knowledge_skill:
+        page_id: null
+        page_url: null
+        last_synced: null
+      agent_config:
+        page_id: null
+        page_url: null
+        last_synced: null
+      eval_suite:
+        page_id: null
+        page_url: null
+        last_synced: null
+      adversarial_config:
+        page_id: null
+        page_url: null
+        last_synced: null
+      enablement:
+        page_id: null
+        page_url: null
+        last_synced: null
 ---
 
 # Agentic Data Stack Release Status

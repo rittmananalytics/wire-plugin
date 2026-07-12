@@ -159,6 +159,16 @@ adversarial_config:
   calibration_pass_rate: 100%
 ```
 
+### Step 6: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `adversarial_config`
+- `artifact_name`: `Adversarial Config`
+- `file_path`: `.wire/[release_folder]/artifacts/adversarial_calibration_results.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
 ## Output
 
 - Updated `agentic-data-stack-SKILL.md` (adversarial section confirmed)

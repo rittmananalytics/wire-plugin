@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Generate requirements specification from SOW, artifacts, and stakeholder inputs
+argument-hint: <project-folder>
 ---
 
 # Requirements Generate Command

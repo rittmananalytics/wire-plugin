@@ -36,7 +36,7 @@ This skill should activate when users:
 **Keywords to watch for:**
 - "dbt model", "staging", "integration", "warehouse", "intermediate"
 - "refactor", "review", "validate", "check conventions"
-- "stg_", "int_", "_dim", "_fct"
+- "stg_", "int_", "_dim", "_fact"
 - "schema.yml", "tests", "dbt test"
 - "multi-source", "entity resolution", "deduplication", "merge sources"
 - "enable source", "disable source", "add source", "remove source"
@@ -49,7 +49,7 @@ This skill should activate when users:
 - You detect .sql files in a models/ directory structure
 - User asks to "write SQL" in a dbt project context
 - You're reviewing changes in a dbt project
-- Working with files that match dbt patterns (stg_, int_, _dim, _fct)
+- Working with files that match dbt patterns (stg_, int_, _dim, _fact)
 
 **Example internal triggers:**
 - "I'll create a staging model for..." → Activate skill first
@@ -609,7 +609,7 @@ Sources Layer (stg_*) → Integration Layer (int_*) → Warehouse Layer (wh_*)
 |-------|---------|--------|-----------------|
 | **Sources** | Source-specific transformations, column standardization, ID prefixing | `stg_<source>__<object>.sql` | view |
 | **Integration** | Cross-source entity resolution, deduplication, merging | `int__<object>.sql` | view or table |
-| **Warehouse** | Final dimensional models with surrogate keys | `<object>_dim.sql`, `<object>_fct.sql` | table |
+| **Warehouse** | Final dimensional models with surrogate keys | `<object>_dim.sql`, `<object>_fact.sql` | table |
 
 ### Configuration-Driven Source Management
 
@@ -925,7 +925,7 @@ select * from final
 Join fact tables to dimensions using the array of source IDs:
 
 ```sql
--- models/warehouse/finance/invoice_fct.sql
+-- models/warehouse/finance/invoice_fact.sql
 
 {% if var("finance_warehouse_invoice_sources") %}
 
@@ -1037,8 +1037,8 @@ models/
     │   └── contact_dim.sql
     └── finance/
         ├── _finance__schema.yml
-        ├── invoice_fct.sql
-        └── payment_fct.sql
+        ├── invoice_fact.sql
+        └── payment_fact.sql
 
 macros/
 └── merge_sources.sql

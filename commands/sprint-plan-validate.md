@@ -47,7 +47,7 @@ Resolve release folder. Read both documents.
 
 #### Point estimation checks
 - [ ] **No 13-point stories**: Scan all stories — flag any with 13+ points as requiring breakdown
-- [ ] **Points sum to a reasonable total**: Total points ÷ daily velocity ≤ appetite in working days (+ 20% buffer is acceptable)
+- [ ] **Points sum to a reasonable total**: see "Appetite budget check" below — total points must fit within the velocity-derived capacity for the confirmed batch size, after holding back the buffer for unknowns and rework
 - [ ] **No 0-point stories**: Every story has a non-zero point estimate
 - [ ] **Epic subtotals correct**: Each epic's subtotal matches the sum of its story points
 
@@ -61,10 +61,10 @@ Resolve release folder. Read both documents.
 - [ ] **Definition of Done present**: The sprint plan includes a definition of done
 
 #### Appetite budget check
-- [ ] **Total points vs appetite**:
-  - Small batch (1–2 weeks): total points should be ≤ 40 (8 hours × 5 points × 10 days, with buffer)
-  - Big batch (6 weeks): total points should be ≤ 120 (5 points × 5 days × 6 weeks, with buffer)
-  - Flag if total exceeds the appetite budget by >20%
+- [ ] **Total points vs appetite**: capacity = velocity (5 points/day, per generate.md's velocity assumption) × working days in the appetite, minus the buffer held back for unknowns and rework (20% by default — see the sprint plan's own "Buffer" line for the confirmed %)
+  - Small batch (1–2 weeks = 10 working days): total points should be ≤ 40 (5 × 10 × 0.8)
+  - Big batch (6 weeks = 30 working days): total points should be ≤ 120 (5 × 30 × 0.8)
+  - PASS if total points ≤ budget; WARNING if total points ≤ budget × 1.2 (over budget but within a 20% tolerance); FAIL beyond that
 
 ### Step 3: Produce Validation Report
 

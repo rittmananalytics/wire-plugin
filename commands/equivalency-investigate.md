@@ -35,7 +35,7 @@ Deep diagnostics for a specific table or dbt model that is failing equivalency c
 
 `$ARGUMENTS` must include `--object <table_or_model_name>`. Example:
 ```
-/wire:equivalency-investigate 01-migration --object orders_fct
+/wire:equivalency-investigate 01-migration --object wh_sales__order_fact
 ```
 
 ## Workflow

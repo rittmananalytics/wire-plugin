@@ -210,6 +210,16 @@ agent_config:
   provenance_footer: enabled
 ```
 
+### Step 5: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `agent_config`
+- `artifact_name`: `Agent Config`
+- `file_path`: `.wire/[release_folder]/artifacts/agent_config_install.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
 ## Output
 
 - `agentic-data-stack-SKILL.md` (or in `<dbt_project_path>/.claude/skills/agentic-data-stack/SKILL.md`)

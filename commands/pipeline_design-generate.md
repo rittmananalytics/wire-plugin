@@ -207,8 +207,8 @@ graph LR
     end
 
     subgraph warehouse["Warehouse Layer\n(BigQuery tables — dbt)"]
-        FCT1["<entity>_fct"]
-        DIM1["<entity>_dim"]
+        FCT1["wh_<group>__<entity>_fact"]
+        DIM1["wh_<group>__<entity>_dim"]
         AGG1["<aggregate_model>"]
     end
 
@@ -229,7 +229,7 @@ graph LR
 ```
 ```
 
-Replace all `<placeholders>` with project-specific values from the requirements and conceptual model. Staging model names must match the naming convention (`stg_<source>__<entity>`). Warehouse model names must match the agreed naming convention (`<entity>_fct`, `<entity>_dim`).
+Replace all `<placeholders>` with project-specific values from the requirements and conceptual model. Staging model names must match the naming convention (`stg_<source>__<entity>`). Warehouse model names must match the agreed naming convention (`wh_<group>__<entity>_fact`, `wh_<group>__<entity>_dim`).
 
 ### Step 8: Write Pipeline Architecture Document
 

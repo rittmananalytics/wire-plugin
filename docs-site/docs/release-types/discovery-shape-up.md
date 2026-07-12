@@ -66,7 +66,7 @@ graph LR
 /wire:sprint-plan-review 01-discovery              # team approval
 
 # Spawn the downstream delivery releases:
-/wire:release:spawn 01-discovery
+/wire:release-spawn 01-discovery
 ```
 
 :::info[Tutorial available]
@@ -133,7 +133,7 @@ Decomposes the approved release brief into a sprint plan: epics, stories, and ta
 ## Spawning delivery releases
 
 ```
-/wire:release:spawn 01-discovery
+/wire:release-spawn 01-discovery
 ```
 
 Reads the approved release brief to identify the planned downstream delivery releases, then creates the folder structure and `status.md` for each one. The spawned releases are ready to start immediately.

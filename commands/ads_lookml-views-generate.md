@@ -263,6 +263,16 @@ lookml_views:
   lookml_project_path: <path>
 ```
 
+### Step 9: Sync to Document Store (Optional)
+
+If a document store is configured for this project (and this step was not skipped at Step 1 due to `bi_tool != looker`), follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `lookml_views`
+- `artifact_name`: `LookML Views`
+- `file_path`: `.wire/[release_folder]/artifacts/lookml_views_notes.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
 ## Output
 
 - New or updated `.view.lkml` files in `<lookml_project_path>`

@@ -25,7 +25,7 @@ Generate a Mermaid `graph LR` diagram of dbt model lineage for a given model or 
 
 ### User-Triggered Activation
 
-- "Show me the lineage for `orders_fct`"
+- "Show me the lineage for `wh_sales__order_fact`"
 - "Create a dbt DAG diagram"
 - "Visualise the dependencies of this model"
 - "Draw the pipeline from source to warehouse"
@@ -42,7 +42,7 @@ Activate when a user asks about how models connect, what a model depends on, or 
 
 1. If a model name is provided, use it
 2. If the user is viewing a specific `.sql` file, use that model name
-3. If unclear — ask: "Which model would you like to visualise? (e.g. `orders_fct`)"
+3. If unclear — ask: "Which model would you like to visualise? (e.g. `wh_sales__order_fact`)"
 4. Ask whether to include **tests** in the diagram (default: no)
 
 ---
@@ -55,14 +55,14 @@ Use the **first available method**:
 Best for local development lineage. Returns the current local state of the project.
 
 ```
-mcp__dbt__get_lineage_dev(model_name="orders_fct")
+mcp__dbt__get_lineage_dev(model_name="wh_sales__order_fact")
 ```
 
 ### Method B: `get_lineage` MCP tool
 Falls back to production lineage from dbt Cloud if `get_lineage_dev` is unavailable.
 
 ```
-mcp__dbt__get_lineage(model_name="orders_fct")
+mcp__dbt__get_lineage(model_name="wh_sales__order_fact")
 ```
 
 ### Method C: Parse `target/manifest.json`
@@ -70,13 +70,13 @@ When no MCP tools are available. Check file size first — if > 10 MB, skip to M
 
 ```bash
 # Get upstream dependencies for a model
-jq --arg model "model.PROJECT.orders_fct" '
+jq --arg model "model.PROJECT.wh_sales__order_fact" '
   .nodes[$model] |
   {name: .name, depends_on: .depends_on.nodes}
 ' target/manifest.json
 
 # Get downstream dependents
-jq --arg model "model.PROJECT.orders_fct" '
+jq --arg model "model.PROJECT.wh_sales__order_fact" '
   .nodes | to_entries |
   map(select(.value.depends_on.nodes | index($model))) |
   map(.value.name)
@@ -98,7 +98,7 @@ Use `graph LR` (left to right). Colour nodes by type:
 | Sources | `source(...)` calls | `#3b82f6` (blue) | `#ffffff` |
 | Staging | `stg_` prefix | `#b45309` (bronze) | `#ffffff` |
 | Integration | `int_` prefix | `#9ca3af` (silver) | `#111827` |
-| Marts / facts / dims | `_fct` / `_dim` suffix | `#d97706` (gold) | `#111827` |
+| Marts / facts / dims | `_fact` / `_dim` suffix | `#d97706` (gold) | `#111827` |
 | Seeds | `.csv` seed files | `#16a34a` (green) | `#ffffff` |
 | Exposures | Looker dashboards, etc. | `#ea580c` (orange) | `#ffffff` |
 | Tests | Unit/schema tests | `#ca8a04` (yellow) | `#111827` |
@@ -112,16 +112,16 @@ graph LR
     src_salesforce["📥 salesforce\n(source)"]:::source
     stg_salesforce__accounts["stg_salesforce__accounts"]:::staging
     stg_salesforce__opportunities["stg_salesforce__opportunities"]:::staging
-    int_accounts["int_accounts"]:::integration
-    orders_fct["⭐ orders_fct\n(selected)"]:::selected
-    customers_dim["customers_dim"]:::mart
+    int_core__account["int_core__account"]:::integration
+    wh_sales__order_fact["⭐ wh_sales__order_fact\n(selected)"]:::selected
+    wh_core__customer_dim["wh_core__customer_dim"]:::mart
 
     src_salesforce --> stg_salesforce__accounts
     src_salesforce --> stg_salesforce__opportunities
-    stg_salesforce__accounts --> int_accounts
-    stg_salesforce__opportunities --> int_accounts
-    int_accounts --> orders_fct
-    int_accounts --> customers_dim
+    stg_salesforce__accounts --> int_core__account
+    stg_salesforce__opportunities --> int_core__account
+    int_core__account --> wh_sales__order_fact
+    int_core__account --> wh_core__customer_dim
 
     classDef selected fill:#7c3aed,color:#ffffff,stroke:#5b21b6
     classDef source fill:#3b82f6,color:#ffffff,stroke:#2563eb
@@ -148,7 +148,7 @@ graph LR
 
 ## Wire Project Notes
 
-- **Wire naming conventions**: sources feed `stg_<source>__<entity>` → `int_<entity>` → `<entity>_fct` / `<entity>_dim`. The diagram should reflect this layered flow.
+- **Wire naming conventions**: sources feed `stg_<source>__<entity>` → `int_<group>__<entity>` → `wh_<group>__<entity>_fact` / `wh_<group>__<entity>_dim`. The diagram should reflect this layered flow.
 - **`/wire:conceptual_model-generate`**: the conceptual model command also produces a Mermaid entity diagram. This skill produces a **lineage** diagram (model dependencies), which is different from an entity-relationship diagram.
 - **Large projects**: Wire projects may have 50+ models. For large DAGs, offer to show only the immediate upstream/downstream of the selected model (1 level each direction) rather than the full graph, to keep the diagram readable.
 

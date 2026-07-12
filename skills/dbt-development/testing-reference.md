@@ -28,7 +28,7 @@ The dbt transformation process has 4 main layers:
   - Calculate `last_month_total_visits`
   - Merge conceptual rows into single row
 
-### 4. Warehouse Models (`_dim`, `_fct`)
+### 4. Warehouse Models (`_dim`, `_fact`)
 - Public entities for consumption in BI tools
 - Dimensions: Mutable, noun-based (users, products, accounts)
 - Facts: Immutable, verb-based (transactions, sessions, events)
@@ -381,7 +381,7 @@ models:
 ### Pattern 2: Fact Table
 ```yaml
 models:
-  - name: transaction_fct
+  - name: transaction_fact
     description: Transaction fact table
     columns:
       - name: transaction_pk

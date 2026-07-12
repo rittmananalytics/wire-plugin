@@ -148,6 +148,16 @@ semantic_layer_design:
   platform: dbt_semantic_layer  # or lookml
 ```
 
+### Step 7: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `semantic_layer_design`
+- `artifact_name`: `Semantic Layer Design`
+- `file_path`: `.wire/[release_folder]/artifacts/semantic_layer_design.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
 ## Output
 
 - `.wire/<release-folder>/artifacts/semantic_layer_design.md`

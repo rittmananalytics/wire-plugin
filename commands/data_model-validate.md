@@ -74,10 +74,10 @@ Run: /wire:data_model-generate <project_id>
 | Check | Rule | Severity |
 |-------|------|----------|
 | Staging naming | All staging models follow `stg_<source>__<entity>` (double underscore) | Critical |
-| Warehouse fact naming | All fact tables follow `<entity>_fct` | Critical |
-| Warehouse dimension naming | All dimension tables follow `<entity>_dim` | Critical |
+| Warehouse fact naming | All fact tables follow `wh_<group>__<entity>_fact` | Critical |
+| Warehouse dimension naming | All dimension tables follow `wh_<group>__<entity>_dim` | Critical |
 | Aggregate naming | Aggregate models follow `<subject>_<grain>` or `<subject>_summary` | Major |
-| Integration naming | Integration models follow `int__<subject>__<description>` | Major |
+| Integration naming | Integration models follow `int_<group>__<subject>__<description>` | Major |
 | Surrogate key naming | Surrogate key columns follow `<entity>_pk` pattern | Critical |
 | Foreign key naming | Foreign key columns follow `<referenced_entity>_fk` pattern | Major |
 | No reserved words | No model or column names use SQL reserved words (e.g. `date`, `order`, `group`) | Major |
@@ -134,7 +134,7 @@ Run: /wire:data_model-generate <project_id>
 | Check | Status | Notes |
 |-------|--------|-------|
 | Staging naming (stg_source__entity) | ✅/❌ | |
-| Fact naming (_fct) | ✅/❌ | |
+| Fact naming (_fact) | ✅/❌ | |
 | Dimension naming (_dim) | ✅/❌ | |
 | Surrogate key naming (_pk) | ✅/❌ | |
 | Foreign key naming (_fk) | ✅/⚠️ | |
@@ -208,8 +208,8 @@ Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
 
 If an ERD entity has columns that do not appear in the corresponding model spec (or vice versa), list each discrepancy specifically:
 ```
-❌ ERD entity ATTENDANCE_FCT has column 'session_type' but this column is not defined
-   in the attendance_fct model spec in Section 4.
+❌ ERD entity ATTENDANCE_FACT has column 'session_type' but this column is not defined
+   in the wh_core__attendance_fact model spec in Section 4.
    → Add 'session_type' to the model spec, or remove it from the ERD.
 ```
 

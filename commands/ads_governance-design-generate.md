@@ -143,6 +143,16 @@ governance_design:
   canonical_tables: N
 ```
 
+### Step 7: Sync to Document Store (Optional)
+
+If a document store is configured for this project, follow the workflow in `specs/utils/docstore_sync.md`:
+- `artifact_id`: `governance_design`
+- `artifact_name`: `Governance Design`
+- `file_path`: `.wire/[release_folder]/artifacts/governance_design.md`
+- `project_id`: the release folder path
+
+If docstore sync fails, log the error and continue — do not block the generate command.
+
 ## Output
 
 - `.wire/<release-folder>/artifacts/governance_design.md`

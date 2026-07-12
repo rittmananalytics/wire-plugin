@@ -52,11 +52,14 @@ Run `dbt compile --select tag:staging` (or equivalent) if dbt is available. Othe
 ### Step 3: Naming Convention Checks
 
 For every staging model, verify:
-- [ ] Filename matches `stg_<source>__<table>.sql`
-- [ ] File is in `dbt/models/staging/<source>/`
-- [ ] Primary key field named `<table>_pk`
-- [ ] Timestamps end in `_ts`
-- [ ] Booleans start with `is_` or `has_`
+- [ ] Filename matches `stg_<group>__<entity>.sql`
+- [ ] File is in `dbt/models/staging/<group>/`
+- [ ] Primary key field named `<entity>_pk`, generated via `dbt_utils.generate_surrogate_key(...)`
+- [ ] Dates end in `_dt`; timestamps end in `_ts` (UTC) or `_<tz>_ts` (non-UTC, timezone before `_ts`)
+- [ ] Booleans start with `is_`, `has_`, or `was_`
+- [ ] Revenue / money columns use the `_amount` suffix
+- [ ] Type casts use `{{ dbt.type_*() }}` / `{{ type_date() }}` macros, not raw SQL types
+- [ ] Field ordering: keys → attributes → indexes/ranks → metrics → booleans → temporal data types
 - [ ] Source refs use `{{ source() }}` not `{{ ref() }}`
 
 ### Step 4: Schema.yml Coverage

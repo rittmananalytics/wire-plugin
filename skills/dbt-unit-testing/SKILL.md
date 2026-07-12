@@ -527,7 +527,7 @@ dbt build --select state:modified+
 | **Staging** (`stg_`) | Recommended if non-trivial | Only if the staging model contains regex, date logic, or case statements beyond simple rename/recast |
 | **Integration** (`int_`) | Required if business logic present | Multi-source joins with conditional logic, entity resolution, deduplication |
 | **Warehouse - Dimension** (`_dim`) | Required | SCD logic, derived attributes, business classifications |
-| **Warehouse - Fact** (`_fct`) | Required | Metric calculations, status derivations, temporal logic |
+| **Warehouse - Fact** (`_fact`) | Required | Metric calculations, status derivations, temporal logic |
 
 ### File Naming Convention
 

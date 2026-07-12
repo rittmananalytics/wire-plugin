@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Generate training materials and session plans for data team and end users
+argument-hint: <project-folder>
 ---
 
 # Training Generate Command

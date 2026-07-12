@@ -39,7 +39,7 @@ Required:
 
 Example:
 ```
-/wire:equivalency-fix 01-migration --object orders_fct --approach "Add COALESCE for NULL handling in subtotal column"
+/wire:equivalency-fix 01-migration --object wh_sales__order_fact --approach "Add COALESCE for NULL handling in subtotal column"
 ```
 
 ## Workflow

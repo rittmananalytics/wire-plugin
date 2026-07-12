@@ -156,7 +156,7 @@ Use this template format:
 
 For complex transformations that span multiple staging models but are not yet warehouse-level:
 
-**Naming**: `int__<subject>__<description>` (e.g. `int__student__risk_signals`)
+**Naming**: `int_<group>__<subject>__<description>` (e.g. `int_core__student__risk_signals`)
 
 **Materialisation**: `view` (or `ephemeral` for simple pass-throughs)
 
@@ -169,8 +169,8 @@ Use integration models for:
 
 For each fact table, dimension table, and aggregate:
 
-**Fact table naming**: `<entity>_fct` (e.g. `attendance_fct`, `pastoral_notes_fct`)
-**Dimension table naming**: `<entity>_dim` (e.g. `student_dim`, `course_dim`)
+**Fact table naming**: `wh_<group>__<entity>_fact` (e.g. `wh_core__attendance_fact`, `wh_core__pastoral_notes_fact`)
+**Dimension table naming**: `wh_<group>__<entity>_dim` (e.g. `wh_core__student_dim`, `wh_core__course_dim`)
 **Aggregate naming**: `<subject>_<grain>` (e.g. `student_risk_summary`, `daily_attendance_summary`)
 
 **Materialisation**: `table`

@@ -231,7 +231,7 @@ Scan for file patterns that indicate which Wire artifact categories have work al
 |---------|---------------------|
 | `dbt/models/staging/**/*.sql` | `dbt` — staging layer |
 | `dbt/models/integration/**/*.sql` | `dbt` — integration layer |
-| `dbt/models/warehouse/**/*.sql` or `*_fct.sql`, `*_dim.sql` | `dbt` — warehouse layer |
+| `dbt/models/warehouse/**/*.sql` or `*_fact.sql`, `*_dim.sql` | `dbt` — warehouse layer |
 | `*.view.lkml`, `*.model.lkml`, `*.explore.lkml` | `semantic_layer` |
 | `*.dashboard.lookml` | `dashboards` |
 | `fivetran_config*.yml`, `airbyte_config*/` | `pipeline` |

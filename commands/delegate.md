@@ -106,8 +106,8 @@ For agent types that handle large sets of independent items within a natural exe
 1. Enumerate all models from the data model artifact or `dbt_project.yml`.
 2. Group by execution layer in order:
    - **Staging** (`stg_*`): all models in this layer are independent of each other.
-   - **Integration** (`int__*`): depends on staging; models within integration are independent of each other.
-   - **Warehouse** (`*_dim`, `*_fct`): depends on integration; models within warehouse are independent of each other.
+   - **Integration** (`int_<group>__*`): depends on staging; models within integration are independent of each other.
+   - **Warehouse** (`*_dim`, `*_fact`, `*_xa`): depends on integration; models within warehouse are independent of each other.
    - **Seeds**: independent; co-batch with the first staging wave unless the seed count alone exceeds the threshold.
 3. Within each layer, calculate: `batch_count = min(ceil(model_count / 5), 8)`. Only fan-out when `batch_count > 1` (i.e. the layer has more than 5 models).
 4. Split the model list as evenly as possible across `batch_count` batches.
@@ -175,11 +175,11 @@ Step 3 (multi-wave fan-out, starts after step 2):
     dbt-developer [staging 2/2]  → stg_source_b__entity_a, stg_source_b__entity_b, ...
   
   Wave 3b — Integration layer  (1 agent, starts after Wave 3a):
-    dbt-developer [integration 1/1]  → int__unified_entity
+    dbt-developer [integration 1/1]  → int_core__unified_entity
   
   Wave 3c — Warehouse layer  (2 parallel agents, starts after Wave 3b):
-    dbt-developer [warehouse 1/2]  → entity_dim, summary_fct, ...
-    dbt-developer [warehouse 2/2]  → detail_fct, history_fct, ...
+    dbt-developer [warehouse 1/2]  → wh_core__entity_dim, wh_core__summary_fact, ...
+    dbt-developer [warehouse 2/2]  → wh_core__detail_fact, wh_core__history_fact, ...
   
   Total dbt-developer agents: 5  (2 + 1 + 2)
 
