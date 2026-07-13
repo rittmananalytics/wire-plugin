@@ -1,6 +1,6 @@
 ---
 description: Validate ingestion migration runbook
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Validate ingestion migration runbook
@@ -23,13 +23,18 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Validate ingestion migration — MCP-executed connectors or runbook
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Ingestion Migration — Validate
 
+## Flags
+
+- `--wave <id>` — validate only the connectors `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `ingestion-migration-generate`'s Step 1w. Every check below reads "in scope" as this resolved connector set instead of every `include_in_migration: true` connector.
+
 ## Validation Checks
 
-Read `status.md` to determine `method: mcp_executed | runbook_generated` before running checks. Also read the ingestion audit to identify which MCP server prefix applies (Fivetran → `mcp__fivetran__`, Airbyte → `mcp__airbyte__`, etc.) — use the correct prefix for all MCP calls below.
+Read `status.md` to determine `method: mcp_executed | runbook_generated` before running checks. Also read the ingestion audit to identify which MCP server prefix applies (Fivetran → `mcp__fivetran__`, Airbyte → `mcp__airbyte__`, etc.) — use the correct prefix for all MCP calls below. Under `--wave`, read the wave-labelled runbook (`ingestion_migration_runbook_{wave_id}.md`) for the runbook fallback path instead of the unscoped file.
 
 ### MCP-executed path
 
@@ -91,6 +96,8 @@ artifacts:
   ingestion_migration:
     validate: pass | fail
     validated_date: "{{TODAY}}"
+    wave_validate:               # set only when run with --wave, keyed by wave id
+      B01: pass | fail
 ```
 
 

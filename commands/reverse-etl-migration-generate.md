@@ -1,6 +1,6 @@
 ---
 description: Generate Hightouch sync migration runbook — repoint, rewrite, rebuild
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Generate Hightouch sync migration runbook — repoint, rewrite, rebuild
@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Generate Hightouch reverse ETL migration runbook — add target-warehouse syncs to the existing GitHub-Sync repo as PR-gated changes, reuse destinations in place, translate models drift-aware, and cut over with two client-merged PRs
+argument-hint: <release-folder> [--wave id]
 ---
 
 ## Auto-Delegation
@@ -77,11 +78,20 @@ Parallel-workspace and in-place API re-point remain documented as alternatives, 
 - `reverse_etl_audit review: approved`
 - `dbt_migration: complete` for any batch containing models referenced by Hightouch dbt-type syncs (cannot validate those syncs until their dbt models exist on target)
 - **Per-sync source-model scope check** — each in-scope sync's source object must exist on the target before that sync is translated. Syncs whose source object is not yet built on target are deferred, not included (enforced per-sync in Step 4-pre).
+- `migration/migration_batching.csv` exists — required only when running with `--wave`
+
+## Flags
+
+- `--wave <id>` — restrict this run to the syncs `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `dbt-migration-generate`'s Step 1w: normalise the wave id, load `migration_batching.csv` (abort if missing), filter to rows where `batch_id` matches **and** `object_type == "reverse_etl_sync"`, then cross-reference each matched `object_id` against `reverse_etl_audit.md`'s sync identifiers for the full per-sync detail. Print the mandatory resolved-sync preview before proceeding. If rows match the wave but none are `reverse_etl_sync` rows, print `[wire] Wave <id> has no reverse-ETL sync objects — nothing to migrate for this command.` and stop cleanly.
+- No flag — process every sync with `include_in_migration: true` (today's behaviour, unchanged).
+
+When `--wave` is supplied, the runbook and decoy-mapping outputs are wave-labelled (`migration/reverse_etl_migration_runbook_{wave_id}.md`, `migration/reverse_etl_decoy_mapping_{wave_id}.csv`), and each wave gets its own PR sequence (Step 8) — a wave's target-warehouse syncs are additive alongside any prior wave's, exactly as a wave's dbt models are additive alongside prior waves in the same GitHub-Sync repo.
 
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/audit/reverse_etl_audit.md`
 - `.wire/releases/$ARGUMENTS/migration/migration_strategy.md`
+- `.wire/releases/$ARGUMENTS/migration/migration_batching.csv` — consumed only by `--wave` mode
 - `.wire/releases/$ARGUMENTS/status.md`
 - `.wire/releases/$ARGUMENTS/audit/ingestion/mds_variant_columns.csv` — per-release **type-drift manifest**: columns whose source type does not carry over to the target landing format (e.g. a Snowflake `VARIANT` that lands as `STRING` under BigLake Iceberg rather than as BigQuery `JSON`). Optional — if absent, treat as empty and proceed, but note in the runbook that no drift manifest was available. Expected columns: `source_object, column_name, source_type, target_landing_type, notes`.
 - `.wire/releases/$ARGUMENTS/migration/dbt/**/*.diff.md` — the dbt_migration per-model diffs. Where a referenced model was already migrated by dbt_migration, mirror any type reconciliation it recorded rather than re-deriving it.
@@ -96,6 +106,10 @@ Confirm `target_setup review: approved`. Confirm `reverse_etl_audit review: appr
 If prerequisites are not met, output the blockers and stop.
 
 Activate the `hightouch` skill for API connection details and the workspace / GitHub Sync model.
+
+### Step 1w: Resolve `--wave` (only when `--wave` is used)
+
+Resolve the in-scope sync set per the **Flags** section above. This replaces "every sync with `include_in_migration: true`" in Step 4 with the wave-resolved subset — the rest of the workflow (topology, translation, decoy mapping, validation, PR sequence) is otherwise unchanged.
 
 ### Step 2: Choose the migration topology
 
@@ -157,7 +171,7 @@ Rollback: re-apply the original `sourceId` via the same endpoint. Keep syncs dis
 
 ### Step 4: Translate models by approach
 
-Load all syncs from the audit with `include_in_migration: true` and group by migration approach. Process repoint first (lowest risk), then rewrite_model, then rebuild. In the default additive path these changes are committed to the working branch and flow through PRs (deployed via GitHub Sync on merge); in the parallel-workspace alternative they are committed to the cloned repo and deployed via GitHub Sync; in the in-place alternative they are applied to the existing models.
+Load the in-scope syncs — the Step 1w-resolved set under `--wave`, otherwise every sync from the audit with `include_in_migration: true` — and group by migration approach. Process repoint first (lowest risk), then rewrite_model, then rebuild. In the default additive path these changes are committed to the working branch and flow through PRs (deployed via GitHub Sync on merge); in the parallel-workspace alternative they are committed to the cloned repo and deployed via GitHub Sync; in the in-place alternative they are applied to the existing models.
 
 Before translating any sync, run the scope gate (Step 4-pre) and the approach re-verification (Step 4-verify) below.
 
@@ -196,7 +210,7 @@ Keep the **reactive downgrade** in the `repoint` bullet below as a backstop — 
 
 Destinations are reused in place (the existing definitions are not re-created), so safety cannot rely on a "disabled" flag — a single mistaken enable would write to a live downstream system. Use a structural decoy mechanic instead.
 
-1. **Build the decoy mapping table** — one row per in-scope sync. Generate or consume `migration/reverse_etl_decoy_mapping.csv` with columns:
+1. **Build the decoy mapping table** — one row per in-scope sync. Generate or consume `migration/reverse_etl_decoy_mapping.csv` (or `_{wave_id}.csv` under `--wave`) with columns:
 
    ```
    sync_id, sync_name, production_destination_id, production_destination_type,
@@ -263,7 +277,7 @@ Note: Hightouch creates the actual tables in these schemas on the first sync run
 
 ### Step 8: Write the runbook
 
-**Output location**: `.wire/releases/$ARGUMENTS/migration/reverse_etl_migration_runbook.md`
+**Output location**: `.wire/releases/$ARGUMENTS/migration/reverse_etl_migration_runbook.md` — or `migration/reverse_etl_migration_runbook_{wave_id}.md` when run with `--wave`.
 
 Structure:
 1. Topology decision (additive PR-gated repo — default — vs parallel workspace vs in-place API re-point) and the rationale
@@ -298,6 +312,8 @@ artifacts:
     deferred_count: N             # syncs excluded by the Step 4-pre scope gate
     drift_adjusted_count: N       # syncs with at least one drift-adjusted column (Step 4c)
     decoy_mapping_file: migration/reverse_etl_decoy_mapping.csv
+    wave: "B01"                   # set only when run with --wave; the wave id just processed
+    waves_complete: ["B01"]       # set only when run with --wave; accumulates across runs
 ```
 
 ### Step 10: Output next command
@@ -308,8 +324,8 @@ artifacts:
 
 ## Output Files
 
-- `.wire/releases/$ARGUMENTS/migration/reverse_etl_migration_runbook.md`
-- `.wire/releases/$ARGUMENTS/migration/reverse_etl_decoy_mapping.csv` — production → decoy destination ID mapping, one row per in-scope sync
+- `.wire/releases/$ARGUMENTS/migration/reverse_etl_migration_runbook.md` (`_{wave_id}` suffix when run with `--wave`)
+- `.wire/releases/$ARGUMENTS/migration/reverse_etl_decoy_mapping.csv` — production → decoy destination ID mapping, one row per in-scope sync (`_{wave_id}` suffix when run with `--wave`)
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 
 

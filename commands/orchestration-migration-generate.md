@@ -1,6 +1,6 @@
 ---
 description: Generate orchestration job migration runbook
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Generate orchestration job migration runbook
@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Generate orchestration job migration runbook
+argument-hint: <release-folder> [--wave id]
 ---
 
 ## Auto-Delegation
@@ -40,23 +41,37 @@ Generates a runbook for recreating all in-scope orchestration jobs on the target
 
 ## Prerequisites
 
-- All dbt migration batches reviewed and approved
+- Without `--wave`: all dbt migration batches reviewed and approved
+- With `--wave <id>`: only that wave's dbt models reviewed and approved (`dbt_migration.waves_complete` includes the wave) — a job that depends on a model outside this wave is not yet migratable and is deferred, not included
 - `orchestration_audit review: approved`
+- `migration/migration_batching.csv` exists — required only when running with `--wave`
+
+## Flags
+
+- `--wave <id>` — restrict this run to the orchestration jobs `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `dbt-migration-generate`'s Step 1w: normalise the wave id, load `migration_batching.csv` (abort if missing), filter to rows where `batch_id` matches **and** `object_type == "job"`, then cross-reference each matched `object_id` against `orchestration_audit.md`'s job identifiers for the full per-job detail. Print the mandatory resolved-job preview before proceeding. If rows match the wave but none are `job` rows, print `[wire] Wave <id> has no orchestration job objects — nothing to migrate for this command.` and stop cleanly.
+- No flag — process every job with `migration_approach` in (`recreate`, `translate`) (today's behaviour, unchanged) — requires every dbt batch approved, since an unscoped runbook can reference any model.
+
+When `--wave` is supplied, the runbook is wave-labelled (`migration/orchestration_migration_runbook_{wave_id}.md`) and status.md tracks the wave under `wave` / `waves_complete`.
 
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/audit/orchestration_audit.md`
 - `.wire/releases/$ARGUMENTS/migration/migration_strategy.md`
+- `.wire/releases/$ARGUMENTS/migration/migration_batching.csv` — consumed only by `--wave` mode
 
 ## Workflow
 
 ### Step 1: Confirm prerequisites
 
-Confirm all dbt batches are approved (check `dbt_migration.batches_complete` covers all batches in status.md).
+Without `--wave`: confirm all dbt batches are approved (check `dbt_migration.batches_complete` covers all batches in status.md). With `--wave <id>`: confirm `dbt_migration.waves_complete` includes `<id>` in status.md — only this wave's models need to be on target, not the whole estate.
+
+### Step 1w: Resolve `--wave` (only when `--wave` is used)
+
+Resolve the in-scope job set per the **Flags** section above. This replaces "every job in the orchestration audit with `migration_approach` in (`recreate`, `translate`)" in Step 2 with the wave-resolved subset.
 
 ### Step 2: Generate per-job migration steps
 
-For each job in the orchestration audit with `migration_approach` in (`recreate`, `translate`):
+For each job in scope (Step 1w's resolved set under `--wave`, otherwise every job in the orchestration audit with `migration_approach` in (`recreate`, `translate`)):
 
 **If Dagster**:
 - Update asset/op definitions to use target warehouse connection resource
@@ -84,7 +99,7 @@ Document the parallel-run period:
 
 ### Step 4: Write the runbook
 
-**Output location**: `.wire/releases/$ARGUMENTS/migration/orchestration_migration_runbook.md`
+**Output location**: `.wire/releases/$ARGUMENTS/migration/orchestration_migration_runbook.md` — or `migration/orchestration_migration_runbook_{wave_id}.md` when run with `--wave`.
 
 Include:
 - Pre-flight checklist
@@ -102,6 +117,8 @@ artifacts:
     file: migration/orchestration_migration_runbook.md
     generated_date: "{{TODAY}}"
     jobs_in_runbook: N
+    wave: "B01"                  # set only when run with --wave; the wave id just processed
+    waves_complete: ["B01"]      # set only when run with --wave; accumulates across runs
 ```
 
 ### Step 6: Output next command

@@ -143,7 +143,7 @@ If compile fails, list the failing models and the compile error; do not silently
 
 ### Step 5: Write the relocation manifest
 
-**Output location**: `.wire/releases/$ARGUMENTS/migration/dbt_carveout_relocate_manifest.md`
+**Output location**: `.wire/releases/$ARGUMENTS/migration/dbt_carveout_relocate_manifest.md` — or `migration/dbt_carveout_relocate_manifest_{wave_id}.md` when run with `--wave` (a `--batch`/`--select` run without `--wave` still writes the unscoped filename; running each wave separately without this suffix would silently overwrite the prior wave's manifest).
 
 Include:
 - Scope resolved (wave/batch/selector), source and target project paths, target project/dataset
@@ -159,7 +159,7 @@ artifacts:
   dbt_carveout_relocate:
     generate: complete
     generated_date: "{{TODAY}}"
-    file: migration/dbt_carveout_relocate_manifest.md
+    file: migration/dbt_carveout_relocate_manifest.md   # or _{wave_id}.md when run with --wave
     source_dbt_project_path: "{{SOURCE_DBT_PROJECT_PATH}}"
     target_dbt_project_path: "{{TARGET_DBT_PROJECT_PATH}}"
     target_project: "{{TARGET_PROJECT}}"
@@ -183,7 +183,7 @@ Print a per-model results table (model, bucket, predicate_injection state, compi
 
 ## Output Files
 
-- `.wire/releases/$ARGUMENTS/migration/dbt_carveout_relocate_manifest.md`
+- `.wire/releases/$ARGUMENTS/migration/dbt_carveout_relocate_manifest.md` (`_{wave_id}` suffix when run with `--wave`)
 - Relocated `.sql` and companion schema/properties YAML files under `--target-dbt-project-path`, mirroring the source project's subdirectory structure
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 

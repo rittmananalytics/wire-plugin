@@ -159,13 +159,13 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:dbt-migration-generate` | `<release-folder> [--batch N] [--model name]` | Translate dbt models batch by batch to target dialect |
 | `/wire:dbt-migration-validate` | `<release-folder> [--batch N]` | Validate dbt model translations compile on target profile |
 | `/wire:dbt-migration-lint` | `<release-folder> [--batch N] [--model name] [--severity LEVEL] [--format FORMAT]` | Static pre-warehouse equivalence lint — dialect parse-check plus silent-behaviour-change rules on translated models |
-| `/wire:dbt-migration-review` | `<release-folder> [--batch N]` | Review translated dbt models |
-| `/wire:orchestration-migration-generate` | `<release-folder>` | Generate orchestration job migration runbook |
-| `/wire:orchestration-migration-validate` | `<release-folder>` | Validate orchestration migration runbook |
-| `/wire:orchestration-migration-review` | `<release-folder>` | Safety-gated approval before activating jobs on target |
+| `/wire:dbt-migration-review` | `<release-folder> [--batch N ` | Review translated dbt models |
+| `/wire:orchestration-migration-generate` | `<release-folder> [--wave id]` | Generate orchestration job migration runbook |
+| `/wire:orchestration-migration-validate` | `<release-folder> [--wave id]` | Validate orchestration migration runbook |
+| `/wire:orchestration-migration-review` | `<release-folder> [--wave id]` | Safety-gated approval before activating jobs on target |
 | `/wire:dbt-carveout-relocate-generate` | `<release-folder> [--wave id \` | Relocate already-translated dbt models into a post-migration tenant carve-out instead of re-translating them |
 | `/wire:dbt-carveout-relocate-validate` | `<release-folder> --target-dbt-project-path <path>` | Validate relocated carve-out dbt models — files present, predicates re-derived from disk, target compiles |
-| `/wire:dbt-carveout-relocate-review` | `<release-folder>` | Human adjudication gate for relocated carve-out dbt models |
+| `/wire:dbt-carveout-relocate-review` | `<release-folder> [--wave id \` | Human adjudication gate for relocated carve-out dbt models |
 
 ### TESTING
 
@@ -242,9 +242,9 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:reverse-etl-audit-generate` | `<release-folder>` | Catalog Hightouch reverse ETL syncs, models, and destinations |
 | `/wire:reverse-etl-audit-validate` | `<release-folder>` | Validate reverse ETL audit completeness and dependency mapping |
 | `/wire:reverse-etl-audit-review` | `<release-folder>` | Internal RA review of reverse ETL audit |
-| `/wire:reverse-etl-migration-generate` | `<release-folder>` | Generate Hightouch sync migration runbook — repoint, rewrite, rebuild |
-| `/wire:reverse-etl-migration-validate` | `<release-folder>` | Validate reverse ETL migration runbook completeness |
-| `/wire:reverse-etl-migration-review` | `<release-folder>` | Internal RA review of reverse ETL migration runbook |
+| `/wire:reverse-etl-migration-generate` | `<release-folder> [--wave id]` | Generate Hightouch sync migration runbook — repoint, rewrite, rebuild |
+| `/wire:reverse-etl-migration-validate` | `<release-folder> [--wave id]` | Validate reverse ETL migration runbook completeness |
+| `/wire:reverse-etl-migration-review` | `<release-folder> [--wave id]` | Internal RA review of reverse ETL migration runbook |
 | `/wire:migration-inventory-generate` | `<release-folder>` | Synthesise all audits into unified catalogue with dependency graph |
 | `/wire:migration-inventory-validate` | `<release-folder>` | Validate migration inventory object counts and dependency graph |
 | `/wire:migration-inventory-review` | `<release-folder>` | Internal RA and client scope confirmation |
@@ -258,10 +258,10 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:target-setup-generate` | `<release-folder>` | Generate target warehouse DDL scripts (SAFETY GATE) |
 | `/wire:target-setup-validate` | `<release-folder>` | Validate target setup scripts |
 | `/wire:target-setup-review` | `<release-folder>` | Safety-gated approval before writing to target platform |
-| `/wire:ingestion-migration-generate` | `<release-folder>` | Generate Fivetran connector migration runbook |
-| `/wire:ingestion-migration-validate` | `<release-folder>` | Validate ingestion migration runbook |
-| `/wire:ingestion-migration-review` | `<release-folder>` | Safety-gated approval before activating Fivetran to target |
-| `/wire:equivalency-validate` | `<release-folder>` | Run equivalency checks across all in-scope tables (parallel fan-out) |
+| `/wire:ingestion-migration-generate` | `<release-folder> [--wave id]` | Generate Fivetran connector migration runbook |
+| `/wire:ingestion-migration-validate` | `<release-folder> [--wave id]` | Validate ingestion migration runbook |
+| `/wire:ingestion-migration-review` | `<release-folder> [--wave id]` | Safety-gated approval before activating Fivetran to target |
+| `/wire:equivalency-validate` | `<release-folder> [--batch N ` | Run equivalency checks across all in-scope tables (parallel fan-out) |
 | `/wire:equivalency-investigate` | `<release-folder> --object <table_or_model>` | Deep diagnostics for a specific failing object |
 | `/wire:equivalency-fix` | `<release-folder> --object <name> --approach <description>` | Apply agreed fix and re-run equivalency checks for affected objects |
 | `/wire:cutover-generate` | `<release-folder>` | Generate cutover runbook (SAFETY GATE — point of no return) |
@@ -280,9 +280,9 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:region-tagging-generate` | `<release-folder> [--region <code>]` | Classify in-scope items into region buckets for a tenant carve-out (candidates, never auto-removal) |
 | `/wire:region-tagging-validate` | `<release-folder>` | Validate region tags — all three buckets populated, every item classified exactly once |
 | `/wire:region-tagging-review` | `<release-folder>` | Human adjudication gate for region tags |
-| `/wire:bulk-copy-migration-generate` | `<release-folder>` | Generate Snowflake→BigQuery bulk copy runbook (tenant carve-out, two-stage with equivalency gate) |
-| `/wire:bulk-copy-migration-validate` | `<release-folder>` | Validate bulk copy runbook — tenant guard, two-stage gate, scoped service account |
-| `/wire:bulk-copy-migration-review` | `<release-folder>` | Safety-gated approval before the first tenant bulk-copy execution |
+| `/wire:bulk-copy-migration-generate` | `<release-folder> [--wave id]` | Generate Snowflake→BigQuery bulk copy runbook (tenant carve-out, two-stage with equivalency gate) |
+| `/wire:bulk-copy-migration-validate` | `<release-folder> [--wave id]` | Validate bulk copy runbook — tenant guard, two-stage gate, scoped service account |
+| `/wire:bulk-copy-migration-review` | `<release-folder> [--wave id]` | Safety-gated approval before the first tenant bulk-copy execution |
 | `/wire:logical-access-uat-generate` | `<release-folder> [--region <code>]` | Generate a region-scoped logical-access UAT plan and evidence pack (tenant carve-out) |
 | `/wire:logical-access-uat-validate` | `<release-folder>` | Validate logical-access UAT — at least one negative test per IAM boundary |
 | `/wire:logical-access-uat-review` | `<release-folder>` | Execute and sign off logical-access UAT — the isolation-proof gate before cutover |
@@ -347,7 +347,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:adopt` | `[repo-path-or-url]` | Adopt an in-flight project into Wire — assess repo and external sources, map existing work to artifacts, set up engagement structure, generate adoption playbook |
 | `/wire:custom-define` | `<release-folder>` | Define a custom release type from SoW or project documents — map deliverables to Wire commands or generate bespoke specs |
 | `/wire:custom-feature-request` | `<custom-spec-name>` | Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition |
-| `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N]` | Present migration batch acceptance pack for stakeholder sign-off |
+| `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N ` | Present migration batch acceptance pack for stakeholder sign-off |
 | `/wire:migration-source-register` | `<release-folder> <source_type> <github_url>` | Register a source repository for a given migration source type |
 | `/wire:migration-source-refresh` | `<release-folder> <source_type>` | Pull a fresh local snapshot of a registered migration source |
 | `/wire:ads-audit-all` | `<release-folder>` | Run all three agentic data stack audits in parallel |

@@ -1,6 +1,6 @@
 ---
 description: Validate reverse ETL migration runbook completeness
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Validate reverse ETL migration runbook completeness
@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Validate reverse ETL migration runbook completeness and sync coverage
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Reverse ETL Migration — Validate
@@ -31,9 +32,13 @@ description: Validate reverse ETL migration runbook completeness and sync covera
 
 Checks the reverse ETL migration runbook for completeness — the migration topology is recorded, every in-scope sync has migration steps, SQL translations are present for rewrite_model syncs, rebuild plans cover all Customer Studio audiences and Journeys, validation is preview-based against a frozen baseline with syncs disabled, sync-level transformation logic is reviewed, and Lightning schema provisioning is documented. Produces a PASS/FAIL report.
 
+## Flags
+
+- `--wave <id>` — validate the wave-labelled runbook (`reverse_etl_migration_runbook_{wave_id}.md`) against the syncs `migration/migration_batching.csv` assigns to this wave, resolved identically to `reverse-etl-migration-generate`'s Step 1w. Every check below reads "in-scope sync" as this resolved set instead of every `include_in_migration: true` sync.
+
 ## Prerequisites
 
-- `migration/reverse_etl_migration_runbook.md` exists
+- `migration/reverse_etl_migration_runbook.md` (or `_{wave_id}.md` under `--wave`) exists
 
 ## Validation Checks
 
@@ -95,6 +100,8 @@ artifacts:
   reverse_etl_migration:
     validate: pass | fail
     validated_date: "{{TODAY}}"
+    wave_validate:               # set only when run with --wave, keyed by wave id
+      B01: pass | fail
 ```
 
 If PASS: `/wire:reverse-etl-migration-review $ARGUMENTS`

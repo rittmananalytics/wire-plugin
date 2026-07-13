@@ -30,7 +30,7 @@ argument-hint: <release-folder> [--wave id | --batch N | --select selector] --ta
 
 ## Purpose
 
-Validates a `dbt-carveout-relocate-generate` run. Every check re-derives its answer independently from the adjudicated CSV and the files actually on disk under `--target-dbt-project-path` — it does not trust `dbt_carveout_relocate_manifest.md`'s own claims about what it did.
+Validates a `dbt-carveout-relocate-generate` run. Every check re-derives its answer independently from the adjudicated CSV and the files actually on disk under `--target-dbt-project-path` — it does not trust the manifest's (`dbt_carveout_relocate_manifest.md`, or `_{wave_id}.md` under `--wave`) own claims about what it did.
 
 ## Flags
 

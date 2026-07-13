@@ -1,6 +1,6 @@
 ---
 description: Safety-gated approval before activating Fivetran to target
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Safety-gated approval before activating Fivetran to target
@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Safety-gated approval before activating Fivetran to target
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Ingestion Migration — Review
@@ -31,9 +32,13 @@ description: Safety-gated approval before activating Fivetran to target
 
 Safety-gated review before Fivetran connectors are activated to the target platform. Approval authorises the migration team to begin the parallel-run phase.
 
+## Flags
+
+- `--wave <id>` — review the wave-labelled runbook (`ingestion_migration_runbook_{wave_id}.md`) instead of the unscoped one. Required once more than one wave's runbook exists; without it, review the single unscoped runbook as today.
+
 ## Prerequisites
 
-- `migration/ingestion_migration_runbook.md` with `validate: pass`
+- `migration/ingestion_migration_runbook.md` (or `_{wave_id}.md` under `--wave`) with `validate: pass`
 
 ## SAFETY GATE
 
@@ -77,6 +82,8 @@ artifacts:
     review: approved | changes_requested
     reviewed_by: "{{REVIEWER_NAME}}"
     reviewed_date: "{{TODAY}}"
+    wave_review:                 # set only when run with --wave, keyed by wave id
+      B01: approved | changes_requested
 ```
 
 ### Step 5: Output next command

@@ -1,6 +1,6 @@
 ---
 description: Internal RA review of reverse ETL migration runbook
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Internal RA review of reverse ETL migration runbook
@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Internal RA review of reverse ETL migration runbook
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Reverse ETL Migration — Review
@@ -31,9 +32,13 @@ description: Internal RA review of reverse ETL migration runbook
 
 Internal RA review of the reverse ETL migration runbook before execution. Confirms SQL translations are correct, rebuild plans are feasible, the decoy destination mapping is sound, and the PR-gated cutover sequence (two client-merged PRs) is agreed.
 
+## Flags
+
+- `--wave <id>` — review the wave-labelled runbook (`reverse_etl_migration_runbook_{wave_id}.md`) instead of the unscoped one. Required once more than one wave's runbook exists.
+
 ## Prerequisites
 
-- `migration/reverse_etl_migration_runbook.md` exists with `validate: pass`
+- `migration/reverse_etl_migration_runbook.md` (or `_{wave_id}.md` under `--wave`) exists with `validate: pass`
 
 ## Workflow
 
@@ -81,6 +86,8 @@ artifacts:
     review: approved | changes_requested
     reviewed_by: "{{REVIEWER_NAME}}"
     reviewed_date: "{{TODAY}}"
+    wave_review:                 # set only when run with --wave, keyed by wave id
+      B01: approved | changes_requested
 ```
 
 ### Step 6: Output next command

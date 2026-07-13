@@ -1,6 +1,6 @@
 ---
 description: Validate bulk copy runbook — tenant guard, two-stage gate, scoped service account
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Validate bulk copy runbook — tenant guard, two-stage gate, scoped service account
@@ -23,16 +23,21 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Validate bulk copy migration runbook — tenant guard, two-stage gate, scoped service account
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Bulk Copy Migration — Validate
 
+## Flags
+
+- `--wave <id>` — validate the wave-labelled runbook (`bulk_copy_migration_runbook_{wave_id}.md`) against the tables `migration/migration_batching.csv` assigns to this wave, resolved identically to `bulk-copy-migration-generate`'s Step 1w. Every check below reads "in-scope table" as this resolved set instead of every landed table for `include_in_migration: true` connectors.
+
 ## Validation Checks
 
-Read `status.md` to confirm `migration.scope == tenant_carveout`, `method: runbook`, and `migration.tenant_predicate`. Read the bulk copy runbook and `audit/ingestion_audit.md`.
+Read `status.md` to confirm `migration.scope == tenant_carveout`, `method: runbook`, and `migration.tenant_predicate`. Read the bulk copy runbook (wave-labelled under `--wave`) and `audit/ingestion_audit.md`.
 
 **Check 1 — All in-scope tables in the runbook**
-The count of tables in the runbook matches the count of landed tables for connectors with `include_in_migration: true` in the ingestion audit.
+The count of tables in the runbook matches the count of in-scope landed tables (the wave-resolved set under `--wave`, otherwise every landed table for connectors with `include_in_migration: true`) in the ingestion audit.
 PASS/FAIL with missing tables listed.
 
 **Check 2 — Each table has a source→target destination mapping**
@@ -72,6 +77,8 @@ artifacts:
   bulk_copy_migration:
     validate: pass | fail
     validated_date: "{{TODAY}}"
+    wave_validate:               # set only when run with --wave, keyed by wave id
+      B01: pass | fail
 ```
 
 

@@ -1,6 +1,6 @@
 ---
 description: Safety-gated approval before activating jobs on target
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Safety-gated approval before activating jobs on target
@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Safety-gated approval before activating jobs on target
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Orchestration Migration — Review
@@ -30,6 +31,10 @@ description: Safety-gated approval before activating jobs on target
 ## Purpose
 
 Safety-gated review before orchestration jobs are created and activated on the target platform.
+
+## Flags
+
+- `--wave <id>` — review the wave-labelled runbook (`orchestration_migration_runbook_{wave_id}.md`) instead of the unscoped one. Required once more than one wave's runbook exists.
 
 ## SAFETY GATE
 
@@ -73,6 +78,8 @@ artifacts:
     review: approved | changes_requested
     reviewed_by: "{{REVIEWER_NAME}}"
     reviewed_date: "{{TODAY}}"
+    wave_review:                 # set only when run with --wave, keyed by wave id
+      B01: approved | changes_requested
 ```
 
 ### Step 5: Output next command

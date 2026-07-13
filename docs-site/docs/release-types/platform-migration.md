@@ -368,7 +368,7 @@ Once data is flowing into both platforms:
 /wire:equivalency-validate <release-folder>
 ```
 
-Each run performs up to seven check types: row count, schema, value sampling, freshness, dbt tests, row-level checksum, and business invariants (release-level control totals). `--batch N` scopes a run to one migration batch.
+Each run performs up to seven check types: row count, schema, value sampling, freshness, dbt tests, row-level checksum, and business invariants (release-level control totals). `--batch N` scopes a run to one migration batch (`dbt_audit.csv`'s topological scheme); `--wave <id>` scopes it to one execution wave instead (`migration_batching.csv`'s authoritative schedule) — and unlike `--batch`, a wave's scope spans every object type in it (connectors, warehouse objects, dbt models, orchestration jobs, reverse-ETL syncs), not just dbt models. The two are mutually exclusive.
 
 **Relative-date models are pinned even in live mode.** A model referencing `CURRENT_DATE()`/`NOW()`-style functions evaluates "today" at whatever instant its side of the check runs, which can produce a false divergence near the live edge purely from timing skew. Wire detects these models, resolves a single as-of instant at the start of the run, and substitutes it into both sides' checks — recorded per model in the report. This is the always-on, lightweight counterpart to the baseline-pin mode below, which fixes the whole run at `T` when it's active.
 
@@ -528,20 +528,20 @@ Both build on the `smml-semantic-modeling` and `dbt-to-smml` skills (`wire/skill
 /wire:target-setup-validate <release>
 /wire:target-setup-review <release>
 
-# ⚠ SAFETY GATE
+# ⚠ SAFETY GATE — all support --wave <id> to scope a run to one execution wave
 /wire:ingestion-migration-generate <release>
 /wire:ingestion-migration-validate <release>
 /wire:ingestion-migration-review <release>
 
-# dbt migration — batched; repeat for each batch
-# each batch runs an inline translate→compile→run→equivalency loop per model (up to 5 iterations)
-# after each batch completes, an acceptance pack is auto-generated
+# dbt migration — batched; repeat for each batch (--batch N) or wave (--wave <id>)
+# each batch/wave runs an inline translate→compile→run→equivalency loop per model (up to 5 iterations)
+# after each batch/wave completes, an acceptance pack is auto-generated
 /wire:dbt-migration-generate <release>
 /wire:dbt-migration-validate <release>
 /wire:dbt-migration-review <release>
-/wire:migration-acceptance-pack-review <release> --batch N
+/wire:migration-acceptance-pack-review <release> --batch N   # or --wave <id>
 
-# ⚠ SAFETY GATE
+# ⚠ SAFETY GATE — supports --wave <id> (with the wave's dbt models approved, not the whole estate)
 /wire:orchestration-migration-generate <release>
 /wire:orchestration-migration-validate <release>
 /wire:orchestration-migration-review <release>
@@ -590,7 +590,7 @@ For a `tenant_carveout` release, these slot into the sequence: region tagging af
 /wire:oac-audit-generate <release>                   # …-validate / …-review
 /wire:oac-migration-generate <release>               # …-validate / …-review
 
-# ⚠ SAFETY GATE — in place of ingestion-migration for a carve-out
+# ⚠ SAFETY GATE — in place of ingestion-migration for a carve-out; supports --wave <id>
 /wire:bulk-copy-migration-generate <release>
 /wire:bulk-copy-migration-validate <release>
 /wire:bulk-copy-migration-review <release>           # safety gate before first copy

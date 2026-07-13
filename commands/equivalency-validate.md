@@ -1,6 +1,6 @@
 ---
 description: Run equivalency checks across all in-scope tables (parallel fan-out)
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--batch N 
 ---
 
 # Run equivalency checks across all in-scope tables (parallel fan-out)
@@ -23,7 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Run equivalency checks across all in-scope tables (repeatable loop, parallel fan-out, optional frozen-baseline tier-3 mode)
-argument-hint: <release-folder> [--batch N] [--baseline]
+argument-hint: <release-folder> [--batch N | --wave id] [--baseline]
 ---
 
 ## Data Safety — Read Before Proceeding
@@ -72,6 +72,8 @@ This command can be run as many times as needed. There is no "approved" state �
 Read the list of in-scope tables and dbt models from `migration/migration_inventory.md`. This is the full check scope.
 
 **Scope by batch (optional).** With `--batch N`, restrict the scope to the objects in migration batch `N` (the batch groupings from `migration_strategy` / `dbt_audit.csv`). This lets equivalency fan out and run per batch — validate batch 1 as soon as its models reach terminal state, rather than waiting for the whole estate. Without `--batch`, the scope is every in-scope object. The run metadata (Step 5) records which batch a run covered.
+
+**Scope by wave (optional).** With `--wave <id>`, restrict the scope to every object `migration/migration_batching.csv` assigns to that wave — the authoritative execution schedule, not `dbt_audit.csv`'s topological micro-batches, and not restricted to dbt models: a wave's connectors, warehouse objects, dbt models, orchestration jobs, and reverse-ETL syncs are all in scope together, matching how `migration-batching-generate` groups them as one independently-schedulable slice. Resolution is identical to `dbt-migration-generate`'s Step 1w (normalise the wave id, load `migration_batching.csv`, filter to `batch_id`) except it does **not** filter by `object_type` — every object type in the wave is included. `--batch` and `--wave` read different numbering schemes and cannot be combined — abort if both are supplied: `[wire] --batch and --wave read different numbering schemes and cannot be combined. Pick one.` The run metadata (Step 5) records which wave a run covered.
 
 For projects with >50 in-scope objects (or any batch over that size): fan out checks in parallel subagents — one per schema or one per dbt layer. Each subagent runs the per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for its assigned objects and reports back. Business invariants (check type 7) are run once for the release, not per object, since many are cross-table aggregates. This dramatically reduces wall-clock time for large migrations.
 
@@ -277,6 +279,7 @@ migration:
         report: migration/equivalency_report_1.md
         mode: live | baseline
         batch: N | all
+        wave: null | "B01"                # set only when run with --wave
         baseline_t: null | "<T>"          # baseline instant (UTC), baseline mode only
         clone_location: null | "<db>.wire_baseline"
         target_watermark: null | "_fivetran_synced <= <T>"
@@ -330,141 +333,3 @@ After updating `status.md`, run these in sequence:
 4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `equivalency` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
-
-## Execution Logging
-
-After completing the workflow, append a log entry to the project's execution_log.md:
-
----
-description: Internal utility — appends a log entry to the project's execution log after any generate/validate/review workflow or skill activation
----
-
-# Execution Log — Command and Skill Logging
-
-## Purpose
-
-After completing any generate, validate, or review workflow (or a project management command that changes state), append a single log entry to the project's execution log file. Skills also append an entry on activation, making the log a unified trace of all agent activity — both explicit commands and auto-activated skills.
-
-## Log File Location
-
-```
-<DP_PROJECTS_PATH>/<project_folder>/execution_log.md
-```
-
-Where `<project_folder>` is the project directory passed as an argument (e.g., `20260222_acme_platform`).
-
-## Format
-
-If the file does not exist, create it with the header:
-
-```markdown
-# Execution Log
-
-| Timestamp | Command | Result | Detail |
-|-----------|---------|--------|--------|
-```
-
-Then append one row per execution:
-
-```markdown
-| YYYY-MM-DD HH:MM | /wire:<command> | <result> | <detail> |
-```
-
-### Field Definitions
-
-- **Timestamp**: Current date and time in `YYYY-MM-DD HH:MM` format (24-hour, local time)
-- **Command**: Either the `/wire:*` command invoked, or `skill` for a skill activation entry
-- **Result / Skill name**: For commands, the outcome; for skills, the skill identifier. Use one of:
-  - `complete` — generate command finished successfully
-  - `pass` — validate command passed all checks
-  - `fail` — validate command found failures
-  - `approved` — review command: stakeholder approved
-  - `changes_requested` — review command: stakeholder requested changes
-  - `created` — `/wire:new` created a new project
-  - `archived` — `/wire:archive` archived a project
-  - `removed` — `/wire:remove` deleted a project
-  - `activated` — a skill was auto-activated (used with `skill` in the Command column)
-- **Detail**: A concise one-line summary of what happened. Include:
-  - For generate: number of files created or key output filename
-  - For validate: number of checks passed/failed
-  - For review: reviewer name and brief feedback if changes requested
-  - For new: project type and client name
-  - For archive/remove: project name
-  - For skill activations: brief description of what triggered the skill
-
-## Skill Activation Entries
-
-When a skill activates, it appends a row in the same format as commands, using `skill` in the Command column and the skill identifier in the Result column:
-
-```markdown
-| YYYY-MM-DD HH:MM | skill | <skill-identifier> | activated | <brief trigger description> |
-```
-
-Skill identifiers:
-
-| Skill | Identifier |
-|-------|-----------|
-| Engagement Context | `engagement-context` |
-| Research Persistence | `research-persistence` |
-| dbt Development | `dbt-development` |
-| LookML Content Authoring | `lookml-authoring` |
-| dbt Analytics QA | `dbt-analytics-qa` |
-| dbt Migration | `dbt-migration` |
-| dbt Troubleshooting | `dbt-troubleshooting` |
-| dbt Semantic Layer | `dbt-semantic-layer` |
-| dbt Unit Testing | `dbt-unit-testing` |
-| dbt DAG | `dbt-dag` |
-| Dagster | `dagster` |
-| Fivetran | `fivetran` |
-| Project Review | `project-review` |
-| Looker Dashboard Mockup | `looker-dashboard-mockup` |
-
-This makes skill activations visible in the same log that captures command invocations, enabling full activity tracing across both explicit commands and automatic skill triggers.
-
-## Stale Status Check
-
-Immediately after appending a **command** row (this does not apply to skill activation entries), perform a quick freshness check against the project's `status.md`. This is additive to the logging behavior above — it never blocks the calling command and never modifies `status.md`.
-
-**Process**:
-1. Derive `artifact_id` from the command just logged: strip the `/wire:` prefix and the trailing `-generate`, `-validate`, or `-review` suffix (e.g. `/wire:migration-inventory-generate` → `migration_inventory`). If the command doesn't map to a recognizable artifact (e.g. `/wire:new`, `/wire:status`, `/wire:archive`), skip this check entirely.
-2. Read the artifact's own block in `status.md`: `artifacts.<artifact_id>`.
-3. Check whether that artifact has already passed its review/approval gate — its `review` field (or equivalent approval field) shows `pass`, `approved`, or `complete`.
-4. If the gate has passed, scan every field in the `artifacts.<artifact_id>` block for a value that is still the literal string `TBD`, or an empty list (`[]`) / `null` where the artifact's own template expects a populated value (i.e. the field is not legitimately optional).
-5. For each stale field found, emit a one-line warning in the command's output:
-   ```
-   ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
-   ```
-   Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
-
-This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
-
-## Rules
-
-1. **Append only** — never modify or delete existing log entries
-2. **One row per command execution** — even if a command is re-run, add a new row (this creates the revision history)
-3. **Always log after status.md is updated** — the log entry should reflect the final state
-4. **Pipe characters in detail** — if the detail text contains `|`, replace with `—` to preserve table formatting
-5. **Keep detail under 120 characters** — be concise
-
-## Example
-
-```markdown
-# Execution Log
-
-| Timestamp | Command | Result | Detail |
-|-----------|---------|--------|--------|
-| 2026-02-22 14:30 | skill | engagement-context | activated | Context loaded for new conversation |
-| 2026-02-22 14:35 | /wire:new | created | Project created (type: full_platform, client: Acme Corp) |
-| 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements specification (3 files) |
-| 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed |
-| 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith |
-| 2026-02-23 09:15 | /wire:conceptual_model-generate | complete | Generated entity model with 8 entities |
-| 2026-02-23 10:30 | /wire:conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity |
-| 2026-02-23 11:00 | /wire:conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
-| 2026-02-23 11:15 | /wire:conceptual_model-validate | pass | 12 checks passed, 0 failed |
-| 2026-02-23 14:00 | /wire:conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity |
-| 2026-02-23 15:30 | /wire:conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) |
-| 2026-02-23 15:45 | /wire:conceptual_model-validate | pass | 14 checks passed, 0 failed |
-| 2026-02-23 16:00 | /wire:conceptual_model-review | approved | Reviewed by John Doe |
-```

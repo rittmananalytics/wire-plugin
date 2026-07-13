@@ -1,6 +1,6 @@
 ---
 description: Validate orchestration migration runbook
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Validate orchestration migration runbook
@@ -23,14 +23,19 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Validate orchestration migration runbook
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Orchestration Migration — Validate
 
+## Flags
+
+- `--wave <id>` — validate the wave-labelled runbook (`orchestration_migration_runbook_{wave_id}.md`) against the jobs `migration/migration_batching.csv` assigns to this wave, resolved identically to `orchestration-migration-generate`'s Step 1w. Every check below reads "in scope" as this resolved job set instead of every `recreate`/`translate` job.
+
 ## Validation Checks
 
 **Check 1 — All recreate/translate jobs in runbook**
-Every job with `migration_approach: recreate` or `translate` appears in the runbook.
+Every in-scope job with `migration_approach: recreate` or `translate` appears in the runbook.
 PASS/FAIL.
 
 **Check 2 — Connection changes documented**
@@ -56,6 +61,8 @@ artifacts:
   orchestration_migration:
     validate: pass | fail
     validated_date: "{{TODAY}}"
+    wave_validate:               # set only when run with --wave, keyed by wave id
+      B01: pass | fail
 ```
 
 

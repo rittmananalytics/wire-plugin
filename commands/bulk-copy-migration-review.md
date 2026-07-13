@@ -1,6 +1,6 @@
 ---
 description: Safety-gated approval before the first tenant bulk-copy execution
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Safety-gated approval before the first tenant bulk-copy execution
@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Safety-gated approval before the first tenant bulk-copy execution
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Bulk Copy Migration — Review
@@ -31,9 +32,13 @@ description: Safety-gated approval before the first tenant bulk-copy execution
 
 Safety-gated review before any data is copied from Snowflake to BigQuery. Approval authorises the migration team to execute the **first copy** — the Stage 1 pilot partition. This is the point at which a misconfigured copy could touch the wrong tenant's data, so it requires explicit written approval.
 
+## Flags
+
+- `--wave <id>` — review the wave-labelled runbook (`bulk_copy_migration_runbook_{wave_id}.md`) instead of the unscoped one. Required once more than one wave's runbook exists. Approving a wave's review authorises only that wave's Stage 1 pilot-partition copy — each wave gets its own safety-gate approval.
+
 ## Prerequisites
 
-- `migration/bulk_copy_migration_runbook.md` with `validate: pass`
+- `migration/bulk_copy_migration_runbook.md` (or `_{wave_id}.md` under `--wave`) with `validate: pass`
 - `migration.scope == tenant_carveout`
 
 ## SAFETY GATE
@@ -103,6 +108,8 @@ artifacts:
     review: approved | changes_requested
     reviewed_by: "{{REVIEWER_NAME}}"
     reviewed_date: "{{TODAY}}"
+    wave_review:                 # set only when run with --wave, keyed by wave id
+      B01: approved | changes_requested
 ```
 
 ### Step 5: Output next command

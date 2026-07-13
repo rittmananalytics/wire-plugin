@@ -1,6 +1,6 @@
 ---
 description: Generate Fivetran connector migration runbook
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Generate Fivetran connector migration runbook
@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Execute ingestion connector migration via MCP server, or generate runbook if MCP unavailable
+argument-hint: <release-folder> [--wave id]
 ---
 
 ## Auto-Delegation
@@ -83,11 +84,20 @@ Handle each tool group separately. Never mix-apply one tool's MCP server to anot
 
 - `target_setup review: approved`
 - Target warehouse schemas exist (target_setup scripts executed)
+- `migration/migration_batching.csv` exists — required only when running with `--wave`
+
+## Flags
+
+- `--wave <id>` — restrict this run to the connectors `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `dbt-migration-generate`'s Step 1w: normalise the wave id (zero-padded `B01` or bare `1`, both accepted), load `migration_batching.csv` (abort if missing: `[wire] No migration_batching.csv found — run /wire:migration-batching-generate $ARGUMENTS first.`), filter to rows where `batch_id` matches **and** `object_type == "connector"` (rows for other object types in the same wave belong to other migration commands). Cross-reference each matched row's `object_id` against `ingestion_audit.md`'s connector identifiers to pull the actual per-connector detail (`service_type`, `complexity`, `include_in_migration`, destination schema). Print the mandatory resolved-connector preview before proceeding, exactly as `dbt-migration-generate` Step 1w does. If no rows match the wave at all, abort: `[wire] No rows found for wave <id> in migration_batching.csv.` If rows match the wave but none are `connector` rows, print `[wire] Wave <id> has no connector objects — nothing to migrate for this command.` and stop cleanly (not an error).
+- No flag — process every connector with `include_in_migration: true` in the ingestion audit (today's behaviour, unchanged).
+
+When `--wave` is supplied, every output below is wave-labelled: the runbook (if the runbook fallback path is used) is written to `migration/ingestion_migration_runbook_{wave_id}.md` instead of the unscoped filename, and status.md tracks the wave under `wave` / `waves_complete` (Step 5) rather than treating the run as covering the whole ingestion scope.
 
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/audit/ingestion_audit.md`
 - `.wire/releases/$ARGUMENTS/migration/migration_strategy.md`
+- `.wire/releases/$ARGUMENTS/migration/migration_batching.csv` — consumed only by `--wave` mode
 
 ## Workflow
 
@@ -95,9 +105,13 @@ Handle each tool group separately. Never mix-apply one tool's MCP server to anot
 
 Confirm `target_setup review: approved`. If not, stop with message.
 
+### Step 1w: Resolve `--wave` (only when `--wave` is used)
+
+Resolve the in-scope connector set per the **Flags** section above. This replaces "every connector with `include_in_migration: true`" everywhere below with the wave-resolved subset — the rest of the workflow is otherwise unchanged.
+
 ### Step 2: Pre-flight — identify all in-scope tools and check connectivity
 
-Read `ingestion_audit.md`. Collect every distinct `service_type` or `ingestion_tool` that has at least one connector with `include_in_migration: true`. This is the in-scope tool list for this run.
+Read `ingestion_audit.md`. Collect every distinct `service_type` or `ingestion_tool` that has at least one connector with `include_in_migration: true` (or, under `--wave`, at least one connector in the Step 1w-resolved set). This is the in-scope tool list for this run.
 
 For each tool in the in-scope list, determine its connectivity status using the table above:
 
@@ -141,7 +155,7 @@ Then continue to Step 3 for each CONNECTED tool and Step 4 for each fallback too
 
 ### Step 3: MCP-driven migration (primary path)
 
-For each connector in the ingestion audit with `include_in_migration: true` where an MCP server is available, working in order of ascending complexity (Low first):
+For each connector in scope (Step 1w's resolved set under `--wave`, otherwise every connector with `include_in_migration: true`) where an MCP server is available, working in order of ascending complexity (Low first):
 
 1. **Identify the target destination**: use the MCP server's list/group call (e.g. `mcp__fivetran__list_groups`, `mcp__airbyte__list_destinations`) to find the destination that corresponds to the target warehouse, as named in the target setup.
 
@@ -169,9 +183,9 @@ Write a per-connector status summary as each one completes.
 
 If no MCP server is reachable for a given set of connectors, generate a step-by-step runbook for those connectors.
 
-**Output location**: `.wire/releases/$ARGUMENTS/migration/ingestion_migration_runbook.md`
+**Output location**: `.wire/releases/$ARGUMENTS/migration/ingestion_migration_runbook.md` — or `migration/ingestion_migration_runbook_{wave_id}.md` when run with `--wave`.
 
-For each connector with `include_in_migration: true`:
+For each connector in scope (Step 1w's resolved set under `--wave`, otherwise every connector with `include_in_migration: true`):
 
 1. **Identify destination mapping**: map the source destination schema to its target platform equivalent (from the target setup DDL)
 2. **Connector steps**: always document **new connector creation** steps — never "edit destination" on the existing connector
@@ -198,6 +212,8 @@ artifacts:
     generated_date: "{{TODAY}}"
     connectors_migrated: N
     connectors_pending_credentials: N   # connectors with connect card URL not yet confirmed
+    wave: "B01"                        # set only when run with --wave; the wave id just processed
+    waves_complete: ["B01"]            # set only when run with --wave; accumulates across runs
 ```
 
 ### Step 6: Output next command
@@ -208,7 +224,7 @@ artifacts:
 
 ## Output Files
 
-- `.wire/releases/$ARGUMENTS/migration/ingestion_migration_runbook.md` (runbook fallback only)
+- `.wire/releases/$ARGUMENTS/migration/ingestion_migration_runbook.md` (runbook fallback only; `_{wave_id}` suffix when run with `--wave`)
 - Per-connector connect card URLs and status summary (MCP path, printed to console)
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 

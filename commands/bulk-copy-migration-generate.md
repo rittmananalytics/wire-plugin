@@ -1,6 +1,6 @@
 ---
 description: Generate Snowflake→BigQuery bulk copy runbook (tenant carve-out, two-stage with equivalency gate)
-argument-hint: <release-folder>
+argument-hint: <release-folder> [--wave id]
 ---
 
 # Generate Snowflake→BigQuery bulk copy runbook (tenant carve-out, two-stage with equivalency gate)
@@ -23,6 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Generate a Snowflake→BigQuery bulk historical copy runbook (tenant carve-out) — two-stage copy with an equivalency gate
+argument-hint: <release-folder> [--wave id]
 ---
 
 ## Auto-Delegation
@@ -77,11 +78,20 @@ This command runs only in **tenant carve-out** scope (`migration.scope == tenant
 - `target_setup review: approved`
 - `migration.scope == tenant_carveout` and `migration.tenant_predicate` is set
 - Target warehouse schemas exist (target_setup scripts executed)
+- `migration/migration_batching.csv` exists — required only when running with `--wave`
+
+## Flags
+
+- `--wave <id>` — restrict this run to the tables `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `dbt-migration-generate`'s Step 1w: normalise the wave id, load `migration_batching.csv` (abort if missing), filter to rows where `batch_id` matches **and** `object_type == "connector"`, then cross-reference each matched `object_id` against `ingestion_audit.md`'s connector identifiers for the landed tables to copy. Print the mandatory resolved-table preview before proceeding. If rows match the wave but none are `connector` rows, print `[wire] Wave <id> has no connector/table objects — nothing to copy for this command.` and stop cleanly.
+- No flag — process every landed table for connectors with `include_in_migration: true` (today's behaviour, unchanged).
+
+When `--wave` is supplied, the runbook is wave-labelled (`migration/bulk_copy_migration_runbook_{wave_id}.md`) and status.md tracks the wave under `wave` / `waves_complete`.
 
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/audit/ingestion_audit.md` — the in-scope source datasets/tables (connectors with `include_in_migration: true` identify the landed tables to copy)
 - `.wire/releases/$ARGUMENTS/migration/migration_strategy.md` — copy mechanism decision (BQ Data Transfer Service vs GCS-staged), per-table tolerances, and the tenant-scoped IAM model
+- `.wire/releases/$ARGUMENTS/migration/migration_batching.csv` — consumed only by `--wave` mode
 - `.wire/releases/$ARGUMENTS/status.md` — `migration.scope`, `migration.tenant_predicate`, `data_safety`, target platform/project
 
 ## Workflow
@@ -91,6 +101,10 @@ This command runs only in **tenant carve-out** scope (`migration.scope == tenant
 1. Confirm `target_setup review: approved` in status.md. If not, stop with message.
 2. Confirm `migration.scope == tenant_carveout`. If it is `full_migration` or absent, stop: "Bulk copy migration runs in tenant carve-out scope only. For a full migration use /wire:ingestion-migration-generate."
 3. Confirm `migration.tenant_predicate` is set. If null, stop: "migration.tenant_predicate is required to scope the carve-out copy."
+
+### Step 1w: Resolve `--wave` (only when `--wave` is used)
+
+Resolve the in-scope table set per the **Flags** section above. This replaces "each in-scope source dataset/table" in Step 3 with the wave-resolved subset.
 
 ### Step 2: Pre-flight — scoped service account and tenant guard
 
@@ -120,9 +134,9 @@ If the scoped service account or the tenant guard cannot be confirmed, stop and 
 
 ### Step 3: Generate the bulk copy runbook
 
-**Output location**: `.wire/releases/$ARGUMENTS/migration/bulk_copy_migration_runbook.md`
+**Output location**: `.wire/releases/$ARGUMENTS/migration/bulk_copy_migration_runbook.md` — or `migration/bulk_copy_migration_runbook_{wave_id}.md` when run with `--wave`.
 
-For each in-scope source dataset/table (smallest / lowest-risk first), document the copy via the mechanism chosen in the migration strategy:
+For each source dataset/table in scope (Step 1w's resolved set under `--wave`, otherwise every landed table for connectors with `include_in_migration: true`; smallest / lowest-risk first), document the copy via the mechanism chosen in the migration strategy:
 
 - **BigQuery Data Transfer Service** — a transfer config per table whose query applies `WHERE {migration.tenant_predicate}` (or reads a tenant-scoped source view), landing in the target dataset.
 - **GCS-staged** — Snowflake `COPY INTO @<tenant_stage> FROM (SELECT ... WHERE {migration.tenant_predicate})` to the dedicated GCS bucket, then a BigQuery load job from that bucket into the target table.
@@ -150,6 +164,8 @@ artifacts:
     copy_mechanism: bq_data_transfer | gcs_staged
     tables_in_runbook: N
     tenant_predicate: "{{migration.tenant_predicate}}"
+    wave: "B01"                  # set only when run with --wave; the wave id just processed
+    waves_complete: ["B01"]      # set only when run with --wave; accumulates across runs
 ```
 
 ### Step 5: Output next command
@@ -160,7 +176,7 @@ artifacts:
 
 ## Output Files
 
-- `.wire/releases/$ARGUMENTS/migration/bulk_copy_migration_runbook.md`
+- `.wire/releases/$ARGUMENTS/migration/bulk_copy_migration_runbook.md` (`_{wave_id}` suffix when run with `--wave`)
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 
 
