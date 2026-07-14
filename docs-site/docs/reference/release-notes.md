@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.9 — `--wave` scoping across every migration execution command
+
+**Released**: July 2026
+
+`dbt-migration-generate` and `dbt-carveout-relocate-generate` were the only commands that could scope a run to one execution wave (`migration_batching.csv`'s authoritative build schedule) — despite that CSV assigning a wave to every object type it partitions, not just dbt models. `ingestion-migration-generate` and its siblings loaded every in-scope connector in one pass with no scoping flag at all.
+
+**`--wave <id>` added to `ingestion-migration`, `reverse-etl-migration`, `orchestration-migration`, and `bulk-copy-migration`** (generate/validate/review), resolved identically to `dbt-migration-generate`'s existing wave logic but filtered to each command's own object type — connectors, reverse-ETL syncs, and orchestration jobs respectively. `orchestration-migration`'s "all dbt batches approved" prerequisite is now wave-aware too: a `--wave` run only needs that wave's dbt models approved, not the whole estate, which is what actually unblocks running orchestration migration per wave rather than only at the very end.
+
+**`equivalency-validate` gained `--wave` alongside its existing `--batch`.** A wave spans every object type together (connectors, warehouse objects, dbt models, orchestration jobs, reverse-ETL syncs); `--batch` stays dbt-model-only, reading `dbt_audit.csv`'s topological scheme. The two are mutually exclusive. `migration-acceptance-pack-review` and `dbt-migration-review` now formally document `--wave` too — it was already usable in practice (the wave id substitutes directly into the same `batch_{N}` filename template) but had never been specified as a flag.
+
+**Fixed a bug surfaced while doing this work**: `dbt-carveout-relocate-generate`'s manifest output was never wave-suffixed, so running it across multiple waves — the exact pattern its own tutorial worked example shows — would have silently overwritten the prior wave's manifest.
+
+**Tenant Carve-out tutorial and reference updates.** A new tutorial section (Step 4a) walks through `dbt-carveout-relocate` for a carve-out staged after its parent migration has already landed, and every command mentioned in the tutorial now links to its definition in the [Platform Migration reference](../release-types/platform-migration#tenant-carve-out-variant).
+
+---
+
 ## v3.10.8 — dbt-carveout-relocate, for a tenant carve-out staged after its parent migration
 
 **Released**: July 2026

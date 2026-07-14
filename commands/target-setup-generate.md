@@ -29,6 +29,7 @@ description: Generate target warehouse DDL scripts (SAFETY GATE — writes to ta
 
 Follow `specs/utils/migration_agent_delegate.md` before executing the workflow below.
 Follow `specs/utils/stale_artifact_check.md` with `artifact_id: target_setup` and `artifact_file_path: migration/target_setup_scripts/MANIFEST.md` before proceeding.
+When the target platform is BigQuery, route Step 0.3's MCP call through `specs/utils/bigquery_mcp_fallback.md` on a connection failure, instead of the manual-checklist deferral this step used to fall back to.
 
 ---
 
@@ -77,17 +78,18 @@ If `KEY_MISSING`:
 ```
 Stop.
 
-**Step 0.3: BigQuery MCP probe (BigQuery target only)**
+**Step 0.3: BigQuery MCP probe (BigQuery target only), with automatic `bq` CLI fallback**
 
-If the BigQuery MCP server is connected, run:
+Run:
 
 ```
 mcp__claude_ai_BigQuery_MCP__list_dataset_ids:
   project_id: "[target_project]"
 ```
 
-Interpret the result:
-- **Success** — the target project is reachable and the credential has at least `bigquery.datasets.list`. Record: `✓ Target project [target_project] is accessible.`
+If the MCP server is not connected or the call fails to respond, follow `specs/utils/bigquery_mcp_fallback.md` (`operation: schema_lookup`) automatically before treating this as anything other than a normal probe result — do not skip the check or defer it to a manual checklist. Whichever path answers (MCP or the `bq` CLI fallback), interpret the result the same way:
+
+- **Success** — the target project is reachable and the credential has at least `bigquery.datasets.list`. Record: `✓ Target project [target_project] is accessible.` (note in the manifest whether this used the MCP or the `bq` CLI fallback).
 - **Permission denied / 403** — the credential lacks the required permissions. Output:
   ```
   ❌ Pre-flight failed: cannot list datasets in [target_project].
@@ -102,28 +104,24 @@ Interpret the result:
      service account belongs to (or has been granted access to) that project.
   ```
   Stop.
+- **Both the MCP and the `bq` CLI fallback fail** — this is the only case that still falls through to a manual checklist, since neither automated path could answer at all:
+  1. Output a warning:
+     ```
+     ⚠️  BigQuery unreachable via both the MCP and the bq CLI fallback — skipping automated permission check.
+         Add a manual pre-flight check to the generated runbook (Step 0 below).
+     ```
+  2. Add the following section as **Step 0: Pre-flight manual check** at the top of the generated `MANIFEST.md`:
+     ```markdown
+     ## Step 0: Pre-flight checklist (run before executing any scripts)
 
-**Step 0.4: BigQuery MCP unavailable**
+     Before running any DDL scripts, verify the following manually:
 
-If the BigQuery MCP server is not connected, do not block progress. Instead:
-
-1. Output a warning:
-   ```
-   ⚠️  BigQuery MCP not connected — skipping automated permission check.
-       Add a manual pre-flight check to the generated runbook (Step 0 below).
-   ```
-2. Add the following section as **Step 0: Pre-flight manual check** at the top of the generated `MANIFEST.md`:
-   ```markdown
-   ## Step 0: Pre-flight checklist (run before executing any scripts)
-
-   Before running any DDL scripts, verify the following manually:
-
-   - [ ] Service account key exists at: [service_account_key_path]
-   - [ ] Service account has BigQuery Data Editor role on project: [target_project]
-   - [ ] Target project [target_project] exists and is accessible
-   - [ ] `gcloud auth activate-service-account --key-file=[service_account_key_path]`
-   - [ ] `bq ls --project_id=[target_project]` returns without error
-   ```
+     - [ ] Service account key exists at: [service_account_key_path]
+     - [ ] Service account has BigQuery Data Editor role on project: [target_project]
+     - [ ] Target project [target_project] exists and is accessible
+     - [ ] `gcloud auth activate-service-account --key-file=[service_account_key_path]`
+     - [ ] `bq ls --project_id=[target_project]` returns without error
+     ```
 
 **Step 0.5: Snowflake target**
 
@@ -232,6 +230,7 @@ artifacts:
     tables_in_ddl: N
     udfs_in_ddl: N              # layer:udf, action:translate entries written to 05_udfs.sql (0 or absent if no UDF layer)
     udfs_redesign: N            # layer:udf, action:redesign entries surfaced at the review gate
+    mcp_fallback_count: N       # BigQuery target only; 0 when the MCP stayed up — see specs/utils/bigquery_mcp_fallback.md
 ```
 
 ### Step 8: Emit dbt profiles.yml block

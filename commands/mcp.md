@@ -188,6 +188,8 @@ Build the required server list using this mapping:
 
 If no release folder is provided, check the union of required servers across all releases in `.wire/releases/`. If `status.md` cannot be read, probe all servers Wire ever uses.
 
+**BigQuery MCP showing `UNAVAILABLE`/`NOT_CONFIGURED` is not necessarily a blocker.** The migration commands that read/write BigQuery (`dbt-migration-generate`, `target-setup-generate`, `equivalency-validate`) fall back to the `bq` CLI automatically per `specs/utils/bigquery_mcp_fallback.md` — this pre-flight check surfaces the MCP's own status, not whether those commands can actually proceed.
+
 **Step 4.2 — Probe each required server**
 
 For each server in the required list, run the probe call. Apply a 5-second timeout per probe.

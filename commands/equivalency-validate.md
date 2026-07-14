@@ -65,6 +65,8 @@ Each invocation adds a new entry to `equivalency_validation.loop_history` in sta
 
 This command can be run as many times as needed. There is no "approved" state — the loop continues until equivalency passes or the team decides to proceed to cutover despite known failures (requires explicit override).
 
+For a BigQuery-side query anywhere below, route it through `specs/utils/bigquery_mcp_fallback.md` (`operation: read`) on a connection failure rather than failing the check — a BigQuery MCP outage is not itself an equivalency failure, and must not be reported as one.
+
 ## Workflow
 
 ### Step 1: Load scope

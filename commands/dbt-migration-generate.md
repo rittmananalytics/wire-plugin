@@ -31,6 +31,7 @@ argument-hint: <release-folder> [--batch N] [--wave id] [--model name] [--select
 Follow `specs/utils/migration_agent_delegate.md` before executing the workflow below.
 Follow `specs/utils/stale_artifact_check.md` with `artifact_id: dbt_migration` and `artifact_file_path: migration/dbt/batch_1_summary.md` before proceeding.
 Follow `specs/utils/migration_preflight.md` with `caller: dbt_migration` and `batch_ref` set to the batch/scope about to be translated (Checks 1–3); if any fail, output the blockers and stop before generating. This supersedes the soft Step 0b freshness warning below — the gate's Check 1 is the blocking version.
+When the target platform is BigQuery, route every BigQuery MCP call in Steps 0, 3.3, and 3.4 through `specs/utils/bigquery_mcp_fallback.md` — see that utility for the compile-check/run/equivalency-query mapping to the `bq` CLI on an MCP connection failure.
 
 ---
 
@@ -144,20 +145,22 @@ data_safety:
 
 Both platform connections are mandatory. Check before doing any translation work:
 
-1. **Source platform MCP** — query a known system table or run a trivial SELECT against the source. For Snowflake: `SELECT CURRENT_TIMESTAMP()`. For BigQuery (as source): `SELECT CURRENT_DATE()`. If this fails, abort:
+1. **Source platform MCP** — query a known system table or run a trivial SELECT against the source. For Snowflake: `SELECT CURRENT_TIMESTAMP()`. For BigQuery (as source): `SELECT CURRENT_DATE()`. If the source platform is BigQuery and this probe fails, follow `specs/utils/bigquery_mcp_fallback.md` (`operation: read`) before treating it as a hard failure — only abort if the `bq` CLI fallback also fails:
    ```
-   [wire] ERROR: Source platform MCP is not connected or not responding.
+   [wire] ERROR: Source platform MCP is not connected or not responding, and the bq CLI fallback also failed.
    Connect the [source_platform] MCP server and retry.
    /mcp — to check connection status
    ```
+   For a Snowflake source (no CLI fallback defined here), this remains a hard abort on probe failure, unchanged.
 
-2. **Target platform MCP** — run a trivial write-safe query against the test project. For BigQuery: `SELECT 1 AS test`. If this fails, abort:
+2. **Target platform MCP** — run a trivial write-safe query against the test project. For BigQuery: `SELECT 1 AS test`. If the target platform is BigQuery and this probe fails, follow `specs/utils/bigquery_mcp_fallback.md` (`operation: write`) before treating it as a hard failure — only abort if the `bq` CLI fallback also fails:
    ```
-   [wire] ERROR: Target platform MCP is not connected or not responding.
+   [wire] ERROR: Target platform MCP is not connected or not responding, and the bq CLI fallback also failed.
    Connect the [target_platform] MCP server (test project: [target_project]) and retry.
    ```
+   For a Snowflake target, this remains a hard abort on probe failure, unchanged.
 
-Both must be confirmed live before proceeding to Step 0b.
+Both must be confirmed live (via MCP or the `bq` CLI fallback) before proceeding to Step 0b.
 
 ### Step 0b: Check source snapshot freshness
 
@@ -422,7 +425,7 @@ Write the translated SQL to `.wire/releases/$ARGUMENTS/migration/dbt/{relative_p
 
 #### 3.3 Compile check (target BigQuery/Snowflake MCP)
 
-Validate the translated SQL will compile against the target platform without materialising data. Use the target platform MCP to run the compiled SQL with `LIMIT 0` appended (or equivalent). For Jinja-templated models, compile against the target profile's `LIMIT 0` pattern.
+Validate the translated SQL will compile against the target platform without materialising data. Use the target platform MCP to run the compiled SQL with `LIMIT 0` appended (or equivalent). For Jinja-templated models, compile against the target profile's `LIMIT 0` pattern. For a BigQuery target, route this call through `specs/utils/bigquery_mcp_fallback.md` (`operation: compile_check`) — a connection failure is not a SQL problem, and must not be recorded as a compile error or burn an auto-fix iteration; only a genuine compile error (from either the MCP or the `bq --dry_run` fallback) counts below.
 
 If compile fails:
 - Record: `{ iteration: N, stage: "compile", error: "<message>", action: "auto-fix" }`
@@ -433,9 +436,9 @@ If compile succeeds: proceed to 3.4.
 
 #### 3.4 Run on target
 
-Execute the full model SQL as a materialisation against the test project using the target platform MCP's write tool. For BigQuery: `execute_sql` (not readonly). The target dataset/schema is read from `data_safety.target_project` and `migration.target_schema` in status.md (or the `--config` overlay's equivalents, if loaded).
+Execute the full model SQL as a materialisation against the test project using the target platform MCP's write tool. For BigQuery: `execute_sql` (not readonly), routed through `specs/utils/bigquery_mcp_fallback.md` (`operation: write`) on a connection failure — again, do not record a fallback-triggering connection error as a run failure. The target dataset/schema is read from `data_safety.target_project` and `migration.target_schema` in status.md (or the `--config` overlay's equivalents, if loaded).
 
-Run only against the test project — never against production. If the write tool would target a project listed in `data_safety.production_projects`, stop immediately and report the conflict.
+Run only against the test project — never against production. If the write tool (or its `bq` CLI fallback) would target a project listed in `data_safety.production_projects`, stop immediately and report the conflict.
 
 **Long-running model guard.** The MCP's `execute_sql` enforces a hard job timeout of roughly 3 minutes. If a model is expected to run long — a large CTAS, a backfill, or a model that has historically taken more than 2 minutes — do not run it via the MCP's `execute_sql`. Route it through `dbt run --select <model>` (or the target's dbt Cloud/Core job runner) instead, which honours a much longer (3600s) timeout. A genuinely slow but successful build (e.g. 188 seconds) killed by the MCP's timeout is a false failure, not a real one — don't record it as a run failure in `loop_history` without first ruling out that the job was still running when the MCP gave up.
 
@@ -447,7 +450,7 @@ If run succeeds: proceed to 3.5.
 
 #### 3.5 Three-check equivalency
 
-Run these three checks using both the source platform MCP (read-only) and the target platform MCP (read-only). Do not run any write queries here.
+Run these three checks using both the source platform MCP (read-only) and the target platform MCP (read-only). Do not run any write queries here. For a BigQuery side, route each query through `specs/utils/bigquery_mcp_fallback.md` (`operation: read`) on a connection failure.
 
 **Baseline pin (when the strategy defines a frozen baseline).** If `migration.equivalency_baseline` is set in status.md (see the migration strategy's "frozen equivalency baseline" — instant `T`, the Snowflake zero-copy clone, the BigQuery Bronze watermark, and the expected type-translation allow-list), run these in-loop checks against the **pinned** states, not live tables: read the source from the `wire_baseline` clone at `T`, and restrict the target to rows with `_fivetran_synced <= T`. Apply the deterministic-build switch (suppress/fix `CURRENT_TIMESTAMP`, `CURRENT_DATE`-relative windows, and fix the sample seed) so the model materialises reproducibly at `T`. This keeps the per-model loop's pass/fail consistent with the later `equivalency-validate` tier-3 run, which uses the same baseline. When no baseline is defined, run against live tables as before.
 
@@ -663,6 +666,7 @@ artifacts:
     transformation_log_rows: N                  # rows written this run (0 if skipped)
     wave: "B01"                                 # set only when run with --wave; the wave id just processed
     waves_complete: ["B01"]                     # set only when run with --wave; accumulates across runs
+    mcp_fallback_count: N                        # BigQuery target only; 0 when the MCP stayed up the whole run — see specs/utils/bigquery_mcp_fallback.md
 ```
 
 If `--model`, `--select`, or `--wave` was used, update only the translated models' status. Do not advance `current_batch` — that field belongs to the `dbt_audit.batch_number` scheme, and a `--wave` run tracks its own progress via `wave` / `waves_complete` instead.
@@ -711,7 +715,7 @@ All N batches translated.
 
 After updating `status.md`, run these in sequence:
 
-1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`. If `mcp_fallback_count > 0`, note it in the `Detail` column (e.g. `"...; 12 calls used bq CLI fallback (MCP flapped mid-run)"`) per `specs/utils/bigquery_mcp_fallback.md`'s Step 3 — do not write a separate log row per fallback.
 
 2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `dbt_migration` as artifact, `generate` as action.
 
