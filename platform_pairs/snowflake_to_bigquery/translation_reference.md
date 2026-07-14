@@ -725,6 +725,8 @@ A `partition_by` worth copying as the default shape:
 ) }}
 ```
 
+**`cluster_by` rejects a trailing `ORDER BY` on the build query — BigQuery errors, it doesn't just ignore it.** Any model with `cluster_by` set that also ends its outermost `SELECT` in a top-level `ORDER BY` fails the `CREATE TABLE ... CLUSTER BY (...) AS (...)` DDL outright: `Result of ORDER BY queries cannot be clustered`. This hits `materialized = 'table'` directly, and `materialized = 'incremental'` on its first run (no existing table yet, so it issues the same CTAS shape) — a model that built fine on its second incremental run can still be carrying this defect, dormant until the next full-refresh. A Snowflake model translated with a source-preserved trailing `ORDER BY` (common on a "just show me the latest rows" staging pattern) plus a newly-added `cluster_by` is the typical way this lands. The fix is simply to drop the outer `ORDER BY` — clustering doesn't preserve physical row order in the first place, so the clause was never doing anything on a clustered table even before it started erroring. Don't confuse this with an `ORDER BY` inside a window function (`... OVER (PARTITION BY ... ORDER BY ...)`), `QUALIFY`, or an ordered aggregate (`ARRAY_AGG(x ORDER BY y)`) — those are unrelated and completely legal alongside `cluster_by`. See §11.26 and `dbt-migration-lint`'s `CLUSTER_BY_ORDER_BY_CONFLICT` rule, which catches this statically before any build is attempted.
+
 ### Validation approach that works
 
 1. Run both warehouses in parallel for the cutover window with the same sources.
@@ -762,6 +764,7 @@ The compressed list to pin next to the code review checklist. Everything here co
 23. **CONTAINS_SUBSTR is case-insensitive**; it is not a drop-in for Snowflake CONTAINS. Use STRPOS for exact matching.
 24. **ARRAY_TO_STRING drops NULL elements** in BigQuery where Snowflake rendered empties; concatenated-key columns built this way will diverge.
 25. **CURRENT_ROLE()-based masking and RLS logic doesn't translate**; rebuild on IAM principals and policy tags (section 16).
+26. **CLUSTER BY rejects a trailing top-level ORDER BY** — BigQuery errors the CTAS outright (`Result of ORDER BY queries cannot be clustered`), on `materialized = 'table'` directly and on `incremental`'s first-run CTAS. Drop the outer ORDER BY; it did nothing on a clustered table anyway. Doesn't apply to an ORDER BY nested inside a window function, QUALIFY, or an ordered aggregate like ARRAY_AGG(x ORDER BY y).
 
 ---
 

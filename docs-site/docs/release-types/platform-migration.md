@@ -217,6 +217,8 @@ Translated models preserve the source project's folder structure. A model at `mo
 
 **Materialisation is preserved by default**, with two layers of safety: an optional engagement override hook (`materialization_overrides_path`) forces a specific materialisation only where explicitly declared, and `dbt-migration-lint`'s `MATERIALIZATION_DRIFT` rule is the after-the-fact backstop for anything the hook can't reach — a hand-edited model, or a wrong materialisation despite preservation. Both are intentionally kept.
 
+**`cluster_by` plus a trailing `ORDER BY` is a BigQuery DDL error, not just a no-op.** A model with `cluster_by` set that also ends its outermost query in a top-level `ORDER BY` fails its `CREATE TABLE ... CLUSTER BY (...) AS (...)` outright (`Result of ORDER BY queries cannot be clustered`) — on `materialized: table` directly, and on `incremental`'s first-run/full-refresh path, which issues the same CTAS shape. `dbt-migration-lint`'s `CLUSTER_BY_ORDER_BY_CONFLICT` rule catches this statically, before any materialisation is attempted — it tracks parenthesis depth over the compiled SQL rather than grepping for the keyword, so it doesn't misfire on an `ORDER BY` that's legitimately nested inside a window function, `QUALIFY`, or an ordered aggregate like `ARRAY_AGG(x ORDER BY y)`.
+
 Each model gets one of three translation treatments:
 - **auto-translate**: Mechanical syntax substitution applied with high confidence
 - **guided-translate**: Non-trivial dialect difference — translated then flagged with `-- WIRE:REVIEW`
