@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.10 — A BigQuery MCP fallback, so a known auth failure stops being handled inconsistently
+
+**Released**: July 2026
+
+`"Incompatible auth server: does not support dynamic client registration"` is a known, recoverable OAuth/dynamic-client-registration failure with a working alternative — the `bq` CLI, authenticated separately, does the same read/write job. Nothing in the spec told an agent to use it, so identical failures got handled inconsistently: some sessions improvised the CLI fallback and finished the batch, others hard-aborted or deferred to a manual checklist, with no record of which happened without reading every model's `.diff.md` by hand.
+
+**New `specs/utils/bigquery_mcp_fallback.md`, referenced the same way as `migration_preflight.md` or `execution_log.md`.** It probes before every call, not once per batch — the connection has been observed to flap mid-run (works, breaks, works again), so a failed probe at the top of a batch isn't grounds to fall back the whole batch, and a fallback on one call isn't grounds to assume MCP is dead for the rest. On a probe failure it falls back to the `bq` CLI automatically — no user prompt, no silent defer — mapping compile-only checks to `bq query --dry_run`, real data reads to `bq query --format=json`, writes to `bq query` (no dry-run), and schema/listing calls to `bq show`/`bq ls`. It always passes `--location` explicitly, read from `migration.target_location` in status.md, never the CLI's own default — which caused silent US/EU dataset mismatches before this existed. Fallback usage is recorded as a per-run summary (`mcp_fallback_count`) folded into the calling artifact's own status.md/execution-log entry, not a separate log row per call. Only a genuine dual failure (MCP and the `bq` CLI both down) is still a hard abort.
+
+**Wired into the three commands with a real hard-blocker BigQuery MCP dependency**: `dbt-migration-generate` (its MCP connectivity check and its per-model compile/run/equivalency queries), `target-setup-generate` (whose old "skip and defer to a manual checklist" behaviour on MCP failure is now the last resort, only after the `bq` CLI fallback also fails), and `equivalency-validate`. `dbt-carveout-relocate-generate`'s compile step uses local `dbt parse`/`compile` rather than the MCP directly, so it wasn't a candidate.
+
+---
+
 ## v3.10.9 — `--wave` scoping across every migration execution command
 
 **Released**: July 2026

@@ -1,6 +1,6 @@
 <img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
-# Wire Framework v3.10.9
+# Wire Framework v3.10.10
 
 Wire is a structured delivery system for data platform engagements, built on top of Claude Code and Gemini CLI. It encodes analytics engineering methodology as workflow specifications that the AI reads before generating anything so that output follows consistent patterns, traces back to requirements and can be validated automatically rather than having to be manually eyeballed.
 
