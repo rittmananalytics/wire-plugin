@@ -29,7 +29,7 @@ description: Validate dbt model translations compile on target profile
 
 ## Purpose
 
-Validates that translated dbt models compile and pass basic structural checks against the target platform profile. Optionally runs `dbt compile` if the target profile is accessible.
+Validates that translated dbt models compile and pass basic structural checks against the target platform profile, and — when a target profile is accessible — that they build cleanly across **every rendered code path a model can take at deploy time**, not just a single default-target full-refresh compile. A `dbt parse`/`dbt run` pass on the default path is exactly what lets branch-only and test-only defects reach the client PR (see Check 5). Optionally runs `dbt build` (not `dbt run`) if the target profile is accessible.
 
 ## Flags
 
@@ -68,12 +68,22 @@ Scan translated Jinja for obvious syntax errors (unclosed tags, undefined variab
 PASS: No Jinja syntax errors.
 FAIL: List models with errors.
 
-**Check 5 — dbt compile (if target profile available)**
-If `~/.dbt/profiles.yml` has a profile matching `migration.target_platform`:
-Run `dbt compile --select <in-scope models> --profiles-dir ~/.dbt`, from whichever project directory Step 0 resolved for these models (a monorepo may resolve different models to different projects — run compile once per project the in-scope set touches, not once against a single assumed project root).
-PASS: All models in batch compile without errors.
-FAIL: List compilation errors per model.
-If target profile not available: note as "compile check skipped — target profile not configured" (not a FAIL).
+**Check 5 — Build across every rendered code path (if target profile available)**
+
+If `~/.dbt/profiles.yml` has a profile matching `migration.target_platform`, exercise **all** code paths a model can take at deploy time, not just one default-target full-refresh compile. Run everything below from whichever project directory Step 0 resolved for these models (a monorepo may resolve different models to different projects — run once per project the in-scope set touches, not once against a single assumed project root). Each sub-check is independently a FAIL; a model passes Check 5 only when every applicable sub-check passes.
+
+**5a — Compile under every target profile the project defines.** Discover the target names — do **not** hardcode `dev`/`prod`. Read every entry under the resolved dbt profile's `outputs:` in `profiles.yml`, unioned with any target name referenced in the models/`dbt_project.yml` (e.g. `{% if target.name == '...' %}`). At minimum a dev and a prod-like target must be exercised; if the project defines only one, note "single target defined — cannot exercise `target.name` branches" so the reduced coverage is visible rather than assumed. For each discovered target `T`, run `dbt compile --select <in-scope models> --target T --profiles-dir ~/.dbt`. This is what catches a branch gated on `target.name` (e.g. a dev-only filter that references a SELECT alias or an unsupported function signature) — never compiled by a single-target run.
+PASS: every in-scope model compiles under every discovered target. FAIL: list the model, the target, and the compile error.
+
+**5b — Incremental models: build twice (initial then incremental).** For every in-scope model whose resolved config is `materialized: incremental`, run once to seed the relation (full refresh) and then again without `--full-refresh`, so the `is_incremental()` branch and its predicate are actually rendered and executed — a single build only ever renders the initial (non-incremental) branch.
+PASS: both runs succeed for every incremental model. FAIL: list the model and which run (initial / incremental) failed, with the error. Note "no incremental models in scope" when none apply.
+
+**5c — `dbt build`, not `dbt run`, so tests execute.** Run `dbt build --select <in-scope models> --target <prod-like target> --profiles-dir ~/.dbt` (build = run + test + snapshot + seed) so generic and singular tests execute. `dbt parse` and `dbt run` never execute tests, so an unported test macro, or a test referencing an unresolved `var`/`macro`, passes `parse` and fails only at `build` — on the client's CI. Fail if any referenced test, macro, or var is unresolved, or any test fails.
+PASS: build succeeds and all tests pass. FAIL: list the failing/unresolved test, macro, or var per model.
+
+If the target profile is not available, note "Check 5 skipped — target profile not configured" (not a FAIL) and record it as a coverage gap, since none of 5a–5c ran.
+
+**Check 5 coverage report.** Emit a per-model coverage table into the batch/wave summary so a reviewer sees coverage rather than assuming it — one row per in-scope model with: targets compiled (5a, list the target names), incremental second run done (5b: yes / n/a), tests run (5c: count run / passed). A model with an empty coverage cell is not "clean", it is "unchecked on that surface" — say so explicitly.
 
 **Check 6 — Diff files exist**
 Every model in the batch has a `.diff.md` side-by-side diff file.
@@ -128,6 +138,11 @@ artifacts:
     macros_validate: pass | fail          # set only when run with --macros
     wave_validate:                        # set only when run with --wave, keyed by wave id
       B01: pass | fail
+    check5_coverage:                      # Check 5 all-code-path coverage; skipped: true when no target profile
+      targets_compiled: ["dev", "prod"]   # target names exercised in 5a
+      incremental_second_run: pass | n/a  # 5b
+      tests_run: N                        # 5c — generic + singular tests executed via dbt build
+      skipped: false
 ```
 
 

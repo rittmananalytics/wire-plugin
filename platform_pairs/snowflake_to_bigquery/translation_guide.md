@@ -56,6 +56,38 @@ This table is the quick reference. For the exhaustive treatment — dialect fund
 
 Before translating a construct inline, decide *where the difference should live*. For a project that must run on both platforms during a parallel-run window, dialect logic belongs in macros, not scattered through model bodies behind `target.type` branches. The hierarchy — dbt built-in cross-database macro → `dbt_utils` → your own `adapter.dispatch` macro → `target.type` in a macro → `target.type` in a model (last resort) — and the full `dbt.*` built-in reference live in the shared [`../dbt_neutral_translation.md`](../dbt_neutral_translation.md). The array-membership join (example 04) and NULL-safe `ARRAY_AGG` (example 05) have no built-in equivalent, so each example's `notes.md` shows the dispatched-macro form.
 
+## Deployment type-divergence patterns
+
+Consumed by `specs/utils/deployment_type_preflight.md` (the W3 pre-flight shared by `dbt-migration-generate` and `equivalency-validate`). These are the constructs that build clean against a scratch/sample validation warehouse and error against the **real deployment warehouse** because its column *types* differ. Each fires only when the deployment column's actual type triggers it — the pre-flight reads the deployment `INFORMATION_SCHEMA`, never the validation warehouse's types.
+
+| id | fires when (against deployment column types) | failure at deploy | fix hint | ref |
+|---|---|---|---|---|
+| `TS_WRAP_ALREADY_TS` | `TIMESTAMP(col)` / `DATETIME(col)` wraps a column that is **already** `TIMESTAMP`/`DATETIME` at deployment | redundant or erroring cast — validation warehouse had it as STRING so the wrap was needed there; deployment has it typed, so the wrap errors or double-converts | drop the wrap when the deployment column is already the target temporal type | type_mapping.md "Timestamp Handling" |
+| `JSON_FN_ON_STRING` | `PARSE_JSON`/`JSON_VALUE`/`JSON_QUERY`/`JSON_TYPE` applied to a column that is `STRING` at deployment (or a native-`JSON` accessor used where the column landed `STRING`) | JSON function rejects a STRING argument, or extracts nothing, depending on direction | align the accessor to the deployment column: `JSON_VALUE`/`JSON_QUERY` for STRING-stored JSON, native JSON functions only for a `JSON` column | translation_reference.md §6 |
+| `JSON_FN_ON_JSON` | a STRING-oriented extraction (`JSON_VALUE`) applied to a column that is native `JSON` at deployment when a typed accessor was intended | silent type/precision surprise or wrong extraction | use the native-`JSON` accessor for a `JSON` column | translation_reference.md §6 |
+| `IMPLICIT_JOIN_COERCION` | a join predicate compares two columns whose deployment types differ (e.g. `STRING = INT64`) where Snowflake implicitly coerced them | BigQuery does not coerce — the join errors or silently returns no rows | emit an explicit `CAST` so both sides share the deployment type (see the join-coercion row in "SQL Construct Translations") | translation_guide.md (join coercion row) |
+
+## Edge-case runtime-failure patterns
+
+Consumed by the W5 pre-PR faithfulness review (`dbt-migration-pre-pr-review`). These compile clean and pass a default-path full-refresh build, then hard-fail or silently diverge at runtime **only when a triggering row is present** — a blank string, a malformed JSON blob, a boundary value — which the equivalency sample often doesn't contain. Each names the offending translated construct and its runtime fix; several overlap with a `dbt-migration-lint` rule id and are cross-referenced so the two stay in lockstep.
+
+| id | detect (on translated BigQuery SQL) | runtime failure | fix hint | lint rule |
+|---|---|---|---|---|
+| `CAST_BLANK_STRING_NUMERIC` | `CAST(<string expr> AS NUMERIC/INT64/FLOAT64)` where the source used a tolerant cast on a column that can be `''` | BigQuery `CAST('' AS NUMERIC)` errors at runtime the first time a blank/empty row is scanned; Snowflake tolerated it | use `SAFE_CAST` (NULL on failure) and handle the NULL, matching the source's tolerance | — |
+| `UNGUARDED_JSON_PARSE` | bare `PARSE_JSON(x)` with no `SAFE.` prefix on a column that can hold malformed JSON | errors at runtime on the first malformed row | `SAFE.PARSE_JSON(...)` to null-on-error; add `wide_number_mode => 'round'` for large integers | — |
+| `UNANCHORED_REGEX` | `REGEXP_CONTAINS(...)` translated from an anchored `REGEXP_LIKE`/`RLIKE` without `^(?:...)$` | over-matches — returns extra rows the source never matched | wrap the pattern `^(?:...)$` to restore whole-string anchoring | `REGEXP_ANCHOR` |
+
+## Column governance / masking mechanisms
+
+Consumed by the W4 governance equivalence check (`equivalency-validate`). Row-level equivalency cannot see column-level security: a column masked at source but landing unprotected at target produces identical rows, so equivalency passes while the security posture regresses. The check compares each translated column's protection at **target** against its protection at **source** and fails when a column protected at source is unprotected at target. These are the per-platform mechanisms it reads — the check itself is dialect-agnostic; only the mechanism names are per-pair.
+
+| side | protection expressed as | where the check reads it |
+|---|---|---|
+| Source (Snowflake) | `CREATE MASKING POLICY` applied per column (`ALTER TABLE ... ALTER COLUMN ... SET MASKING POLICY`); named in dbt as `meta.masking_policy` on the column | source column metadata: dbt `meta.masking_policy`, or `INFORMATION_SCHEMA`/`ACCOUNT_USAGE` policy references |
+| Target (BigQuery) | Policy tags (Data Catalog taxonomy + data policies); masking attaches to the tag, expressed in dbt as the column's `policy_tags` list | translated companion YAML `policy_tags`, or the deployed column's policy-tag binding via `INFORMATION_SCHEMA.COLUMN_FIELD_PATHS` / catalog |
+
+**Expected protection** is derived from the source column's `meta.masking_policy` (the same value `dbt-migration-generate` Step 3b item 4 maps to a target policy tag via the PII tag map). A source column carrying a `meta.masking_policy` is *expected protected*; the target column satisfies it when it carries a `policy_tags` binding (or an equivalent target masking mechanism). A source column with no masking policy is not expected protected — the check does not demand tags it never had. See `translation_reference.md` §16 for the full mechanism mapping and why `CURRENT_ROLE()`-branching policies need a rebuild rather than a mechanical translation.
+
 ## dbt Profile Changes
 
 The target dbt profile must use the BigQuery adapter:

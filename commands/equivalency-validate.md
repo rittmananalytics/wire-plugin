@@ -87,6 +87,7 @@ When `migration.scope == tenant_carveout`, read `migration.tenant_predicate` (e.
 
 - **Row count (1)**, **value sampling (3)**, **freshness (4)**, **row-level checksum (6)**, and **business invariants / aggregate control totals (7)** all add the predicate to both sides.
 - **Schema (2)** compares column names, types, and nullability — it is structural, not row-data, so the predicate does not change what it checks; it runs unchanged.
+- **Governance (8)** compares column-level protection metadata — also structural, not row-data — so the predicate does not apply; it runs unchanged.
 - **dbt tests (5)** run through dbt against the already tenant-scoped target models, so no predicate is injected into the test SQL.
 
 No new check types are introduced. min/max already lives inside value sampling (check 3); row-level checksum (check 6) and aggregate control totals (check 7) already exist. The carve-out only narrows the row set each existing check sees.
@@ -137,9 +138,15 @@ For flagged models materialised as tables, the stored data on each side reflects
 
 **Record the pin.** For every flagged model, record the pinned as-of value used against its results in the equivalency report (Step 4) and write `pinned_as_of` into the run's `loop_history` entry (Step 5), so any re-run or investigation can see exactly what instant was used.
 
+### Step 1d: Deployment warehouse type pre-flight
+
+Before the check types run, establish the **deployment** warehouse's actual column types so the schema check (check type 2) validates against them, not against a scratch/sample/playground validation warehouse whose types differ. Run `specs/utils/deployment_type_preflight.md` for the in-scope objects: it reads the deployment warehouse's column types (from `migration.deployment_project` in status.md if set, else the prod-like target in `profiles.yml` — never the validation warehouse), loads the active pair's **"Deployment type-divergence patterns"** section, and returns per-model divergence findings plus an explicit warning when the validation and deployment warehouses differ.
+
+When the validation and deployment warehouses are the same warehouse (the common case — equivalency usually runs against the live deployment target), this records "validation and deployment warehouse are the same — no type-drift risk" and is otherwise a no-op. When they differ, record the warning in the equivalency report (Step 4) and treat any firing type-divergence pattern as a failing object with reason `deployment_type_divergence`, so a model that only passes because the validation warehouse's types differ from deployment is flagged before cutover. Skip only if no deployment warehouse is reachable — recording that the pre-flight could not run rather than passing silently.
+
 ### Step 2: Run all check types
 
-For each in-scope object, run check types 1–6. Run check type 7 (business invariants) once per release. For each object:
+For each in-scope object, run check types 1–6 and check type 8 (governance). Run check type 7 (business invariants) once per release. For each object:
 
 **Check type 1 — Row count**
 ```sql
@@ -154,9 +161,9 @@ FAIL: Count outside tolerance
 Relative-date-flagged models (Step 1.5): count over the pinned inline relation on both sides, not the stored table.
 
 **Check type 2 — Schema**
-Compare column names, types, and nullability between source and target.
-PASS: All columns match (modulo expected type translations per type_mapping.md)
-FAIL: Missing columns, extra columns, or unexpected type changes
+Compare column names, types, and nullability between source and target. Use the **deployment** warehouse types from the Step 1d pre-flight as the target side wherever the validation warehouse differs from deployment, and fail on any firing deployment type-divergence pattern (reason `deployment_type_divergence`) — a schema check against a scratch warehouse's types passes while the deployment warehouse's types would error at cutover.
+PASS: All columns match (modulo expected type translations per type_mapping.md) and no deployment type-divergence pattern fires.
+FAIL: Missing columns, extra columns, unexpected type changes, or a fired deployment type-divergence pattern
 
 **Check type 3 — Value sampling**
 For numeric columns: compare mean, min, max, null percentage (sample 10K rows if table >10M rows)
@@ -202,6 +209,18 @@ Typical invariants: total revenue (`SUM(amount)` over orders), active customer c
 
 PASS: each invariant matches within its defined tolerance (default: exact for counts, ±0.01% for monetary sums to allow for float representation). FAIL: list the invariant, source value, target value, and delta.
 Tenant carve-out: add `WHERE {migration.tenant_predicate}` to each aggregate control-total query on both sides so the invariant is computed over the extracted tenant only. These are the same aggregate control totals as for a full migration — only the row set is narrowed.
+
+**Check type 8 — Column governance / masking equivalence**
+Row-level equivalency (checks 1, 3, 6, 7) confirms the data moved; it cannot see column-level security metadata. A column masked at source but landing **unprotected** at target produces identical rows — so every data check passes while the security posture silently regresses. This check closes that gap. It is deliberately separate from row-level equivalency: it compares *protection*, not data.
+
+For each translated model, compare column-level protection at **target** against the **source** platform's protection for the same column, using the mechanisms the active pair names in its "Column governance / masking mechanisms" section:
+- Derive the **expected protection** from the source column metadata (e.g. Snowflake `meta.masking_policy`; BigQuery `policy_tags`). A source column carrying a masking policy / policy tag is expected protected; one without is not.
+- Read the **actual** target protection from the translated companion YAML (the `policy_tags` / `meta.masking_policy` authored by `dbt-migration-generate` Step 3b item 4) and, where deployed, the target column's catalog binding.
+- FAIL when a column protected at source is unprotected at target (reason `governance_regression`), naming the model, column, and the source masking policy / policy tag that was dropped. A column protected at both sides PASSES; a column protected at neither PASSES (nothing to protect); a column newly protected at target only (no source policy) is not a failure but is recorded as an info note.
+
+This is dialect-agnostic — only the source/target mechanism names come from the pair. It runs unchanged under tenant carve-out (protection metadata is not row-scoped) and does not read row data. Where `dbt-migration-generate` flagged an unresolved masking policy `MANUAL REVIEW REQUIRED` (Step 3b item 4 miss), that column is a governance FAIL here until the tag is resolved — the two are the same gap seen from generate-time and validate-time.
+
+PASS: every source-protected column is protected at target. FAIL: list each column protected at source but unprotected at target, with the dropped policy/tag.
 
 **Edge cases to canonicalise (checks 3, 6, 7)**
 These cause false mismatches or, worse, false passes. Account for them before comparing:
@@ -259,6 +278,7 @@ Use the template at `TEMPLATES/migration/equivalency_report.md`. Include:
 - **All columns present**: yes/no — naming any missing or extra columns (this surfaces check type 2 per table)
 - **Sampled column values match**: yes/no — naming any columns whose sampled statistics deviated (this surfaces check type 3 per table)
 - One line for each remaining applicable check (freshness, dbt tests, row-level checksum)
+- **Column governance preserved**: yes/no — naming any column protected at source but unprotected at target (this surfaces check type 8 per table)
 - **Pinned as-of**: the pinned value used, for relative-date-flagged models only
 
 These lines surface existing check types 1, 2, and 3 per table — no new check logic is introduced. The two explicit yes/no lines are required for every table, including passing ones: an all-clear must say so per table, not only in the aggregate summary.

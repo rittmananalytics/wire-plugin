@@ -188,6 +188,12 @@ If `--dbt-project-path <path>` was supplied: set `migration.dbt_project_path` in
 
 If none of `--config`/`--tag-map`/`--target-dataset`/`--dbt-project-path` were supplied, skip this step; every field resolves from status.md exactly as today.
 
+### Step 0d: Deployment warehouse type pre-flight
+
+Before the per-model loop, establish the **deployment** warehouse's column types so the loop's Check B (Step 3.5) validates against them, not against a scratch/sample/playground validation warehouse whose types differ. Run `specs/utils/deployment_type_preflight.md` for the in-scope models: it reads the deployment warehouse's actual column types (from `migration.deployment_project` in status.md if set, else the prod-like target in `profiles.yml` — never the validation warehouse), loads the pair's **"Deployment type-divergence patterns"** section, and returns per-model divergence findings plus an explicit warning when the validation warehouse and the deployment warehouse differ.
+
+Hold the returned deployment types and findings in memory for the loop. When the validation and deployment warehouses are the same warehouse, this is a no-op beyond recording "no type-drift risk". Skip only if no target/deployment warehouse is reachable at all — in which case Step 3.5 Check B runs against whatever it can and the batch summary records that the deployment type pre-flight could not run (a coverage gap, not a silent pass).
+
 ### Step 1: Determine scope
 
 1. Resolve the dbt project(s): read `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if set) and `migration.source_platform` from status.md, honouring the `--config` overlay from Step 0c. Then resolve the actual project(s) and their manifest(s) via `specs/utils/dbt_manifest_parse.md` Steps 1–2 — its nested/multi-project resolution (a single project at the path, or one-level-down subdirectories each with their own `dbt_project.yml`) and hard-fail-on-unresolvable-path behaviour, rather than assuming a single project sits directly at `dbt_project_path`. This matters for a monorepo with more than one dbt project (e.g. a `source_layer` project and an `acme` project, neither at the parent path) — resolving the wrong single project silently mis-scopes everything downstream. Wherever this spec below reads a manifest node for a given model or macro, locate it by its **project-qualified node ID** (`model.<package_name>.<model_name>`) in whichever resolved project's manifest contains it, per the utility's Step 3 — never assume all models live in one manifest.
@@ -465,9 +471,9 @@ PASS: `|source_count - target_count| / source_count ≤ 0.005`
 FAIL: count outside tolerance — record source count, target count, and deviation.
 
 **Check B — Schema**:
-Compare column names, data types (per `type_mapping.md`), and nullability between source and target by querying `INFORMATION_SCHEMA.COLUMNS` on both platforms.
-PASS: all columns present with expected types (modulo documented type translations).
-FAIL: missing columns, extra columns, unexpected type changes, or nullability mismatches — record the specific column differences.
+Compare column names, data types (per `type_mapping.md`), and nullability between source and target by querying `INFORMATION_SCHEMA.COLUMNS` on both platforms. Use the **deployment** warehouse types established in Step 0d as the target side wherever the validation warehouse differs from deployment — a schema check against a scratch warehouse's types passes while the deployment warehouse's types would fail. Apply the pair's "Deployment type-divergence patterns" (Step 0d) against the translated SQL and the deployment column types: any firing pattern (a `TIMESTAMP()` wrap on an already-typed column, a JSON function on a STRING/JSON-mismatched column, an implicit cross-type join coercion) is a Check B FAIL feeding the 3.1 auto-fix loop, not a silent pass.
+PASS: all columns present with expected types (modulo documented type translations) and no deployment type-divergence pattern fires.
+FAIL: missing columns, extra columns, unexpected type changes, nullability mismatches, or a fired deployment type-divergence pattern — record the specific column differences and the deployment column type.
 
 **Check C — Column value sampling** (1000 rows):
 For a deterministic 1000-row sample (e.g. `ORDER BY 1 LIMIT 1000` or `TABLESAMPLE`), compare:

@@ -36,6 +36,38 @@ This guide defines the canonical translation decisions for migrating SQL from Bi
 | `{{ config(partition_by=...) }}` | `{{ config(snowflake_warehouse=...) }}` + cluster_by | BQ partition → Snowflake clustering | dbt config block update |
 | `{{ config(cluster_by=...) }}` | `{{ config(cluster_by=...) }}` | Same key — supported in both | Usually no change |
 
+## Deployment type-divergence patterns
+
+Consumed by `specs/utils/deployment_type_preflight.md` (the W3 pre-flight shared by `dbt-migration-generate` and `equivalency-validate`). These are the constructs that build clean against a scratch/sample validation warehouse and error against the **real deployment warehouse** because its column *types* differ. Each fires only when the deployment column's actual type triggers it — the pre-flight reads the deployment `INFORMATION_SCHEMA`, never the validation warehouse's types.
+
+| id | fires when (against deployment column types) | failure at deploy | fix hint | ref |
+|---|---|---|---|---|
+| `JSON_FN_ON_VARIANT` | a STRING-parse construct (`PARSE_JSON`, `TRY_PARSE_JSON`) applied to a column already `VARIANT`/`OBJECT` at deployment | redundant/erroring re-parse — validation warehouse stored it as STRING so the parse was needed there; deployment has it typed | drop the parse when the deployment column is already `VARIANT`/`OBJECT`; use path notation (`col:field`) directly | type_mapping.md |
+| `VARIANT_ACCESS_ON_STRING` | colon path (`col:field`) or `:variant` access applied to a column that is `STRING`/`VARCHAR` at deployment | Snowflake cannot path-access a plain string — errors or returns NULL | `PARSE_JSON(col):field` (or `TRY_PARSE_JSON`) to parse the STRING first | type_mapping.md |
+| `TZ_TYPE_MISMATCH` | a `TIMESTAMP_NTZ`/`TIMESTAMP_TZ`/`TIMESTAMP_LTZ` construct applied to a column whose deployment timestamp variant differs (e.g. BigQuery `DATETIME`→`TIMESTAMP_NTZ` vs `TIMESTAMP`→`TIMESTAMP_LTZ`) | wrong wall-clock/UTC interpretation, or a comparison across incompatible variants | pin the Snowflake timestamp variant to the deployment column's actual variant | type_mapping.md "Timestamp Handling" |
+| `IMPLICIT_JOIN_COERCION` | a join predicate compares two columns whose deployment types differ where BigQuery coerced them | Snowflake's coercion rules differ — join errors or changes result set | emit an explicit `CAST` so both sides share the deployment type | translation_guide.md |
+
+## Edge-case runtime-failure patterns
+
+Consumed by the W5 pre-PR faithfulness review (`dbt-migration-pre-pr-review`). These compile clean and pass a default-path full-refresh build, then hard-fail or silently diverge at runtime **only when a triggering row is present** — a blank string, a malformed JSON blob, a boundary value — which the equivalency sample often doesn't contain. Each names the offending translated construct and its runtime fix.
+
+| id | detect (on translated Snowflake SQL) | runtime failure | fix hint |
+|---|---|---|---|
+| `CAST_BLANK_STRING_NUMERIC` | `CAST(<string expr> AS NUMBER/INT/FLOAT)` where the source (BigQuery `SAFE_CAST`) tolerated failure on a column that can be `''` | Snowflake `CAST('' AS NUMBER)` errors at runtime on the first blank row | use `TRY_CAST` / `TRY_TO_NUMBER` and handle the NULL, matching the source's tolerance |
+| `UNGUARDED_JSON_PARSE` | `PARSE_JSON(x)` on a column that can hold malformed JSON, translated from `SAFE.PARSE_JSON` | errors at runtime on the first malformed row | `TRY_PARSE_JSON(...)` to null-on-error |
+| `REGEX_ANCHOR_DRIFT` | `RLIKE`/`REGEXP_LIKE(...)` translated from BigQuery `REGEXP_CONTAINS` without loosening anchoring | under-matches — Snowflake `RLIKE` anchors the whole string, BigQuery `REGEXP_CONTAINS` is a substring search | drop the implicit full-string anchor (or add `.*...*.`) to restore substring semantics |
+
+## Column governance / masking mechanisms
+
+Consumed by the W4 governance equivalence check (`equivalency-validate`). Row-level equivalency cannot see column-level security: a column masked at source but landing unprotected at target produces identical rows, so equivalency passes while the security posture regresses. The check compares each translated column's protection at **target** against its protection at **source** and fails when a column protected at source is unprotected at target. These are the per-platform mechanisms it reads — the check itself is dialect-agnostic; only the mechanism names are per-pair.
+
+| side | protection expressed as | where the check reads it |
+|---|---|---|
+| Source (BigQuery) | Policy tags (Data Catalog taxonomy + data policies); masking attaches to the tag, expressed in dbt as the column's `policy_tags` list | source column metadata: dbt `policy_tags`, or the deployed column's policy-tag binding via catalog |
+| Target (Snowflake) | `CREATE MASKING POLICY` applied per column (`ALTER TABLE ... ALTER COLUMN ... SET MASKING POLICY`); expressed in dbt as `meta.masking_policy` on the column | translated companion YAML `meta.masking_policy`, or `INFORMATION_SCHEMA`/`ACCOUNT_USAGE` policy references |
+
+**Expected protection** is derived from the source column's `policy_tags` binding. A source column carrying a policy tag is *expected protected*; the target column satisfies it when it carries a `meta.masking_policy` (or an equivalent target masking mechanism). A source column with no policy tag is not expected protected — the check does not demand masking it never had. BigQuery policy tags have no direct Snowflake equivalent, so the target-side mechanism is a dynamic data masking policy (see Known Limitations).
+
 ## dbt Profile Changes
 
 The target dbt profile must use the Snowflake adapter:

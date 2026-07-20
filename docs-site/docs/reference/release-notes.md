@@ -9,6 +9,36 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.12 — Closing the gap between "equivalent" and "deploys cleanly"
+
+**Released**: July 2026
+
+Wire's migration equivalency gate proves one thing well: the same rows come out, for the sampled data, on one default code path, in the validation warehouse. Deployment then fails on the surfaces that gate never exercises — a Jinja branch gated on `target.name` that a single full-refresh build never compiles, a generic test that `dbt run` never executes, an edge-case input row absent from the sample, a validation warehouse whose column types differ from the real deployment target, or a column masked at source that lands unprotected at target. A model Wire reported as equivalent could still come back from a client's PR review with defects that only fail at deploy time. This release widens the gate to cover that surface. Every check is driven by the active platform pair, so it generalises across every migration.
+
+**`dbt-migration-validate` now exercises every rendered code path, not just one.** It compiles each model under every target profile the project defines — discovered from `profiles.yml`, never hardcoded — builds incremental models twice so the `is_incremental()` branch actually runs, and runs `dbt build` rather than `dbt run` so generic and singular tests execute. A per-model coverage report shows what was exercised rather than leaving a reviewer to assume it. A dev-only branch, an incremental-only predicate, or an unported test is now failed before a PR is opened.
+
+**A deployment-warehouse type pre-flight**, shared by `dbt-migration-generate` and `equivalency-validate`, reads the real deployment warehouse's column types — not the scratch or sample warehouse a model was validated against — and flags the type-divergence patterns the platform pair declares: a `TIMESTAMP()` wrap on an already-typed column, a JSON function on a STRING-versus-JSON mismatch, an implicit cross-type join coercion. When the validation and deployment warehouses differ at all, it warns explicitly rather than passing silently.
+
+**A column governance equivalence check**, separate from row-level equivalency. Row-level checks compare data and cannot see column-level security — a column masked at source but unprotected at target produces identical rows, so equivalency passes while the security posture regresses. The new check (equivalency check type 8) compares each column's protection at target against the source masking policy and fails when protection was dropped in translation.
+
+**A new `dbt-migration-pre-pr-review` command** — a faithfulness review over the translated diff, run before a PR is opened. It composes the checks above plus the pair's edge-case runtime patterns — an uncast blank-string-to-numeric, an unguarded JSON parse, an unanchored regex — into a structured findings list with severity, `file:line`, and a suggested fix, so the defects are resolved locally instead of in the client's PR queue. Run it with `--format json --severity error` to gate CI.
+
+Every enhancement ships with behavioural tests. The type-divergence patterns and masking mechanisms live in each platform pair's `translation_guide.md`, so a new pair inherits all four checks automatically.
+
+---
+
+## v3.10.11 — Catching a BigQuery clustering conflict before it ever reaches a build
+
+**Released**: July 2026
+
+BigQuery rejects a model that combines `cluster_by` with a top-level trailing `ORDER BY` on a full table rebuild (`Result of ORDER BY queries cannot be clustered`) — a pure static SQL-shape defect, deterministic every time the model goes through a real `CREATE TABLE ... CLUSTER BY (...) AS (...)`. Nothing caught it before this release. A model carrying the pattern could pass `dbt-migration-generate`'s inline materialisation step and `equivalency-validate`'s row-count/schema/sampling checks in one session and still fail outright the next time the same SQL ran through a real `dbt-bigquery` CTAS — whether it surfaced depended on incidental DDL-wrapping choices in how a given session executed the write, not on anything about the data. That was never a gap in equivalency validation (it correctly validates data that already materialised); it was a gap in what got checked before materialisation was attempted at all.
+
+**New `CLUSTER_BY_ORDER_BY_CONFLICT` rule in `dbt-migration-lint`**, same category as the existing `MATERIALIZATION_DRIFT` rule — a pure static check, no BigQuery connection required. It reads `cluster_by`/`materialized` from the model's resolved manifest config (the same resolution `dbt-migration-generate` already uses), applying to `materialized: table` directly and to `incremental` too, since its first-run/full-refresh path issues the same CTAS shape. It does not grep for the `ORDER BY` keyword — it tracks parenthesis depth over the compiled SQL and only flags an `ORDER BY` at depth 0, the query's own outermost, unwrapped trailing clause. An `ORDER BY` nested inside a window function (`OVER (...)`), `QUALIFY ... OVER (...)`, an ordered aggregate like `ARRAY_AGG(x ORDER BY y)`, or a CTE's own subquery never reaches depth 0 and is correctly left alone. The fix is fully deterministic (strip the outer `ORDER BY` — clustering doesn't preserve physical row order, so it was never doing anything), surfaced as a suggested rewrite the same way every other rule in the catalogue is: never auto-applied, since `dbt-migration-lint` stays read-only.
+
+Documented as a named gotcha in [`translation_reference.md`](https://github.com/rittmananalytics/wire-plugin/blob/main/wire/platform_pairs/snowflake_to_bigquery/translation_reference.md) — a BigQuery dialect quirk, not engagement-specific, so it fires for any migration that sets `cluster_by`.
+
+---
+
 ## v3.10.10 — A BigQuery MCP fallback, so a known auth failure stops being handled inconsistently
 
 **Released**: July 2026

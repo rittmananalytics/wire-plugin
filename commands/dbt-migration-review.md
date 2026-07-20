@@ -50,9 +50,13 @@ Display the batch_summary.md (or wave summary) contents:
 
 ### Step 2: Gather reviewer feedback
 
+First, read the pre-PR faithfulness review for this batch/wave (`/wire:dbt-migration-pre-pr-review $ARGUMENTS --batch N` — run it now if it hasn't been). It surfaces the deploy-time defect class static parse/lint cannot catch — unrendered dev/incremental branches, unported tests, edge-case runtime failures, deployment-warehouse type mismatch, and dropped column governance — as a structured findings list with `file:line` and a fix per finding. Do not sign the batch off with unresolved `error`-severity findings; they are exactly the defects that otherwise come back in the client's PR review.
+
+Then:
 1. Review the diffs for any Complex models — do the translations look correct?
 2. Are the manual review items understood? Who will address each one?
 3. Any models where the automated translation should be manually overridden?
+4. Are all `error`-severity pre-PR faithfulness findings resolved (or explicitly, defensibly waived and recorded)?
 
 ### Step 3: Record decision
 
