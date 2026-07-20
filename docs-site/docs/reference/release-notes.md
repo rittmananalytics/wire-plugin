@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.14 — Automating the pre-PR fix loop, so consultants adjudicate rather than hand-fix
+
+**Released**: July 2026
+
+The pre-PR faithfulness review (v3.10.12) finds the deploy-time defects and emits them as a structured list, but it is read-only by design — so acting on them meant a consultant hand-fixing each one and re-running the gate. That is mechanical toil for the majority of findings, which have deterministic fixes.
+
+**A new `dbt-migration-fix` command** closes the loop. It ingests the pre-PR review findings, classifies each into one of three policies, and acts accordingly:
+
+- **`auto`** — deterministic *and* semantically safe regardless of intent (prefix `SAFE.`, `SAFE_CAST`, re-anchor a regex, drop a redundant `TIMESTAMP()` wrap, add `IGNORE NULLS`, author a `policy_tags` when the tag map has an entry). Applied automatically, then the deterministic gate re-runs — looping, capped, until no auto-fixable finding remains.
+- **`propose`** — deterministic to write but intent-dependent (a `TRIM()` on an `INT64` id might need a cast or might be spurious). Drafted into the escalation queue as a ready-to-apply suggestion, never committed silently.
+- **`decision`** — needs information or judgment the loop does not have (DAG registration, an unconfirmed Bronze type, a parity-versus-correctness product call). Escalated, never guessed.
+
+The consultant is left with only the `propose`/`decision` residue — the genuine decisions — instead of a wall of mechanical fixes. It mirrors `equivalency-fix`: detection stays read-only, fixing is a separate, explicit, re-runnable step. The expensive LLM client-review lens runs once at the end as confirmation, not inside the loop. The auto/propose/decision mapping lives in the platform pair and engagement overrides, so a client that trusts a pattern less can move it without a framework change. `--dry-run` reports the plan without editing. Ships with a behavioural test.
+
+---
+
 ## v3.10.13 — Two more pre-PR translation guards from live migration review
 
 **Released**: July 2026

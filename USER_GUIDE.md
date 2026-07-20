@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.10.13 | **Date**: July 2026
+**Version**: 3.10.14 | **Date**: July 2026
 
 ---
 
@@ -2115,7 +2115,7 @@ graph TD
 *Pending review by `/wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1`*
 
 ---
-*Generated automatically by Wire Framework v3.10.13 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
+*Generated automatically by Wire Framework v3.10.14 · `/wire:dbt-migration-generate 01-gdp-snowflake-to-bq`*
 ````
 
 After `/wire:migration-acceptance-pack-review` is run, the reviewer's decision is appended to the same file:
@@ -2182,12 +2182,13 @@ When a check fails, investigate and fix before re-running:
 
 ### Widening the equivalency gate to match the deployment surface
 
-The equivalency loop proves the same rows come out, for the sampled data, on one default code path, in the validation warehouse. A model can pass all of that and still fail at deploy — on a Jinja branch a single full-refresh build never compiled, a test `dbt run` never executed, an edge-case input row absent from the sample, a validation warehouse whose column types differ from the real deployment target, or a source masking policy dropped in translation. From v3.10.13 four checks close that gap, all driven by the active platform pair so they generalise across every migration:
+The equivalency loop proves the same rows come out, for the sampled data, on one default code path, in the validation warehouse. A model can pass all of that and still fail at deploy — on a Jinja branch a single full-refresh build never compiled, a test `dbt run` never executed, an edge-case input row absent from the sample, a validation warehouse whose column types differ from the real deployment target, or a source masking policy dropped in translation. From v3.10.14 four checks close that gap, all driven by the active platform pair so they generalise across every migration:
 
 - **`dbt-migration-validate` exercises every rendered code path.** It compiles each model under every target profile the project defines (discovered from `profiles.yml`, never hardcoded), builds incremental models twice so the `is_incremental()` branch renders, and runs `dbt build` — not `dbt run` — so generic and singular tests execute. A per-model coverage report shows what was exercised. A dev-only branch, an incremental-only predicate, or an unported test is failed before a PR is opened.
 - **A deployment-warehouse type pre-flight**, shared by `dbt-migration-generate` and `equivalency-validate`, reads the real deployment warehouse's column types rather than the scratch/sample warehouse a model was validated against, flags the pair's type-divergence patterns (a `TIMESTAMP()` wrap on an already-typed column, a JSON function on a STRING-versus-JSON mismatch, an implicit cross-type join coercion), and warns explicitly whenever the validation and deployment warehouses differ.
 - **A column governance equivalence check** (equivalency check type 8) compares each column's protection at target against the source masking policy and fails when a column masked at source lands unprotected at target — a regression row-level equivalency cannot see, since the rows are identical either way.
-- **`/wire:dbt-migration-pre-pr-review`** runs a faithfulness review over the translated diff before a PR is opened, composing the checks above plus the pair's edge-case runtime patterns (an uncast blank-string-to-numeric, an unguarded JSON accessor such as `JSON_VALUE`, an unanchored regex, and a string function on a non-string column) into a structured findings list with severity, `file:line`, and a suggested fix. Run it with `--format json --severity error` to gate CI, so the defects are resolved locally instead of in the client's PR queue.
+- **`/wire:dbt-migration-pre-pr-review`** runs a faithfulness review over the translated diff before a PR is opened, composing the checks above plus the pair's edge-case runtime patterns (an uncast blank-string-to-numeric, an unguarded JSON accessor such as `JSON_VALUE`, an unanchored regex, and a string function on a non-string column) into a structured findings list with severity, `file:line`, and a suggested fix.
+- **`/wire:dbt-migration-fix`** is the mutation counterpart to that read-only review. It ingests the findings, classifies each `auto` (deterministic and safe — applied automatically, then the gate re-runs, looping until clean), `propose` (drafted for a human to confirm), or `decision` (escalated, never guessed), and leaves the consultant only the residue that needs judgment — DAG registration, an unconfirmed Bronze type, a parity-versus-correctness call — rather than the mechanical fix volume. The policy mapping lives in the platform pair and engagement overrides; `--dry-run` shows the plan without editing. Run it with `--format json --severity error` to gate CI, so the defects are resolved locally instead of in the client's PR queue.
 
 ---
 
@@ -5010,7 +5011,7 @@ Recent release history for the Wire Framework. Full changelog from v3.0.0 onward
 
 ---
 
-### v3.10.13 — Batch-zero macro & UDF pass, single-SCC batching fallback (July 2026)
+### v3.10.14 — Batch-zero macro & UDF pass, single-SCC batching fallback (July 2026)
 
 Completes the batch-zero pass `dbt-audit` has planned all along but nothing consumed, and makes migration batching reproduce the build-ordered plan that SCC-heavy estates always needed by hand.
 

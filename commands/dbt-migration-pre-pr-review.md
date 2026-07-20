@@ -119,7 +119,7 @@ With `--format json --severity error`, the command exits non-zero when any `erro
 
 ## Notes for the implementer
 
-- This command is **read-only** over the translated diff. It never edits models. Fixes flow back through `dbt-migration-generate` (re-translate) or a hand edit, then re-run this review.
+- This command is **read-only** over the translated diff. It never edits models. To act on the findings automatically, run `dbt-migration-fix` — it auto-applies the deterministic fixes, re-runs the gate, and escalates only the findings that need a human decision. (Fixes can also flow back through `dbt-migration-generate` or a hand edit; then re-run this review.)
 - The check catalogue is a synthesis, not a re-implementation — Checks 1/4/5 defer to the W2/W3/W4 gates' own logic and results. Keep the pattern lists in the pair, never here, so a new pair inherits the review automatically.
 - Position: run after `dbt-migration-validate` and `dbt-migration-lint` pass and before `dbt-migration-review` opens the batch for sign-off — it is the automated faithfulness gate the human review then reads.
 

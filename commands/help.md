@@ -160,6 +160,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:dbt-migration-validate` | `<release-folder> [--batch N]` | Validate dbt model translations compile on target profile |
 | `/wire:dbt-migration-lint` | `<release-folder> [--batch N] [--model name] [--severity LEVEL] [--format FORMAT]` | Static pre-warehouse equivalence lint — dialect parse-check plus silent-behaviour-change rules on translated models |
 | `/wire:dbt-migration-pre-pr-review` | `<release-folder> [--batch N ` | Pre-submission faithfulness review over a translated diff — deploy-time defect class static parse/lint cannot catch, before a PR is opened |
+| `/wire:dbt-migration-fix` | `<release-folder> [--batch N ` | Closed fix-and-re-review loop — auto-apply the deterministic pre-PR-review fixes, re-run the gate, escalate only findings that need a human decision |
 | `/wire:dbt-migration-review` | `<release-folder> [--batch N ` | Review translated dbt models |
 | `/wire:orchestration-migration-generate` | `<release-folder> [--wave id]` | Generate orchestration job migration runbook |
 | `/wire:orchestration-migration-validate` | `<release-folder> [--wave id]` | Validate orchestration migration runbook |
