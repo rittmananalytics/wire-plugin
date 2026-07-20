@@ -46,6 +46,7 @@ Consumed by `specs/utils/deployment_type_preflight.md` (the W3 pre-flight shared
 | `VARIANT_ACCESS_ON_STRING` | colon path (`col:field`) or `:variant` access applied to a column that is `STRING`/`VARCHAR` at deployment | Snowflake cannot path-access a plain string — errors or returns NULL | `PARSE_JSON(col):field` (or `TRY_PARSE_JSON`) to parse the STRING first | type_mapping.md |
 | `TZ_TYPE_MISMATCH` | a `TIMESTAMP_NTZ`/`TIMESTAMP_TZ`/`TIMESTAMP_LTZ` construct applied to a column whose deployment timestamp variant differs (e.g. BigQuery `DATETIME`→`TIMESTAMP_NTZ` vs `TIMESTAMP`→`TIMESTAMP_LTZ`) | wrong wall-clock/UTC interpretation, or a comparison across incompatible variants | pin the Snowflake timestamp variant to the deployment column's actual variant | type_mapping.md "Timestamp Handling" |
 | `IMPLICIT_JOIN_COERCION` | a join predicate compares two columns whose deployment types differ where BigQuery coerced them | Snowflake's coercion rules differ — join errors or changes result set | emit an explicit `CAST` so both sides share the deployment type | translation_guide.md |
+| `STRING_FN_ON_NONSTRING` | a string function (`TRIM`, `UPPER`, `LOWER`, `SUBSTR`, `SPLIT`, etc.) applied to a column that is **not** `VARCHAR`/`STRING` at deployment | Snowflake errors or implicitly coerces differently than BigQuery did | `CAST(col AS VARCHAR)` first, or confirm the deployment column type before assuming it is string | type_mapping.md |
 
 ## Edge-case runtime-failure patterns
 

@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.13 — Two more pre-PR translation guards from live migration review
+
+**Released**: July 2026
+
+Two additive checks in the migration pre-PR gate, both banked from a live Snowflake→BigQuery migration review where they slipped past the v3.10.12 checks. This is the feedback loop working as intended — a reviewer finding that a deterministic rule missed becomes a new rule, so the next migration inherits it.
+
+`UNGUARDED_JSON_PARSE` now covers every unguarded JSON accessor — `JSON_VALUE`, `JSON_QUERY`, `JSON_EXTRACT*`, not just `PARSE_JSON`. An unguarded `JSON_VALUE` fails the whole incremental build on the first malformed or NULL row, where Snowflake simply returned NULL. Prefixing `SAFE.` restores the source's tolerance.
+
+A new `STRING_FN_ON_NONSTRING` deployment type-divergence pattern flags a string function — `TRIM`, `UPPER`, `SUBSTR`, `SPLIT`, and the like — applied to a column that lands as a non-string type at the real deployment warehouse. The trigger case is a bare `TRIM()` on an id that arrives as `INT64`: it compiles fine against a validation warehouse where the column is a string, then errors at first run on the real Bronze. Only columns whose type was actually verified against deployment are safe to assume.
+
+Both patterns are declared in each platform pair's `translation_guide.md` rule sections, so every migration inherits them, and both ship with behavioural tests.
+
+---
+
 ## v3.10.12 — Closing the gap between "equivalent" and "deploys cleanly"
 
 **Released**: July 2026
