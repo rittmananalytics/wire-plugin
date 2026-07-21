@@ -71,11 +71,11 @@ Every finding is classified into one of three policies. The default mapping belo
 - `IMPLICIT_JOIN_COERCION` → explicit `CAST` to the shared deployment type
 - `JSON_FN_ON_STRING` / `JSON_FN_ON_JSON` → align the accessor to the deployment column type
 - `governance_regression` **when the tag map has an entry** for the source masking policy → author the `policy_tags`
+- `column_order_drift` (W6b) → reorder the output projection to source ordinal order plus the pair's allow-listed tail columns. This finding is a **pure reorder** — the column set already matches (source columns + allow-listed tail); only the order differs — so restoring source order is deterministic and parity-restoring, never a change to what the model emits. It fires only when no `column_order_waived` reason is recorded; a waiver suppresses the finding upstream, so an intentional reorder is never auto-reverted. (A set-level mismatch — an unexpected non-allow-listed column, or a missing source column — is not this finding: it surfaces as the schema check's extra/missing-columns FAIL and is escalated, since dropping or adding a column is intent-dependent.)
 
 **`propose` — draft the fix, but a human confirms.** Deterministic to write, but intent-dependent, so it is drafted into the escalation queue as a ready-to-apply suggestion rather than committed silently:
 - `STRING_FN_ON_NONSTRING` → `CAST(col AS STRING)` **or** remove the string function (a `TRIM()` on an id may be spurious — the consultant decides which)
 - `MATERIALIZATION_DRIFT` → restore the source materialisation or declare the override
-- `column_order_drift` (W6b) → reorder the output projection to source ordinal order plus the pair's allow-listed tail columns — deterministic to write, but positional consumers vary and an intentional reorder may instead warrant a `column_order_waived` reason, so the consultant confirms
 - `UNPINNED_SELECT_STAR` (W6a) → expand the output-projection star into the explicit source column list, in source ordinal order — deterministic given the resolved upstream schema, but which columns are intended (and whether an `EXCEPT` was deliberate) is a judgment, so it is drafted, not committed silently
 - stale companion-YAML descriptions
 

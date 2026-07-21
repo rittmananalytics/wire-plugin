@@ -9,6 +9,16 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.17 — `column_order_drift` is now auto-fixed
+
+**Released**: July 2026
+
+Reordering a translated model's output projection back to source ordinal order is deterministic and parity-restoring — the column set is unchanged, only the order differs — so `dbt-migration-fix` now applies it automatically instead of drafting it for a consultant to confirm.
+
+To keep that safe, `column_order_drift` is now reserved strictly for a **pure reorder**: the schema-equivalence check emits it only when the set already matches (all source columns present, every tail column allow-listed) and only the sequence differs. A set mismatch — an unexpected non-allow-listed column, or a missing source column — is the schema check's existing extra/missing-columns failure and stays escalated, since adding or dropping a column is intent-dependent. A `column_order_waived` reason still suppresses the finding, so an intentional reorder is never auto-reverted. `UNPINNED_SELECT_STAR` (W6a) stays a drafted suggestion.
+
+---
+
 ## v3.10.16 — Column-order parity and the end of the unpinned `SELECT *`
 
 **Released**: July 2026
