@@ -4,17 +4,37 @@
 # Required
 version: 2
 
-# Set the OS, Python version, and other tools you might need
+# NOTE on PDF & ePub: the top-level `formats:` key is NOT used here. Read the
+# Docs ignores it whenever `build.commands` is set (as it is below, to run a
+# Docusaurus build), so it would be inert. With a custom build we own every
+# artifact — RTD publishes whatever lands in $READTHEDOCS_OUTPUT/{html,pdf,epub}/.
+# HTML is produced by the commands below; PDF + ePub by docs-site/scripts/build-ebooks.sh.
+
+# Set the OS, Node version, and the tools the ebook build needs.
 build:
   os: ubuntu-24.04
   tools:
     nodejs: "22"
+  # Installed as root before build.commands run. pandoc builds the ePub
+  # natively and drives the PDF; wkhtmltopdf is the (light, headless) PDF
+  # engine. For LaTeX-grade PDF typesetting instead, swap wkhtmltopdf for
+  # texlive-xetex + texlive-fonts-recommended + texlive-plain-generic here and
+  # set --pdf-engine=xelatex in docs-site/scripts/build-ebooks.sh.
+  apt_packages:
+    - pandoc
+    - wkhtmltopdf
 
   commands:
+    # --- HTML (Docusaurus) ---
     # Install Docusaurus dependencies
     - cd docs-site/ && npm install
     # Build the site
     - cd docs-site/ && npm run build
-    # Copy generated files into Read the Docs directory
+    # Copy generated files into Read the Docs' HTML output
     - mkdir --parents $READTHEDOCS_OUTPUT/html/
     - cp --recursive docs-site/build/* $READTHEDOCS_OUTPUT/html/
+    # --- PDF & ePub ---
+    # Build PDF & ePub from the Docusaurus markdown into
+    # $READTHEDOCS_OUTPUT/{pdf,epub}/. Non-fatal: `|| true` guarantees an ebook
+    # hiccup can never fail the build and take the HTML docs down with it.
+    - bash docs-site/scripts/build-ebooks.sh || true
