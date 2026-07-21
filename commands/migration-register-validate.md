@@ -32,12 +32,12 @@ description: Validate the per-model migration register — schema, uniqueness, c
 Read `migration/migration_register.csv`, `audit/dbt_audit.csv`, and the latest equivalency report.
 
 **Check 1 — Schema present**
-The header carries all ten columns: `model, source_path, source_layer, last_migrated_commit, bq_target, state, last_equivalence_result, last_equivalence_t, last_validated_commit, notes`.
+The header carries all twelve columns: `model, object_type, source_path, source_layer, last_migrated_commit, bq_target, state, snapshot_strategy, last_equivalence_result, last_equivalence_t, last_validated_commit, notes`.
 PASS/FAIL.
 
-**Check 2 — One row per in-scope model, unique key**
-Every in-scope model from `dbt_audit.csv` has exactly one row; `model` is unique; no orphan rows except those marked `state = removed`.
-PASS/FAIL with missing/duplicate models.
+**Check 2 — One row per in-scope model and snapshot, unique key**
+Every in-scope model from `dbt_audit.csv` has exactly one `object_type = model` row, and every snapshot from `dbt_snapshots.csv` has exactly one `object_type = snapshot` row; `model` is unique across both; no orphan rows except those marked `state = removed`.
+PASS/FAIL with missing/duplicate models and snapshots.
 
 **Check 3 — State values valid**
 Every `state` is one of `pending | migrated | drifted | failed | removed | deferred`.
@@ -54,6 +54,10 @@ PASS/FAIL.
 **Check 6 — Validated-vs-migrated coherence**
 No row claims `last_equivalence_result = pass` with a `last_validated_commit` that predates `last_migrated_commit` (would mean it was validated before it was (re)migrated).
 PASS/FAIL with offending rows.
+
+**Check 7 — Snapshot strategy valid and signed off**
+Every `object_type = snapshot` row has a `snapshot_strategy` of exactly `copy_and_continue` or `rebuild_from_T`; every `object_type = model` row has a blank `snapshot_strategy`. Every `rebuild_from_T` row records a data-owner sign-off in `notes` — a `rebuild_from_T` with no sign-off is a FAIL. A blank `snapshot_strategy` on a snapshot row is also a FAIL (a snapshot must never be left unassigned, which would risk defaulting to a history-discarding rebuild).
+PASS: every snapshot row has a valid, signed-off-where-required strategy. FAIL: list offending rows. Note "no snapshot rows" when none exist.
 
 ### Update status
 

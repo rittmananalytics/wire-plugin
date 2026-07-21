@@ -69,6 +69,23 @@ Consumed by the W4 governance equivalence check (`equivalency-validate`). Row-le
 
 **Expected protection** is derived from the source column's `policy_tags` binding. A source column carrying a policy tag is *expected protected*; the target column satisfies it when it carries a `meta.masking_policy` (or an equivalent target masking mechanism). A source column with no policy tag is not expected protected — the check does not demand masking it never had. BigQuery policy tags have no direct Snowflake equivalent, so the target-side mechanism is a dynamic data masking policy (see Known Limitations).
 
+## Snapshot SCD mechanisms
+
+Consumed by the snapshot object-type handling in `dbt-audit-generate` / `migration-inventory-generate` (catalog), `migration-strategy-generate` / `migration-register-generate` (strategy), `bulk-copy-migration-generate` (history copy), `dbt-migration-generate` (translate + continue), and `dbt-migration-validate` / `equivalency-validate` (test gate). A dbt snapshot is not a model — it is an SCD-2 history table whose rows accrete over time, so a lift-and-shift must move the *built history*, not just re-run the snapshot from empty (which would lose every closed version). The check itself is dialect-agnostic; only the meta-column *types* and the `dbt_scd_id` computation come from the pair. **Never hardcode these types in a command — read them here and from `type_mapping.md`.**
+
+**SCD meta-column set (dbt-fixed names, pair-declared types).** dbt writes four meta columns onto every snapshot relation. The names are constants across every adapter — `dbt_scd_id`, `dbt_updated_at`, `dbt_valid_from`, `dbt_valid_to` — and must be preserved byte-for-byte, in this ordinal order, at the tail of the copied relation after the payload columns. Their types are pair-declared (resolved through `type_mapping.md`):
+
+| meta column | meaning | source type (BigQuery) | target type (Snowflake) | nullable |
+|---|---|---|---|---|
+| `dbt_scd_id` | surrogate hash identifying a version row | `STRING` (32-char MD5 hex) | `VARCHAR` | no |
+| `dbt_updated_at` | the version's updated-at value at snapshot time | mirrors the snapshot's `updated_at` column type (`DATETIME` → `TIMESTAMP_NTZ`, `TIMESTAMP` → `TIMESTAMP_TZ`) | per `type_mapping.md` temporal row | no |
+| `dbt_valid_from` | when this version became current | same temporal type as `dbt_updated_at` | same | no |
+| `dbt_valid_to` | when this version was superseded (`NULL` = current/open) | same temporal type as `dbt_updated_at` | same | yes |
+
+**`dbt_scd_id` computation (the continuation-critical invariant).** dbt computes `dbt_scd_id` in the snapshot macro via `dbt.snapshot_hash_arguments` — an `MD5` over the concatenation of the resolved `unique_key` expression and, for the `timestamp` strategy, the `updated_at` value, or for the `check` strategy, the `check_cols` values. Both the `dbt-bigquery` and `dbt-snowflake` adapters use the same `MD5(coalesce(cast(<arg> as string/varchar), '') || '|' || …)` shape, so a row's `dbt_scd_id` recomputed at target equals the copied source value **only when every hash input casts to the identical string on both platforms**. Confirm before copying history that the `unique_key` and `updated_at`/`check_cols` inputs stringify identically under the pair's type translations. A changed strategy, `updated_at`, `unique_key`, or `check_cols` re-hashes `dbt_scd_id` and orphans the copied history — the snapshot config must stay byte-identical across the migration (enforced in `dbt-migration-generate`).
+
+**Strategy inputs to catalog.** Each snapshot declares a `strategy` (`timestamp` or `check`), a `unique_key`, and either `updated_at` (timestamp) or `check_cols` (check), plus `invalidate_hard_deletes`. These are the inputs the catalog records and the copy/continue steps must preserve unchanged — they are the same inputs `dbt_scd_id` is hashed from, so any drift in them is a re-hash.
+
 ## dbt Profile Changes
 
 The target dbt profile must use the Snowflake adapter:

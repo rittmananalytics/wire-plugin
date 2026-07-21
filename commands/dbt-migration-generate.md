@@ -23,7 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Translate dbt models batch by batch to target dialect with inline equivalency validation
-argument-hint: <release-folder> [--batch N] [--wave id] [--model name] [--select selector] [--exclude selector] [--macros] [--config path] [--tag-map path] [--target-dataset name] [--dbt-project-path path]
+argument-hint: <release-folder> [--batch N] [--wave id] [--model name] [--select selector] [--exclude selector] [--macros] [--snapshots [names]] [--config path] [--tag-map path] [--target-dataset name] [--dbt-project-path path]
 ---
 
 ## Auto-Delegation
@@ -82,6 +82,7 @@ Works in batches as defined in the dbt audit, or in waves as defined by the auth
 - `--select <selector>` — resolve the models to translate using dbt node-selection grammar (graph operators `+`, `n+`, `@`; space-separated unions; comma-separated intersections; `tag:`, `config.materialized:`, `path:` set selectors). Resolved by Wire over the source project's dependency graph — **no dbt binary required**. See Step 1a.
 - `--exclude <selector>` — companion to `--select`; removes matching models from the resolved set. Same grammar. Optional.
 - `--macros` — **batch-zero macro pass.** Translate the shared Jinja / dispatched *macro definition* files listed in `audit/batch_zero_plan.json`, in tier order, instead of the model graph. This is the pass that must land before model batch 1: a widely-used macro is expanded by models scattered across every batch, so it is rewritten once, up front, and every downstream model then compiles against the already-translated macro. See **Macro Mode Workflow** below. UDF-layer entries (`layer: udf`) are **not** in scope here — they are `CREATE FUNCTION` DDL deployed by `/wire:target-setup-generate`.
+- `--snapshots` — **targeted snapshot scope.** `--snapshots` (bare) processes every snapshot object-type node in the release (`object_type = snapshot` in the migration register / `audit/dbt_snapshots.csv`); `--snapshots name1,name2` processes only the named snapshots. Selection resolves against the snapshot object-type rows, never the model selector. When this is the scope, run **only Step 3s** (translate the inner SELECT + adopt-and-continue) over the selected snapshots and skip the model translation loop (Steps 2–3.x model path). This is the retrofit lever — migrate (or re-migrate) snapshots without re-running already-migrated models. Normal `--wave`/`--batch` runs still process any in-scope snapshot inline via Step 3s (as the object-type work already wires); `--snapshots` is an additional targeted scope, not the only path. See **Snapshot Mode Workflow** below.
 - `--config <path>` — load a per-run config overlay file; see **Config overlay** below. Orthogonal to scope — combine freely with `--batch`, `--wave`, `--model`/`--models`, `--select`/`--exclude`, or `--macros`.
 - `--tag-map <path>` — shorthand for a `--config` overlay that sets only `migration.pii_tag_map_path`. Equivalent to `--config` with a one-key overlay file; use this when the *only* thing an isolated run needs to override is the PII tag map, without writing a throwaway YAML file first.
 - `--target-dataset <name>` — shorthand for a `--config` overlay that sets only `migration.target_schema`. Use for a one-off run against a scratch/test dataset without touching the release's real target schema.
@@ -94,7 +95,9 @@ Works in batches as defined in the dbt audit, or in waves as defined by the auth
 
 A bare name (`--select vehicles`) resolves to that single model, identical to `--model vehicles`. `--exclude` may be supplied without `--select` (it filters whatever scope is otherwise in effect). `--select ""` aborts with: `[wire] --select value is empty. Pass a selector, or omit the flag to use --batch / --wave / --model.` Passing both `--wave` and `--batch` aborts with: `[wire] --wave and --batch read different numbering schemes (migration_batching.csv vs dbt_audit.batch_number) and cannot be combined. Pick one.`
 
-`--macros` is its own scope mode — abort if it is combined with `--batch`, `--wave`, `--model`, `--models`, `--select`, or `--exclude`: `[wire] --macros is a standalone scope. Run it on its own; do not combine with --batch/--wave/--model/--models/--select/--exclude.` Do **not** overload `--batch 0` for this — audit batches run 1–N, and `--macros` reads unambiguously.
+`--macros` is its own scope mode — abort if it is combined with `--batch`, `--wave`, `--model`, `--models`, `--select`, `--exclude`, or `--snapshots`: `[wire] --macros is a standalone scope. Run it on its own; do not combine with --batch/--wave/--model/--models/--select/--exclude/--snapshots.` Do **not** overload `--batch 0` for this — audit batches run 1–N, and `--macros` reads unambiguously.
+
+`--snapshots` is likewise a standalone scope — abort if it is combined with `--batch`, `--wave`, `--model`, `--models`, `--select`, `--exclude`, or `--macros`: `[wire] --snapshots is a standalone scope. Run it on its own; do not combine with --batch/--wave/--model/--models/--select/--exclude/--macros.` It composes only with the orthogonal overlay flags (`--config`/`--tag-map`/`--target-dataset`/`--dbt-project-path`), exactly as `--macros` does.
 
 Full grammar and resolution algorithm: `wire/docs/specs/dbt-node-selection.md`.
 
@@ -199,12 +202,14 @@ Hold the returned deployment types and findings in memory for the loop. When the
 1. Resolve the dbt project(s): read `migration.dbt_project_path` (or `migration_sources.dbt.local_snapshot_path` if set) and `migration.source_platform` from status.md, honouring the `--config` overlay from Step 0c. Then resolve the actual project(s) and their manifest(s) via `specs/utils/dbt_manifest_parse.md` Steps 1–2 — its nested/multi-project resolution (a single project at the path, or one-level-down subdirectories each with their own `dbt_project.yml`) and hard-fail-on-unresolvable-path behaviour, rather than assuming a single project sits directly at `dbt_project_path`. This matters for a monorepo with more than one dbt project (e.g. a `source_layer` project and an `acme` project, neither at the parent path) — resolving the wrong single project silently mis-scopes everything downstream. Wherever this spec below reads a manifest node for a given model or macro, locate it by its **project-qualified node ID** (`model.<package_name>.<model_name>`) in whichever resolved project's manifest contains it, per the utility's Step 3 — never assume all models live in one manifest.
 2. Determine which models to translate:
    - If `--macros` provided: this is not a model scope. Skip Steps 2–6 entirely and run the **Macro Mode Workflow** below instead.
+   - If `--snapshots` provided: this is not a model scope. Skip the model translation loop (Steps 2–3.x model path) entirely and run the **Snapshot Mode Workflow** below instead.
    - If `--select <selector>` (optionally with `--exclude`) provided: resolve the model set per **Step 1a**.
    - If `--model <name>` provided: process that single model
    - If `--wave <id>` provided: resolve the model set per **Step 1w** (every dbt-model row in that wave, unless `--models` also provided to narrow further)
    - If `--batch N` provided: load all models with `batch_number = N` from `dbt_audit.csv` (unless `--models` also provided to narrow further)
    - Otherwise: read `dbt_migration.current_batch` from status.md (default: 1 if not set)
 3. Confirm the batch/model has not already been translated (check for existing translated files). If already done, ask whether to re-translate.
+4. **Snapshots in scope.** Any snapshot whose `batch_number` (from `audit/dbt_snapshots.csv`) falls in this batch — or any snapshot row in this wave's `migration_batching.csv` slice — is part of the scope and is handled by **Step 3s**, not the model loop. Because the audit placed each snapshot after its upstream ref and before its dependents (dbt-audit Step 7), a snapshot is translated and continued before the downstream models that read it.
 
 ### Step 1a: Resolve `--select` (only when `--select`/`--exclude` is used)
 
@@ -335,6 +340,56 @@ Do **not** touch `current_batch` or the model counts — the macro pass is ortho
 Batch-zero macro pass complete. Deploy the UDF layer, then translate model batch 1:
 /wire:target-setup-generate $ARGUMENTS      # deploys the layer:udf CREATE FUNCTION objects
 /wire:dbt-migration-generate $ARGUMENTS --batch 1
+```
+
+## Snapshot Mode Workflow (`--snapshots`)
+
+Runs **instead of** the model translation loop (Steps 2–3.x model path, Steps 4–6's model-labelled output) when `--snapshots` is supplied. Steps 0 (MCP connectivity), 0b (snapshot freshness), 0c (config overlay), 0d (deployment type pre-flight), and the data-safety reminder still apply — the source MCP reads snapshot bodies, the target MCP compile-checks and adopt-and-continues. This is the retrofit lever: migrate the release's snapshots on their own, without re-running already-migrated models. A snapshot's pass criterion is still the three-layer gate in `dbt-migration-validate` / `equivalency-validate` (Check 9), not a SELECT row-equivalence.
+
+### Step S1: Resolve the snapshot scope
+
+Resolve the selected snapshots against the **snapshot object-type nodes** only — the `object_type = snapshot` rows in `migration/migration_register.csv`, cross-referenced to `audit/dbt_snapshots.csv` for each snapshot's strategy, `target_schema`, and meta-column set. **Never** resolve against `dbt_audit.csv`'s model rows or the model selector — a name that matches a model but not a snapshot node is not in scope.
+
+- `--snapshots` (bare): select every `object_type = snapshot` node in the release.
+- `--snapshots name1,name2`: select only the named snapshots. A name that does not resolve to a snapshot node (unknown, or the name of a model rather than a snapshot) is listed as unresolved rather than silently skipped: `[wire] --snapshots: "<name>" is not a snapshot object-type node — check audit/dbt_snapshots.csv.`
+
+If the register / `dbt_snapshots.csv` does not exist, abort: `[wire] No dbt_snapshots.csv found — run /wire:dbt-audit-generate $ARGUMENTS first.` If the resolved set is empty (no snapshot nodes, or none of the named entries resolve), abort: `[wire] No snapshots matched --snapshots. Aborting.`
+
+**Preview (mandatory)**, same posture as Step 1a:
+
+```
+[wire] Snapshots selected (n):
+  - snap_customers
+  - snap_orders
+[wire] Proceeding to translate n snapshots...
+```
+
+### Step S2: Load translation context
+
+Read the pair's `translation_guide.md`, `translation_reference.md` (authoritative on conflict), and its **"Snapshot SCD mechanisms"** section, plus any engagement-level overrides at `.wire/engagement/platform_pair_overrides/{pair}/`. Load the PII tag map per Step 2 (its companion-YAML handling in Step 3s still applies).
+
+### Step S3: Translate and continue each selected snapshot
+
+For each snapshot in the resolved set, run **Step 3s** (translate the inner SELECT, keep the hash-input config byte-identical, confirm the `dbt_scd_id` inputs stringify identically, adopt-and-continue after the history copy, test gate) exactly as it runs inside a normal batch, and upsert its register row per Step 3.7 with `object_type = snapshot`. The per-snapshot inner-SELECT correctness still runs the three-check equivalency (Step 3.5) as in Step 3s; the snapshot itself passes only at the Check 9 gate.
+
+### Step S4: Snapshot summary and status
+
+Write `.wire/releases/$ARGUMENTS/migration/dbt/snapshots_summary.md` — a snapshot-labelled batch summary carrying the **Snapshots** section from Step 4 (each snapshot translated, its `snapshot_strategy`, confirmation the hash-input config is unchanged, whether the `dbt_scd_id` inputs stringify identically, and whether the target adopt-and-continue `dbt snapshot` run was ordered after the history copy) plus any `-- MANUAL REVIEW` flags. Do **not** touch `current_batch` or the model counts — the snapshot pass is orthogonal to model batches, exactly like the macro pass. Update status:
+
+```yaml
+artifacts:
+  dbt_migration:
+    snapshots_translated: true
+    snapshots_translated_date: "{{TODAY}}"
+    snapshots_translated_count: N     # object_type=snapshot nodes translated this run
+    snapshots_failed_count: N         # flagged -- MANUAL REVIEW
+```
+
+Then print the next command:
+
+```
+Snapshot pass complete. Validate the snapshot three-layer gate:
+/wire:dbt-migration-validate $ARGUMENTS --snapshots
 ```
 
 ### Step 2: Load translation context
@@ -542,6 +597,22 @@ Three parts to handle:
 
 Write the translated YAML alongside the model, preserving the same relative path: `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path_from_models_root_without_extension}.yml`. Note any `sources.yml` repoint, custom-test translation, or `policy_tags` change (auto-resolved or flagged) in the model's diff file.
 
+### Step 3s: Translate and continue snapshots
+
+Every snapshot in this batch/scope (an `object_type = snapshot` node from the migration register, cross-referenced to `audit/dbt_snapshots.csv`) is translated here. A snapshot is an SCD-2 history object, not a plain model — translate it under stricter rules, reading the SCD meta-column set and the `dbt_scd_id` continuation invariant from the active pair's **"Snapshot SCD mechanisms"** section (never hardcode the meta-column types).
+
+1. **Translate the inner SELECT only.** The body between `{% snapshot %}` and `{% endsnapshot %}` (the SELECT that feeds the snapshot) is translated exactly like a model body: function swaps, type handling, source-to-ref resolution (Step 3.1 item a) and the Bronze-schema/market-gap check (item b), and Jinja/dispatch updates. Repoint every `ref()`/`source()` in the inner SELECT to the target as for a model.
+
+2. **Keep the snapshot config byte-identical.** The hash-input config — `strategy`, `unique_key`, `updated_at` (timestamp strategy) or `check_cols` (check strategy), and `invalidate_hard_deletes` — must stay **exactly** as on the source. dbt computes `dbt_scd_id` by hashing these inputs; changing any of them re-hashes every row's `dbt_scd_id` and orphans the history copied by `bulk-copy-migration-generate`. Repoint **only** the relation namespace (`target_schema` / `target_database`) to the target platform's namespace for the same physical relation the copy landed at — that value does not feed `dbt_scd_id`. Do not "tidy", rename, or re-express the `unique_key`/`updated_at`/`check_cols` expressions, even cosmetically.
+
+3. **Confirm the `dbt_scd_id` inputs stringify identically.** Per the pair's Snapshot SCD mechanisms section, verify the `unique_key` and `updated_at`/`check_cols` inputs cast to the same string on the target as on the source under the pair's type translations (watch `NUMBER`-scale rounding, `TIMESTAMP_NTZ → DATETIME` precision, NULL-vs-empty-string). If they cannot be made to stringify identically, the copied history's `dbt_scd_id` will not line up — flag the snapshot `-- MANUAL REVIEW` rather than silently continuing.
+
+4. **Adopt and continue after the copy.** For a `copy_and_continue` snapshot, the built history is copied to the `target_schema` relation by `bulk-copy-migration-generate` **before** this step. Once the copy has landed, run `dbt snapshot --select <snap>` **once** against the target so dbt adopts the copied relation and appends only genuinely new/changed versions — never before the copy (a `dbt snapshot` against an empty target relation opens fresh version rows and orphans the copied history). For a `rebuild_from_T` snapshot (recorded sign-off only), there is no copy — run `dbt snapshot --select <snap>` against the empty target to start the history fresh at `T`.
+
+5. **Test gate, not row equivalence.** A snapshot's pass criterion is the three-layer snapshot gate in `dbt-migration-validate` / `equivalency-validate` (copy-parity at `T`, continuation behaviour, SCD integrity) — a SELECT-only row-equivalence is never sufficient. The per-model loop's three-check equivalency (Step 3.5) applies to the inner SELECT's correctness but does not by itself pass the snapshot.
+
+Write the translated snapshot to `.wire/releases/$ARGUMENTS/migration/dbt/{relative_path}` mirroring the source `snapshots/` (or `models/`) location, with a `.diff.md` showing the inner-SELECT changes and confirming the config is unchanged. Upsert the snapshot's register row (Step 3.7) with `object_type = snapshot`, leaving `snapshot_strategy` as seeded.
+
 ### Step 4: Generate batch summary
 
 Write `.wire/releases/$ARGUMENTS/migration/dbt/batch_{N}_summary.md`:
@@ -552,6 +623,7 @@ Write `.wire/releases/$ARGUMENTS/migration/dbt/batch_{N}_summary.md`:
 - Models requiring manual review (every `FAILED` model and every `low` confidence model)
 - **Companion YAML changes**: `sources.yml` repoints, custom/singular tests translated, `policy_tags` authored or deferred — including the count of policy tags auto-resolved from the tag map and the count of `MANUAL REVIEW REQUIRED` flags for unresolved masking policies, naming each flagged column and its unresolved policy value
 - **Source-to-ref substitutions and Bronze-schema gaps** (Step 3.1 items a–b): count of `source(...)` calls rewritten to `ref(...)`, and every `MARKET GAP` column substitution — naming the model, column, synthesized type, and affected market(s)
+- **Snapshots** (Step 3s): each snapshot translated, its `snapshot_strategy`, confirmation the hash-input config (`strategy`/`unique_key`/`updated_at`/`check_cols`) is unchanged, whether the `dbt_scd_id` inputs stringify identically, and whether the target adopt-and-continue `dbt snapshot` run was ordered after the history copy
 - Recommended next steps
 
 ### Step 4b: Update per-batch DAG

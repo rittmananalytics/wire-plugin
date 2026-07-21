@@ -77,6 +77,13 @@ For **snowflake → bigquery** only, decide per layer whether to use the BigQuer
 - **Materialisation**: the default is **faithful preservation** — `dbt-migration-generate` carries each model's resolved materialisation across unchanged (incremental stays incremental with its strategy/partition/cluster, table stays table). Do not set a blanket materialisation default. If this engagement needs to *diverge* from the source — force a materialisation a model didn't have on the source — declare it as policy in a YAML file and point `migration.materialization_overrides_path` (in `status.md`) at it. The file's schema is `default: preserve` plus an `overrides` list of `select` / `exclude` / `force_materialized` rules (see the dbt-migration generate spec). Divergence is an opt-in optimisation, so it lives in engagement policy, never as a Wire default. Record each override rule and its rationale here. Client-specific rule *values* and the file live in the engagement (e.g. `.wire/engagement/<file>.yml`), not in the framework spec.
 - Partition/cluster configuration equivalents
 
+**Snapshot migration approach**: For every snapshot in the inventory (the `snapshot` object type), assign a per-snapshot migration strategy. A dbt snapshot is an SCD-2 history table whose closed versions cannot be regenerated from the current source — re-running the snapshot from empty on the target loses all history and breaks any downstream model that reads `dbt_valid_from`/`dbt_valid_to`. Two strategies:
+
+- **`copy_and_continue`** (default, every snapshot unless explicitly overridden): copy the built snapshot table source→target preserving payload + SCD meta columns (`bulk-copy-migration-generate` in carve-out, or the copy path in a full migration), then run `dbt snapshot --select <snap>` once on the target to adopt and continue the history. This preserves every closed version. It is the default because it is the only strategy that keeps history, and it must not require a sign-off.
+- **`rebuild_from_T`** (opt-in, requires a recorded data-owner sign-off): abandon the source history and start the target snapshot fresh from the baseline instant `T`. Only legitimate when the data owner has signed off that pre-`T` history is not required (e.g. the snapshot only ever feeds a "current state" consumer, or history is being deliberately reset). Record the signing data owner and date. **Never assign `rebuild_from_T` without a recorded sign-off** — absent a sign-off, the snapshot stays `copy_and_continue`.
+
+Record each snapshot's assigned strategy, and for `rebuild_from_T` the sign-off reference, in this section and in the migration register (`migration-register-generate`). Read the SCD meta-column set and the `dbt_scd_id` continuation invariant from the active pair's **"Snapshot SCD mechanisms"** section — do not hardcode the meta-column types.
+
 **Connector migration**: Whether Fivetran connectors will be cloned to new destinations or new connectors created from scratch on the target.
 
 **Security migration**: How source roles/policies translate to target IAM/roles using the security audit's `translate` and `evaluate` objects.
@@ -118,6 +125,8 @@ For each in-scope table and dbt model, define the equivalency checks that must p
 - **Row-level checksum**: hashed row content matches over the same row set (catches drift that statistical sampling passes — see equivalency validate spec)
 - **Business invariants**: define the engagement-specific control totals that must reconcile exactly (or near-exactly) — e.g. total revenue, active customer count, orders per key dimension. List each invariant with its query and tolerance here; the equivalency loop runs them against both platforms.
 
+**Snapshot equivalency (three-layer gate, not row equivalence).** For every snapshot, a SELECT-only row-equivalence check is **not** a sufficient pass criterion — it cannot see SCD-2 continuity. Each snapshot must pass all three layers (defined and enforced in `dbt-migration-validate` / `equivalency-validate`): (a) **copy-parity at `T`** — schema including the SCD meta columns and their ordinal order, row count, and row-level checksum match at the baseline; (b) **continuation behaviour** — after the target `dbt snapshot` run, unchanged rows stay unchanged, changed rows open exactly one new version, hard-deletes are invalidated (when `invalidate_hard_deletes: true`), and a second run is idempotent; (c) **SCD integrity** — `dbt_scd_id` unique, `unique_key` and `dbt_valid_from` not null, no overlapping open versions per key. State this per-snapshot gate here so the equivalency loop knows a snapshot is judged on all three layers, never on row equivalence alone.
+
 Specify the overall success threshold: cutover is unblocked when `checks_failing == 0` across all in-scope objects. Define how partial failures are handled (per-table hold vs full stop).
 
 #### Define the frozen equivalency baseline
@@ -141,6 +150,7 @@ Specify:
 Use the template at `TEMPLATES/migration/migration_strategy.md`. Include:
 - Platform pair summary
 - Translation approach by category
+- **Snapshot migration** object-type section: one row per snapshot with its assigned strategy (`copy_and_continue` / `rebuild_from_T`), and for every `rebuild_from_T` the recorded data-owner sign-off (name + date). State the default (`copy_and_continue`) and that `rebuild_from_T` never appears without a sign-off.
 - Phase plan with timelines and rollback procedures
 - Equivalency success criteria
 - Risk register (top 5 risks with likelihood, impact, mitigation)

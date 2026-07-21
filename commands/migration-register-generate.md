@@ -46,35 +46,40 @@ The register is maintained **incrementally** by the migration commands (see the 
 
 | Column | Meaning |
 |--------|---------|
-| `model` | dbt model name (unique key) |
-| `source_path` | path to the model in the source dbt project (e.g. `models/business/orders.sql`) |
+| `model` | dbt model **or snapshot** name (unique key) |
+| `object_type` | `model` (default) or `snapshot` — a snapshot is an SCD-2 history object, tracked here so its migration strategy and state travel with everything else |
+| `source_path` | path to the model/snapshot in the source dbt project (e.g. `models/business/orders.sql`, `snapshots/orders_snapshot.sql`) |
 | `source_layer` | source-project layer (e.g. `source_project`, `business_project`, `reporting`) |
 | `last_migrated_commit` | source repo commit SHA the translated model was built from |
-| `bq_target` | the BigQuery target object (`dataset.table`) |
+| `bq_target` | the BigQuery target object (`dataset.table`) — for a snapshot, its `target_schema` relation |
 | `state` | `pending` \| `migrated` \| `drifted` \| `failed` \| `removed` \| `deferred` |
-| `last_equivalence_result` | `pass` \| `fail` \| `info` \| `null` — outcome of the last equivalency run for this model |
+| `snapshot_strategy` | for `object_type = snapshot`: `copy_and_continue` (default) or `rebuild_from_T` — blank for models. `rebuild_from_T` is valid only with a sign-off recorded in `notes` (see below) |
+| `last_equivalence_result` | `pass` \| `fail` \| `info` \| `null` — outcome of the last equivalency run for this object |
 | `last_equivalence_t` | the baseline instant `T` of that equivalency run (UTC), or `null` for a live run |
 | `last_validated_commit` | source commit at the last equivalency validation (lets the drift gate tell "validated-then-drifted" from "never validated") |
-| `notes` | free text (e.g. reason for `deferred`/`failed`) |
+| `notes` | free text (e.g. reason for `deferred`/`failed`; for a `rebuild_from_T` snapshot, the required data-owner sign-off — name + date) |
 
 ## Maintenance contract (which command writes which columns)
 
-- **`dbt-migration-generate`** — on a successful per-model migration, upserts the row: `source_path`, `source_layer`, `last_migrated_commit` (the source snapshot SHA, from `migration_sources.dbt.commit`), `bq_target`, `state = migrated` (or `failed` after 5 iterations, `deferred` if its source object isn't built on target).
+- **`dbt-migration-generate`** — on a successful per-model migration, upserts the row: `source_path`, `source_layer`, `last_migrated_commit` (the source snapshot SHA, from `migration_sources.dbt.commit`), `bq_target`, `state = migrated` (or `failed` after 5 iterations, `deferred` if its source object isn't built on target). For a **snapshot** (`object_type = snapshot`), it upserts the same way after translating the inner SELECT and running the target `dbt snapshot` adopt-and-continue, leaving `snapshot_strategy` as seeded.
+- **`migration-strategy-generate` / this command** — sets each snapshot row's `snapshot_strategy` (`copy_and_continue` default; `rebuild_from_T` only with the sign-off recorded in `notes`).
 - **`equivalency-validate`** — on each run, writes `last_equivalence_result`, `last_equivalence_t` (the baseline `T` when in baseline mode, else `null`), and `last_validated_commit` for each model checked.
 - **`migration-drift-generate`** — flips `state` to `drifted` (modified upstream) or `removed`, and records the drifting commit in `notes`.
 
 This command does not duplicate that logic — it seeds and reconciles the file.
 
+**Snapshot rows.** Snapshots are seeded here as `object_type = snapshot` rows from `audit/dbt_snapshots.csv`, and their `snapshot_strategy` is set from the migration strategy's "Snapshot migration" section (`copy_and_continue` by default; `rebuild_from_T` only when the strategy records a data-owner sign-off, which this command copies into `notes`). If the strategy doc has not yet assigned a strategy, seed the snapshot `copy_and_continue` and leave a note — never default a snapshot to `rebuild_from_T`, since that silently discards history.
+
 ## Prerequisites
 
-- `audit/dbt_audit.csv` exists (the in-scope model list)
+- `audit/dbt_audit.csv` exists (the in-scope model list); `audit/dbt_snapshots.csv` too if the project defines snapshots
 - `migration_sources.dbt` registered (so `last_migrated_commit` can be resolved)
 
 ## Workflow
 
 ### Step 1: Seed or reconcile
 
-If the register does not exist, create it from `TEMPLATES/migration/migration_register.csv` and seed one row per in-scope model from `dbt_audit.csv`, with `state = pending` and all migration/validation columns `null`.
+If the register does not exist, create it from `TEMPLATES/migration/migration_register.csv` and seed one row per in-scope model from `dbt_audit.csv` (`object_type = model`), plus one row per snapshot from `dbt_snapshots.csv` (`object_type = snapshot`, `snapshot_strategy` from the strategy doc as above), all with `state = pending` and all migration/validation columns `null`.
 
 If it exists, **reconcile** rather than overwrite: add rows for any new in-scope models (`state = pending`); never clobber `last_migrated_commit` / `last_equivalence_*` / `last_validated_commit` already recorded; mark rows whose model no longer exists in the dbt audit as `state = removed` (do not delete the row — the history matters).
 
@@ -97,6 +102,8 @@ artifacts:
     drifted: N
     pending: N
     failed: N
+    snapshots_total: N            # object_type = snapshot rows; 0 if none
+    snapshots_rebuild_from_t: N   # snapshots assigned rebuild_from_T (each requires a recorded sign-off)
 ```
 
 ### Step 4: Output next command

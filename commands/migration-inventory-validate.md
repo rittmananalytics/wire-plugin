@@ -62,6 +62,10 @@ Spot-check 10 dbt models in the inventory — confirm each one's referenced sour
 PASS: All spot-checked refs found.
 FAIL: List missing references.
 
+**Check 7 — Snapshots inventoried as their own object type with graph edges**
+If `dbt_snapshots.csv` from the dbt audit lists any snapshots, every one appears in the inventory as a `snapshot` object type (not folded into `dbt_model`), carrying its strategy, `unique_key`, `target_schema`, upstream ref/source, and downstream dependents. Confirm the dependency graph contains, for each snapshot, an **upstream→snapshot** edge and a **snapshot→dependent** edge to each downstream model.
+PASS: every audited snapshot is present as a `snapshot` object with both edge directions. FAIL: list snapshots missing from the inventory, mistyped as `dbt_model`, or missing upstream/downstream edges. Note "no snapshots defined" when the audit lists none.
+
 ### Update status
 
 ```yaml

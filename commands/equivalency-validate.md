@@ -23,7 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Run equivalency checks across all in-scope tables (repeatable loop, parallel fan-out, optional frozen-baseline tier-3 mode)
-argument-hint: <release-folder> [--batch N | --wave id] [--baseline]
+argument-hint: <release-folder> [--batch N | --wave id | --snapshots [names]] [--baseline]
 ---
 
 ## Data Safety — Read Before Proceeding
@@ -76,6 +76,8 @@ Read the list of in-scope tables and dbt models from `migration/migration_invent
 **Scope by batch (optional).** With `--batch N`, restrict the scope to the objects in migration batch `N` (the batch groupings from `migration_strategy` / `dbt_audit.csv`). This lets equivalency fan out and run per batch — validate batch 1 as soon as its models reach terminal state, rather than waiting for the whole estate. Without `--batch`, the scope is every in-scope object. The run metadata (Step 5) records which batch a run covered.
 
 **Scope by wave (optional).** With `--wave <id>`, restrict the scope to every object `migration/migration_batching.csv` assigns to that wave — the authoritative execution schedule, not `dbt_audit.csv`'s topological micro-batches, and not restricted to dbt models: a wave's connectors, warehouse objects, dbt models, orchestration jobs, and reverse-ETL syncs are all in scope together, matching how `migration-batching-generate` groups them as one independently-schedulable slice. Resolution is identical to `dbt-migration-generate`'s Step 1w (normalise the wave id, load `migration_batching.csv`, filter to `batch_id`) except it does **not** filter by `object_type` — every object type in the wave is included. `--batch` and `--wave` read different numbering schemes and cannot be combined — abort if both are supplied: `[wire] --batch and --wave read different numbering schemes and cannot be combined. Pick one.` The run metadata (Step 5) records which wave a run covered.
+
+**Scope by snapshot (optional).** With `--snapshots`, restrict the scope to the snapshot object-type nodes and run **only check type 9** (the snapshot three-layer gate) over them — skipping every other check type. `--snapshots` (bare) selects every snapshot object-type node (`object_type = snapshot` in the migration inventory / register, cross-referenced to `audit/dbt_snapshots.csv`); `--snapshots name1,name2` only the named snapshots. Selection resolves against the snapshot object-type rows, never the model selector — a name that resolves to a model but not a snapshot node is listed as unresolved (`[wire] --snapshots: "<name>" is not a snapshot object-type node — check audit/dbt_snapshots.csv.`) and an empty resolved set aborts with `[wire] No snapshots matched --snapshots. Aborting.`. This is the retrofit companion to `dbt-migration-generate --snapshots` / `dbt-migration-validate --snapshots` — validate the snapshot gate on its own without re-running the whole estate. Normal `--batch`/`--wave` runs still run check type 9 over any in-scope snapshot inline; `--snapshots` is an additional targeted scope. Standalone scope — abort if combined with `--batch`, `--wave`, `--model`, `--models`, `--select`, `--exclude`, or `--macros`: `[wire] --snapshots is a standalone scope. Run it on its own; do not combine with --batch/--wave/--model/--models/--select/--exclude/--macros.` The run metadata (Step 5) records that the run was snapshot-scoped.
 
 For projects with >50 in-scope objects (or any batch over that size): fan out checks in parallel subagents — one per schema or one per dbt layer. Each subagent runs the per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for its assigned objects and reports back. Business invariants (check type 7) are run once for the release, not per object, since many are cross-table aggregates. This dramatically reduces wall-clock time for large migrations.
 
@@ -146,7 +148,9 @@ When the validation and deployment warehouses are the same warehouse (the common
 
 ### Step 2: Run all check types
 
-For each in-scope object, run check types 1–6 and check type 8 (governance). Run check type 7 (business invariants) once per release. For each object:
+For each in-scope object, run check types 1–6 and check type 8 (governance); for each in-scope snapshot, additionally run check type 9 (the snapshot three-layer gate). Run check type 7 (business invariants) once per release. For each object:
+
+**Under `--snapshots` scope**, run **only check type 9** over the resolved snapshot set — skip check types 1–8 (and the release-level check 7) entirely. Every other scope runs check type 9 over its in-scope snapshots as described above; `--snapshots` simply narrows the run to the snapshot gate alone.
 
 **Check type 1 — Row count**
 ```sql
@@ -229,6 +233,15 @@ This is dialect-agnostic — only the source/target mechanism names come from th
 
 PASS: every source-protected column is protected at target. FAIL: list each column protected at source but unprotected at target, with the dropped policy/tag.
 
+**Check type 9 — Snapshot three-layer gate**
+Checks 1, 3, and 6 confirm rows moved; for a dbt snapshot that is not enough — a snapshot is an SCD-2 history table, and a SELECT-only row-equivalence cannot see whether history was preserved and continued correctly. For every in-scope snapshot (an `object_type = snapshot` object in the inventory / migration register), **a row-equivalence pass is explicitly rejected as the snapshot's pass criterion**. The snapshot passes only when all three layers pass; each layer independently gates. Read the SCD meta-column set and types from the active pair's **"Snapshot SCD mechanisms"** section (dialect-agnostic — only the meta-column types come from the pair).
+
+- **9a — Copy-parity at `T`.** In baseline mode, the target snapshot relation matches the source clone at `T`: schema **including the four SCD meta columns** (`dbt_scd_id`, `dbt_updated_at`, `dbt_valid_from`, `dbt_valid_to`) and their ordinal order (payload first, meta columns at the tail in that order), row count, and the row-level checksum (check 6) over the same pinned row set. A `rebuild_from_T` snapshot (recorded sign-off) is exempt from copy-parity — assert it started fresh at `T` and record the sign-off.
+- **9b — Continuation behaviour.** After the target `dbt snapshot` run: unchanged upstream rows open no new version; a changed row opens exactly one new version (prior `dbt_valid_to` closed, new `dbt_valid_to` NULL); hard-deletes are invalidated when `invalidate_hard_deletes: true`; a second run is idempotent.
+- **9c — SCD integrity.** `dbt_scd_id` unique; `unique_key` and `dbt_valid_from` not null; at most one open version (`dbt_valid_to IS NULL`) per `unique_key` (no overlapping open versions).
+
+PASS: every in-scope snapshot passes 9a, 9b, and 9c. FAIL (reason `snapshot_scd_regression`): name the snapshot and the failing layer(s). This check runs unchanged under tenant carve-out — the tenant predicate narrows the row set each layer sees, but the three layers are unchanged. It is structural/history-shaped, not defeated by the row-level checks passing.
+
 **Edge cases to canonicalise (checks 3, 6, 7)**
 These cause false mismatches or, worse, false passes. Account for them before comparing:
 - **NULL vs empty string** — `''` and `NULL` may have been merged or split in translation. Compare null-handling explicitly.
@@ -309,6 +322,7 @@ migration:
         mode: live | baseline
         batch: N | all
         wave: null | "B01"                # set only when run with --wave
+        snapshots: false | true           # true only when run with --snapshots (check type 9 gate only)
         baseline_t: null | "<T>"          # baseline instant (UTC), baseline mode only
         clone_location: null | "<db>.wire_baseline"
         target_watermark: null | "_fivetran_synced <= <T>"

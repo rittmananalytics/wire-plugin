@@ -1,0 +1,1 @@
+snapshot_name,file_path,strategy,unique_key,updated_at,check_cols,invalidate_hard_deletes,target_schema,upstream,downstream_dependents,feature_tags,batch_number

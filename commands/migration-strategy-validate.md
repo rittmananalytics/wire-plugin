@@ -64,6 +64,10 @@ The phase timelines in the strategy are consistent with the effort estimates in 
 PASS: Consistent.
 FAIL: Report discrepancies.
 
+**Check 8 — Every snapshot has a migration strategy; `rebuild_from_T` is signed off**
+If the inventory lists any snapshots, the strategy's "Snapshot migration" section assigns each one a strategy of exactly `copy_and_continue` or `rebuild_from_T`. Every `rebuild_from_T` snapshot carries a recorded data-owner sign-off (name + date) — a `rebuild_from_T` with no sign-off is a FAIL, since it silently discards SCD-2 history. The default for any snapshot the section does not explicitly override must be `copy_and_continue`.
+PASS: every snapshot has a valid strategy and every `rebuild_from_T` is signed off. FAIL: list snapshots with no strategy, an invalid strategy value, or a `rebuild_from_T` lacking a sign-off. Note "no snapshots in scope" when the inventory lists none.
+
 ### Update status
 
 ```yaml

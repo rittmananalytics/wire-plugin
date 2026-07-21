@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.18 — dbt snapshots migrate as a first-class object type
+
+**Released**: July 2026
+
+The migration commands only ever processed `models/` — dbt snapshots under snapshot-paths fell through, never audited, translated, or tested. That blocked downstream models that read them and risked silently losing SCD-2 history: re-running `dbt snapshot` from empty against the target keeps only the current state and drops every closed version. Snapshots are now a first-class migration object type across the `platform_migration` and `tenant_carveout` release types — catalogued, strategy-assigned, history-copied, translated, continued, tested, and ordered like any other object. Everything is dialect-agnostic; the SCD meta-column types and the `dbt_scd_id` hash computation are declared per platform pair.
+
+Each snapshot is catalogued (`dbt-audit-generate` / `migration-inventory-generate`) with its strategy, keys, and dependency edges; assigned `copy_and_continue` (default) or `rebuild_from_T` (signed-off) in the strategy and register; history-copied to the exact target relation with the four `dbt_*` meta columns preserved (`bulk-copy-migration-generate`, frozen at baseline `T`); translated with its config kept byte-identical so `dbt_scd_id` doesn't re-hash and orphan the copied history, then continued with a single `dbt snapshot` run (`dbt-migration-generate`); and gated by a three-layer snapshot test — copy-parity, continuation, SCD integrity — that explicitly rejects a SELECT-only row-equivalence as sufficient (`dbt-migration-validate` / `equivalency-validate`). Batching orders each snapshot after its upstream ref and before its dependents.
+
+**A `--snapshots` scope** (modelled on `--macros`) runs the snapshot-processing commands over snapshots alone. It makes the retrofit case clean: on a project whose models were already migrated wave-by-wave before snapshot support existed, re-run the catalog/strategy/batching steps (additive — models aren't re-translated), then migrate the snapshots on their own with `--snapshots` rather than re-running whole waves. The snapshot-history copy runs in both release types — tenant-filtered under carve-out, whole-history unfiltered in a full migration — while `bulk-copy`'s raw-table path stays carve-out-only. See the platform-migration guide for the full retrofit walkthrough.
+
+---
+
 ## v3.10.17 — `column_order_drift` is now auto-fixed
 
 **Released**: July 2026

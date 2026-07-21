@@ -79,6 +79,10 @@ Independently re-scan for var-driven `enabled` config per `specs/utils/dbt_manif
 PASS: every var-driven model found by the independent source re-scan is tagged `conditional:*` with a real batch number.
 FAIL: list every var-driven model the re-scan found that the CSV instead marks `true`, `false`, or leaves with a null `batch_number` — a model in this list was silently dropped from scope (or silently and permanently marked enabled) by a manifest resolved under one default var-set. This is the check that would have caught a conditionally-enabled model being waved through as "correctly exempt" from Check 3 instead of being flagged.
 
+**Check 11 — Snapshots cataloged as their own object type and correctly ordered**
+If the project defines any snapshots (scan every resolved project's `snapshot-paths:` directory and `{% snapshot %}` blocks independently — do not trust generate's self-report), every snapshot appears in `dbt_snapshots.csv` with a complete snapshot metadata row: `strategy` (`timestamp`/`check`), `unique_key`, `updated_at` **or** `check_cols` (matching the strategy), `invalidate_hard_deletes`, `target_schema`, `upstream`, `downstream_dependents`, and a non-null `batch_number`. Confirm the ordering invariant against the dependency graph: each snapshot's `batch_number` is ≥ its upstream ref/source parent's batch and ≤ every downstream dependent's batch (a snapshot ordered after a model that reads it, or before the model it reads, is a FAIL).
+PASS: every snapshot cataloged with a complete row and correctly ordered. FAIL: list snapshots missing from the catalog, snapshots with an incomplete row, or snapshots violating the ordering invariant. Note "no snapshots defined" when the project has none.
+
 ### Update status
 
 ```yaml

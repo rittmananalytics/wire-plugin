@@ -257,6 +257,43 @@ Starting in v3.10.0, `dbt-migration-generate` can persist a structured record pe
 
 The per-model loop runs inside the same parallel agent structure — a 20-model batch still spawns four agents simultaneously; each agent handles its own loop for the ~5 models assigned to it.
 
+## dbt snapshots (SCD-2 history)
+
+A dbt snapshot is not a model — it is an SCD-2 history table whose rows accrete over time. Re-running `dbt snapshot` from empty against the target rebuilds only the *current* state and loses every closed version, so a snapshot needs different handling from a model: its built history must be physically moved, not recomputed. From v3.10.18, snapshots are a first-class migration object type across both the `platform_migration` and `tenant_carveout` release types — catalogued, strategy-assigned, history-copied, translated, continued, tested, and ordered like any other object.
+
+**How a snapshot flows through the migration:**
+
+1. **Catalog.** `dbt-audit-generate` scans snapshot-paths (`{% snapshot %}` blocks + the `snapshots/` dir) and records each snapshot as its own object type — `strategy` (timestamp/check), `unique_key`, `updated_at`/`check_cols`, `invalidate_hard_deletes`, `target_schema`, upstream ref/source, and downstream dependents — into `audit/dbt_snapshots.csv`. `migration-inventory-generate` adds `snapshot` nodes and the upstream→snapshot / snapshot→dependent edges to the dependency graph.
+2. **Strategy.** `migration-strategy-generate` and the migration register assign each snapshot `copy_and_continue` (the default — preserve history) or `rebuild_from_T` (start fresh at the baseline; requires a recorded data-owner sign-off, or it falls back to `copy_and_continue`).
+3. **History copy.** For `copy_and_continue`, `bulk-copy-migration-generate` copies the built snapshot table to the exact `target_schema` relation, preserving the four dbt meta columns (`dbt_scd_id`, `dbt_updated_at`, `dbt_valid_from`, `dbt_valid_to`) and their ordinal order, types translated via the pair's `type_mapping`. The source snapshot is frozen at the strategy's baseline `T` first; under a tenant carve-out the copy is filtered to the in-scope tenant's history.
+4. **Translate + continue.** `dbt-migration-generate` translates the inner `SELECT` and repoints `ref`/`source`, but keeps the snapshot **config byte-identical** — `strategy`, `unique_key`, `updated_at`/`check_cols`, `invalidate_hard_deletes`. This matters: dbt derives `dbt_scd_id` by hashing those inputs, so any change to them re-hashes every row and orphans the copied history. After the copy lands, dbt runs `dbt snapshot --select <snap>` once to adopt the copied relation and continue it — appending only genuinely new versions.
+5. **Test.** A snapshot-specific three-layer gate in `dbt-migration-validate` / `equivalency-validate` replaces plain row-equivalence (which cannot see SCD-2 continuity): (a) copy-parity at `T` (schema incl. meta columns + order, row count, checksum); (b) continuation behaviour (unchanged rows unchanged, a changed row opens exactly one new version, hard-deletes invalidated, idempotent second run); (c) SCD integrity (unique `dbt_scd_id`, not-null key + `dbt_valid_from`, no overlapping open versions). A SELECT-only row-equivalence is never a snapshot's pass criterion.
+6. **Ordering.** `migration-batching-generate` sorts each snapshot as a first-class build node — after its upstream ref model and before its dependents — so no downstream model is deferred just because its snapshot upstream was skipped.
+
+The whole flow is dialect-agnostic: the SCD meta-column types and the `dbt_scd_id` hash computation are declared per platform pair (`translation_guide.md` → "Snapshot SCD mechanisms"), never hardcoded in a command.
+
+### The `--snapshots` scope
+
+`--snapshots` is a standalone scope (modelled on `--macros`) that processes snapshot object-type nodes on their own, skipping models. It works on the four snapshot-processing commands — `dbt-migration-generate`, `dbt-migration-validate`, `equivalency-validate`, and `bulk-copy-migration-generate`. Bare `--snapshots` selects every snapshot; `--snapshots name1,name2` narrows to named ones. It cannot be combined with `--batch`/`--wave`/`--model`/`--models`/`--select`/`--exclude`/`--macros` — a normal `--wave`/`--batch` run already processes its in-scope snapshots inline, so `--snapshots` exists for the targeted and retrofit cases below.
+
+### Retrofitting snapshots onto an already-migrated project
+
+If you migrated the regular dbt models wave-by-wave *before* snapshot support existed, the snapshots were never catalogued — they fell through the model-only commands. Cataloguing is independent of translation, so you go back and add them without disturbing the models you already migrated:
+
+1. **Re-catalog** — re-run `/wire:dbt-audit-generate` and `/wire:migration-inventory-generate`. This is additive: it writes `dbt_snapshots.csv` and adds the snapshot nodes/edges to the graph; it does not re-translate the models.
+2. **Strategy + register** — re-run `/wire:migration-strategy-generate`. It adds the snapshot section and assigns each snapshot a strategy; the register gains its `object_type = snapshot` rows.
+3. **Re-batch** — re-run `/wire:migration-batching-generate` so snapshots slot into the schedule as topo nodes. The model ordering is deterministic, so the models don't shuffle; the snapshots just take their place after upstream and before dependents.
+4. **Migrate the snapshots only** — use the `--snapshots` scope so you don't re-run the models that are already done:
+   ```
+   /wire:bulk-copy-migration-generate <release> --snapshots        # copy history to target_schema (see note)
+   /wire:dbt-migration-generate       <release> --snapshots        # translate inner SELECT + dbt snapshot once to continue
+   /wire:dbt-migration-validate       <release> --snapshots        # three-layer snapshot gate
+   ```
+
+Without `--snapshots` you would have to run the whole wave a snapshot landed in, which re-processes the already-migrated models in that wave — wasted work. `--snapshots` is the lever that keeps the retrofit surgical.
+
+**Full-migration note on the history copy.** The snapshot history copy (`bulk-copy-migration-generate --snapshots`) runs in **both** release types. Under a tenant carve-out it is tenant-filtered like every other extract; in a full migration it copies the whole history unfiltered. The raw-table/connector copy path of `bulk-copy` remains carve-out-only — in a full migration, raw tables re-land via `/wire:ingestion-migration-generate`, but snapshot history has no such path (repointing a connector never reconstructs built SCD-2 history), which is why the snapshot-history copy is allowed in any scope. `rebuild_from_T` snapshots are skipped by the copy — they start fresh at `T`.
+
 ## Batch DAG visualisation
 
 `/wire:migration-strategy-generate` generates a Mermaid DAG file per batch at `artifacts/migration_strategy/dag_batch_N.md`. Each node represents one model; state is colour-coded and updated in-place as `dbt-migration-generate` runs.

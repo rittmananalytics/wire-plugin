@@ -72,7 +72,7 @@ Read each approved audit file. Extract:
 - Ingestion audit: connector list with complexity and migration approach
 - DB object audit: object catalog with type, volume tier, migration approach, feature tags
 - Security audit: role and policy inventory
-- dbt audit: model catalog with complexity, batch number, feature tags (from CSV)
+- dbt audit: model catalog with complexity, batch number, feature tags (from `dbt_audit.csv`); **snapshot catalog** (from `dbt_snapshots.csv` if present) — each snapshot's strategy, `unique_key`, `updated_at`/`check_cols`, `invalidate_hard_deletes`, `target_schema`, upstream ref/source, downstream dependents, and `batch_number`. A snapshot is its own object type — a built SCD-2 history table — not a model; carry it through as such so it is inventoried, scoped, and ordered rather than falling through the model-only scan.
 - Orchestration audit: job inventory
 - Reverse ETL audit (if present): sync catalog with migration approach, warehouse object dependencies, Lightning engine flags
 
@@ -81,6 +81,7 @@ Read each approved audit file. Extract:
 Identify objects that appear in multiple audits and link them:
 - Each ingestion connector/source writes to one or more schemas → link to db objects in those schemas
 - dbt models reference source tables → link dbt models to db objects
+- Snapshots read an upstream ref/source and are read by downstream models → link each snapshot to its upstream db object / dbt model and to each downstream dependent model, and link its `target_schema` to the built history relation in the db objects
 - Orchestration jobs run dbt commands → link jobs to dbt models
 - Service accounts in security audit → link to ingestion connectors/sources and orchestration jobs
 - Hightouch syncs reference warehouse objects → link each sync to the db objects and dbt models it reads from (using the `warehouse_objects` field from the reverse ETL audit)
@@ -92,7 +93,8 @@ Identify objects that appear in multiple audits and link them:
 
 Construct a directed dependency graph where:
 - Edges point from dependency to dependent (data flows downstream)
-- Node types: `connector`, `table`, `view`, `dbt_model`, `job`, `role`, `reverse_etl_sync`, `reverse_etl_destination`
+- Node types: `connector`, `table`, `view`, `dbt_model`, `snapshot`, `job`, `role`, `reverse_etl_sync`, `reverse_etl_destination`
+- For every snapshot, add an **upstream→snapshot** edge (from its ref/source parent) and a **snapshot→dependent** edge to each downstream model. This is what lets migration batching order the snapshot after the model it reads and before its dependents — without these edges a downstream model looks like it has no snapshot prerequisite and can be scheduled ahead of it.
 
 The graph now spans the full data flow: ingestion sources → warehouse objects → dbt models → reverse ETL syncs → SaaS destinations.
 
@@ -117,6 +119,8 @@ For each object type, apply effort weights:
 | dbt model | Simple | 0.25 |
 | dbt model | Moderate | 1 |
 | dbt model | Complex | 3 |
+| Snapshot | copy_and_continue | 1.5 |
+| Snapshot | rebuild_from_T | 0.5 |
 | View (translate) | Low feature count | 0.5 |
 | View (translate) | High feature count | 2 |
 | Security object | recreate | 0.1 |
@@ -137,8 +141,8 @@ Sum the estimates by phase and produce a total effort estimate.
 Use the template at `TEMPLATES/migration/migration_inventory.md`. Include:
 - Executive summary: total objects, total effort estimate, migration duration estimate (assuming 6 hours/day productive migration work)
 - Phase breakdown: audit → strategy → ingestion → dbt batches → orchestration → reverse ETL → equivalency → cutover
-- Unified object catalog (linked across audits)
-- Dependency graph
+- Unified object catalog (linked across audits) — snapshots appear as their own `snapshot` object type, each with its strategy, `unique_key`, `target_schema`, upstream ref/source, and downstream dependents
+- Dependency graph (including upstream→snapshot and snapshot→dependent edges)
 - Risk summary: count of High-complexity and evaluate objects; count of rebuild-type reverse ETL syncs
 - Recommended phasing approach — note that reverse ETL syncs cannot be re-pointed until their dependent warehouse objects and dbt models are migrated in earlier phases
 
@@ -152,6 +156,7 @@ artifacts:
     generated_date: "{{TODAY}}"
     total_objects: N
     estimated_hours: N
+    snapshots: N           # 0 if the project defines no snapshots
     reverse_etl_syncs: N   # 0 if not applicable
 ```
 
