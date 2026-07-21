@@ -422,6 +422,8 @@ This section provides a quick reference for the most common translation needs. F
 | Safe cast | `SAFE_CAST(x AS type)` | `TRY_CAST(x AS type)` | `try_cast(x AS type)` |
 | Safe divide | `SAFE_DIVIDE(a, b)` | `DIV0NULL(a, b)` or `a / NULLIF(b, 0)` | `a / NULLIF(b, 0)` |
 
+> **Safe-divide is name-idiomatic, not NULL-equivalent.** Bare `SAFE_DIVIDE(a, b)` returns NULL on a zero divisor; Snowflake `DIV0`/`DIV0NULL` return 0. When **migrating** a Snowflake `DIV0`/`DIV0NULL`, use `IF(b = 0, 0, SAFE_DIVIDE(a, b))` / `IF(b = 0 OR b IS NULL, 0, SAFE_DIVIDE(a, b))` — bare `SAFE_DIVIDE` and the `IFNULL`/`COALESCE(SAFE_DIVIDE(…), 0)` wrappers are all wrong there and the migration gate flags them as `DIV0_NULL_COERCION`.
+
 #### Identifier Quoting
 
 | Platform | Style | Example |

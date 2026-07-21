@@ -65,6 +65,7 @@ Every finding is classified into one of three policies. The default mapping belo
 - `UNGUARDED_JSON_PARSE` → prefix `SAFE.` (null-on-error matches the source)
 - `CAST_BLANK_STRING_NUMERIC` → `SAFE_CAST`
 - `UNANCHORED_REGEX` → re-anchor `^(?:...)$`
+- `DIV0_NULL_COERCION` → rewrite to `IF(b = 0, 0, SAFE_DIVIDE(a, b))` (`DIV0`) / `IF(b = 0 OR b IS NULL, 0, SAFE_DIVIDE(a, b))` (`DIV0NULL`) — the `IF(...)` form restores the source's NULL/zero-divisor semantics exactly, so a bare `SAFE_DIVIDE` or an `IFNULL`/`COALESCE` wrapper is always the wrong translation
 - `TS_WRAP_ALREADY_TS` → drop the redundant temporal wrap
 - `ARRAY_AGG_NULLS` → add `IGNORE NULLS`
 - `IMPLICIT_JOIN_COERCION` → explicit `CAST` to the shared deployment type

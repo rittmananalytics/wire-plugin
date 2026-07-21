@@ -298,8 +298,8 @@ Snowflake's `INSERT ALL / INSERT FIRST` into multiple tables has no BigQuery equ
 | Snowflake | BigQuery | Notes |
 |---|---|---|
 | `a / b` | `a / b` | Snowflake returns NUMBER with extended scale; BigQuery integer division returns FLOAT64. **⚠** downstream NUMERIC vs FLOAT64 typing can change rounding; cast explicitly where money is involved |
-| `DIV0(a, b)` | `IFNULL(SAFE_DIVIDE(a, b), 0)` | SAFE_DIVIDE returns NULL on divide-by-zero |
-| `DIV0NULL(a, b)` | `SAFE_DIVIDE(a, b)` | Also handles NULL divisor the same way |
+| `DIV0(a, b)` | `IF(b = 0, 0, SAFE_DIVIDE(a, b))` | `DIV0` zeroes a zero **divisor** but propagates NULL inputs. Do **not** use `IFNULL(SAFE_DIVIDE(a, b), 0)` **or** the semantically identical `COALESCE(SAFE_DIVIDE(a, b), 0)` — both coerce NULL inputs to 0, which `DIV0` never does; nor bare `SAFE_DIVIDE(a, b)` — it returns NULL on a zero divisor |
+| `DIV0NULL(a, b)` | `IF(b = 0 OR b IS NULL, 0, SAFE_DIVIDE(a, b))` | `DIV0NULL` returns 0 on a zero **or NULL** divisor (a NULL numerator still propagates). Do **not** use `IFNULL(SAFE_DIVIDE(a, b), 0)` or `COALESCE(SAFE_DIVIDE(a, b), 0)` — they coerce the propagated NULL numerator to 0; nor bare `SAFE_DIVIDE(a, b)` — it returns NULL on a zero divisor rather than 0 |
 | `MOD(a, b)` / `a % b` | `MOD(a, b)` | No `%` operator in BigQuery |
 | `ROUND(x, n)` | `ROUND(x, n)` | **⚠** both round halves away from zero for NUMERIC, but FLOAT64 rounding in BigQuery follows IEEE and Snowflake FLOAT behaves similarly; differences appear at the representation edge. For financial rounding keep values NUMERIC throughout |
 | `TRUNC(x, n)` (numeric) | `TRUNC(x, n)` | |

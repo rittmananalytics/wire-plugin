@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.15 — Catching every spelling of the DIV0 NULL-coercion trap
+
+**Released**: July 2026
+
+Snowflake's `DIV0(a, b)` zeroes a zero divisor but propagates NULL inputs; `DIV0NULL(a, b)` also zeroes a NULL divisor. The faithful BigQuery forms are `IF(b = 0, 0, SAFE_DIVIDE(a, b))` and `IF(b = 0 OR b IS NULL, 0, SAFE_DIVIDE(a, b))`. Three wrong forms turn up in translated models — bare `SAFE_DIVIDE` (returns NULL on a zero divisor) and the two NULL-coercing wrappers `IFNULL(SAFE_DIVIDE(…), 0)` and `COALESCE(SAFE_DIVIDE(…), 0)` (both coerce NULL inputs to 0). The translation rule previously named only the `IFNULL` spelling, so the `COALESCE` spelling slipped through — and it is a silent divergence, so no row-level equivalency check catches it.
+
+**The translation guide and reference now name all three wrong forms** for both `DIV0` and `DIV0NULL`, and state the faithful `IF(...)` forms explicitly.
+
+**The divergence moved into the gate, not just the docs.** A new `DIV0_NULL_COERCION` pattern joins the snowflake_to_bigquery pair's edge-case runtime-failure set — the set `dbt-migration-pre-pr-review` reads. It is classified a silent divergence at severity `error`, because it corrupts NULL-sensitive downstream logic such as checksum and data-quality guards with no runtime error. `dbt-migration-fix` treats it as an `auto` fix: the `IF(...)` form is a deterministic, always-correct rewrite, so a flagged model is auto-corrected rather than hand-worked. Documented-but-not-enforced was the gap; the pattern set is what the automated gate actually consumes.
+
+---
+
 ## v3.10.14 — Automating the pre-PR fix loop, so consultants adjudicate rather than hand-fix
 
 **Released**: July 2026

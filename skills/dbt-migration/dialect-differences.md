@@ -250,6 +250,8 @@ FROM my_table t LATERAL VIEW explode(t.tags) AS elem
 | Least | `LEAST(a, b, c)` | `LEAST(a, b, c)` | `least(a, b, c)` |
 | Safe divide | `SAFE_DIVIDE(a, b)` | `DIV0NULL(a, b)` | `a / nullif(b, 0)` |
 
+> **Safe-divide is name-idiomatic, not NULL-equivalent.** The row above maps each dialect's *idiomatic* safe divide, not an exact translation. Bare `SAFE_DIVIDE(a, b)` returns NULL on a zero divisor, whereas Snowflake `DIV0`/`DIV0NULL` return 0 — so when **migrating** a Snowflake `DIV0`/`DIV0NULL`, the faithful BigQuery form is `IF(b = 0, 0, SAFE_DIVIDE(a, b))` (`DIV0`) / `IF(b = 0 OR b IS NULL, 0, SAFE_DIVIDE(a, b))` (`DIV0NULL`). Bare `SAFE_DIVIDE` and the `IFNULL`/`COALESCE(SAFE_DIVIDE(…), 0)` wrappers are all wrong there — the migration gate flags them as `DIV0_NULL_COERCION`.
+
 ---
 
 ## DDL Differences
