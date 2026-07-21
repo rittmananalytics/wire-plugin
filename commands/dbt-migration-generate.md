@@ -470,10 +470,12 @@ SELECT COUNT(*) AS row_count FROM {target_project}.{target_schema}.{table_name};
 PASS: `|source_count - target_count| / source_count ≤ 0.005`
 FAIL: count outside tolerance — record source count, target count, and deviation.
 
-**Check B — Schema**:
+**Check B — Schema (set + column order)**:
 Compare column names, data types (per `type_mapping.md`), and nullability between source and target by querying `INFORMATION_SCHEMA.COLUMNS` on both platforms. Use the **deployment** warehouse types established in Step 0d as the target side wherever the validation warehouse differs from deployment — a schema check against a scratch warehouse's types passes while the deployment warehouse's types would fail. Apply the pair's "Deployment type-divergence patterns" (Step 0d) against the translated SQL and the deployment column types: any firing pattern (a `TIMESTAMP()` wrap on an already-typed column, a JSON function on a STRING/JSON-mismatched column, an implicit cross-type join coercion) is a Check B FAIL feeding the 3.1 auto-fix loop, not a silent pass.
-PASS: all columns present with expected types (modulo documented type translations) and no deployment type-divergence pattern fires.
-FAIL: missing columns, extra columns, unexpected type changes, nullability mismatches, or a fired deployment type-divergence pattern — record the specific column differences and the deployment column type.
+
+**Column order (W6b).** Query both sides with `ORDER BY ordinal_position` and compare the **sequences**, not just the sets, per the pair's "Schema-parity / column-order" section: source columns first in source ordinal order, then the pair's migration-appended tail allow-list (audit/load-timestamp columns, then region/surrogate globalize keys — concrete names from the engagement override) stripped before the source-sequence comparison. A positional mismatch, or a target column that is neither a source column in source order nor an allow-listed tail column, is a Check B FAIL, reason `column_order_drift`, feeding the same auto-fix loop — unless the model carries a `column_order_waived: <reason>` waiver in the migration register / model `meta`.
+PASS: all columns present with expected types (modulo documented type translations), no deployment type-divergence pattern fires, and the target column sequence equals the source ordinal order plus any allow-listed tail columns (or a waiver is recorded).
+FAIL: missing columns, extra columns, unexpected type changes, nullability mismatches, a fired deployment type-divergence pattern, or a `column_order_drift` mismatch with no recorded waiver — record the specific column differences and the deployment column type.
 
 **Check C — Column value sampling** (1000 rows):
 For a deterministic 1000-row sample (e.g. `ORDER BY 1 LIMIT 1000` or `TABLESAMPLE`), compare:

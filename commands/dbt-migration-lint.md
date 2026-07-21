@@ -147,13 +147,21 @@ Rules are derived from `translation_reference.md` §11 and the per-pair `feature
 
 ### Direction-agnostic rules
 
-These run in both directions and in both engines — they read model config, not the SQL parse tree, so they work identically under AST and regex modes.
+These run in both directions and in both engines. `MATERIALIZATION_DRIFT` reads model config, not the SQL parse tree, so it works identically under AST and regex; `UNPINNED_SELECT_STAR` reads the model's final output projection (AST preferred, regex fallback via the same paren-depth scan the cluster-by rule uses).
 
-| id | severity | detect (on translated model config) | fix hint | ref |
+| id | severity | detect (on translated model config or output projection) | fix hint | ref |
 |---|---|---|---|---|
 | `MATERIALIZATION_DRIFT` | warn | Translated model's resolved materialisation (in-file `{{ config(...) }}` / companion YAML) differs from the source manifest node's `config.materialized`, and no rule in the engagement's materialisation overrides file declares the change | Restore the preserved source materialisation, or declare the change as an override rule so it is on the record | `generate.md` "Materialisation config" |
+| `UNPINNED_SELECT_STAR` | error | The model's **final/output** `SELECT` projection — the depth-0 outermost query, not an import/staging CTE — is an unpinned star: `SELECT *`, `SELECT <alias>.*`, or `SELECT * EXCEPT(...)` | Expand to an explicit column list in source ordinal order. A lift-and-shift's output schema must be authored and reviewable: an unpinned `*` silently gains, loses, or reorders columns as the upstream evolves — breaking positional consumers (UNION/INSERT by position, CSV/SAR exports, BI and reverse-ETL pinned to column order) and defeating the `column_order_drift` parity check | §11.27 |
 
 `MATERIALIZATION_DRIFT` exists precisely because `dbt-migration-generate`'s materialisation hook (preserve-by-default plus declarative overrides) cannot catch every case: a model hand-edited after generation, or a model where no override was declared and the written materialisation is simply wrong. The hook is proactive, this rule is the after-the-fact backstop — both are intentionally kept; they are complementary, not redundant. A hit is not automatically a defect: when the overrides file declares the change (the model matches a rule's `select`, is not caught by its `exclude`, and the written materialisation equals that rule's `force_materialized`), the rule stays silent — a declared override is the hook working as designed, never a lint finding. Severity is `warn` because an undeclared change compiles fine and silently re-shapes the build: an incremental flattened to `table` changes cost and freshness, and with late-arriving data can change results.
+
+`UNPINNED_SELECT_STAR` targets the model's **output** projection only. Import/staging CTEs may `SELECT *` internally — that is idiomatic and safe; the rule fires only on the outermost, depth-0 `SELECT` that produces the model's output.
+
+- **Finding the output projection.** Track parenthesis depth over the compiled/static SQL exactly as `CLUSTER_BY_ORDER_BY_CONFLICT` does. A `*` inside a CTE body, a scalar/`IN` subquery, or `EXISTS(SELECT *)` is always inside at least one paren, never reaches depth 0, and is **not** flagged. Only a star in the depth-0 outermost `SELECT` list — the projection that becomes the model's schema — is a hit.
+- **All three forms are unpinned.** `SELECT *`, `SELECT <alias>.*`, and `SELECT * EXCEPT(col, ...)` are equally implicit: the emitted column set still depends on the upstream shape at run time rather than being authored in the model. All three are `error` on the output projection.
+- **Why `error`, not `warn`.** In a lift-and-shift the target's output schema is a contract. An unpinned star means a column added, dropped, or reordered upstream silently changes this model's output — and because the rows still match, no row-level equivalency check sees it. It also makes `column_order_drift` (W6b) unenforceable: there is no authored order to compare against.
+- **Deterministic fix — applied by `dbt-migration-fix`, never here.** Expand the star into the explicit source column list, in source ordinal order (per §11.27), so the projection is reviewable and `column_order_drift` can then verify it. Where sqlglot and the resolved upstream schema are available, the report attaches the expanded list as a suggested starting point.
 
 Engagement override files may add rows (e.g. a client-specific UDF that has no target equivalent) or downgrade a severity with a documented reason.
 
@@ -190,7 +198,7 @@ The resolved model list flows into Step 2 unchanged. Where Step 3 below names th
 For each model in scope:
 1. Strip/render Jinja; obtain the largest parseable SQL (compiled artifact if available).
 2. **Parse-check** in the target dialect → `PARSE` rule on failure.
-3. Run every rule for the active direction, plus the direction-agnostic rules. AST rules read the tree; regex rules apply the pattern; config rules (`MATERIALIZATION_DRIFT`) compare the translated model's config against the source manifest and the declared overrides; `CLUSTER_BY_ORDER_BY_CONFLICT` reads the resolved `cluster_by`/`materialized` config the same way and then tracks paren depth over the compiled SQL to find a real top-level trailing `ORDER BY`. Each hit records: `model`, `rule_id`, `severity`, line/span, the offending snippet, the fix hint, and the `translation_reference.md` section.
+3. Run every rule for the active direction, plus the direction-agnostic rules. AST rules read the tree; regex rules apply the pattern; config rules (`MATERIALIZATION_DRIFT`) compare the translated model's config against the source manifest and the declared overrides; `CLUSTER_BY_ORDER_BY_CONFLICT` reads the resolved `cluster_by`/`materialized` config the same way and then tracks paren depth over the compiled SQL to find a real top-level trailing `ORDER BY`; `UNPINNED_SELECT_STAR` tracks paren depth the same way to find an unpinned star in the depth-0 output projection. Each hit records: `model`, `rule_id`, `severity`, line/span, the offending snippet, the fix hint, and the `translation_reference.md` section.
 4. Where a rule has a deterministic rewrite and sqlglot is present, attach the suggested fix (informational).
 
 ### Step 3 — Write the report

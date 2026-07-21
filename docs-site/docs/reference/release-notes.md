@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.16 — Column-order parity and the end of the unpinned `SELECT *`
+
+**Released**: July 2026
+
+In a lift-and-shift the target model's output schema is a contract — the column set *and* their order must match the source. Two gaps let that contract slip. The schema-equivalence check compared column *sets*, so a reordered projection passed clean while breaking positional consumers — UNION/INSERT by position, CSV/SAR exports, BI and reverse-ETL pinned to column order. And nothing banned an unpinned `SELECT *`, which silently gains, loses, or reorders columns as the upstream evolves. Both close the same way as the rest of the equivalency-gate work: declare the rule in the platform pair, enforce it in the command.
+
+**W6a — unpinned `SELECT *` is now a lint error.** A model's final output projection must be an explicit column list. `SELECT *`, `SELECT <alias>.*`, and `SELECT * EXCEPT(...)` on the output projection are all `error` in `dbt-migration-lint` (`UNPINNED_SELECT_STAR`). Import and staging CTEs may `SELECT *` internally — detection tracks parenthesis depth, so only the model-producing projection is flagged, not a `*` inside a CTE, subquery, or `COUNT(*)`.
+
+**W6b — the schema check now compares column order, not just the set.** The existing schema-equivalence check (`equivalency-validate` / `dbt-migration-generate`) reads both sides `ORDER BY ordinal_position` and compares the sequences. Source columns must come first in source order; a migration's own additions — audit/load-timestamp columns, then region/surrogate globalize keys — are allowed at the tail via a pair-declared allow-list. A positional mismatch fails as `column_order_drift`. An intentional, data-owner-signed-off reorder is recorded per model as `column_order_waived: <reason>` — mandatory by default, waivable per model, never globally off.
+
+`dbt-migration-pre-pr-review` surfaces both before a PR is opened, and `dbt-migration-fix` drafts the fixes (reorder to source order; expand a banned `*` into the explicit source column list) as reviewable suggestions rather than committing them blind. Completes the W2–W6 equivalency-gate widening tracked on #150.
+
+---
+
 ## v3.10.15 — Catching every spelling of the DIV0 NULL-coercion trap
 
 **Released**: July 2026

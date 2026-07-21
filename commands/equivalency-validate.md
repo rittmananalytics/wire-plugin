@@ -160,10 +160,17 @@ PASS: |source_count - target_count| / source_count ≤ tolerance (default 0.1%, 
 FAIL: Count outside tolerance
 Relative-date-flagged models (Step 1.5): count over the pinned inline relation on both sides, not the stored table.
 
-**Check type 2 — Schema**
+**Check type 2 — Schema (set + column order)**
 Compare column names, types, and nullability between source and target. Use the **deployment** warehouse types from the Step 1d pre-flight as the target side wherever the validation warehouse differs from deployment, and fail on any firing deployment type-divergence pattern (reason `deployment_type_divergence`) — a schema check against a scratch warehouse's types passes while the deployment warehouse's types would error at cutover.
-PASS: All columns match (modulo expected type translations per type_mapping.md) and no deployment type-divergence pattern fires.
-FAIL: Missing columns, extra columns, unexpected type changes, or a fired deployment type-divergence pattern
+
+**Column order (W6b).** Do not compare column sets only — a reordered projection passes a set comparison while breaking positional consumers (UNION/INSERT by position, CSV/SAR exports, BI and reverse-ETL pinned to column order). Query both sides with `SELECT column_name, data_type, is_nullable FROM INFORMATION_SCHEMA.COLUMNS ... ORDER BY ordinal_position` and compare the **sequences**, per the pair's **"Schema-parity / column-order"** section:
+- Source columns must appear first, in source ordinal order.
+- The pair's migration-appended tail allow-list (audit/load-timestamp columns, then region/surrogate globalize keys — concrete names from the engagement override) may follow, at the tail, in the declared category order. Strip allow-listed tail columns before comparing the source-column sequence.
+- Any positional mismatch is a FAIL, reason `column_order_drift`. A target column that is neither a source column (in source order) nor an allow-listed tail column is also `column_order_drift` (an unexpected column).
+- **Waiver**: a model carrying `column_order_waived: <reason>` in the migration register / model `meta` suppresses `column_order_drift` for that model only (the reason is recorded in the result). Never globally disabled.
+
+PASS: Column sets match (modulo expected type translations per type_mapping.md), no deployment type-divergence pattern fires, and the target column sequence equals the source ordinal order plus any allow-listed tail columns (or a `column_order_waived` waiver is recorded).
+FAIL: Missing columns, extra columns, unexpected type changes, a fired deployment type-divergence pattern, or a column-order mismatch (`column_order_drift`) with no recorded waiver.
 
 **Check type 3 — Value sampling**
 For numeric columns: compare mean, min, max, null percentage (sample 10K rows if table >10M rows)

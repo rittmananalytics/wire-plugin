@@ -92,6 +92,23 @@ Consumed by the W4 governance equivalence check (`equivalency-validate`). Row-le
 
 **Expected protection** is derived from the source column's `meta.masking_policy` (the same value `dbt-migration-generate` Step 3b item 4 maps to a target policy tag via the PII tag map). A source column carrying a `meta.masking_policy` is *expected protected*; the target column satisfies it when it carries a `policy_tags` binding (or an equivalent target masking mechanism). A source column with no masking policy is not expected protected — the check does not demand tags it never had. See `translation_reference.md` §16 for the full mechanism mapping and why `CURRENT_ROLE()`-branching policies need a rebuild rather than a mechanical translation.
 
+## Schema-parity / column-order
+
+Consumed by the W6b column-order comparison in the schema-equivalence check (`equivalency-validate` check type 2 and `dbt-migration-generate` Check B) and surfaced by `dbt-migration-pre-pr-review`. Row-level equivalency proves the same rows come out; it cannot see that the **columns are in the same ordinal order** as the source. A reordered projection — or an unpinned `SELECT *` (see `UNPINNED_SELECT_STAR` in the lint catalogue and §11.27) that gains, loses, or reorders columns as the upstream evolves — passes a set-based schema check while breaking positional consumers: UNION/INSERT by position, CSV/SAR exports, BI and reverse-ETL pinned to column order. A lift-and-shift's schema-parity contract includes order.
+
+**The comparison.** Read `SELECT column_name, data_type, is_nullable FROM INFORMATION_SCHEMA.COLUMNS ... ORDER BY ordinal_position` on both platforms and compare the **sequences**, not just set membership. Source columns must appear first, in source ordinal order; any migration-added columns follow, at the tail, in the order below. A positional mismatch is an `error`, reason `column_order_drift`.
+
+**Migration-appended tail allow-list.** These are the column categories a migration legitimately adds after the source columns; they are allowed at the tail (in this category order) before the sequence is compared. The categories are pair-declared and generalise; the concrete column names are supplied by the engagement override (`.wire/engagement/platform_pair_overrides/snowflake_to_bigquery/`), since they are client-specific:
+
+| order | category | what it is | name source |
+|---|---|---|---|
+| 1 | audit / load-timestamp columns | columns the target loader/ELT stamps on every row (e.g. a `_<loader>_loaded_at` / `_<loader>_synced_at` pair) | engagement override — exact names per client loader |
+| 2 | region / surrogate globalize keys | keys added when a per-region source is globalised into one target table (e.g. a `country`/region column, then a globalised surrogate `<entity>_id`) | engagement override — per multi-region model |
+
+A column that is neither a source column (in source order) nor an allow-listed tail column is a `column_order_drift` FAIL — an unexpected column, not just a reorder.
+
+**Per-model waiver.** An intentional, data-owner-signed-off reorder is recorded per model as `column_order_waived: <reason>` in the migration register (or the model's `meta`). A waiver suppresses `column_order_drift` for that model only. It is mandatory by default and waivable per model — never globally disabled, so a reorder is always either parity-verified or explicitly on the record.
+
 ## dbt Profile Changes
 
 The target dbt profile must use the BigQuery adapter:

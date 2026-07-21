@@ -75,7 +75,8 @@ Every finding is classified into one of three policies. The default mapping belo
 **`propose` — draft the fix, but a human confirms.** Deterministic to write, but intent-dependent, so it is drafted into the escalation queue as a ready-to-apply suggestion rather than committed silently:
 - `STRING_FN_ON_NONSTRING` → `CAST(col AS STRING)` **or** remove the string function (a `TRIM()` on an id may be spurious — the consultant decides which)
 - `MATERIALIZATION_DRIFT` → restore the source materialisation or declare the override
-- `column_order_divergence` → reorder to match source (safe, but positional consumers vary)
+- `column_order_drift` (W6b) → reorder the output projection to source ordinal order plus the pair's allow-listed tail columns — deterministic to write, but positional consumers vary and an intentional reorder may instead warrant a `column_order_waived` reason, so the consultant confirms
+- `UNPINNED_SELECT_STAR` (W6a) → expand the output-projection star into the explicit source column list, in source ordinal order — deterministic given the resolved upstream schema, but which columns are intended (and whether an `EXCEPT` was deliberate) is a judgment, so it is drafted, not committed silently
 - stale companion-YAML descriptions
 
 **`decision` — no safe auto fix; escalate for a human.** The finding needs information or a judgment the loop does not have:

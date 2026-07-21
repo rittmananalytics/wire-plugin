@@ -79,6 +79,10 @@ Run every check over each in-scope model in the diff. Each finding records `seve
 
 **Check 5 — Dropped column governance metadata (W4).** Compare each diffed model's column-level protection at target against the source masking policy / policy tag for the same column, per the pair's **"Column governance / masking mechanisms"** section. Flag every column protected at source but unprotected at target (`error`, `governance_regression`), and every `MANUAL REVIEW REQUIRED` masking flag `dbt-migration-generate` left unresolved. Fix hint: author the target `policy_tags` / masking, or resolve the tag map entry.
 
+**Check 6 — Unpinned `SELECT *` and column-order drift (W6).** Two parts, both driven by the pair:
+- **`SELECT *` (W6a, static diff check).** Flag any changed model whose **final/output** projection is an unpinned star — `SELECT *`, `SELECT <alias>.*`, or `SELECT * EXCEPT(...)` — using the same paren-depth scan as `dbt-migration-lint`'s `UNPINNED_SELECT_STAR` (import/staging CTEs may `SELECT *` internally; only the depth-0 output projection is flagged). If `dbt-migration-lint` has run over the scope, cite its `UNPINNED_SELECT_STAR` findings rather than re-detecting. Severity `error`. Fix hint: expand to the explicit source column list in source ordinal order.
+- **Column order (W6b, from the schema-check result).** Read the schema-equivalence check's column-order result (`equivalency-validate` check type 2 / `dbt-migration-generate` Check B). Surface every `column_order_drift` for a diffed model — the target column sequence does not match source ordinal order plus the pair's allow-listed tail columns — unless the model carries a `column_order_waived` waiver. Severity `error`. Where the schema check has not run for the scope, note it as a coverage gap (not "clean"). Fix hint: reorder the output projection to source ordinal order, or record a `column_order_waived` reason.
+
 ## Workflow
 
 ### Step 0 — Load config overlay, resolve project(s) and scope
@@ -88,14 +92,14 @@ Load any `--config`/`--tag-map`/`--target-dataset`/`--dbt-project-path` overlay 
 Diff `migration/dbt/` against `--base`. The review scope is the intersection of the changed files and the resolved model set — a re-review after a fix re-checks only what moved.
 
 ### Step 2 — Run the check catalogue
-Run Checks 1–5 over every in-scope model. Where a downstream gate already produced a result (Check 5 coverage report, W3 pre-flight, W4 governance), read it rather than re-running; where it hasn't run, check the diff directly. Record each finding in the shape above.
+Run Checks 1–6 over every in-scope model. Where a downstream gate already produced a result (Check 5 coverage report, W3 pre-flight, W4 governance, the `dbt-migration-lint` `UNPINNED_SELECT_STAR` findings and the schema check's `column_order_drift` result for Check 6), read it rather than re-running; where it hasn't run, check the diff directly. Record each finding in the shape above.
 
 ### Step 3 — Write the findings report
 Write `migration/pre_pr_review/batch_N_pre_pr_review.md` (or `wave_{id}_...`, or `model_{name}_...`), and `.json` if `--format json`. Structure:
 - **Header**: pair, direction, scope, `--base` ref, model count, and the line "resolve these locally — do not open the PR until every `error` is cleared."
 - **Summary**: counts by severity; models clean vs flagged.
 - **Findings**: grouped by model, ordered by severity. Each finding shows `file:line`, the construct, the severity, the fix hint, and its source (pair section / gate).
-- **Coverage gaps**: any check that could not run (no target profile for W2, no deployment warehouse for W3, no tag map for W4) — a gap is "not checked", never "clean".
+- **Coverage gaps**: any check that could not run (no target profile for W2, no deployment warehouse for W3, no tag map for W4, no schema-check result for the W6b column-order surface) — a gap is "not checked", never "clean".
 
 ### Step 4 — Update status
 ```yaml
