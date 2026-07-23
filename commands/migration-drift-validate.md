@@ -51,6 +51,10 @@ PASS/FAIL with models whose downstream syncs were not flagged.
 Every model whose source `meta.masking_policy` changed is listed as a masking change with a required `target-setup` policy-tag regeneration action.
 PASS: all masking changes have an action (or none changed). FAIL: a masking change with no regeneration action.
 
+**Check 6 — Stale NULL-pads flagged for restore, never auto-rewritten**
+Every model carrying a `-- MARKET GAP:` NULL-pad whose named source column is now present in the live source (Step 5b, pair rule `STALE_NULL_PAD_BRONZE_PRESENT`) is listed in the report as a flag-for-restore finding (model, column, now-present market(s), synthesized type) and its register row is `state = drifted`. Confirm none was silently auto-rewritten in the translated SQL — the NULL-pad must still be present with its marker until a re-translation restores it.
+PASS: every now-present MARKET GAP column is flagged for restore and none auto-rewritten (or none apply). FAIL: a now-present MARKET GAP column not flagged, or one rewritten in place without a recorded restore decision.
+
 ### Update status
 
 ```yaml

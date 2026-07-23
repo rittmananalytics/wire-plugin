@@ -163,6 +163,18 @@ These run in both directions and in both engines. `MATERIALIZATION_DRIFT` reads 
 - **Why `error`, not `warn`.** In a lift-and-shift the target's output schema is a contract. An unpinned star means a column added, dropped, or reordered upstream silently changes this model's output — and because the rows still match, no row-level equivalency check sees it. It also makes `column_order_drift` (W6b) unenforceable: there is no authored order to compare against.
 - **Deterministic fix — applied by `dbt-migration-fix`, never here.** Expand the star into the explicit source column list, in source ordinal order (per §11.27), so the projection is reviewable and `column_order_drift` can then verify it. Where sqlglot and the resolved upstream schema are available, the report attaches the expanded list as a suggested starting point.
 
+### Deployment-integration rules (pair-declared)
+
+These read the pair's **"Deployment-integration / provenance defect patterns"** section, not a rule hardcoded here — a new pair inherits them by declaring the section. They catch the deploy-time defects that pass a co-located validation warehouse and break under the real deployment project split or against the live source. All three are deterministic, and each has a deterministic auto-fix that `dbt-migration-generate`'s inline pass applies and `dbt-migration-fix` re-applies; this lint is the independent backstop for hand-edited or non-Wire code.
+
+| id | severity | detect | fix hint | ref |
+|---|---|---|---|---|
+| `MODEL_NOT_REGISTERED_FOR_DEPLOYMENT` | error | The model's dataset/folder is absent from the deployment orchestrator's model-selection manifest, resolved via the pair's `deployment_manifest` pointer in status.md | Add the folder to the manifest's selection | pair "Deployment-integration / provenance defect patterns" (rule 1) |
+| `HARDCODED_TARGET_DATABASE_XPROJECT` | error | A cross-project relation reference built from `{{ target.database }}` or a hardcoded target-project literal that should be a `source()` call | Rewrite to `source('<source>', '<table>')` resolving to the correct deployment source database | pair section (rule 2) |
+| `CDC_SOURCE_NO_SOFT_DELETE_FILTER` | error | A read of a CDC source carrying the pair's soft-delete marker (`_fivetran_deleted`) with no soft-delete filter | Inject the pair's soft-delete filter macro (`{{ filter_soft_deletes() }}` / `WHERE NOT COALESCE(_fivetran_deleted, FALSE)`) | pair section (rule 3) |
+
+**`MODEL_NOT_REGISTERED_FOR_DEPLOYMENT` is a documented no-op when unconfigured.** Read the `migration.deployment_manifest` pointer from status.md (or the `--config` overlay). If it is unset or its `path` does not resolve, do **not** emit a PASS for this rule — record it in the report's **Coverage gaps** section (`deployment manifest not configured — MODEL_NOT_REGISTERED_FOR_DEPLOYMENT not checked`) so a clean result is never mistaken for a checked one. The `STALE_NULL_PAD_BRONZE_PRESENT` pattern (rule 4 in the same pair section) is **not** a lint rule — it needs the live source warehouse and each model's `last_migrated_commit`, so it lives in `migration-drift`, not here.
+
 Engagement override files may add rows (e.g. a client-specific UDF that has no target equivalent) or downgrade a severity with a documented reason.
 
 ## Workflow

@@ -29,6 +29,8 @@ description: Validate migration report completeness
 
 ## Validation Checks
 
+Checks 1–6 validate the default post-migration report. Checks 7–10 apply **only when the defect-provenance lens was generated** (`migration/migration_report_defects.md` exists, from `migration-report-generate --lens defects`); skip them otherwise. The two report modes are validated independently — a defects report is never required for the default report to pass, and vice versa.
+
 **Check 1 — Object counts reconcile**
 The total migrated objects in the report match the migration inventory scope.
 PASS/FAIL.
@@ -51,6 +53,22 @@ PASS/FAIL.
 
 **Check 6 — Migration status: complete**
 `status.md` has `migration.status: complete`.
+PASS/FAIL.
+
+**Check 7 — Stage-of-capture breakdown present and earliest-gate attributed** (defects lens only)
+Each wave has a stage-of-capture table over the pipeline order (`generate_inline`, `lint`, `validate`, `equivalency`, `pre_pr_review`), broken down by pattern id / defect class. Each defect is counted once — at the earliest gate that caught it — so no defect is double-counted across gates, and the per-wave total equals the count of distinct defects.
+PASS/FAIL.
+
+**Check 8 — Auto-fixed vs escalated split present** (defects lens only)
+Each wave reports the `dbt-migration-fix` split (auto-fixed, escalated-propose, escalated-decision).
+PASS/FAIL.
+
+**Check 9 — Client-caught leakage explicit** (defects lens only)
+Each wave states a client-caught figure that is either an integer (from the `--client-caught` input) or "not tracked" — never a silent 0 standing in for an untracked wave.
+PASS/FAIL.
+
+**Check 10 — Wave-over-wave trend present** (defects lens only)
+The report includes the wave-ordered trend rollup across the covered waves, and any pattern reaching the client in ≥2 waves is surfaced as a rule candidate (flagged for human review, not auto-actioned).
 PASS/FAIL.
 
 ### Update status

@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.10.19 — Catch migration defects earlier, measure where they're caught, and fix the version check
+
+**Released**: July 2026
+
+Three changes, all following on from the widened migration gate (#150).
+
+**Shift-left auto-fix in `dbt-migration-generate` (#167).** The per-model translation loop used to auto-fix only when the three-check equivalency comparison *failed* — so a defect that didn't break the sampled data (a bare `PARSE_JSON`, a `DIV0` NULL-coercion, an unpinned `SELECT *`, a dropped policy tag) passed and was left for a later gate, or the client, to catch. The loop now proactively applies the active pair's full deterministic rule set during translation and auto-rewrites the deterministic-and-safe ones inline, using the `dbt-migration-fix` auto/propose/decision policy — semantic, intent-dependent patterns are still only flagged, never rewritten. Four residual rules join the set: `MODEL_NOT_REGISTERED_FOR_DEPLOYMENT` (a new model missing from the deployment orchestrator's selection manifest — a documented no-op, never a false pass, when the manifest pointer isn't configured), `HARDCODED_TARGET_DATABASE_XPROJECT`, `CDC_SOURCE_NO_SOFT_DELETE_FILTER`, and `STALE_NULL_PAD_BRONZE_PRESENT` (in `migration-drift`, flag-for-restore only). And `generate` now chains `validate → lint → fix → pre-pr-review` by default (opt out with `--no-chain`), so a run leaves the gates already applied rather than stopping at "recommended next steps" — the skip that let defects reach the client on the early waves.
+
+**Defect-provenance report (#168).** A new `migration-report-generate --lens defects` aggregates the structured findings every gate already emits into a per-wave view: which stage caught each defect (earliest of generate-inline / lint / validate / equivalency / pre-PR review), the auto-fixed vs escalated split, a client-caught count (explicitly `"not tracked"` when the optional client-review input is absent — never a silent zero), and a wave-over-wave trend so the leftward shift is visible at a glance. It surfaces a class that keeps reaching the client as a rule *candidate*; deciding to encode it stays a human call.
+
+**`/wire:start` plugin version check fixed (#170).** The Phase 1 health check never actually detected anything — it looked for `~/.claude/plugins/wire/` and a `VERSION` file, neither of which exists, so it always reported "unknown" and never flagged an outdated plugin. It now reads the installed version from `~/.claude/plugins/installed_plugins.json` and the latest from the published plugin manifest, compares them with proper semver (so `3.10.9` reads as older than `3.10.18`), never nags when it simply couldn't reach the network, and hands you the correct current update commands.
+
+---
+
 ## v3.10.18 — dbt snapshots migrate as a first-class object type
 
 **Released**: July 2026

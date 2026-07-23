@@ -57,27 +57,63 @@ It is the answer to "I don't know what to do next." It reads project state, asks
 
 ### Step 1.1: Detect Installation State
 
-Run in sequence:
+**Where the version actually lives (do not guess).** Claude Code records installed plugins in `~/.claude/plugins/installed_plugins.json` — the authoritative source. For the Wire plugin the entry is keyed `wire@rittman-analytics`, carrying `version` and `installPath`. There is **no** `VERSION` file and **no** `~/.claude/plugins/wire/` directory (the earlier version of this check looked for both and so never worked — it always fell through to "unknown"). The install cache at `~/.claude/plugins/cache/rittman-analytics/wire/<version>/` keeps *several* version directories side by side (old ones linger), so "the highest cache dir" is not the installed version either — read `installed_plugins.json`.
+
+The latest published version is the `version` in wire-plugin's `.claude-plugin/plugin.json` on `main` (what `release.sh` pushes), with the locally-synced marketplace copy as an offline fallback.
+
+Run this single detection block and act on the `CASE=` line it prints:
 
 ```bash
-# Check if Wire plugin is installed at all
-ls ~/.claude/plugins/wire/ 2>/dev/null && echo "INSTALLED" || echo "NOT_INSTALLED"
+python3 - <<'PY' 2>/dev/null || echo "CASE=UNKNOWN detail=python3-unavailable"
+import json, os, urllib.request
 
-# Get installed version (if installed)
-cat ~/.claude/plugins/wire/VERSION 2>/dev/null || echo "UNKNOWN"
+home = os.path.expanduser("~")
+inst = os.path.join(home, ".claude/plugins/installed_plugins.json")
+mkt  = os.path.join(home, ".claude/plugins/marketplaces/rittman-analytics/.claude-plugin/plugin.json")
 
-# Detect legacy project structure (old Gemini/.dp-era layout)
-ls .dp/ 2>/dev/null && echo "LEGACY_DP" || echo "NO_LEGACY"
+def vt(v):
+    try: return tuple(int(x) for x in str(v).split("."))
+    except Exception: return None
 
-# Get the canonical latest version from the repo
-cat "$(git rev-parse --show-toplevel 2>/dev/null)/VERSION" 2>/dev/null \
-  || curl -sf https://raw.githubusercontent.com/rittmananalytics/wire-plugin/main/VERSION 2>/dev/null \
-  || echo "UNKNOWN_LATEST"
+# Installed version — authoritative
+installed = install_path = None
+try:
+    e = (json.load(open(inst)).get("plugins", {}).get("wire@rittman-analytics") or [])
+    if e:
+        installed = e[0].get("version"); install_path = e[0].get("installPath")
+except Exception:
+    pass
+
+# Latest published — canonical from GitHub, fall back to the synced marketplace copy
+latest = None
+try:
+    req = urllib.request.Request(
+        "https://raw.githubusercontent.com/rittmananalytics/wire-plugin/main/.claude-plugin/plugin.json",
+        headers={"User-Agent": "wire-start"})
+    latest = json.load(urllib.request.urlopen(req, timeout=6)).get("version")
+except Exception:
+    try: latest = json.load(open(mkt)).get("version")
+    except Exception: pass
+
+iv, lv = vt(installed), vt(latest)
+if installed is None:
+    case = "A"                     # not installed
+elif lv is None or iv is None:
+    case = "C_UNVERIFIED"          # installed, but couldn't check latest (offline) — don't nag
+elif iv < lv:
+    case = "B"                     # outdated
+else:
+    case = "C"                     # current (>= latest)
+print(f"CASE={case} installed={installed or 'none'} latest={latest or 'unknown'} install_path={install_path or ''}")
+PY
+
+# Legacy project structure (old Gemini/.dp-era layout) — independent of the version check
+ls .dp/ >/dev/null 2>&1 && echo "LEGACY_DP" || echo "NO_LEGACY"
 ```
 
 ### Step 1.2: Evaluate and Output Health Status
 
-Based on the results, output one of the following blocks — always as the very first output, before any other content.
+Read the `CASE=` verdict from Step 1.1 and output the matching block below — always as the very first output, before any other content. `CASE=A` → Case A; `CASE=B` → Case B (substitute the real `installed`/`latest` values); `CASE=C` → Case C; `CASE=C_UNVERIFIED` → Case C with the "couldn't verify latest" note; `CASE=UNKNOWN` (python3 unavailable) → treat as Case C_UNVERIFIED, showing installed as "unknown". **Never** treat "couldn't verify latest" as outdated — a network blip must not nag a user who is actually current.
 
 ---
 
@@ -113,47 +149,63 @@ After Step 3, re-run /wire:start and continue from here.
 ║  WIRE UPDATE REQUIRED                                            ║
 ╚══════════════════════════════════════════════════════════════════╝
 
-Installed version:  [installed_version or "unknown"]
-Latest version:     [latest_version or "check GitHub"]
+Installed version:  [installed]
+Latest version:     [latest]
 
 An outdated Wire plugin may be missing commands referenced below.
-Update now (takes ~60 seconds):
+Update now (takes ~60 seconds) — run these in order:
 
-  Step 1:  /plugins
-           → navigate to Marketplaces
-           → highlight Wire → press U (update marketplace entry)
+  Step 1:  /plugin marketplace update rittman-analytics
+           (re-fetches the catalogue from GitHub)
 
-  Step 2:  Still in /plugins
-           → navigate to Installed
-           → highlight Wire → press Enter → press U (update plugin files)
+  Step 2:  /plugin install wire@rittman-analytics
+           (pulls the refreshed version into the plugin cache;
+            if it reports "already installed", continue anyway)
 
   Step 3:  /reload-plugins
+           (loads the new version into this session)
 
-  Step 4:  Re-run /wire:start
+  Step 4:  Re-run /wire:start to confirm you're now on [latest]
 
-If the version still shows as unknown after these steps, or if you
-see "command not found" errors for /wire:* commands, exit Claude Code
-completely, reopen it, and run /wire:start again.
+One-liner alternative (from the shell, then reload):
+  ! claude plugin update wire@rittman-analytics    →  /reload-plugins
 
-⚠️  Common symptom of outdated plugin: you type /wire:session-plan
-    and it says "command not found", or Wire commands return errors
-    about missing spec files.
+If the version still shows outdated after these steps, or you see
+"command not found" for /wire:* commands, quit Claude Code completely,
+reopen it, and run /wire:start again.
+
+⚠️  Common symptom of an outdated plugin: a /wire:* command reports
+    "command not found", or returns errors about missing spec files.
 
 Would you like to update now, or continue with the outdated version?
 (Continuing is fine for navigation — you may hit missing commands.)
 ```
 
-Wait for response. If user says update now, stop and let them do it. If continue, add a note to the Phase 4 output: `⚠️ Running outdated plugin — some commands may be unavailable.`
+**`/wire:start` cannot update the plugin itself** — Claude Code plugin installs/updates only happen through the `/plugin*` slash commands (or the `claude plugin` CLI), which a command spec cannot invoke. So detect accurately and hand the user the exact commands above, then wait.
+
+Wait for response. If the user says update now, stop and let them run the commands. If they say continue, add a note to the Phase 4 output: `⚠️ Running outdated plugin ([installed] < [latest]) — some commands may be unavailable.`
 
 ---
 
 **Case C — Wire is installed, version is current:**
 
 ```
-✅  Wire [version] — up to date
+✅  Wire [installed] — up to date
 ```
 
 Output this inline as a single line. Proceed immediately to Phase 2 without pausing.
+
+---
+
+**Case C_UNVERIFIED — Wire is installed, but the latest version couldn't be checked:**
+
+Emitted when the installed version is known but the latest could not be fetched (no network, or `python3` unavailable — `CASE=UNKNOWN`). Do **not** prompt to update; a failed check is not evidence of being outdated.
+
+```
+✅  Wire [installed or "unknown"] — installed (couldn't verify latest; offline?)
+```
+
+Output inline as a single line and proceed immediately to Phase 2.
 
 ---
 

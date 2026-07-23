@@ -53,6 +53,8 @@ It is designed to run on a schedule (see "Scheduling" below) and as a CI gate on
 - `audit/lineage/model_sync_map.json` (from `lineage-generate`) — Gold→Hightouch edges (which syncs read each warehouse model)
 - `audit/reverse_etl_audit.md` — the Hightouch sync inventory and config references
 - Source model `meta.masking_policy` declarations (schema/properties YAML)
+- Translated model SQL under `migration/dbt/` — scanned for `-- MARKET GAP:` NULL-pad markers (Step 5b)
+- Active platform pair `translation_guide.md` — the **"Deployment-integration / provenance defect patterns"** section (rule 4, `STALE_NULL_PAD_BRONZE_PRESENT`)
 
 ## Workflow
 
@@ -90,11 +92,22 @@ For each flagged sync, produce a **Hightouch config diff**: compare the sync's c
 
 For each **modified** model, diff its source `meta.masking_policy` (in the model's schema/properties YAML) between `last_migrated_commit` and `drift_head`. If `meta.masking_policy` was **added, changed, or removed** on any column, flag a **masking change** and trigger the policy-tag generator: re-run the `target-setup` security step (`04_security.sql` policy-tag taxonomy / data policies) for the affected objects so the BigQuery policy tags match the new source masking. Record which columns changed and that the policy-tag regeneration is required (do not silently let masking drift — a dropped masking policy that isn't re-applied is a data-exposure risk; a new one that isn't applied breaks the consuming role).
 
+### Step 5b: Stale NULL-pad restore hook (`STALE_NULL_PAD_BRONZE_PRESENT`)
+
+Read the pair's **"Deployment-integration / provenance defect patterns"** section (rule 4) — this is the one rule of that set that belongs in drift, because the column it watches for lands *after* generation, and only a gate that runs against the moving source can see it.
+
+At translation time, `dbt-migration-generate` Step 3.1 item b substitutes `CAST(NULL AS <type>) /* -- MARKET GAP: <col> not present in <markets> ... */` for a source column absent in one or more markets. The connector can later catch up and the column can start carrying real data. For every `state = migrated`/`drifted` model whose translated SQL carries a `-- MARKET GAP:` NULL-pad, re-check the named source column against the **live** source warehouse (the same schema introspection Step 2's diff uses) for the previously-missing market(s):
+
+- If the column is now **present and populated** in the live source for any of the affected markets, flag a **stale NULL-pad** finding: name the model, the column, the market(s) that now carry it, and the synthesized type from the marker. This is **flag-for-restore only** — never auto-rewritten here. Restoring the real column mapping and type is a re-translation decision (`/wire:dbt-migration-generate $ARGUMENTS --select <model>`), not a mechanical edit; note that in the finding.
+- If the column is still absent in every affected market, leave the NULL-pad as-is (no finding).
+
+Record each stale NULL-pad in the drift report (Step 6) and set the model's register `state = drifted` (its translation no longer matches the source) with a `notes` entry naming the restored column. Do not silently leave a column synthesizing NULL once the source carries real data — that is a widening, invisible data gap.
+
 ### Step 6: Write the drift report
 
 **Output location**: `.wire/releases/$ARGUMENTS/migration/migration_drift_report.md`
 
-Use `TEMPLATES/migration/migration_drift_report.md`. Include: `drift_head` and the run timestamp; counts (modified / removed / new / unchanged); the per-model drift table (model, classification, change summary, prior equivalence state); the flagged downstream syncs with their config diffs; and the masking changes with the policy-tag regeneration actions. Re-write the affected register rows (Step 2).
+Use `TEMPLATES/migration/migration_drift_report.md`. Include: `drift_head` and the run timestamp; counts (modified / removed / new / unchanged); the per-model drift table (model, classification, change summary, prior equivalence state); the flagged downstream syncs with their config diffs; the masking changes with the policy-tag regeneration actions; and the **stale NULL-pad restores** (Step 5b) — each flagged model, column, now-present market(s), and synthesized type, marked flag-for-restore. Re-write the affected register rows (Step 2 and Step 5b).
 
 ### Step 7: Update status
 
@@ -110,6 +123,7 @@ artifacts:
     new: N
     syncs_flagged: N
     masking_changes: N
+    stale_null_pads: N        # STALE_NULL_PAD_BRONZE_PRESENT — MARKET GAP columns now present in the live source, flagged for restore
 ```
 
 ### Step 8: Output next command

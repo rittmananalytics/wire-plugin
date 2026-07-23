@@ -23,7 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Translate dbt models batch by batch to target dialect with inline equivalency validation
-argument-hint: <release-folder> [--batch N] [--wave id] [--model name] [--select selector] [--exclude selector] [--macros] [--snapshots [names]] [--config path] [--tag-map path] [--target-dataset name] [--dbt-project-path path]
+argument-hint: <release-folder> [--batch N] [--wave id] [--model name] [--select selector] [--exclude selector] [--macros] [--snapshots [names]] [--no-chain] [--config path] [--tag-map path] [--target-dataset name] [--dbt-project-path path]
 ---
 
 ## Auto-Delegation
@@ -87,6 +87,7 @@ Works in batches as defined in the dbt audit, or in waves as defined by the auth
 - `--tag-map <path>` — shorthand for a `--config` overlay that sets only `migration.pii_tag_map_path`. Equivalent to `--config` with a one-key overlay file; use this when the *only* thing an isolated run needs to override is the PII tag map, without writing a throwaway YAML file first.
 - `--target-dataset <name>` — shorthand for a `--config` overlay that sets only `migration.target_schema`. Use for a one-off run against a scratch/test dataset without touching the release's real target schema.
 - `--dbt-project-path <path>` — shorthand for a `--config` overlay that sets only `migration.dbt_project_path`. Use to point a single run at a different project root (e.g. a scratch checkout) without a full overlay file.
+- `--no-chain` — **opt out of the downstream-gate chain.** By default a model-path run chains `dbt-migration-validate` → `dbt-migration-lint` → `dbt-migration-fix` → `dbt-migration-pre-pr-review` after the batch loop (Step 7), so a run leaves the gates already applied rather than stopping at "recommended next steps". `--no-chain` stops after Step 6 with the next-command hint only — for when the consultant wants to inspect the batch before gating, or is driving the gates manually. The chain is model-path only: `--macros` and `--snapshots` never chain regardless of this flag (see Step 7).
 - No flag — process the next incomplete batch (read from status.md `dbt_migration.current_batch`)
 
 **Discrete overlay flags vs. `--config`**: `--tag-map`/`--target-dataset`/`--dbt-project-path` are convenience aliases — each is exactly equivalent to `--config` pointed at a one-key overlay file setting that single field, read at Step 0c the same way, in memory for this invocation only, never written back to status.md. They compose freely with each other and with `--config` itself (later flags on the command line win on a per-key basis if the same key is set more than once — e.g. `--config base.yml --target-dataset scratch_v2` uses every key from `base.yml` except `target_schema`, which `--target-dataset` overrides). Use the discrete flags for a single-field override where writing a whole overlay file would be overkill; use `--config` when overriding several fields at once (e.g. `dbt_project_path` and `target_schema` and `pii_tag_map_path` together for a full scratch-project run).
@@ -466,6 +467,29 @@ Forcing a materialisation the source did not use **diverges from the source** �
 
 **Relationship to `dbt-migration-lint`.** The lint command's `MATERIALIZATION_DRIFT` rule is the after-the-fact backstop for anything this hook cannot reach — a model hand-edited after generation, or a written materialisation that is wrong despite preservation. Both mechanisms are intentionally kept: the hook prevents the wrong choice being written; the lint rule detects one that got written anyway.
 
+##### Proactive deterministic-defect pass (shift-left)
+
+Modelled on the materialisation-preservation hook above — the hook prevents the wrong choice being *written*; this pass prevents the known silent-and-deploy-time defects being written. Today a defect that doesn't break the sampled data (a bare `PARSE_JSON`, a `DIV0` emitted as bare `SAFE_DIVIDE`, an unpinned `SELECT *`, a `column_order_drift`, a dropped policy tag) sails through the three-check equivalency and is left for a later gate. This pass catches them **during translation** instead.
+
+**Run this on every iteration, right after applying the translations in this step and before writing the SQL (3.2), alongside the translation safeguards.** Load the active pair's full deterministic rule set — the union of:
+- the `dbt-migration-lint` catalogue (`BARE_UNION`, `LEFTOVER_CAST_OP`, `DATEDIFF_ARGORDER`, `ARRAY_AGG_NULLS`, `QUALIFY_NO_WHERE`, `REGEXP_ANCHOR`, `CLUSTER_BY_ORDER_BY_CONFLICT`, `MATERIALIZATION_DRIFT`, `UNPINNED_SELECT_STAR`, …);
+- the `dbt-migration-pre-pr-review` edge-case / governance / column-order patterns — the pair's **"Edge-case runtime-failure patterns"** (`UNGUARDED_JSON_PARSE`, `CAST_BLANK_STRING_NUMERIC`, `UNANCHORED_REGEX`, `DIV0_NULL_COERCION`), **"Column governance / masking mechanisms"** (`governance_regression` — the dropped policy tag), and **"Schema-parity / column-order"** (`column_order_drift`);
+- the pair's **"Deployment-integration / provenance defect patterns"** rules 1–3 (`MODEL_NOT_REGISTERED_FOR_DEPLOYMENT`, `HARDCODED_TARGET_DATABASE_XPROJECT`, `CDC_SOURCE_NO_SOFT_DELETE_FILTER`) — rule 4 (`STALE_NULL_PAD_BRONZE_PRESENT`) is **not** run here (the column lands after generation — it lives in `migration-drift`).
+
+Classify every pattern that fires using the **`dbt-migration-fix` auto/propose/decision classifier** (fix.md's fix-policy table — pair/engagement overrides applied):
+
+- **`auto` (deterministic and semantically safe regardless of intent) — rewrite inline, now.** `UNGUARDED_JSON_PARSE`→`SAFE.`; `CAST_BLANK_STRING_NUMERIC`→`SAFE_CAST`; `UNANCHORED_REGEX`→`^(?:...)$`; `DIV0_NULL_COERCION`→the faithful `IF(...)` form; `ARRAY_AGG_NULLS`→`IGNORE NULLS`; `TS_WRAP_ALREADY_TS`→drop the wrap; `IMPLICIT_JOIN_COERCION`/`JSON_FN_ON_*`→align the type; `governance_regression`→author the `policy_tags` from the tag map (this is what Step 3b item 4 already does — the pass just guarantees it is not skipped); `column_order_drift`→author the output projection in source ordinal order plus the pair's allow-listed tail; `HARDCODED_TARGET_DATABASE_XPROJECT`→rewrite to `source()` with the correct pair database; `CDC_SOURCE_NO_SOFT_DELETE_FILTER`→inject the pair's soft-delete filter macro; `MODEL_NOT_REGISTERED_FOR_DEPLOYMENT`→add the model's dataset/folder to the deployment manifest resolved via the pair's `deployment_manifest` pointer.
+- **`UNPINNED_SELECT_STAR` — authored explicitly at generate time.** Unlike the post-hoc fix loop (where it is `propose` because a hand-authored star's intent is unknown), here Wire is *authoring* the projection and has the resolved upstream schema in hand — the same introspection Check B (3.5) and Step 3.1 item b already use. Author the explicit source column list in source ordinal order from the start rather than emitting a star, so the output never trips the rule. If the upstream schema is genuinely not resolvable, leave the star and flag `-- MANUAL REVIEW` (falling back to the post-hoc `propose` posture) rather than guessing a column list.
+- **`propose` / `decision` (intent-dependent or needs information the loop lacks) — never auto-rewritten.** `STRING_FN_ON_NONSTRING` (cast vs. remove is a judgment), an undeclared `MATERIALIZATION_DRIFT` beyond the preservation hook, `parity_vs_correctness`, `HARDCODED_TARGET_DATABASE_XPROJECT` whose relation maps to no declared source, `MODEL_NOT_REGISTERED_FOR_DEPLOYMENT` when the manifest resolves read-only, `governance_regression` with no tag-map entry. Leave a `-- MANUAL REVIEW` comment naming the pattern and carry it into the batch summary (Step 4) and the transformation log's `manual_review_reasons` (Step 4d). Do not auto-rewrite — a wrong auto-fix that still passes the deterministic gate is worse than an escalation.
+
+**Manifest no-op (rule 1).** Read the `migration.deployment_manifest` pointer from status.md (or the `--config` overlay). If it is unset or its `path` does not resolve, `MODEL_NOT_REGISTERED_FOR_DEPLOYMENT` is a **no-op** — record `deployment manifest not configured — MODEL_NOT_REGISTERED_FOR_DEPLOYMENT not checked` in the batch summary as a coverage gap, never a silent pass.
+
+**Data-safety guard (unchanged).** Everything this pass reads is compile-, dry-run-, or metadata-only — the same schema introspection Step 3.5 Check B uses, and a read/append edit to the deployment manifest file. It writes **no** data to any warehouse and never touches a source platform or a `data_safety.production_projects` project. The manifest edit is a repo-file edit, not a warehouse write.
+
+**`dbt-migration-lint` remains the independent backstop.** This pass fixes what *`generate` itself* translates; it cannot see a model hand-edited after generation or a non-Wire/hand-ported model. `dbt-migration-lint` (and the pre-PR review) still run the same rule catalogue over the whole diff afterwards — both mechanisms are intentionally kept, exactly as the materialisation hook and `MATERIALIZATION_DRIFT` are (proactive vs. after-the-fact backstop). Record every fired pattern (auto-rewritten or flagged) in `loop_history` and the model's `.diff.md`.
+
+**Acceptance.** A model translated by this command that would otherwise trip `DIV0_NULL_COERCION`, `UNGUARDED_JSON_PARSE`, `CAST_BLANK_STRING_NUMERIC`, `UNANCHORED_REGEX`, `UNPINNED_SELECT_STAR`, `column_order_drift`, a dropped policy tag, or any of the three deploy-integration rules comes out already fixed — a subsequent `dbt-migration-lint` / `dbt-migration-pre-pr-review` over the same diff reports zero of those.
+
 **Iterations 2–5 — auto-fix:**
 
 Read the failure recorded from the previous iteration. Diagnose the root cause:
@@ -624,6 +648,7 @@ Write `.wire/releases/$ARGUMENTS/migration/dbt/batch_{N}_summary.md`:
 - **Companion YAML changes**: `sources.yml` repoints, custom/singular tests translated, `policy_tags` authored or deferred — including the count of policy tags auto-resolved from the tag map and the count of `MANUAL REVIEW REQUIRED` flags for unresolved masking policies, naming each flagged column and its unresolved policy value
 - **Source-to-ref substitutions and Bronze-schema gaps** (Step 3.1 items a–b): count of `source(...)` calls rewritten to `ref(...)`, and every `MARKET GAP` column substitution — naming the model, column, synthesized type, and affected market(s)
 - **Snapshots** (Step 3s): each snapshot translated, its `snapshot_strategy`, confirmation the hash-input config (`strategy`/`unique_key`/`updated_at`/`check_cols`) is unchanged, whether the `dbt_scd_id` inputs stringify identically, and whether the target adopt-and-continue `dbt snapshot` run was ordered after the history copy
+- **Proactive deterministic-defect pass** (Step 3.1 "Proactive deterministic-defect pass"): counts of `auto` patterns rewritten inline (by pattern id) and every `propose`/`decision` pattern left flagged `-- MANUAL REVIEW`; plus the `MODEL_NOT_REGISTERED_FOR_DEPLOYMENT` coverage note when the deployment manifest is unconfigured
 - Recommended next steps
 
 ### Step 4b: Update per-batch DAG
@@ -777,6 +802,30 @@ If all batches are complete:
 All N batches translated.
 /wire:orchestration-migration-generate $ARGUMENTS
 ```
+
+### Step 7: Chain the downstream gates (model path, default)
+
+On the **model path** (a `--batch`/`--wave`/`--model`/`--models`/`--select` run, or the no-flag next-batch run), the batch is not done when translation is — the downstream gates still have to run, and a run that stops at "recommended next steps" lets a consultant hand off skipping them. Unless `--no-chain` was supplied, chain the gates over the scope just translated, in this order, each over the same resolved model set (pass through `--wave`/`--batch`/`--model`/`--models`/`--base` and any `--config`/overlay flags):
+
+1. `dbt-migration-validate` — the compile + all-code-path coverage gate (writes the Check 5 coverage report).
+2. `dbt-migration-lint` — the static silent-divergence backstop over the diff (writes the lint result). This is the independent backstop for anything the inline pass could not reach (a model hand-edited after generation, non-Wire code) — the inline pass and lint are complementary, not redundant.
+3. `dbt-migration-fix` — auto-apply the deterministic findings and re-run the deterministic gate (writes the applied-fix summary). Because the inline pass (Step 3.1) already fixed the `auto` patterns it could during translation, this normally has little to do — it catches anything the inline pass could not (e.g. a `governance_regression` needing a tag-map entry that later landed) and re-converges.
+4. `dbt-migration-pre-pr-review` — the pre-PR faithfulness synthesis (writes the findings file), leaving the consultant only the semantic `propose`/`decision` findings to adjudicate.
+
+Run the chain over the whole batch/wave after the per-model loop completes (not per model). If any gate reports blocking (`error`-severity) findings, do not silently continue the chain past a hard failure — surface the failing gate's report and stop, so the consultant fixes it before the review. The chain edits only translated files under `migration/dbt/` and reads/writes only the test project (`dbt-migration-fix`'s own data-safety guard applies) — no production or source writes.
+
+**Scope exclusions.** `--macros` and `--snapshots` do **not** chain — they are orthogonal, standalone passes with their own validate scopes (`--macros` / `--snapshots`), and their own next-command hints already point at those (`dbt-migration-validate $ARGUMENTS --macros` / `--snapshots`). Skip Step 7 entirely for those scopes regardless of `--no-chain`. `--snapshots` is a recently-added scope; like `--macros` it keeps its existing non-chaining behaviour.
+
+With `--no-chain` on the model path, print the chain that was skipped and the command to run it manually:
+```
+[wire] --no-chain: skipped the downstream gate chain. Run it when ready:
+/wire:dbt-migration-validate $ARGUMENTS --wave <id>
+/wire:dbt-migration-lint $ARGUMENTS --wave <id>
+/wire:dbt-migration-fix $ARGUMENTS --wave <id>
+/wire:dbt-migration-pre-pr-review $ARGUMENTS --wave <id>
+```
+
+**Acceptance.** A default `generate` run over a batch leaves behind the validate coverage report, a lint result, an applied-fix summary, and a pre-PR review findings file — with no manual invocation. `--no-chain`, `--macros`, and `--snapshots` each leave none of those (the consultant drives the gates).
 
 ## Output Files
 
