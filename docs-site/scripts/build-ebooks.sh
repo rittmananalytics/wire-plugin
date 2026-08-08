@@ -162,5 +162,12 @@ else
   echo "build-ebooks: PDF build failed — continuing (HTML docs unaffected)."
 fi
 
+# Never leave an empty format directory behind: Read the Docs fails the WHOLE
+# build (HTML included) when a declared output format directory exists but
+# contains no files ("Build output directory doesn't contain any file"). This
+# is exactly what froze the live docs site between 2026-07-21 and 2026-08-08:
+# the PDF step failed non-fatally, the empty pdf/ dir stayed, RTD errored.
+find "$OUT" -mindepth 1 -maxdepth 1 -type d -empty -delete 2>/dev/null || true
+
 echo "build-ebooks: done"
 exit 0

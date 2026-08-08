@@ -38,3 +38,8 @@ build:
     # $READTHEDOCS_OUTPUT/{pdf,epub}/. Non-fatal: `|| true` guarantees an ebook
     # hiccup can never fail the build and take the HTML docs down with it.
     - bash docs-site/scripts/build-ebooks.sh || true
+    # Belt and braces for the same guarantee: RTD fails the WHOLE build when a
+    # declared format directory exists but is empty ("Build output directory
+    # doesn't contain any file") — the script cleans up after itself, and this
+    # sweep catches any path where it couldn't.
+    - find $READTHEDOCS_OUTPUT -mindepth 1 -maxdepth 1 -type d -empty -delete || true
