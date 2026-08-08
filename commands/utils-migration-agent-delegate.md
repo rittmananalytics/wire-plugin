@@ -78,4 +78,8 @@ Then return immediately. The subagent will complete the work and update `status.
 
 If delegation was skipped (agent not found or already in a subagent context), proceed with the workflow steps below as normal.
 
+## Fleet mode
+
+When the dispatch above runs as part of a multi-lane fleet (roughly 6+ concurrent lanes, or whenever the release director has invoked the fleet operating model), follow `specs/utils/migration_fleet.md` in addition to the protocol above. In fleet mode every lane brief must state: the lane's state file path and resume contract, its declared tree ownership, its budget line, and the flat-lane rule (no sub-agent fan-out below a lane). The dispatching session is the single writer for the register and verdict log, and runs the consolidation and backstop pass over lane output before anything ships.
+
 Execute the complete workflow as specified above.

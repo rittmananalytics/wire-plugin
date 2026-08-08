@@ -96,7 +96,7 @@ Run Checks 1–6 over every in-scope model. Where a downstream gate already prod
 
 ### Step 3 — Write the findings report
 Write `migration/pre_pr_review/batch_N_pre_pr_review.md` (or `wave_{id}_...`, or `model_{name}_...`), and `.json` if `--format json`. Structure:
-- **Header**: pair, direction, scope, `--base` ref, model count, and the line "resolve these locally — do not open the PR until every `error` is cleared."
+- **Header**: pair, direction, scope, `--base` ref, model count, and the line "resolve these locally — do not open the PR until every `error` is cleared. The PR itself is raised by `/wire:dbt-migration-batch-raise`."
 - **Summary**: counts by severity; models clean vs flagged.
 - **Findings**: grouped by model, ordered by severity. Each finding shows `file:line`, the construct, the severity, the fix hint, and its source (pair section / gate).
 - **Coverage gaps**: any check that could not run (no target profile for W2, no deployment warehouse for W3, no tag map for W4, no schema-check result for the W6b column-order surface) — a gap is "not checked", never "clean".
@@ -125,7 +125,7 @@ With `--format json --severity error`, the command exits non-zero when any `erro
 
 - This command is **read-only** over the translated diff. It never edits models. To act on the findings automatically, run `dbt-migration-fix` — it auto-applies the deterministic fixes, re-runs the gate, and escalates only the findings that need a human decision. (Fixes can also flow back through `dbt-migration-generate` or a hand edit; then re-run this review.)
 - The check catalogue is a synthesis, not a re-implementation — Checks 1/4/5 defer to the W2/W3/W4 gates' own logic and results. Keep the pattern lists in the pair, never here, so a new pair inherits the review automatically.
-- Position: run after `dbt-migration-validate` and `dbt-migration-lint` pass and before `dbt-migration-review` opens the batch for sign-off — it is the automated faithfulness gate the human review then reads.
+- Position: run after `dbt-migration-validate` and `dbt-migration-lint` pass and before `dbt-migration-review` opens the batch for sign-off — it is the automated faithfulness gate the human review then reads. The raise itself is `dbt-migration-batch-raise`'s job: it consumes this review's result as an eligibility gate and supersedes the old prose ending here ("open the PR").
 
 ## Post-Execution Hooks
 

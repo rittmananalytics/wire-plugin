@@ -43,6 +43,8 @@ Generates the production cutover runbook — the step-by-step procedure for redi
 - `equivalency_validation.status: complete` (checks_failing == 0)
 - OR explicit override in status.md with business justification for known differences
 
+Under the verdict taxonomy (`equivalency-validate`), `checks_failing` counts objects whose latest verdict is `fail` or any `diff_*` with no recorded acceptance; `pass` and `pass_qualified` both count as passing. A `diff_*` verdict names its mechanism, which is exactly what the accepted-difference override documents — an object with no named mechanism (`fail`) should be investigated, not accepted.
+
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/migration/migration_strategy.md`

@@ -22,8 +22,8 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Run equivalency checks across all in-scope tables (repeatable loop, parallel fan-out, optional frozen-baseline tier-3 mode)
-argument-hint: <release-folder> [--batch N | --wave id | --snapshots [names]] [--baseline]
+description: Run equivalency checks across all in-scope tables (repeatable loop, lane-based parallel fan-out, taxonomy verdicts, optional frozen-baseline tier-3 mode)
+argument-hint: <release-folder> [--batch N | --wave id | --snapshots [names]] [--baseline] [--run-point standard|pre_raise|post_merge_prod]
 ---
 
 ## Data Safety — Read Before Proceeding
@@ -67,6 +67,37 @@ This command can be run as many times as needed. There is no "approved" state �
 
 For a BigQuery-side query anywhere below, route it through `specs/utils/bigquery_mcp_fallback.md` (`operation: read`) on a connection failure rather than failing the check — a BigQuery MCP outage is not itself an equivalency failure, and must not be reported as one.
 
+## Verdict taxonomy
+
+Every object gets one verdict per run, not a bare PASS/FAIL. The classification is deterministic (tests mirror it: `wire/tests/platform_migration/validate_verdict_taxonomy.py`). Inputs: did any check diverge, and what named mechanism was the divergence drilled to.
+
+| Verdict | Rule |
+|---|---|
+| `pass` | No check diverged. |
+| `pass_qualified` | Divergence whose named mechanism is on the pair's benign allow-list (e.g. a type widening in `type_translation_allowlist`). |
+| `diff_vintage` | Divergence explained by data vintage: the two sides reflect different load instants. Claiming it requires a matched-vintage re-run (pin both sides to the same instant) that passes, or is scheduled and referenced. |
+| `diff_availability` | Divergence explained by source data that has not landed on the target (e.g. history not yet copied). |
+| `diff_schema_type` | Divergence explained by a type-translation difference beyond the allow-list, drilled to the exact column and cast. |
+| `fail` | Divergence with no named mechanism, or a mechanism that indicates a translation defect. |
+
+**Explanations qualify a fail — they never upgrade it to a pass.** A prose explanation with no named mechanism is still `fail`. A named mechanism earns the matching `diff_*` verdict; only the pair's allow-list earns `pass_qualified`. Verdicts bind to the exact `file_version` (the model's `last_migrated_commit`): re-translating a model voids its verdict.
+
+**How verdicts count.** For `checks_failing` and the cutover gate: `pass` and `pass_qualified` count as passing; `fail` and every `diff_*` count as failing until a formal acceptance is recorded for that object (the existing "accepted differences formally documented" path), after which the object counts as accepted, not passing. For `dbt-migration-batch-raise` eligibility, see that command's gate table — models whose output leaves the warehouse require an exact `pass`.
+
+## Verdict bar
+
+Counts alone are triage, never a verdict. A `pass` requires, per object: row counts at the object's declared grain (distinct-key counts, not bare `COUNT(*)`), schema in source ordinal order, a surrogate-key or row-hash aggregate over the compared window, and a **declared method class** (`full_history`, `windowed_event` for event models compared over a shared exact window, `aggregate_only` where row-level comparison is impracticable — record why). Every divergence is drilled to a named mechanism before the verdict is written; "small diff, looks fine" is not a mechanism.
+
+## Run points
+
+`--run-point` records **when in the delivery pipeline** the comparison ran; default `standard`. The checks themselves do not change — what changes is scope defaults, what the verdict updates, and who invokes it:
+
+- `standard` — the normal loop (this command, run directly). Updates `last_equivalence_*` in the register.
+- `pre_raise` — invoked by `dbt-migration-batch-raise` over a candidate batch before the PR is opened: a smoke comparison of the branch-built scratch relations against source. Updates `last_equivalence_*`.
+- `post_merge_prod` — invoked by `equivalency-post-merge-verify` over merged models: production target tables against source, at the full verdict bar. Never updates `last_equivalence_*`; a `pass`/`pass_qualified` advances `delivery_stage` to `production_verified` (merge rule 5 in `specs/migration/equivalency/verdict_schema.md`).
+
+Every verdict row carries its run point into the verdict log, so "verified before raise" and "verified in production" stay distinct assurance states.
+
 ## Workflow
 
 ### Step 1: Load scope
@@ -79,7 +110,7 @@ Read the list of in-scope tables and dbt models from `migration/migration_invent
 
 **Scope by snapshot (optional).** With `--snapshots`, restrict the scope to the snapshot object-type nodes and run **only check type 9** (the snapshot three-layer gate) over them — skipping every other check type. `--snapshots` (bare) selects every snapshot object-type node (`object_type = snapshot` in the migration inventory / register, cross-referenced to `audit/dbt_snapshots.csv`); `--snapshots name1,name2` only the named snapshots. Selection resolves against the snapshot object-type rows, never the model selector — a name that resolves to a model but not a snapshot node is listed as unresolved (`[wire] --snapshots: "<name>" is not a snapshot object-type node — check audit/dbt_snapshots.csv.`) and an empty resolved set aborts with `[wire] No snapshots matched --snapshots. Aborting.`. This is the retrofit companion to `dbt-migration-generate --snapshots` / `dbt-migration-validate --snapshots` — validate the snapshot gate on its own without re-running the whole estate. Normal `--batch`/`--wave` runs still run check type 9 over any in-scope snapshot inline; `--snapshots` is an additional targeted scope. Standalone scope — abort if combined with `--batch`, `--wave`, `--model`, `--models`, `--select`, `--exclude`, or `--macros`: `[wire] --snapshots is a standalone scope. Run it on its own; do not combine with --batch/--wave/--model/--models/--select/--exclude/--macros.` The run metadata (Step 5) records that the run was snapshot-scoped.
 
-For projects with >50 in-scope objects (or any batch over that size): fan out checks in parallel subagents — one per schema or one per dbt layer. Each subagent runs the per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for its assigned objects and reports back. Business invariants (check type 7) are run once for the release, not per object, since many are cross-table aggregates. This dramatically reduces wall-clock time for large migrations.
+**Lane-based fan-out.** For projects with >50 in-scope objects (or any batch over that size): partition the scope into lanes — one per schema, dbt layer, or domain — and run one subagent per lane. Each lane runs the per-object check types (row count, schema, value sampling, freshness, dbt tests, row-level checksum) for its assigned objects and writes its results **incrementally** to its own lane verdict file, `migration/verdicts/run_{N}/{lane_id}.json`, in the shape defined by `specs/migration/equivalency/verdict_schema.md` — rewriting the file after each object so a killed lane loses at most the in-flight object and a resumed lane skips objects already in its file. Lanes never write the register or the verdict log; the coordinating run merges every lane file using the deterministic merge rules in `specs/migration/equivalency/verdict_schema.md` (Step 5b). Business invariants (check type 7) are run once for the release, not per lane, since many are cross-table aggregates. Small scopes (a single lane) still write one verdict file and go through the same merge — one code path, not two.
 
 **Tenant carve-out scoping**
 
@@ -320,6 +351,7 @@ migration:
         pinned_as_of: "{{PINNED_AS_OF_TS}}"   # UTC; null if no relative-date-flagged models in scope
         report: migration/equivalency_report_1.md
         mode: live | baseline
+        run_point: standard | pre_raise | post_merge_prod
         batch: N | all
         wave: null | "B01"                # set only when run with --wave
         snapshots: false | true           # true only when run with --snapshots (check type 9 gate only)
@@ -332,16 +364,20 @@ migration:
 
 Set `status: complete` only when `checks_failing == 0`.
 
-### Step 5b: Update the migration register
+### Step 5b: Merge lane verdicts into the register and the verdict log
 
-For every model checked, write its equivalence outcome into `migration/migration_register.csv` (per-model state store — see `migration-register-generate`): `last_equivalence_result` (`pass`/`fail`/`info`), `last_equivalence_t` (the baseline `T` in baseline mode, else `null`), and `last_validated_commit` (the source commit validated against — the baseline `source_commit` in baseline mode, else the current source HEAD). This is what lets the drift gate distinguish "validated, then drifted" from "never validated". Skip silently if the register doesn't exist.
+Merge every lane verdict file for this run into `migration/migration_register.csv` and `migration/migration_verdict_log.csv`, following the deterministic merge algorithm in `specs/migration/equivalency/verdict_schema.md` exactly: every well-formed verdict appends one log row (seed the log from `TEMPLATES/migration/migration_verdict_log.csv` if absent — it is append-only, never rewritten); `standard` and `pre_raise` verdicts update `last_equivalence_result` (the taxonomy verdict), `last_equivalence_t` (the baseline `T` in baseline mode, else `null`), and `last_validated_commit` (the source commit validated against — the baseline `source_commit` in baseline mode, else the current source HEAD); `post_merge_prod` verdicts advance `delivery_stage` only. This run is the **single writer** for both files — no lane writes them directly. Include the merge summary (appended / updated / malformed / conflict / not_merged / unknown_model counts) in the report. The register update is what lets the drift gate distinguish "validated, then drifted" from "never validated". Skip the register update silently if the register doesn't exist; still write the log.
 
 ### Step 6: Output results
 
 If `checks_failing == 0`:
 ```
 All equivalency checks PASS (N/N objects)
-Cutover is now unblocked.
+
+Ship the verdict-passing models that are not yet in a client PR:
+/wire:dbt-migration-batch-raise $ARGUMENTS [--wave <id>]
+
+When the whole estate is shipped and verified, cutover is unblocked:
 /wire:cutover-generate $ARGUMENTS
 ```
 

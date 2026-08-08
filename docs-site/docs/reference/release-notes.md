@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.0 — The pipeline beyond "migrated": ship, verify, and the fleet operating model
+
+**Released**: August 2026
+
+The `platform_migration` release type used to end at "migrated" in the register; everything from a passing verdict to verified code on the client's main was free-form. v3.11.0 productises that tail, generalised from the first engagement to run the release at fleet scale — with the operating model itself written down: the director types intents and rulings, the orchestrating agent invokes the Wire commands and dispatches fleets of lane agents that report back through incremental state files (`specs/utils/migration_fleet.md`, including the mandatory consolidation/backstop pass over lane output).
+
+**Four new commands.** `/wire:dbt-migration-defer-build` (cost-guarded sandbox builds: refs deferred to prod state, scratch-dataset writes only, exact-name selectors with graph operators refused by default, dry-run cost screen against per-run/daily budgets, per-project build-slot lock). `/wire:dbt-migration-batch-raise` (register-driven client PRs: deterministic eligibility table over gate policy x verdict x external-output exactness, smoke-build from the branch's own checkout, pre-raise comparison, drop-on-defect, evidence-first PR body). `/wire:utils-ci-parity` (detect the client repo's CI system and replicate its locally-runnable checks with the client's own config — the final pre-raise gate). `/wire:equivalency-post-merge-verify` (wait for the client pipeline to materialise merged models, compare production at the full bar, advance the register to `production_verified`).
+
+**Verdict taxonomy and history.** `equivalency-validate` verdicts are now `pass` / `pass_qualified` / `diff_vintage` / `diff_availability` / `diff_schema_type` / `fail` — explanations qualify a fail, never upgrade it; every divergence is drilled to a named mechanism; verdicts bind to exact file versions and carry a run point (`standard` / `pre_raise` / `post_merge_prod`). An append-only verdict log (`migration/migration_verdict_log.csv`) preserves the dated history the current-state register cannot. Lane fan-out writes one JSON contract per lane with a deterministic single-writer merge. The register gains `delivery_stage` and `pr_url`, orthogonal to `state`.
+
+Everything is additive: existing releases pick the new keys and columns up via `/wire:upgrade`, legacy `pass`/`fail` verdicts stay valid, and a release that never sets `gate_policy` or budgets behaves as before, minus the prose ending — `dbt-migration-fix` and `pre-pr-review` now hand off to `batch-raise` instead of "open the PR".
+
+---
+
 ## v3.10.19 — Catch migration defects earlier, measure where they're caught, and fix the version check
 
 **Released**: July 2026

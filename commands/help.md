@@ -162,6 +162,8 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:dbt-migration-pre-pr-review` | `<release-folder> [--batch N ` | Pre-submission faithfulness review over a translated diff — deploy-time defect class static parse/lint cannot catch, before a PR is opened |
 | `/wire:dbt-migration-fix` | `<release-folder> [--batch N ` | Closed fix-and-re-review loop — auto-apply the deterministic pre-PR-review fixes, re-run the gate, escalate only findings that need a human decision |
 | `/wire:dbt-migration-review` | `<release-folder> [--batch N ` | Review translated dbt models |
+| `/wire:dbt-migration-defer-build` | `<release-folder> --models <list> [--allow-graph] [--override-budget] [--dry-run]` | Cost-guarded sandbox build: refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors, dry-run cost screen |
+| `/wire:dbt-migration-batch-raise` | `<release-folder> [--wave id ` | Register-driven PR shipping pipeline: derive gate-passing candidates, smoke-build from the client branch, pre-raise comparison, drop-on-defect, raise with evidence-first body |
 | `/wire:orchestration-migration-generate` | `<release-folder> [--wave id]` | Generate orchestration job migration runbook |
 | `/wire:orchestration-migration-validate` | `<release-folder> [--wave id]` | Validate orchestration migration runbook |
 | `/wire:orchestration-migration-review` | `<release-folder> [--wave id]` | Safety-gated approval before activating jobs on target |
@@ -218,6 +220,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:utils-pr-create` | `[release-folder]` | Create a Wire-aware GitHub pull request pre-populated from session artifacts |
 | `/wire:utils-pipeline-status` | `<release-folder>` | Check configured pipeline tool connection status |
 | `/wire:utils-git-workflow` | `<release-folder> <artifact-id> <action>` | Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR (composes utils-commit and utils-pr-create) |
+| `/wire:utils-ci-parity` | `<release-folder> [--repo <path-or-role>] [--branch <name>]` | Client CI parity gate: detect the client repo's CI system, replicate its locally-runnable checks against a branch before raising, report pass/fail per check |
 | `/wire:utils-delivery-forecast` | `<client-name> [--release <folder>]` | Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates |
 | `/wire:utils-doc-analyze` | `<file-path-or-url> [<file-path-2> ...]` | Extract deliverables, acceptance criteria, and timeline from SoW or project documents |
 
@@ -266,6 +269,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:equivalency-validate` | `<release-folder> [--batch N ` | Run equivalency checks across all in-scope tables (parallel fan-out) |
 | `/wire:equivalency-investigate` | `<release-folder> --object <table_or_model>` | Deep diagnostics for a specific failing object |
 | `/wire:equivalency-fix` | `<release-folder> --object <name> --approach <description>` | Apply agreed fix and re-run equivalency checks for affected objects |
+| `/wire:equivalency-post-merge-verify` | `<release-folder> [--models list] [--no-wait]` | Post-merge production verification: wait for the client pipeline to materialise merged models, compare at the full verdict bar, advance the register to production_verified |
 | `/wire:cutover-generate` | `<release-folder>` | Generate cutover runbook (SAFETY GATE — point of no return) |
 | `/wire:cutover-validate` | `<release-folder>` | Validate cutover runbook completeness |
 | `/wire:cutover-review` | `<release-folder>` | Safety-gated sign-off before live cutover |

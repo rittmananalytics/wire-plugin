@@ -201,6 +201,8 @@ Based on `release_type` and the detected additions, report any commands that are
 
 | Added in | Commands | Relevant release types |
 |---|---|---|
+| v3.11.0 | `/wire:dbt-migration-defer-build`, `/wire:dbt-migration-batch-raise`, `/wire:equivalency-post-merge-verify`, `/wire:utils-ci-parity` | `platform_migration`, `data_warehouse_migration` — the ship-and-verify pipeline beyond "migrated": cost-guarded sandbox builds, register-driven PR batches, client CI parity, post-merge production verification |
+| v3.11.0 | (schema, not commands) register columns `delivery_stage`/`pr_url`; append-only verdict log `migration/migration_verdict_log.csv`; verdict taxonomy replacing pass/fail; `migration.gate_policy`/`client_repos`/`cost_controls` status keys | `platform_migration`, `data_warehouse_migration` — the upgrade adds missing keys/columns with defaults; existing `pass`/`fail` verdicts stay valid, legacy `info` reads as `pass_qualified` |
 | v3.10.3 | `/wire:migration-batching-generate\|validate\|review` | `platform_migration`, `data_warehouse_migration` — domain-batch scheduling, checked against the real dependency graph; distinct from `dbt_audit`'s translation batches |
 | v3.10.2 | `/wire:migration-register-generate\|validate`, `/wire:migration-drift-generate\|validate` | `platform_migration`, `data_warehouse_migration` — per-model state store and scheduled drift gate for a migration running against a moving source |
 | v3.10.1 | `/wire:region-tagging-*`, `/wire:data-residency-assessment-*`, `/wire:bulk-copy-migration-*`, `/wire:logical-access-uat-*` | `platform_migration` with `migration.scope: tenant_carveout` only |

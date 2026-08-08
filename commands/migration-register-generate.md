@@ -54,19 +54,27 @@ The register is maintained **incrementally** by the migration commands (see the 
 | `bq_target` | the BigQuery target object (`dataset.table`) — for a snapshot, its `target_schema` relation |
 | `state` | `pending` \| `migrated` \| `drifted` \| `failed` \| `removed` \| `deferred` |
 | `snapshot_strategy` | for `object_type = snapshot`: `copy_and_continue` (default) or `rebuild_from_T` — blank for models. `rebuild_from_T` is valid only with a sign-off recorded in `notes` (see below) |
-| `last_equivalence_result` | `pass` \| `fail` \| `info` \| `null` — outcome of the last equivalency run for this object |
+| `last_equivalence_result` | `pass` \| `pass_qualified` \| `diff_vintage` \| `diff_availability` \| `diff_schema_type` \| `fail` \| `null` — the verdict of the last equivalency run for this object, per the verdict taxonomy in `specs/migration/equivalency/validate.md` (legacy registers may still carry `info`; treat it as `pass_qualified`) |
 | `last_equivalence_t` | the baseline instant `T` of that equivalency run (UTC), or `null` for a live run |
 | `last_validated_commit` | source commit at the last equivalency validation (lets the drift gate tell "validated-then-drifted" from "never validated") |
+| `delivery_stage` | blank \| `in_pr` \| `merged` \| `production_verified` — how far past "migrated" the object has shipped. Orthogonal to `state`: `state` records translation lifecycle and health (a merged model can still go `drifted`), `delivery_stage` records delivery progress. Blank until the object enters a client PR |
+| `pr_url` | URL of the client PR carrying this object (set with `delivery_stage: in_pr`; kept through `merged`/`production_verified`; cleared with `delivery_stage` if the PR closes unmerged) |
 | `notes` | free text (e.g. reason for `deferred`/`failed`; for a `rebuild_from_T` snapshot, the required data-owner sign-off — name + date) |
 
 ## Maintenance contract (which command writes which columns)
 
 - **`dbt-migration-generate`** — on a successful per-model migration, upserts the row: `source_path`, `source_layer`, `last_migrated_commit` (the source snapshot SHA, from `migration_sources.dbt.commit`), `bq_target`, `state = migrated` (or `failed` after 5 iterations, `deferred` if its source object isn't built on target). For a **snapshot** (`object_type = snapshot`), it upserts the same way after translating the inner SELECT and running the target `dbt snapshot` adopt-and-continue, leaving `snapshot_strategy` as seeded.
 - **`migration-strategy-generate` / this command** — sets each snapshot row's `snapshot_strategy` (`copy_and_continue` default; `rebuild_from_T` only with the sign-off recorded in `notes`).
-- **`equivalency-validate`** — on each run, writes `last_equivalence_result`, `last_equivalence_t` (the baseline `T` when in baseline mode, else `null`), and `last_validated_commit` for each model checked.
-- **`migration-drift-generate`** — flips `state` to `drifted` (modified upstream) or `removed`, and records the drifting commit in `notes`.
+- **`equivalency-validate`** — on each run, writes `last_equivalence_result` (the taxonomy verdict), `last_equivalence_t` (the baseline `T` when in baseline mode, else `null`), and `last_validated_commit` for each model checked, and appends one row per verdict to the verdict log (below). It never touches `delivery_stage`.
+- **`migration-drift-generate`** — flips `state` to `drifted` (modified upstream) or `removed`, and records the drifting commit in `notes`. It never touches `delivery_stage` — a merged model that drifts keeps its delivery progress and gains a health flag.
+- **`dbt-migration-batch-raise`** — sets `delivery_stage: in_pr` + `pr_url` when a model enters a client PR, advances to `merged` on merge detection, and clears both if the PR closes unmerged.
+- **`equivalency-post-merge-verify`** — advances `delivery_stage` to `production_verified` when the post-merge production comparison returns `pass` or `pass_qualified`.
 
 This command does not duplicate that logic — it seeds and reconciles the file.
+
+## Companion verdict log (append-only history)
+
+The register is **current-state**: one row per object, reconciled in place, so a re-validation overwrites the previous verdict and its date is lost. The companion file `migration/migration_verdict_log.csv` (seeded from `TEMPLATES/migration/migration_verdict_log.csv`) is the **append-only** verdict history: every equivalency verdict, at every run point (`standard`, `pre_raise`, `post_merge_prod`), appends one row and no row is ever rewritten or deleted. Columns: `model, object_type, run_point, verdict, divergence_mechanism, method_class, mode, baseline_t, file_version, lane_id, report_ref, written_at`. `equivalency-validate` is the only writer (via its single-writer merge step, `specs/migration/equivalency/verdict_schema.md`). Throughput reporting and reviews read the log, not the register, for anything dated.
 
 **Snapshot rows.** Snapshots are seeded here as `object_type = snapshot` rows from `audit/dbt_snapshots.csv`, and their `snapshot_strategy` is set from the migration strategy's "Snapshot migration" section (`copy_and_continue` by default; `rebuild_from_T` only when the strategy records a data-owner sign-off, which this command copies into `notes`). If the strategy doc has not yet assigned a strategy, seed the snapshot `copy_and_continue` and leave a note — never default a snapshot to `rebuild_from_T`, since that silently discards history.
 

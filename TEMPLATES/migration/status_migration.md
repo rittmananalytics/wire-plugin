@@ -59,6 +59,24 @@ migration:
                                    #   type_translation_allowlist: []      # expected type changes (VARIANT->JSON/STRING,
                                    #                                       #   TIMESTAMP_NTZ->DATETIME, NUMBER-scale rounding)
                                    # equivalency-validate --baseline reads this per --batch.
+  gate_policy: equivalence_before_pr       # equivalence_before_pr (default) | ship_then_verify.
+                                           # Governs when a translated model may enter a client PR
+                                           # (dbt-migration-batch-raise eligibility rules).
+                                           # ship_then_verify requires a recorded client ruling (note the
+                                           # date and forum in notes below) and makes the pre-raise smoke
+                                           # comparison and post-merge verification run points mandatory.
+  gate_policy_ruling: null                 # ship_then_verify only: who ruled, where, when
+  client_repos: []                         # Repos this migration ships into, one entry per repo:
+                                           #   - role: transformation | orchestration | reverse_etl
+                                           #     url: "git@github.com:org/repo.git"
+                                           #     base_branch: main
+                                           # Consumed by dbt-migration-batch-raise and utils-ci-parity.
+                                           # Empty = batch-raise asks once and persists the answer here.
+  cost_controls:                           # Warehouse spend guardrails for sandbox builds and comparison
+    unit: gb_scanned                       #   gb_scanned (BigQuery) | credits (Snowflake)
+    per_run_budget: null                   #   max estimated cost per build/comparison run; null = warn only
+    daily_budget: null                     #   max cumulative cost per day across all lanes; null = warn only
+    scratch_dataset: wire_sandbox          #   sandbox dataset/schema dbt-migration-defer-build writes to
   status: not_started                      # not_started | in_progress | complete
   completed_date: null
 

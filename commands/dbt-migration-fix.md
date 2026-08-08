@@ -134,8 +134,9 @@ Update the migration register for every re-fixed model (`state`, `last_migrated_
 ### Step 7 — Output next step
 If `residual_errors == 0` and the escalation queue is empty:
 ```
-All pre-PR findings resolved. Re-run the review to confirm, then open the PR:
+All pre-PR findings resolved. Re-run the review to confirm, then ship the batch:
 /wire:dbt-migration-pre-pr-review $ARGUMENTS --wave <id> --format json --severity error
+/wire:dbt-migration-batch-raise $ARGUMENTS --wave <id>
 ```
 If the escalation queue is non-empty:
 ```

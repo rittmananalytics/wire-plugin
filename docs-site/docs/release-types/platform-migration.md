@@ -471,6 +471,29 @@ A long migration runs against a moving source. Two commands keep migrated models
 
 Deploy the bundled CI templates (`TEMPLATES/migration/ci/`) to run the tiered sweep on any change to a migrated model and the drift gate on a cron.
 
+## Ship and verify: from migrated to production-verified (v3.11.0)
+
+Before v3.11.0 the framework's pipeline ended at "migrated" in the register — everything between a passing verdict and code on the client's main (raising the PR, keeping it current, verifying the production build) was free-form prompting. v3.11.0 productises that tail, and with it the **fleet operating model** the first at-scale migration engagement proved: the consultant directing the release types almost no Wire commands. The director speaks in intents and rulings ("ship everything that's ready", "carry on and update me when the lanes finish"); the orchestrating agent invokes the commands below, dispatches fleets of lane agents, and merges what they report back. `specs/utils/migration_fleet.md` codifies the model: one director, one orchestrating session, 6 to 12 flat lanes, each writing incremental state with a resume contract, plus a mandatory consolidation/backstop pass over lane output before anything ships.
+
+### The delivery stage ladder
+
+The register gains two columns, orthogonal to `state`: `delivery_stage` (blank → `in_pr` → `merged` → `production_verified`) and `pr_url`. A merged model that later drifts keeps its delivery progress and gains a health flag — the two dimensions never fight over one column. Work is pull-based over the stage ladder (translate, validate+lint, build, equivalence, PR): a model advances whenever its inputs allow, whatever its wave; waves stay what they are good at, client-facing reporting labels.
+
+### Verdict taxonomy and the append-only verdict log
+
+`equivalency-validate` now returns one of six verdicts per object — `pass`, `pass_qualified` (divergence on the pair's benign allow-list), `diff_vintage`, `diff_availability`, `diff_schema_type` (each requiring the divergence drilled to a **named mechanism**), or `fail`. Explanations qualify a fail; they never upgrade it to a pass. Verdicts bind to the exact file version, and every verdict at every run point appends a row to `migration/migration_verdict_log.csv` — the register stays current-state, the log is the dated history, so throughput reporting no longer loses July to a last-write-wins overwrite. Lanes write per-lane verdict JSON files (one contract for every lane: `specs/migration/equivalency/verdict_schema.md`) and a single writer merges them deterministically.
+
+### The four commands
+
+- **`/wire:dbt-migration-defer-build`** — sandbox builds with the three guards that ended the engagement's highest-cost failure mode: refs defer to prod state (building one model never rebuilds its ancestry), writes land only in the scratch dataset, and selectors are exact model names — graph operators are refused without `--allow-graph`, because `+model` silently defeats defer and multiplies scan cost. Every build is dry-run cost-screened against `migration.cost_controls` budgets, and a per-project build-slot lock enforces one build per project at a time.
+- **`/wire:dbt-migration-batch-raise`** — the PR pipeline. Candidates derive from the register through a deterministic eligibility table: gates clean, verdict sufficient for the release's `migration.gate_policy` (`equivalence_before_pr` by default; `ship_then_verify` only by recorded client ruling), and models whose output leaves the warehouse always requiring an exact `pass`. The batch is copied into a client-repo branch, smoke-built from that branch's own checkout, compared pre-raise (`--run-point pre_raise`), and raised with an evidence-first body. Defective models are dropped individually — never the batch.
+- **`/wire:utils-ci-parity`** — detects the client repo's CI system by file presence (CircleCI, GitHub Actions, GitLab, Jenkins, Azure, Bitbucket), replicates its locally-runnable checks with the client's own config, and is batch-raise's final pre-raise gate. Six raises after this gate was introduced on the proving engagement, five were first-time green.
+- **`/wire:equivalency-post-merge-verify`** — after the client merges, waits for their pipeline to materialise the models (polling target table metadata, no scheduler API assumed), then compares production tables at the full verdict bar via `--run-point post_merge_prod` and advances the register to `production_verified`. This is the assurance state `merged` deliberately is not.
+
+### Configuration
+
+Three status keys drive the pipeline: `migration.gate_policy`, `migration.client_repos` (one entry per repo the migration ships into: role, url, base branch), and `migration.cost_controls` (unit, per-run and daily budgets, scratch dataset). Existing releases pick everything up through `/wire:upgrade` — new register columns and status keys arrive with defaults, and legacy `pass`/`fail` verdicts stay valid.
+
 ## Safety gates
 
 Four commands require explicit confirmation before proceeding:

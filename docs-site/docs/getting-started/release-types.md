@@ -17,7 +17,7 @@ The framework encodes delivery methodology as twelve release types, each definin
 | **dbt Development** | `dbt_development` | Analytics engineering on existing infrastructure | 1 week |
 | **Dashboard Extension** | `dashboard_extension` | New dashboards on an existing semantic layer | 3–5 days |
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days |
-| **Platform Migration** | `platform_migration` | Full lifecycle migration from one warehouse stack to another. Runs full-platform or as a **tenant carve-out** (extract one tenant into its own target), set by `migration.scope` | 4–16 weeks |
+| **Platform Migration** | `platform_migration` | Full lifecycle migration from one warehouse stack to another, through to production-verified code in the client's repo. Runs full-platform or as a **tenant carve-out** (extract one tenant into its own target), set by `migration.scope`. At scale, runs as a director-plus-agent-fleet (v3.11.0): the consultant issues rulings, the agent invokes the commands | 4–16 weeks |
 | **Agentic Data Stack** | `agentic_data_stack` | AI analytics overlay for an existing data platform | 4–6 weeks |
 | **Droughty** | `droughty` | Schema introspection and base-layer generation | 1–3 days |
 | **Custom** | `custom` | Bespoke scope derived from SoW or project documents | Varies |

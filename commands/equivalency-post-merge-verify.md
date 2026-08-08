@@ -1,9 +1,9 @@
 ---
-description: Validate the migration register — schema, coverage, state consistency
-argument-hint: <release-folder>
+description: Post-merge production verification: wait for the client pipeline to materialise merged models, compare at the full verdict bar, advance the register to production_verified
+argument-hint: <release-folder> [--models list] [--no-wait]
 ---
 
-# Validate the migration register — schema, coverage, state consistency
+# Post-merge production verification: wait for the client pipeline to materialise merged models, compare at the full verdict bar, advance the register to production_verified
 
 ## User Input
 
@@ -22,72 +22,61 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Validate the per-model migration register — schema, uniqueness, coverage, and state consistency
+description: Post-merge production verification — wait for the client pipeline to materialise merged models, compare production tables at the full verdict bar, advance the register to production_verified
+argument-hint: <release-folder> [--models list] [--no-wait] [--wait-timeout minutes]
 ---
 
-# Migration Register — Validate
+# Equivalency — Post-Merge Verify
 
-## Validation Checks
+## Purpose
 
-Read `migration/migration_register.csv`, `audit/dbt_audit.csv`, and the latest equivalency report.
+The assurance state the register's `merged` stage deliberately is not: a merged model has been accepted by the client, but nothing yet proves the production build of that model produces equivalent rows. This command closes that gap per merged model set. It is a **thin orchestrator**: the waiting and the register stage advance live here; every comparison runs through `equivalency-validate --run-point post_merge_prod`, so there is exactly one comparison engine.
 
-**Check 1 — Schema present**
-The header carries all fourteen columns: `model, object_type, source_path, source_layer, last_migrated_commit, bq_target, state, snapshot_strategy, last_equivalence_result, last_equivalence_t, last_validated_commit, delivery_stage, pr_url, notes`. A twelve-column register predating v3.11.0 is a FAIL with the fix hint "run /wire:upgrade to add delivery_stage and pr_url".
-PASS/FAIL.
+## Scope
 
-**Check 2 — One row per in-scope model and snapshot, unique key**
-Every in-scope model from `dbt_audit.csv` has exactly one `object_type = model` row, and every snapshot from `dbt_snapshots.csv` has exactly one `object_type = snapshot` row; `model` is unique across both; no orphan rows except those marked `state = removed`.
-PASS/FAIL with missing/duplicate models and snapshots.
+Default scope: every register row with `delivery_stage = merged` and no `run_point = post_merge_prod` row with verdict `pass`/`pass_qualified` in `migration/migration_verdict_log.csv`. `--models` restricts to named models within that set.
 
-**Check 3 — State values valid**
-Every `state` is one of `pending | migrated | drifted | failed | removed | deferred`.
-PASS/FAIL with offending rows.
+## Workflow
 
-**Check 4 — Migrated rows are complete**
-Every `state = migrated` row has a non-null `last_migrated_commit` and `bq_target`. A migrated model with no recorded source commit can't be drift-checked.
-PASS/FAIL.
+### Step 1 — Wait for materialisation (target metadata, not the scheduler)
+For each in-scope model, poll the production target's table metadata (BigQuery: `INFORMATION_SCHEMA.TABLES` / `__TABLES__` last-modified; Snowflake: `INFORMATION_SCHEMA.TABLES.LAST_ALTERED`) until the object's last-modified instant is later than its PR merge time (from `gh pr view` on the row's `pr_url`). This is deliberately orchestration-tool-agnostic: no scheduler API, whatever runs the client's DAG. Poll at a low cadence (every 10 minutes, `--wait-timeout` default 240). `--no-wait` skips the wait and compares whatever is materialised now, flagging not-yet-rebuilt models `stale_materialisation` and excluding them from verdicts. On timeout, report the unmaterialised set and proceed with the rest.
 
-**Check 5 — Equivalence fields consistent**
-`last_equivalence_result` is one of `pass | pass_qualified | diff_vintage | diff_availability | diff_schema_type | fail | null` (the verdict taxonomy; the legacy value `info` is accepted with a warning and read as `pass_qualified`); when it is non-null, `last_validated_commit` is set. `last_equivalence_t` is a UTC instant or null.
-PASS/FAIL.
+### Step 2 — Compare in production
+Invoke `equivalency-validate $ARGUMENTS --run-point post_merge_prod --models <materialised set>`. The target side is the **production** dataset (the merged models' real relations), not the scratch dataset; the source side and every check, pin, and taxonomy rule are exactly as that command specifies. The full verdict bar applies — this run point exists to catch what a sandbox cannot (production partitioning, prod-only data, the client's own build), so it is never run at a reduced bar.
 
-**Check 6 — Validated-vs-migrated coherence**
-No row claims `last_equivalence_result = pass` with a `last_validated_commit` that predates `last_migrated_commit` (would mean it was validated before it was (re)migrated).
-PASS/FAIL with offending rows.
+### Step 3 — Advance the register
+The merge step of `equivalency-validate` (rules in `specs/migration/equivalency/verdict_schema.md`) records the `post_merge_prod` verdicts in the verdict log and advances `delivery_stage` to `production_verified` for `pass`/`pass_qualified`. Divergent models keep `delivery_stage: merged`; each divergence is drilled to a named mechanism, and any `fail` (a translation defect that reached production) is escalated immediately: report it, reference `equivalency-investigate`, and flag it for the defect-class flywheel (sweep the estate for the same class).
 
-**Check 7 — Snapshot strategy valid and signed off**
-Every `object_type = snapshot` row has a `snapshot_strategy` of exactly `copy_and_continue` or `rebuild_from_T`; every `object_type = model` row has a blank `snapshot_strategy`. Every `rebuild_from_T` row records a data-owner sign-off in `notes` — a `rebuild_from_T` with no sign-off is a FAIL. A blank `snapshot_strategy` on a snapshot row is also a FAIL (a snapshot must never be left unassigned, which would risk defaulting to a history-discarding rebuild).
-PASS: every snapshot row has a valid, signed-off-where-required strategy. FAIL: list offending rows. Note "no snapshot rows" when none exist.
-
-**Check 8 — Delivery stage consistent**
-Every `delivery_stage` is blank or one of `in_pr | merged | production_verified`. A non-blank `delivery_stage` requires `state = migrated` or `state = drifted` (delivery progress survives drift; it cannot precede migration). `in_pr` requires a non-blank `pr_url`. `production_verified` requires at least one `run_point = post_merge_prod` row with verdict `pass` or `pass_qualified` for the model in `migration/migration_verdict_log.csv` (skip this sub-check with a warning if the log is absent).
-PASS/FAIL with offending rows.
-
-**Check 9 — Verdict log well-formed (when present)**
-If `migration/migration_verdict_log.csv` exists: the header carries `model, object_type, run_point, verdict, divergence_mechanism, method_class, mode, baseline_t, file_version, lane_id, report_ref, written_at`; every `run_point` is one of `standard | pre_raise | post_merge_prod`; every `verdict` is a taxonomy value; every verdict other than `pass` has a non-blank `divergence_mechanism`; `written_at` values are non-decreasing down the file (append-only order).
-PASS/FAIL with offending rows. Note "no verdict log" when the file does not exist.
-
-### Update status
+### Step 4 — Update status and report
 
 ```yaml
 artifacts:
-  migration_register:
-    validate: pass | fail
-    validated_date: "{{TODAY}}"
+  equivalency:
+    post_merge_verify:
+      last_run_date: "{{TODAY}}"
+      models_verified: <n>
+      models_divergent: <n>
+      models_unmaterialised: <n>
 ```
 
+Output: the verified/divergent/unmaterialised counts, each divergence with its mechanism, and — when divergent or unmaterialised models remain — the re-run line:
+
+```
+/wire:equivalency-post-merge-verify $ARGUMENTS
+```
+
+## Notes for the implementer
+
+- Keep this command free of comparison logic. If a check needs to differ at this run point, the change belongs in `equivalency-validate`, keyed off `--run-point`, not here.
+- A `post_merge_prod` divergence with a benign mechanism (e.g. prod partition filter semantics) is a `diff_*` verdict, not a silent pass — the named-mechanism discipline applies with extra force in production.
 
 ## Post-Execution Hooks
 
 After updating `status.md`, run these in sequence:
 
 1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
-
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact, `validate` as action.
-
-3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact_id, `Migration Register` as artifact_name, and the `file` value from `artifacts.migration_register` in status.md as file_path.
-
-4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `migration_register` as artifact, `validate` as action.
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `equivalency` as artifact, `post_merge_verify` as action.
+3. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `equivalency` as artifact, `post_merge_verify` as action.
 
 Execute the complete workflow as specified above.
 

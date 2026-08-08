@@ -1,9 +1,9 @@
 ---
-description: Validate the migration register — schema, coverage, state consistency
-argument-hint: <release-folder>
+description: Client CI parity gate: detect the client repo's CI system, replicate its locally-runnable checks against a branch before raising, report pass/fail per check
+argument-hint: <release-folder> [--repo <path-or-role>] [--branch <name>]
 ---
 
-# Validate the migration register — schema, coverage, state consistency
+# Client CI parity gate: detect the client repo's CI system, replicate its locally-runnable checks against a branch before raising, report pass/fail per check
 
 ## User Input
 
@@ -22,72 +22,72 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Validate the per-model migration register — schema, uniqueness, coverage, and state consistency
+description: Client CI parity gate — detect the client repo's CI system, replicate its locally-runnable checks against a branch before anything is raised, report pass/fail per check
+argument-hint: <release-folder> [--repo <path-or-role>] [--branch <name>]
 ---
 
-# Migration Register — Validate
+# Utils — Client CI Parity
 
-## Validation Checks
+## Purpose
 
-Read `migration/migration_register.csv`, `audit/dbt_audit.csv`, and the latest equivalency report.
+Client CI rejections are discovered post-raise unless the same checks run locally first. On a live engagement, two PRs bounced off the client's CI for causes that were replicable locally (SQL linting config, DAG validators, a policy-tag validator); a local runner built the same day made the next six raises first-time green on five. This command is that runner as a framework gate: detect what CI the client repo runs, replicate the locally-runnable steps against the branch, and report per-check results before `gh pr create` is ever invoked.
 
-**Check 1 — Schema present**
-The header carries all fourteen columns: `model, object_type, source_path, source_layer, last_migrated_commit, bq_target, state, snapshot_strategy, last_equivalence_result, last_equivalence_t, last_validated_commit, delivery_stage, pr_url, notes`. A twelve-column register predating v3.11.0 is a FAIL with the fix hint "run /wire:upgrade to add delivery_stage and pr_url".
-PASS/FAIL.
+## CI system detection (deterministic)
 
-**Check 2 — One row per in-scope model and snapshot, unique key**
-Every in-scope model from `dbt_audit.csv` has exactly one `object_type = model` row, and every snapshot from `dbt_snapshots.csv` has exactly one `object_type = snapshot` row; `model` is unique across both; no orphan rows except those marked `state = removed`.
-PASS/FAIL with missing/duplicate models and snapshots.
+Tests mirror this mapping exactly (`wire/tests/platform_migration/validate_ci_parity_detection.py`). Detection is by file presence at the repo root, checked in this fixed precedence order; every match is reported (a repo can run more than one system):
 
-**Check 3 — State values valid**
-Every `state` is one of `pending | migrated | drifted | failed | removed | deferred`.
-PASS/FAIL with offending rows.
+| Order | Present | System |
+|---|---|---|
+| 1 | `.circleci/config.yml` | `circleci` |
+| 2 | any `*.yml`/`*.yaml` under `.github/workflows/` | `github_actions` |
+| 3 | `.gitlab-ci.yml` | `gitlab_ci` |
+| 4 | `Jenkinsfile` | `jenkins` |
+| 5 | `azure-pipelines.yml` | `azure_pipelines` |
+| 6 | `bitbucket-pipelines.yml` | `bitbucket` |
 
-**Check 4 — Migrated rows are complete**
-Every `state = migrated` row has a non-null `last_migrated_commit` and `bq_target`. A migrated model with no recorded source commit can't be drift-checked.
-PASS/FAIL.
+No match: detection result is `none` — report "no CI detected" as a warning and pass the gate vacuously (there is nothing to be rejected by). Never hardcode a provider anywhere downstream of this table.
 
-**Check 5 — Equivalence fields consistent**
-`last_equivalence_result` is one of `pass | pass_qualified | diff_vintage | diff_availability | diff_schema_type | fail | null` (the verdict taxonomy; the legacy value `info` is accepted with a warning and read as `pass_qualified`); when it is non-null, `last_validated_commit` is set. `last_equivalence_t` is a UTC instant or null.
-PASS/FAIL.
+## Workflow
 
-**Check 6 — Validated-vs-migrated coherence**
-No row claims `last_equivalence_result = pass` with a `last_validated_commit` that predates `last_migrated_commit` (would mean it was validated before it was (re)migrated).
-PASS/FAIL with offending rows.
+### Step 1 — Resolve the repo and branch
+`--repo` accepts a local path or a `migration.client_repos` role (`transformation`/`orchestration`/`reverse_etl`); default role `transformation`. `--branch` defaults to the current branch of that checkout.
 
-**Check 7 — Snapshot strategy valid and signed off**
-Every `object_type = snapshot` row has a `snapshot_strategy` of exactly `copy_and_continue` or `rebuild_from_T`; every `object_type = model` row has a blank `snapshot_strategy`. Every `rebuild_from_T` row records a data-owner sign-off in `notes` — a `rebuild_from_T` with no sign-off is a FAIL. A blank `snapshot_strategy` on a snapshot row is also a FAIL (a snapshot must never be left unassigned, which would risk defaulting to a history-discarding rebuild).
-PASS: every snapshot row has a valid, signed-off-where-required strategy. FAIL: list offending rows. Note "no snapshot rows" when none exist.
+### Step 2 — Detect and parse
+Apply the detection table. For each detected system, parse the pipeline definition and extract the job steps. Classify each step:
 
-**Check 8 — Delivery stage consistent**
-Every `delivery_stage` is blank or one of `in_pr | merged | production_verified`. A non-blank `delivery_stage` requires `state = migrated` or `state = drifted` (delivery progress survives drift; it cannot precede migration). `in_pr` requires a non-blank `pr_url`. `production_verified` requires at least one `run_point = post_merge_prod` row with verdict `pass` or `pass_qualified` for the model in `migration/migration_verdict_log.csv` (skip this sub-check with a warning if the log is absent).
-PASS/FAIL with offending rows.
+- **Locally runnable** — linters (sqlfluff, ruff, yamllint), compile/parse steps (`dbt parse`, `dbt compile`), custom validator scripts committed to the repo, unit tests with no external service. Run these.
+- **Not locally runnable** — steps needing the CI vendor's context (deploy credentials, vendor-hosted caches, approval jobs). List them as `not_locally_verified`; never guess their outcome.
 
-**Check 9 — Verdict log well-formed (when present)**
-If `migration/migration_verdict_log.csv` exists: the header carries `model, object_type, run_point, verdict, divergence_mechanism, method_class, mode, baseline_t, file_version, lane_id, report_ref, written_at`; every `run_point` is one of `standard | pre_raise | post_merge_prod`; every `verdict` is a taxonomy value; every verdict other than `pass` has a non-blank `divergence_mechanism`; `written_at` values are non-decreasing down the file (append-only order).
-PASS/FAIL with offending rows. Note "no verdict log" when the file does not exist.
+Run each runnable step with the repo's own config files (the client's `.sqlfluff`, not ours), from the branch checkout, in the order the pipeline declares.
 
-### Update status
+### Step 3 — Report
+Per check: `pass` / `fail` (with the failing step's captured output, verbatim) / `not_locally_verified`. Exit summary: green only when every locally-runnable check passes. This is the final pre-raise gate — `dbt-migration-batch-raise` Step 5 consumes it and does not raise over a red result.
+
+### Step 4 — Update status
 
 ```yaml
 artifacts:
-  migration_register:
-    validate: pass | fail
-    validated_date: "{{TODAY}}"
+  utils_ci_parity:
+    last_run_date: "{{TODAY}}"
+    repo: "<url-or-path>"
+    systems_detected: [circleci]
+    checks_pass: <n>
+    checks_fail: <n>
+    checks_not_locally_verified: <n>
 ```
 
+## Notes for the implementer
+
+- Parity means the client's checks with the client's config. Do not substitute Wire's lint config, and do not "fix" the client's config to make a check pass; a disagreement between our output and their config is a finding to resolve in the models, or a question for the client.
+- New failure classes caught here feed the defect-class flywheel (`dbt-migration-lint`): a client CI rejection that was not locally replicated means this command's step extraction missed a step — extend it before the next raise.
+- Engagement-agnostic by design: nothing here reads migration-specific inputs beyond the optional `client_repos` role lookup, so any release type raising PRs into a client repo can use it.
 
 ## Post-Execution Hooks
 
 After updating `status.md`, run these in sequence:
 
 1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
-
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact, `validate` as action.
-
-3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact_id, `Migration Register` as artifact_name, and the `file` value from `artifacts.migration_register` in status.md as file_path.
-
-4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `migration_register` as artifact, `validate` as action.
+2. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `utils_ci_parity` as artifact, `run` as action.
 
 Execute the complete workflow as specified above.
 

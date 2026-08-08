@@ -1151,6 +1151,39 @@ Migration Report — 01-gdp-snowflake-to-bq
       once int_marketing__campaign_attribution lands on BigQuery
 ```
 
+## Shipping and verifying the batches — the fleet way (v3.11.0)
+
+Everything above translated and validated the estate. From v3.11.0 the release does not stop at "migrated": the ship-and-verify pipeline carries each model into the client's repo and then proves the production build. The notable thing about this phase is what you do **not** type. You direct; the agent invokes the Wire commands, spawns lane agents, and merges what they report back:
+
+```
+You:  batch 4 verdicts are in. ship everything that's ready and update me
+      when the lanes finish.
+
+Wire: Reading the register: 31 models eligible (gate_policy:
+      equivalence_before_pr — 29 pass, 2 pass_qualified; 3 blocked:
+      2 verdict_required, 1 external_exactness on a Hightouch-feeding
+      model at pass_qualified).
+
+      Dispatching: PR-prep lane (batch manifest), build lane
+      (defer-build, branch checkout, est. 4.2 GB — under the 25 GB
+      per-run budget), comparison lane (--run-point pre_raise).
+
+      ... lanes complete. Pre-raise: 31/31 pass. CI parity (CircleCI
+      detected): sqlfluff + DAG validator green. Raised:
+      https://github.com/gatwick-data/gdp-airflow/pull/214 (31 models,
+      evidence-first body). Register: delivery_stage=in_pr.
+
+You:  client merged it this afternoon. verify.
+
+Wire: /wire:equivalency-post-merge-verify — waiting on target table
+      metadata... 31/31 materialised by the client's 16:00 DAG run.
+      Production comparison at the full bar: 30 pass, 1 diff_vintage
+      (source loaded 14:05, target watermark 13:30 — matched-vintage
+      re-run passes). Register: 30 production_verified.
+```
+
+Behind that exchange, the commands the orchestrating agent invoked were `/wire:dbt-migration-batch-raise` (which itself ran `/wire:dbt-migration-defer-build` for the smoke build, `/wire:equivalency-validate --run-point pre_raise` for the comparison, and `/wire:utils-ci-parity` before `gh pr create`) and `/wire:equivalency-post-merge-verify` after the merge. Every verdict appended a row to `migration/migration_verdict_log.csv`; every lane wrote its own verdict JSON and the orchestrator merged them as the single register writer. The operating rules the lanes ran under — flat lanes, tree ownership, incremental state with a resume contract, budget lines, and the consolidation pass that re-checks lane claims against the warehouse — are in `specs/utils/migration_fleet.md`.
+
 ## What was produced
 
 | Artifact | Format | Status |
@@ -1169,6 +1202,9 @@ Migration Report — 01-gdp-snowflake-to-bq
 | Reverse ETL migration (runbook + decoy mapping) | `artifacts/reverse_etl_migration/` | Approved |
 | Orchestration migration (11 Airflow DAGs) | `artifacts/orchestration_migration/` | Approved |
 | Equivalency validation reports (4 runs) | `artifacts/equivalency_validation/` | All checks passing |
+| Verdict log (append-only, every run point) | `migration/migration_verdict_log.csv` | 214 verdict rows |
+| Client PR batches (batch-raise, evidence-first) | 7 PRs in the client repo | All merged |
+| Post-merge production verification | Register `delivery_stage` | 180/180 production_verified |
 | Cutover runbook | `artifacts/cutover/cutover_runbook.md` | Executed |
 | Migration report | `artifacts/migration_report/migration_report.md` | Complete |
 | `decisions.md` | 23 agent decisions across audit and migration zones | — |

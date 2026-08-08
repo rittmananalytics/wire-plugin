@@ -1,9 +1,9 @@
 ---
-description: Validate the migration register — schema, coverage, state consistency
-argument-hint: <release-folder>
+description: Cost-guarded sandbox build: refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors, dry-run cost screen
+argument-hint: <release-folder> --models <list> [--allow-graph] [--override-budget] [--dry-run]
 ---
 
-# Validate the migration register — schema, coverage, state consistency
+# Cost-guarded sandbox build: refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors, dry-run cost screen
 
 ## User Input
 
@@ -22,72 +22,97 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Validate the per-model migration register — schema, uniqueness, coverage, and state consistency
+description: Cost-guarded sandbox build of translated models — refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors enforced, dry-run cost screen before every build
+argument-hint: <release-folder> --models <name[,name...]> [--project <name>] [--allow-graph] [--override-budget] [--dry-run] [--full-refresh]
 ---
 
-# Migration Register — Validate
+## Data Safety — Read Before Proceeding
 
-## Validation Checks
+Before running any build, read `data_safety` from status.md and output the standard reminder (`equivalency-validate` shows the format). All writes go to the scratch dataset only (`migration.cost_controls.scratch_dataset`); the source platform and every `data_safety.production_projects` entry are never written to. If a resolved selector would materialise outside the scratch dataset, stop and report the conflict.
 
-Read `migration/migration_register.csv`, `audit/dbt_audit.csv`, and the latest equivalency report.
+---
 
-**Check 1 — Schema present**
-The header carries all fourteen columns: `model, object_type, source_path, source_layer, last_migrated_commit, bq_target, state, snapshot_strategy, last_equivalence_result, last_equivalence_t, last_validated_commit, delivery_stage, pr_url, notes`. A twelve-column register predating v3.11.0 is a FAIL with the fix hint "run /wire:upgrade to add delivery_stage and pr_url".
-PASS/FAIL.
+# dbt Migration — Defer Build
 
-**Check 2 — One row per in-scope model and snapshot, unique key**
-Every in-scope model from `dbt_audit.csv` has exactly one `object_type = model` row, and every snapshot from `dbt_snapshots.csv` has exactly one `object_type = snapshot` row; `model` is unique across both; no orphan rows except those marked `state = removed`.
-PASS/FAIL with missing/duplicate models and snapshots.
+## Purpose
 
-**Check 3 — State values valid**
-Every `state` is one of `pending | migrated | drifted | failed | removed | deferred`.
-PASS/FAIL with offending rows.
+Builds translated models in a sandbox so equivalency lanes and pre-raise smoke checks have relations to compare, without paying for (or risking) a full-graph build. Three guards, all mandatory, promoted into the framework from an engagement-local script after a sandbox build defect caused a four-figure single-day scan cost:
 
-**Check 4 — Migrated rows are complete**
-Every `state = migrated` row has a non-null `last_migrated_commit` and `bq_target`. A migrated model with no recorded source commit can't be drift-checked.
-PASS/FAIL.
+1. **Refs defer to prod state** — the build reads upstream relations from the deployed production state (dbt `--defer --state <prod manifest>`), so building one model never rebuilds its ancestry.
+2. **Writes gated to the scratch dataset** — materialisations land only in `migration.cost_controls.scratch_dataset`.
+3. **Exact-name selectors, cost-screened** — graph operators are refused by default, and every build is preceded by a dry-run cost estimate charged against the release's budget.
 
-**Check 5 — Equivalence fields consistent**
-`last_equivalence_result` is one of `pass | pass_qualified | diff_vintage | diff_availability | diff_schema_type | fail | null` (the verdict taxonomy; the legacy value `info` is accepted with a warning and read as `pass_qualified`); when it is non-null, `last_validated_commit` is set. `last_equivalence_t` is a UTC instant or null.
-PASS/FAIL.
+## Selector guard (deterministic)
 
-**Check 6 — Validated-vs-migrated coherence**
-No row claims `last_equivalence_result = pass` with a `last_validated_commit` that predates `last_migrated_commit` (would mean it was validated before it was (re)migrated).
-PASS/FAIL with offending rows.
+Tests mirror these rules exactly (`wire/tests/platform_migration/validate_defer_build_guard.py`).
 
-**Check 7 — Snapshot strategy valid and signed off**
-Every `object_type = snapshot` row has a `snapshot_strategy` of exactly `copy_and_continue` or `rebuild_from_T`; every `object_type = model` row has a blank `snapshot_strategy`. Every `rebuild_from_T` row records a data-owner sign-off in `notes` — a `rebuild_from_T` with no sign-off is a FAIL. A blank `snapshot_strategy` on a snapshot row is also a FAIL (a snapshot must never be left unassigned, which would risk defaulting to a history-discarding rebuild).
-PASS: every snapshot row has a valid, signed-off-where-required strategy. FAIL: list offending rows. Note "no snapshot rows" when none exist.
+`--models` takes a comma-separated list. Each selector is evaluated independently:
 
-**Check 8 — Delivery stage consistent**
-Every `delivery_stage` is blank or one of `in_pr | merged | production_verified`. A non-blank `delivery_stage` requires `state = migrated` or `state = drifted` (delivery progress survives drift; it cannot precede migration). `in_pr` requires a non-blank `pr_url`. `production_verified` requires at least one `run_point = post_merge_prod` row with verdict `pass` or `pass_qualified` for the model in `migration/migration_verdict_log.csv` (skip this sub-check with a warning if the log is absent).
-PASS/FAIL with offending rows.
+- A selector matching `^[A-Za-z0-9_]+$` is an **exact model name**: allowed.
+- Any other selector — graph operators (`+model`, `model+`, `@model`), method selectors (`tag:`, `path:`, `state:`, any `:`), wildcards (`*`), or path separators (`/`) — is a **graph selector**: refused with reason `graph_selector` unless `--allow-graph` was passed, in which case it is allowed and flagged `graph_expansion: true` in the output (the operator chose to pay for the expansion, and the run records that choice).
+- An empty `--models` list (or the flag absent) is refused with reason `empty_selector` — this command never builds "everything" implicitly.
 
-**Check 9 — Verdict log well-formed (when present)**
-If `migration/migration_verdict_log.csv` exists: the header carries `model, object_type, run_point, verdict, divergence_mechanism, method_class, mode, baseline_t, file_version, lane_id, report_ref, written_at`; every `run_point` is one of `standard | pre_raise | post_merge_prod`; every `verdict` is a taxonomy value; every verdict other than `pass` has a non-blank `divergence_mechanism`; `written_at` values are non-decreasing down the file (append-only order).
-PASS/FAIL with offending rows. Note "no verdict log" when the file does not exist.
+## Cost screen (deterministic)
 
-### Update status
+Before building, estimate the run's cost and apply the budget rule (same test file):
+
+| Condition | Action |
+|---|---|
+| `per_run_budget` is null | `proceed_warn` — build, print the estimate with a "no budget set" warning |
+| estimate <= `per_run_budget` | `proceed` |
+| estimate > `per_run_budget`, `--override-budget` passed | `proceed_flagged` — build, record the override in the run output |
+| estimate > `per_run_budget`, no override | `block` — do not build; print the estimate, the budget, and the per-model breakdown |
+
+The same rule applies against `daily_budget` using the day's cumulative recorded spend (from prior run outputs in `migration/build_runs/`); the stricter of the two outcomes wins. `--dry-run` stops after the screen and prints the estimate without building.
+
+## Warehouse adapters
+
+The estimate and the enforcement mechanics are target-specific; the guard rules above are not.
+
+- **BigQuery (first-class).** Estimate: `bq --dry_run` (or the MCP equivalent via `specs/utils/bigquery_mcp_fallback.md`) over each model's compiled SQL; unit `gb_scanned`. Enforcement: set `maximum_bytes_billed` on the build connection to the remaining budget. After the build, read actual bytes billed per model from `INFORMATION_SCHEMA.JOBS_BY_PROJECT` and record them. External tables dry-run at 0 bytes: flag them `estimate_unreliable` and use object-size metadata as the estimate instead. dbt tests over large relations scan like builds: the screen covers `dbt build`'s test executions too.
+- **Snowflake (degraded).** No dry-run pricing exists: estimate from `EXPLAIN` partition/byte counts as an approximation, unit `credits`, and mark every estimate `approximate`. Enforcement is warn-based (no hard equivalent of `maximum_bytes_billed`); record actual credits from `QUERY_HISTORY` after the run.
+- **Other targets.** Screen unavailable: print a warning, treat the estimate as unknown, and apply the null-budget rule.
+
+## Build-slot lock (mechanical)
+
+One dbt build per project at a time (the fleet rule, `specs/utils/migration_fleet.md`). Before building, create `migration/locks/build_{project}.lock` containing the lane id and a UTC timestamp; if the file already exists and is younger than 60 minutes, refuse to start and report who holds it. Remove the lock when the build ends, success or failure. A lock older than 60 minutes is stale: report it, remove it, proceed.
+
+## Workflow
+
+### Step 1 — Resolve scope and screen it
+Apply the selector guard to `--models`. Resolve the prod state manifest (the deployed target project's manifest; if none is available, stop and report — defer needs a state to defer to). Compile the in-scope models, run the cost screen, and stop here if it blocks (or if `--dry-run`).
+
+### Step 2 — Acquire the build slot and build
+Take the build-slot lock for `--project` (default: the release's single dbt project). Run `dbt build` with `--defer --state <prod manifest>`, `--select` set to the exact resolved names, writes to the scratch dataset, and the warehouse-level cost cap where the adapter supports one. Release the lock.
+
+### Step 3 — Record the run
+Append one entry to `migration/build_runs/build_runs.md`: UTC timestamp, lane id, models, estimate, actual cost, budget outcome (`proceed`/`proceed_warn`/`proceed_flagged`), per-model build result. Print the cost line: estimated vs actual vs remaining daily budget.
+
+### Step 4 — Update status
 
 ```yaml
 artifacts:
-  migration_register:
-    validate: pass | fail
-    validated_date: "{{TODAY}}"
+  dbt_migration:
+    defer_build:
+      last_run_date: "{{TODAY}}"
+      models_built: <n>
+      models_failed: <n>
+      run_cost: "<actual, with unit>"
+      day_cost_cumulative: "<sum for the day, with unit>"
 ```
 
+## Notes for the implementer
+
+- This command builds; it never compares. Equivalency lanes and `dbt-migration-batch-raise`'s smoke build invoke it and then run their own checks over the scratch relations.
+- The guard exists because graph selectors silently defeat defer: `+model` pulls the ancestry into the build and the scan cost multiplies. Refusing them by default converts an expensive surprise into an explicit choice.
+- Keep platform specifics in the adapter section; the guard, the screen rule, and the lock are target-neutral.
 
 ## Post-Execution Hooks
 
 After updating `status.md`, run these in sequence:
 
 1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
-
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact, `validate` as action.
-
-3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact_id, `Migration Register` as artifact_name, and the `file` value from `artifacts.migration_register` in status.md as file_path.
-
-4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `migration_register` as artifact, `validate` as action.
+2. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `dbt_migration` as artifact, `defer_build` as action.
 
 Execute the complete workflow as specified above.
 

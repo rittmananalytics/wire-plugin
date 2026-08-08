@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.10.19 | **Date**: July 2026
+**Version**: 3.11.0 | **Date**: August 2026
 
 ---
 
@@ -2203,6 +2203,10 @@ A long migration runs against a moving source — models get added, edited, and 
 Two bundled CI templates (`TEMPLATES/migration/ci/`) deploy this: `migrated-model-ci.yml` runs a tiered sweep (Tier 1 `dbt-migration-lint`, Tier 3 `equivalency-validate --baseline`) on any pull request touching a migrated model's path (derived from the register's `source_path` column), and `migration-drift-schedule.yml` runs the drift gate on a cron (default weekdays 06:00 UTC — adjust to the engagement's cadence).
 
 ---
+
+### Ship and verify: from migrated to production-verified (v3.11.0)
+
+From v3.11.0 the release does not stop at "migrated". Four commands carry each model into the client's repo and prove the production build: `/wire:dbt-migration-defer-build` (cost-guarded sandbox builds), `/wire:dbt-migration-batch-raise` (register-driven PRs with a deterministic eligibility table, pre-raise comparison, and drop-on-defect), `/wire:utils-ci-parity` (the client's own CI checks, replicated locally, as the final pre-raise gate), and `/wire:equivalency-post-merge-verify` (production comparison after the merge, advancing the register to `production_verified`). Equivalency verdicts follow a six-value taxonomy with every divergence drilled to a named mechanism, and every verdict appends to `migration/migration_verdict_log.csv`. At fleet scale the release runs under `specs/utils/migration_fleet.md`: one director issuing rulings, one orchestrating session invoking the commands, 6 to 12 flat lanes reporting back through incremental state files. Configuration: `migration.gate_policy`, `migration.client_repos`, `migration.cost_controls`. The full write-up is on the docs-site platform-migration page.
 
 ### Safety gates
 
@@ -5010,6 +5014,18 @@ The detailed content — command sequences, scenario background, deliverable tab
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
 
 ---
+
+### v3.11.0 — Ship and verify: the pipeline beyond "migrated", and the fleet operating model (August 2026)
+
+The platform_migration release type used to end at "migrated" in the register; everything from a passing verdict to verified code on the client's main was free-form. v3.11.0 productises that tail, generalised from the first engagement to run the release at fleet scale, and writes the operating model down: the director types intents and rulings, the orchestrating agent invokes the Wire commands and dispatches lane-agent fleets that report back through incremental state files (`specs/utils/migration_fleet.md`, including the mandatory consolidation/backstop pass).
+
+- **`/wire:dbt-migration-defer-build`** — cost-guarded sandbox builds: refs deferred to prod state, scratch-dataset writes only, exact-name selectors (graph operators refused without `--allow-graph`), dry-run cost screen against per-run/daily budgets, per-project build-slot lock.
+- **`/wire:dbt-migration-batch-raise`** — register-driven client PRs: deterministic eligibility (gate policy x verdict x external-output exactness), smoke-build from the branch's own checkout, pre-raise comparison, drop-on-defect, evidence-first PR body, merge detection.
+- **`/wire:utils-ci-parity`** — detect the client repo's CI system and replicate its locally-runnable checks with the client's own config; the final pre-raise gate.
+- **`/wire:equivalency-post-merge-verify`** — after the client merges, wait for their pipeline to materialise, compare production at the full bar, advance the register to `production_verified`.
+- **Verdict taxonomy + append-only verdict log** — six verdicts (`pass`/`pass_qualified`/`diff_vintage`/`diff_availability`/`diff_schema_type`/`fail`), every divergence drilled to a named mechanism, verdicts bound to exact file versions and run points; `migration/migration_verdict_log.csv` keeps the dated history the current-state register cannot. Register gains `delivery_stage`/`pr_url`.
+
+Additive throughout: `/wire:upgrade` adds the new keys and columns to existing releases; legacy pass/fail verdicts stay valid.
 
 ### v3.10.19 — Batch-zero macro & UDF pass, single-SCC batching fallback (July 2026)
 
