@@ -65,6 +65,10 @@ Output: the verified/divergent/unmaterialised counts, each divergence with its m
 /wire:equivalency-post-merge-verify $ARGUMENTS
 ```
 
+## Tenant carve-out (v3.11.1)
+
+Nothing changes structurally — the comparison runs through `equivalency-validate`, which under `tenant_carveout` scope already applies the tenant predicate to the source side (the target side, a single-tenant project, is whole by construction) and the relocate-mode comparator for `origin: relocate` models. Verdict rows carry `scope` and the predicate hash, so a carve-out's production verification is never mistakable for a full-estate one.
+
 ## Notes for the implementer
 
 - Keep this command free of comparison logic. If a check needs to differ at this run point, the change belongs in `equivalency-validate`, keyed off `--run-point`, not here.

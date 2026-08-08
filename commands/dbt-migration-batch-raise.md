@@ -51,6 +51,14 @@ Tests mirror this table exactly (`wire/tests/platform_migration/validate_batch_r
 
 `--dry-run` prints the candidate list with per-model block reasons and stops.
 
+## Tenant carve-out (v3.11.1)
+
+When `migration.scope == tenant_carveout`:
+
+- **The default gate policy stands, harder.** The carve-out's deliverable is an isolation proof, so `equivalence_before_pr` remains the default; `ship_then_verify` additionally requires that the `region-tagging-review` (adjudication) and `data-residency-assessment-review` (client DPO/legal) gates are complete before any raise — refuse to run otherwise. A residency ruling is not something to ship ahead of.
+- **The comparison threads itself.** The pre-raise comparison (Step 4) runs through `equivalency-validate`, which already applies `migration.tenant_predicate` on both sides — and the relocate-mode comparator (parent target vs tenant target) for `origin: relocate` models. Nothing extra to configure here.
+- **The target repo may be new.** A carve-out often ships into the tenant's own new repo rather than the parent client's. `migration.client_repos` carries whichever it is; when the repo has no CI yet, `utils-ci-parity --scaffold-from` derives the parity checks from the parent repo's pipeline (Step 5).
+
 ## Workflow
 
 ### Step 1 — Derive the batch

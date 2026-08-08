@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.1 — Ship-and-verify for the tenant carve-out
+
+**Released**: August 2026
+
+Brings the v3.11.0 ship-and-verify machinery to the `tenant_carveout` variant, adapted to what a carve-out actually delivers: an isolation proof.
+
+**Relocate-mode equivalency.** Models the carve-out relocated from an already-landed parent migration (`origin: relocate` in the register) no longer compare against the source platform — that re-proves the parent's translation, not the carve-out. Their comparison is now parent target project (tenant-predicate-scoped, from the new `migration.parent_target_project` key) against the tenant project's relation. Freshly-translated carve-out models keep the both-sides-predicated comparison, and every carve-out verdict records its scope and a hash of the exact predicate applied.
+
+**Relocate feeds the pipeline.** `dbt-carveout-relocate-generate` now upserts relocated models into the migration register and chains the downstream gates by default (validate, lint, fix, pre-PR review; `--no-chain` opts out) — previously relocated models were invisible to `batch-raise` candidate derivation and the delivery stage ladder.
+
+**Carve-out guardrails on the shipping commands.** `defer-build` gains a mechanical `tenant_write_guard` (every write lands inside the tenant project, no override) and a defer-state fallback chain ending at `--no-defer` when neither the tenant nor the parent has a usable prod manifest. `batch-raise` refuses `ship_then_verify` until the region-tagging adjudication and the DPO/legal residency review are complete. `utils-ci-parity --scaffold-from` derives parity checks from the parent repo's pipeline when the tenant repo has no CI yet.
+
+**Fleet and spec debt.** Carve-out lane roster (region-tagging evidence, isolation verification scoped to RA-held credentials, bulk-copy monitor) with the park rule: human gates park items, they never stall lanes. And the region-tagging roles rule — a role with no name-suffix signal classifies by grant scope — closes the documented Step 2/Step 3 ambiguity; the test fixture that deliberately skipped it is now fully scored.
+
+---
+
 ## v3.11.0 — The pipeline beyond "migrated": ship, verify, and the fleet operating model
 
 **Released**: August 2026

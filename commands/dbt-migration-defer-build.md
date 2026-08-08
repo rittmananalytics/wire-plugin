@@ -73,6 +73,13 @@ The estimate and the enforcement mechanics are target-specific; the guard rules 
 - **Snowflake (degraded).** No dry-run pricing exists: estimate from `EXPLAIN` partition/byte counts as an approximation, unit `credits`, and mark every estimate `approximate`. Enforcement is warn-based (no hard equivalent of `maximum_bytes_billed`); record actual credits from `QUERY_HISTORY` after the run.
 - **Other targets.** Screen unavailable: print a warning, treat the estimate as unknown, and apply the null-budget rule.
 
+## Tenant carve-out (v3.11.1)
+
+Two adaptations when `migration.scope == tenant_carveout`:
+
+- **Tenant write guard (mechanical).** Every materialisation must land inside `migration.target_project` (the tenant project). A resolved write target in any other project is refused with reason `tenant_write_guard` — no override flag exists for this one; a carve-out that writes outside its tenant project is a data-isolation defect, not a cost decision. Tests mirror the rule (`wire/tests/platform_migration/validate_defer_build_guard.py`, tenant cases).
+- **Defer-state fallback.** Early in a carve-out the tenant project has no production manifest to defer to. Resolve the defer state in order: the tenant project's own prod manifest if one exists; else the parent migration's prod manifest (`migration.parent_target_project`, the `dbt-carveout-relocate` case — upstream refs resolve to the parent's relations, read-only); else stop and report that the run needs `--no-defer` (a full build of the selected models' ancestry into the scratch dataset, cost-screened like everything else).
+
 ## Build-slot lock (mechanical)
 
 One dbt build per project at a time (the fleet rule, `specs/utils/migration_fleet.md`). Before building, create `migration/locks/build_{project}.lock` containing the lane id and a UTC timestamp; if the file already exists and is younger than 60 minutes, refuse to start and report who holds it. Remove the lock when the build ends, success or failure. A lock older than 60 minutes is stale: report it, remove it, proceed.

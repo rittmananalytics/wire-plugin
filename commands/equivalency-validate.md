@@ -127,6 +127,10 @@ No new check types are introduced. min/max already lives inside value sampling (
 
 If `migration.tenant_predicate` is null while `scope == tenant_carveout`, stop and report — the predicate is required to scope the carve-out.
 
+Carve-out lane verdict files record `scope: tenant_carveout` and `tenant_predicate_sha256` (the SHA-256 of the exact predicate applied), per `specs/migration/equivalency/verdict_schema.md` — a carve-out verdict must never be mistakable for a full-estate one.
+
+**Relocate-mode comparison (carve-out staged after the parent migration, v3.11.1).** Models whose register row carries `origin: relocate` in `notes` (written by `dbt-carveout-relocate-generate`) were copied from the already-migrated parent target, not translated from the source platform — so comparing them against the source platform re-proves the parent's work, not the carve-out's. For these models only, the comparison sides change: the **source side is the parent target project's production relation with `migration.tenant_predicate` applied** (parent project from `migration.parent_target_project`), and the **target side is the tenant project's relation, unscoped** (the tenant project is single-tenant by construction). Every check type, pin, and taxonomy rule is otherwise unchanged. If `migration.parent_target_project` is null while relocate-origin models are in scope, stop and report for those models — the comparator needs a parent to compare against. Non-relocate models in the same carve-out (translated fresh from the source platform) keep the standard both-sides-predicated comparison above.
+
 ### Step 1b: Baseline-pin mode (deterministic equivalency)
 
 By default the checks read live source and target tables. With `--baseline` (or when `migration.equivalency_baseline` is set in status.md), run in **baseline-pin mode** against the frozen baseline defined in the migration strategy's "frozen equivalency baseline" section — comparing two pinned states at instant `T`, not two moving platforms.

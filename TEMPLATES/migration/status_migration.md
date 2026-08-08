@@ -18,6 +18,10 @@ migration:
                                            # extracted tenant, e.g. "tenant_id = 4815". Consumed by the carve-out
                                            # steps (region-tagging, bulk-copy-migration, logical-access-uat).
                                            # Leave null for full_migration.
+  parent_target_project: null              # tenant_carveout only: the parent migration's target project, used as
+                                           # the comparison source for relocate-origin models (equivalency-validate,
+                                           # Relocate-mode comparison) and as defer-build's fallback defer state.
+                                           # Leave null for full_migration or a carve-out with no landed parent.
   dbt_project_path: "{{DBT_PROJECT_PATH}}" # default: ./dbt
   orchestration_tool: "{{ORCHESTRATION_TOOL}}" # dagster | dbt_cloud | airflow | none
   ingestion_tool: "{{INGESTION_TOOL}}"     # fivetran | rudderstack | coupler-io | segment | airbyte | other

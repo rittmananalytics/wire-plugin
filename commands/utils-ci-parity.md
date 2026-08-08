@@ -47,6 +47,10 @@ Tests mirror this mapping exactly (`wire/tests/platform_migration/validate_ci_pa
 
 No match: detection result is `none` — report "no CI detected" as a warning and pass the gate vacuously (there is nothing to be rejected by). Never hardcode a provider anywhere downstream of this table.
 
+## Scaffold mode (v3.11.1)
+
+`--scaffold-from <path-or-role>`: when the target repo has no CI yet (the common case for a tenant carve-out shipping into a brand-new repo), detect and parse the **referenced** repo's pipeline instead, run its locally-runnable checks against the target branch, and write the extracted check list to `migration/ci_parity_scaffold.md` as the starting point for the new repo's own pipeline. Detection on the target repo still runs first; if it finds a CI system, that wins and `--scaffold-from` is ignored with a note — a repo that has grown its own CI is checked against its own CI.
+
 ## Workflow
 
 ### Step 1 — Resolve the repo and branch

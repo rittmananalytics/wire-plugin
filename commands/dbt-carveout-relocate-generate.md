@@ -173,6 +173,10 @@ artifacts:
     waves_complete: ["B01"]   # set only when run with --wave; accumulates across runs
 ```
 
+### Step 6b: Update the migration register (v3.11.1)
+
+For every successfully relocated model, upsert its row in `migration/migration_register.csv` exactly as `dbt-migration-generate` does: `source_path`, `source_layer`, `last_migrated_commit` (the parent-release source snapshot SHA the relocated file was taken from), `bq_target` (the tenant project relation), `state: migrated` (`failed` on a compile failure; a `manual_review_required` predicate injection stays `pending` until resolved). Record `origin: relocate` in `notes` — the ship-and-verify pipeline reads this to pick the relocate-mode comparator (`equivalency-validate`, Relocate-mode comparison). Without these rows, relocated models are invisible to `dbt-migration-batch-raise` candidate derivation and to the delivery stage ladder. Skip silently if the register doesn't exist.
+
 ### Step 7: Output summary
 
 Print a per-model results table (model, bucket, predicate_injection state, compile result), then:
@@ -180,6 +184,10 @@ Print a per-model results table (model, bucket, predicate_injection state, compi
 ```
 /wire:dbt-carveout-relocate-validate $ARGUMENTS --target-dbt-project-path <path>
 ```
+
+### Step 8: Chain the downstream gates (v3.11.1; `--no-chain` opts out)
+
+Unless `--no-chain` was passed, run the same gate chain `dbt-migration-generate` runs over its scope, against the relocated set: `dbt-carveout-relocate-validate`, then `dbt-migration-lint`, `dbt-migration-fix`, and `dbt-migration-pre-pr-review` scoped to the relocated models. A relocate run then leaves the gates already applied rather than stopping at a next-step suggestion, and its models arrive at `dbt-migration-batch-raise` eligibility with rule 2 (gates clean) already satisfiable.
 
 ## Output Files
 

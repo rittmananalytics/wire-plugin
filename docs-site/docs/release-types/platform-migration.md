@@ -523,6 +523,10 @@ Four commands are specific to the carve-out flow, plus a fifth that only applies
 
 A worked example of the carve-out flow — including both the concurrent-with-parent-migration case (`dbt-migration`) and the staged-after-parent-migration case (`dbt-carveout-relocate`) — is in the [Tutorial: Tenant Carve-out](../tutorials/platform-migration-tenant-carveout).
 
+### Ship and verify under the carve-out (v3.11.1)
+
+The v3.11.0 ship-and-verify pipeline runs in `tenant_carveout` scope with the adaptations the isolation deliverable demands: `defer-build` refuses any write outside the tenant project (`tenant_write_guard`) and defers to the parent migration's prod manifest when the tenant project has none; `batch-raise` keeps `equivalence_before_pr` as the default and refuses `ship_then_verify` until the adjudication and DPO/legal residency gates are complete; `utils-ci-parity --scaffold-from` derives parity checks from the parent repo when the tenant repo has no CI yet; and relocate-origin models compare **parent target (predicate-scoped) vs tenant target** rather than re-proving the parent's translation against the source platform. `dbt-carveout-relocate-generate` writes the register and chains the downstream gates, so relocated models enter the same delivery stage ladder as everything else. Carve-out verdicts carry `scope` and a predicate hash. Fleet-wise, the three human gates are park points, not lane stalls.
+
 ### Branching strategy
 
 A carve-out release tracks a moving parent release — the parent keeps landing changes while the carve-out extracts the tenant on its own branch. Keep the two in sync with `git merge <parent-branch>` into the carve-out branch on a regular cadence, not rebase: the releases touch disjoint files (parent extends staging/warehouse models, carve-out adds region tags, tenant IAM, bulk-copy runbooks), so the merges are close to conflict-free. Reserve `git rebase` for short-lived, single-owner per-batch branches cut *from* the carve-out branch, where there's no shared history to protect.

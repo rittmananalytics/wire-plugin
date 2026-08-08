@@ -195,6 +195,19 @@ The plan derives its tests from the IAM boundaries in `target_setup_scripts/04_s
 
 You do not run a different equivalency command. The existing checks gain the tenant predicate on both source and target, so the carve-out validates only the carved-out tenant's rows. Row count, value sampling, freshness, checksum, and aggregate control totals all scope to `tenant_id = 1042`. Schema stays structural and unchanged — there is no row data for a predicate to act on. No new check types were added.
 
+From v3.11.1, two additions. **Relocate-mode comparison**: models the relocate step copied from the parent migration (`origin: relocate` in the register) no longer compare against the source platform — that would re-prove the parent's work, not the carve-out's. Their source side is the **parent target project's production relation with the tenant predicate applied** (`migration.parent_target_project`), and their target side is the tenant project's relation, unscoped. Freshly-translated models in the same carve-out keep the standard both-sides-predicated comparison. **Verdict provenance**: every carve-out verdict records `scope: tenant_carveout` and a hash of the exact predicate applied, so a carve-out verdict can never be mistaken for a full-estate one.
+
+## Shipping and verifying the carve-out (v3.11.1)
+
+The v3.11.0 ship-and-verify pipeline runs under the carve-out with four adaptations, and the same fleet framing applies — you direct, the agent invokes:
+
+- **`dbt-carveout-relocate-generate` now feeds the pipeline**: it upserts relocated models into the migration register and chains the downstream gates (validate, lint, fix, pre-PR review; `--no-chain` opts out), so relocated models arrive at `dbt-migration-batch-raise` eligibility like any translated model.
+- **`dbt-migration-defer-build` guards the tenant boundary**: every write must land inside the tenant project (`tenant_write_guard`, no override), and the defer state falls back to the parent migration's prod manifest when the tenant project has no production state yet.
+- **`dbt-migration-batch-raise` respects the residency gates**: `ship_then_verify` refuses to run until the region-tagging adjudication and the DPO/legal residency review are complete. The default stays `equivalence_before_pr` — a carve-out's deliverable is an isolation proof.
+- **`utils-ci-parity --scaffold-from`** covers the brand-new tenant repo: parity checks derive from the parent repo's pipeline until the new repo grows its own CI, and the extracted check list doubles as the starting point for that pipeline.
+
+Human gates stay human: adjudication, residency sign-off, and the isolation UAT are **park points** for the fleet — an item waiting on a ruling parks, and the lanes move to the next runnable item (`specs/utils/migration_fleet.md`).
+
 ## Where the carve-out lands in the sequence
 
 ```

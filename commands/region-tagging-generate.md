@@ -105,10 +105,19 @@ For each item, look for region signals and assign the strongest-matching bucket:
 
 A confident-region match wins over shared-row-level; shared-row-level wins over global-deferred. Record the single signal (or "none") that placed the item.
 
+**Roles classify by grant scope (v3.11.1).** A role has no rows and no destination, so the three signals above only partially apply: the **name-suffix** signal applies to role names exactly as to any other name, but a role with no name signal classifies by the region status of the objects its grants reference (from the security audit's grant inventory), evaluated after all non-role items are classified:
+
+- every object the role's grants reference is itself `confident-region` → **confident-region**, signal `grant-scope` (the role's whole access surface lives in the target region);
+- the grants reference a mix of confident-region and other objects, or reference any `shared-row-level` object → **shared-row-level** (the role's surface spans regions; adjudication decides whether to split the role);
+- the role has no object-level grants at all (account-level / administrative roles) → **global-deferred**.
+
+Tests mirror this rule (`wire/tests/platform_migration/validate_region_tagging_classification.py`).
+
 ### Step 4: Assign a confidence score
 
 Give each row a confidence score in `[0.0, 1.0]`:
 - confident-region with an explicit name/destination/WHERE signal → high (≥ 0.8)
+- confident-region via the role `grant-scope` signal → medium-high (0.6–0.8) — derived from other items' classifications, so a notch below an explicit object-level signal
 - shared-row-level → medium (≈ 0.4–0.7), reflecting that a human + lineage trace is still needed
 - global-deferred → low / not-applicable (≤ 0.3)
 

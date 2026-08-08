@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.11.0 | **Date**: August 2026
+**Version**: 3.11.1 | **Date**: August 2026
 
 ---
 
@@ -5014,6 +5014,10 @@ The detailed content — command sequences, scenario background, deliverable tab
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
 
 ---
+
+### v3.11.1 — Ship-and-verify for the tenant carve-out (August 2026)
+
+The v3.11.0 pipeline adapted to `tenant_carveout` scope: relocate-origin models compare parent target (predicate-scoped, via the new `migration.parent_target_project` key) against the tenant target; `dbt-carveout-relocate-generate` writes the register and chains the downstream gates; `defer-build` gains a mechanical tenant write guard and a parent-manifest defer fallback; `batch-raise` refuses `ship_then_verify` until the adjudication and residency gates are complete; `utils-ci-parity --scaffold-from` covers brand-new tenant repos; carve-out fleet lanes treat the three human gates as park points. The region-tagging roles rule (classify by grant scope) closes a documented spec ambiguity.
 
 ### v3.11.0 — Ship and verify: the pipeline beyond "migrated", and the fleet operating model (August 2026)
 
