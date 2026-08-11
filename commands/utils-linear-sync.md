@@ -18,6 +18,7 @@ $ARGUMENTS
 When following the workflow specification below, resolve paths as follows:
 - `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
+- `specs/<path>.md` references are shared workflow docs shipped with this plugin — read them from `${CLAUDE_PLUGIN_ROOT}/specs/<path>.md`. If the path matches a Wire command (e.g. `specs/requirements/generate.md`), it means that command (`/wire:requirements-generate`) and its spec is already embedded in the command file.
 
 ## Workflow Specification
 

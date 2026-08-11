@@ -18,12 +18,13 @@ $ARGUMENTS
 When following the workflow specification below, resolve paths as follows:
 - `.wire/` in specs refers to the `.wire/` directory in the current repository
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
+- `specs/<path>.md` references are shared workflow docs shipped with this plugin — read them from `${CLAUDE_PLUGIN_ROOT}/specs/<path>.md`. If the path matches a Wire command (e.g. `specs/requirements/generate.md`), it means that command (`/wire:requirements-generate`) and its spec is already embedded in the command file.
 
 ## Workflow Specification
 
 ---
 description: Register-driven PR shipping pipeline — derive gate-passing candidates, smoke-build from the client branch, pre-raise comparison, drop-on-defect, raise with an evidence-first body, watch CI
-argument-hint: <release-folder> [--wave id | --batch N | --models list] [--max-models N] [--repo-role transformation] [--dry-run]
+argument-hint: <release-folder> [--wave id | --batch N | --models list] [--max-models N] [--repo-role transformation] [--allow-stack-depth N] [--dry-run]
 ---
 
 # dbt Migration — Batch Raise
@@ -51,6 +52,24 @@ Tests mirror this table exactly (`wire/tests/platform_migration/validate_batch_r
 
 `--dry-run` prints the candidate list with per-model block reasons and stops.
 
+## Stack depth — batches do not stack (v3.11.2)
+
+Independent batches off the client's own base branch, not a chain. A batch branch cut from another branch that has not merged yet is refused by default.
+
+**The rule (deterministic).** Tests mirror it exactly (`wire/tests/platform_migration/validate_batch_raise_stack_depth.py`). Walk the base chain outward from the branch this run would cut its batch branch from, up to but excluding the client's configured base branch (`migration.client_repos[].base_branch`). `stack_depth` is the number of branches in that chain that have not merged into the base branch (`git merge-base --is-ancestor <branch> <base_branch>`, confirmed against `gh pr view` where a PR exists). A branch cut straight from the client's base branch has depth 0. A merged RA branch in the chain contributes nothing: its commits are already in the base.
+
+| Condition | Behaviour |
+|---|---|
+| `stack_depth <= --allow-stack-depth` (default `0`) | Proceed |
+| `stack_depth > --allow-stack-depth` | **Refuse the run.** Reason `stack_depth_exceeded`. Print the chain, branch by branch, with each branch's merge state and PR url |
+| Proceeding with `stack_depth > 0` | Allowed only under an explicit `--allow-stack-depth`, and the merge order of the whole chain goes in the PR body **and** in the post to the client. A stack the client cannot see the order of is a stack the client cannot merge |
+
+Both an unmerged RA branch and an unmerged client branch count toward the depth: the review deadlock comes from the dependency, not from who authored it.
+
+**Why refuse rather than warn.** Two engagements a month apart each built a deep chain of dependent PRs, and both ended the same way: client review stalled on the base of the chain, nothing below it could merge, and the chain was consolidated late — one of them closing five PRs unmerged. Stacking looks like it preserves work in progress and instead couples every PR's fate to the slowest review in the chain.
+
+**What to do instead.** Prefer drop-on-defect batches (Step 4). A model that is not ready is dropped from the batch and picked up by the next run, which raises independently off the client's base branch; the surviving models merge on their own review clock. When two batches genuinely touch the same file, raise the first, wait for the merge, and let Step 1 re-derive the second from the register — the register is what carries the state between runs, not a branch chain.
+
 ## Tenant carve-out (v3.11.1)
 
 When `migration.scope == tenant_carveout`:
@@ -67,6 +86,8 @@ Read the register, apply the eligibility table over the scope (`--wave`/`--batch
 ### Step 2 — Branch and copy
 Clone/fetch the client repo (role from `--repo-role`), branch from its base branch (`wire-migration/<release>-<wave-or-batch>-<seq>`), copy each candidate's translated files (SQL + companion YAML) to their target paths. Copy exactly the file version the verdict binds to; a working-tree file newer than `last_migrated_commit` is a defect, drop the model (`stale_file`).
 
+Apply the stack-depth rule before cutting the branch: resolve the base chain, compute `stack_depth`, and refuse the run with `stack_depth_exceeded` if it exceeds `--allow-stack-depth` (default `0`). The default path — branch straight from the client's base branch — is depth 0 and needs no flag.
+
 ### Step 3 — Smoke-build from the branch's own checkout
 Run `dbt-migration-defer-build` against **the branch checkout** (not the delivery tree) for the batch models: refs deferred to prod state, writes to the scratch dataset, cost-screened. A model that fails to build is dropped from the batch (`smoke_build_failed`), never patched in place; the rest proceed.
 
@@ -77,7 +98,7 @@ Run `equivalency-validate $ARGUMENTS --run-point pre_raise --models <batch>` ove
 Run `utils-ci-parity` against the branch (`specs/utils/client_ci_parity.md`). Fix locally and re-run until green; a check that cannot be replicated locally is listed in the PR body as "not locally verified".
 
 ### Step 6 — Raise
-Title standard: `[wire] <release> <wave/batch>: <n> models — <one-line scope>`. Body is **evidence-first**, in order: the batch manifest table (model, file version, verdict, run point); the pre-raise comparison summary with report link; the smoke-build cost line; drops and reasons; CI parity result; only then prose. Raise with `gh pr create` against the configured base branch. Never force-push; never rebase an open batch branch (merge the base branch in if it moves).
+Title standard: `[wire] <release> <wave/batch>: <n> models — <one-line scope>`. Body is **evidence-first**, in order: the batch manifest table (model, file version, verdict, run point); the pre-raise comparison summary with report link; the smoke-build cost line; drops and reasons; CI parity result; only then prose. Raise with `gh pr create` against the configured base branch. When `stack_depth > 0` (an explicit `--allow-stack-depth` run), the body opens with the merge order of the chain, base first, and the same order goes in the post to the client. Never force-push; never rebase an open batch branch (merge the base branch in if it moves).
 
 ### Step 7 — Update the register and status
 For every raised model: `delivery_stage: in_pr`, `pr_url`. On a later run (or when asked to check), detect merges via `gh pr view`: merged PR advances its models to `delivery_stage: merged` and emits the next step; a PR closed unmerged clears `delivery_stage` and `pr_url`.
@@ -92,6 +113,9 @@ artifacts:
       models_dropped: <n>
       drop_reasons: {smoke_build_failed: n, pre_raise_fail: n, stale_file: n}
       gate_policy: equivalence_before_pr | ship_then_verify
+      base_branch: "<branch the batch was cut from>"
+      stack_depth: <n>            # 0 for an independent batch
+      allow_stack_depth: <n>      # the flag value this run ran under
 ```
 
 ### Step 8 — Output next step

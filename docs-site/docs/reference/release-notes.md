@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.2 — Shared specs actually ship, and batches stop stacking
+
+**Released**: August 2026
+
+Two gaps logged against the 3.11.1 migration release types, closed.
+
+**The shared specs now ship.** A Wire command's own spec is inlined into its command file, so it needs no file on disk. The shared docs are different: specs say "follow `specs/utils/commit.md`", or cite the schema in `specs/migration/equivalency/verdict_schema.md`, and until now the build shipped none of them. It copied `TEMPLATES/`, `platform_pairs/` and `docs-site/`, and skipped `specs/` entirely, so all 30 shared paths dangled in an installed plugin. `specs/utils/migration_fleet.md` was the one that surfaced it — three references shipped across v3.11.0 and v3.11.1 with the file in neither package. Both the Claude plugin and the Gemini extension now carry the shared specs under `specs/`, in the same path form the references use, and every generated command's Path Configuration block says where they resolve (`${CLAUDE_PLUGIN_ROOT}/specs/` in the plugin; the extension folder in Gemini). The shipped set is derived by rule — referenced as `specs/<path>.md`, not registered as a command — so it cannot fall behind a new shared doc. Tier 0's lint gained check 8 to hold both halves: the build wiring, and the committed `wire/dist/` output.
+
+**Batches do not stack.** `dbt-migration-batch-raise` now refuses to cut a batch branch from a branch that has not merged yet. `stack_depth` is the number of unmerged branches in the base chain, walked outward to the client's configured base branch; above `--allow-stack-depth` (default `0`) the run stops with `stack_depth_exceeded` and prints the chain branch by branch with each merge state. A merged ancestor counts for nothing — its commits are already in the base. An unmerged client branch counts the same as an unmerged RA one, because the deadlock comes from the dependency rather than the author. Overriding is allowed, on condition the chain's merge order goes in the PR body and in the post to the client: a stack whose order the client cannot see is a stack the client cannot merge. Two engagements a month apart each built a deep chain of dependent PRs and both ended the same way, with review stalled on the base of the chain and the whole thing consolidated late, one of them closing five PRs unmerged. Drop-on-defect batches are the replacement: an unready model is dropped and picked up by the next run, which raises independently, and the register carries the state between runs.
+
+---
+
 ## v3.11.1 — Ship-and-verify for the tenant carve-out
 
 **Released**: August 2026

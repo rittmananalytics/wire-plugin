@@ -208,6 +208,12 @@ The v3.11.0 ship-and-verify pipeline runs under the carve-out with four adaptati
 
 Human gates stay human: adjudication, residency sign-off, and the isolation UAT are **park points** for the fleet — an item waiting on a ruling parks, and the lanes move to the next runnable item (`specs/utils/migration_fleet.md`).
 
+### Batches do not stack (v3.11.2)
+
+Raise each batch off the client's own base branch. From v3.11.2 `dbt-migration-batch-raise` refuses to cut a batch branch from a branch that has not merged yet: the run stops with `stack_depth_exceeded` and prints the base chain with each branch's merge state. `--allow-stack-depth N` permits up to N unmerged ancestors, and a run that uses it must publish the chain's merge order in the PR body and in the post to the client.
+
+The rule exists because two migration engagements a month apart each built a deep chain of dependent PRs and both ended the same way: review stalled on the base of the chain, nothing below it could merge, and the chain was consolidated late, one of them closing five PRs unmerged. A carve-out is the more tempting case, because relocated models arrive in clusters that look naturally sequential. Prefer drop-on-defect batches instead: a model that is not ready is dropped and picked up by the next run, which raises independently, and the register carries the state between runs. When two batches genuinely touch the same file, raise the first, wait for the merge, and let the next run re-derive the second from the register.
+
 ## Where the carve-out lands in the sequence
 
 ```

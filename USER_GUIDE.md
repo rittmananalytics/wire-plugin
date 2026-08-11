@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.11.1 | **Date**: August 2026
+**Version**: 3.11.2 | **Date**: August 2026
 
 ---
 
@@ -5012,6 +5012,12 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v3.11.2 — Shared specs actually ship, and batches stop stacking (August 2026)
+
+Two gaps logged against the 3.11.1 migration release types. **Packaging**: a command's own spec is inlined into its command file, but the shared docs specs read by path (`specs/utils/commit.md`, `specs/migration/equivalency/verdict_schema.md`, and 28 others) shipped in neither package — the build copied `TEMPLATES/`, `platform_pairs/` and `docs-site/` and skipped `specs/`. All 30 now ship in the Claude plugin and the Gemini extension, and every command says where they resolve (`${CLAUDE_PLUGIN_ROOT}/specs/` in the plugin). The shipped set is derived by rule, and Tier 0's new check 8 holds both the build wiring and the committed `wire/dist/`. **Anti-stack rule**: `dbt-migration-batch-raise` refuses to cut a batch branch from a branch that has not merged (`stack_depth_exceeded`, base chain printed); `--allow-stack-depth N` overrides on condition the chain's merge order is published in the PR body and to the client. Prefer drop-on-defect batches — two engagements deadlocked client review on deep dependent-PR chains, one closing five PRs unmerged.
 
 ---
 
