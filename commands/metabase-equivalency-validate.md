@@ -1,9 +1,9 @@
 ---
-description: Validate Metabase audit completeness and dependency coverage
-argument-hint: <release-folder>
+description: Card-level equivalence — migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover
+argument-hint: <release-folder> [--cards id1,id2] [--dashboard id]
 ---
 
-# Validate Metabase audit completeness and dependency coverage
+# Card-level equivalence — migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover
 
 ## User Input
 
@@ -23,99 +23,71 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Validate Metabase audit completeness, warehouse dependency coverage, permission groups, and migration approach assignments
+description: Card-level equivalence — prove a migrated or carved Metabase card returns the same rows, in the model verdict taxonomy, gating the connection cutover
+argument-hint: <release-folder> [--cards id1,id2 | --dashboard <id>]
 ---
 
-# Metabase Audit — Validate
+## Data Safety — Read Before Proceeding
+
+All card executions for comparison run against the decoy collection's test copies (or directly as read-only queries against the two warehouse connections). No production card is repointed or edited to compare. Source-platform reads are SELECT only.
+
+---
+
+# Metabase Equivalency — Validate
 
 ## Purpose
 
-Checks the Metabase audit for completeness and internal consistency: every card has a migration approach and complexity, warehouse dependencies are mapped with a coverage metric, permission groups are catalogued, database connections are recorded, and the card count matches the source. Produces a PASS/FAIL report with specific gaps to address before review.
+`metabase-migration`'s decoy validation confirms cards **run**; nothing proved they return the **same rows** (#184). This command closes that with card-level verdicts in the model taxonomy — the reporting-layer analogue of `reverse-etl-equivalency-validate` — and it is the gate the Stage 2 connection cutover consumes: **every in-scope card must hold `pass` or `pass_qualified` before the production connection repoints.**
+
+Like `equivalency-validate`, this is a repeatable loop command, not a generate/validate/review artifact.
 
 ## Prerequisites
 
-- `audit/metabase_audit.md` exists (metabase_audit generate: complete)
-
-## Inputs
-
-- `.wire/releases/$ARGUMENTS/audit/metabase_audit.md`
-- `.wire/releases/$ARGUMENTS/status.md`
+- `metabase_audit review: approved`
+- The migrated (or carved) card versions exist as decoy test copies, or the manifest rows are `applied`
 
 ## Workflow
 
-### Step 1: Load the audit
+### Step 1: Resolve scope and comparison sides
 
-Read `audit/metabase_audit.md`. Confirm it is non-empty and contains the expected sections (Summary, Card Catalog, Hierarchy, Database Connections, Permission Groups, Warehouse Dependency Map, Unresolved Cards, Excluded Cards).
+Scope: every in-scope card from the migration manifest (and the carve-out manifest under `tenant_carveout`); `--cards id1,id2` or `--dashboard <id>` (its deduped card set) narrows. Comparison sides are scope-dependent:
 
-### Step 2: Run validation checks
+| Scope | Source side | Target side |
+|---|---|---|
+| `full_migration` (or absent) | The card's **source-dialect query** on the **source connection** | The **translated query** on the **target connection** |
+| `tenant_carveout` | The **parent connection's** result with the card's **resolved registry filter** applied (`migration.parent_target_project` connection) | The **tenant connection's** result, unscoped (single-tenant by construction) |
 
-**Check 1 — All cards have a migration approach**
-Every row in the card catalog has a value in `migration_approach` (repoint / rewrite_sql / rebuild / decommission).
-PASS/FAIL with cards missing an approach.
+**MBQL cards** compare by executing the same MBQL against both connections — there is no translated SQL to distrust, but the two databases' data still has to match at the card grain. **Native cards** compare the source text against the manifest's proposed/applied text. Under `tenant_carveout`, a card whose registry mechanism is `unresolved` is **verdict `fail`, reason `unresolved_predicate`** — never compared unfiltered (the source side would return every tenant's rows and the comparison would fail for a reason unrelated to the carve).
 
-**Check 2 — All cards have a complexity rating**
-Every row has a `complexity` value (Low / Medium / High).
-PASS/FAIL with cards missing complexity.
+### Step 2: Compare at the card grain
 
-**Check 3 — Source objects resolved across query types, coverage reported**
-Source-object resolution is attempted for both `native` and `mbql` cards. Each card with a resolvable source has ≥1 entry in `warehouse_objects`; each genuinely unresolvable card is marked `source_resolved: false` and listed under "Unresolved cards". The coverage metric (`resolved_card_count` / `active_card_count`) is present, and status.md carries `resolved_card_count`, `unresolved_card_count`, and `source_resolution_coverage_pct`.
-PASS: resolution attempted for all query types, coverage present, every unresolved card listed.
-FAIL: cards left blank without being listed, or coverage metric missing.
+Both sides run under the pinned-vintage discipline (a pinned as-of, or the baseline `T`). Compare the result sets: row count, the row set keyed by the card's grain columns, and column-value hashes over the card's `result_metadata` columns (canonicalised per the equivalency edge-case rules). Parameterised cards (field-filter template tags) compare at a declared parameter binding recorded in the report — an unbound field filter compares the card's unfiltered default.
 
-**Check 4 — dbt model cards cross-referenced**
-Every card whose resolved source is a dbt model has a note confirming whether that model exists in the dbt audit (or is out of scope).
-PASS/FAIL with cards missing the cross-reference.
+### Step 3: Verdicts
 
-**Check 5 — Permission groups catalogued**
-The audit includes a permission group inventory listing each group and its database/collection access. `permission_group_count` in status.md is > 0 (or a note explains why the instance has none beyond defaults).
-PASS/FAIL.
+The model taxonomy applies unchanged: `pass`, `pass_qualified` (the pair type allow-list, or a known-differences entry on the card's underlying tables — the declared-window rules apply where the underlying tables carry them), `diff_*` with a named mechanism, `fail`. Explanations qualify a fail; they never upgrade it.
 
-**Check 6 — Database connections recorded**
-Every distinct `source_database_id` referenced by a card appears in the database connection inventory with its engine.
-PASS/FAIL.
+### Step 4: Verdict log and register
 
-**Check 7 — Archived/unused cards have a decision**
-Every archived or unused card has either `migration_approach: decommission` with a reason, or `include_in_migration: true` with a note.
-PASS/FAIL with undecided cards. If `data_source: csv` and archived status is unavailable, auto-pass and note that decommission decisions need manual review with the client.
+Each card's verdict appends to `migration/migration_verdict_log.csv` (`object_type: metabase_card`, same single-writer merge as every lane — `specs/migration/equivalency/verdict_schema.md`) and updates the card's register row where one exists. Carve-out verdicts carry `scope` and the resolved predicate hash like every other carve-out verdict.
 
-**Check 8 — Card count matches source**
-The count of rows in the card catalog matches `card_count` in status.md.
-PASS/FAIL.
+### Step 5: The cutover gate
 
-**Check 9 — Reverse index complete (#184)**
-Every card row carries its `dashboard_ids`, the shared-card count in status.md matches the cards appearing on more than one dashboard, and every dashboard's filter parameter mappings are catalogued. A missing reverse index makes every downstream card write unsafe (the edit-in-place vs clone decision has no input).
-PASS/FAIL with the cards missing dashboard resolution.
+`metabase-migration`'s Stage 2 (production connection repoint) requires every in-scope card at `pass`/`pass_qualified` from this command; under `tenant_carveout`, so does the tenant instance's go-live. A `fail` or unresolved card blocks the repoint — a dashboard that renders wrong numbers after cutover is discovered by the client, which is the most expensive place to find it.
 
-**Check 10 — Query-type split and object graph (#184)**
-Every card is classified `native` or `mbql` (`native_card_count + mbql_card_count = active_card_count`); every native card records its `template_tags` (with field ids), `snippets_used`, and `card_references` (empty lists are recorded, never omitted); the snippet inventory covers every snippet any card references.
-PASS/FAIL with offending cards.
+### Step 6: Report and status
 
-### Step 3: Write validation report
-
-Append a `## Validation` section to `audit/metabase_audit.md` with a per-check PASS/FAIL table and a "Gaps to address" list.
-
-### Step 4: Update status
+`.wire/releases/$ARGUMENTS/migration/metabase_equivalency_report_{run_number}.md`: per card — query type, comparison sides, parameter bindings, counts both sides, differing keys/columns (named), verdict. Update status:
 
 ```yaml
 artifacts:
-  metabase_audit:
-    validate: pass | fail
-    validated_date: "{{TODAY}}"
+  metabase_equivalency:
+    last_run_date: "{{TODAY}}"
+    cards_checked: N
+    passing: N
+    failing: N
+    unresolved: N          # tenant_carveout only — unresolved predicate, never compared
 ```
-
-### Step 5: Output next command
-
-If PASS:
-```
-/wire:metabase-audit-review $ARGUMENTS
-```
-
-If FAIL:
-```
-Validation failed. Address the gaps listed above, then re-run:
-/wire:metabase-audit-validate $ARGUMENTS
-```
-
 
 ## Post-Execution Hooks
 
@@ -123,11 +95,9 @@ After updating `status.md`, run these in sequence:
 
 1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_audit` as artifact, `validate` as action.
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_equivalency` as artifact, `validate` as action.
 
-3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_audit` as artifact_id, `Metabase Audit` as artifact_name, and the `file` value from `artifacts.metabase_audit` in status.md as file_path.
-
-4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `metabase_audit` as artifact, `validate` as action.
+3. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `metabase_equivalency` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 

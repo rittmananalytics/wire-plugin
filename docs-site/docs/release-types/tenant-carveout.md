@@ -444,14 +444,14 @@ A worked plan for a carve-out of realistic scale: **1,400 dbt models, 600 Highto
 - The staged shape: the parent migration has landed, so dbt models relocate (`dbt-carveout-relocate`) rather than re-translate.
 - The fleet operating model runs Phase 2: waves start 5 days apart and take about 12 days each, so 2 to 3 waves are in flight at once. Day numbers are project days from a nominal Monday start; the chart's dates are illustrative.
 - Human gates (adjudication, DPO sign-off, per-wave copy approvals, isolation UAT) are park points: they hold their own items without stalling the lanes.
-- Metabase cards migrate per wave with the existing `metabase-migration` commands, the wave's card set resolved from its collections and dashboards; the reporting layer's own carve (which reports belong to the tenant) is adjudicated with everything else at region tagging.
+- Metabase reports are first-class inventory items: region tagging adjudicates them with everything else, each wave carves its card set (`metabase-carveout`, layer decisions first, card edits last), migrates it (`metabase-migration`, manifest-gated), and proves it at the card grain (`metabase-equivalency-validate`) — the final connection cutover is gated on every card passing.
 
 | Phase | Days | What runs |
 |---|---|---|
 | 1. Mobilise and adjudicate | 1–21 | Audits, region tagging and adjudication, inventory, the 10-wave schedule, strategy, residency sign-off, target setup, register bootstrap, fleet enablement |
-| 2. Ten waves | 22–78 | Per wave: bulk copy (two-stage, gated), relocation with chained gates, sync twins, card migration, DAG recreation, tenant-scoped equivalency, PR raise, post-merge verification, acceptance pack |
+| 2. Ten waves | 22–78 | Per wave: bulk copy (two-stage, gated), relocation with chained gates, sync twins, card carve + migration + equivalence, DAG recreation, tenant-scoped equivalency, PR raise, post-merge verification, acceptance pack |
 | Continuous | 20–88 | Nightly drift gate, client-watch ticks, daily status view, weekly ask list, defect-class sweeps |
-| 3. Prove isolation and cut over | 79–90 | Full-estate equivalency, logical-access UAT, Metabase connection cutover, the cutover gate, migration report, archive |
+| 3. Prove isolation and cut over | 79–90 | Full-estate equivalency, logical-access UAT, the card-gated Metabase connection cutover, the cutover gate, migration report, archive |
 
 ```mermaid
 gantt
@@ -534,7 +534,7 @@ gantt
     Migration report + archive        :p35, 2026-04-01, 4d
 ```
 
-The full task list, one row per task with its Wire command (138 rows):
+The full task list, one row per task with its Wire command (158 rows):
 
 <details>
 <summary>Project plan CSV (WBS, task, command, days)</summary>
@@ -563,10 +563,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.1.5,Wave B01,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,27,27,1,
 2.1.6,Wave B01,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B01,27,30,4,/wire:equivalency-investigate / -fix on failures
 2.1.7,Wave B01,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B01 + /wire:reverse-etl-equivalency-validate,27,30,4,Promotion needs exact tier-1 pass
-2.1.8,Wave B01,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,28,31,4,Card set resolved from wave collections/dashboards
-2.1.9,Wave B01,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B01 / -validate / -review,28,30,3,
-2.1.10,Wave B01,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B01 + /wire:equivalency-post-merge-verify,30,33,4,Drop-on-defect; no stacked branches
-2.1.11,Wave B01,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B01,33,33,1,
+2.1.8,Wave B01,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,28,30,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.1.9,Wave B01,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,29,31,3,Snippets before consumers; shared-card decisions explicit
+2.1.10,Wave B01,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,31,32,2,Feeds the Stage 2 connection-cutover gate
+2.1.11,Wave B01,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B01 / -validate / -review,28,30,3,
+2.1.12,Wave B01,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B01 + /wire:equivalency-post-merge-verify,30,33,4,Drop-on-defect; no stacked branches
+2.1.13,Wave B01,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B01,33,33,1,
 2.2.1,Wave B02,Bulk-copy runbook: per-object registry filters,/wire:bulk-copy-migration-generate --wave B02 + /wire:bulk-copy-migration-validate --wave B02,27,28,2,
 2.2.2,Wave B02,Bulk-copy safety-gate approval (HUMAN GATE),/wire:bulk-copy-migration-review --wave B02,28,28,1,Authorises this wave's Stage 1 pilot only
 2.2.3,Wave B02,"Execute two-stage copy: pilot, gate, remainder",runbook execution + equivalency checks 1 and 6 (pilot gate),29,31,3,
@@ -574,10 +576,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.2.5,Wave B02,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,32,32,1,
 2.2.6,Wave B02,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B02,32,35,4,/wire:equivalency-investigate / -fix on failures
 2.2.7,Wave B02,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B02 + /wire:reverse-etl-equivalency-validate,32,35,4,Promotion needs exact tier-1 pass
-2.2.8,Wave B02,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,33,36,4,Card set resolved from wave collections/dashboards
-2.2.9,Wave B02,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B02 / -validate / -review,33,35,3,
-2.2.10,Wave B02,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B02 + /wire:equivalency-post-merge-verify,35,38,4,Drop-on-defect; no stacked branches
-2.2.11,Wave B02,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B02,38,38,1,
+2.2.8,Wave B02,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,33,35,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.2.9,Wave B02,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,34,36,3,Snippets before consumers; shared-card decisions explicit
+2.2.10,Wave B02,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,36,37,2,Feeds the Stage 2 connection-cutover gate
+2.2.11,Wave B02,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B02 / -validate / -review,33,35,3,
+2.2.12,Wave B02,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B02 + /wire:equivalency-post-merge-verify,35,38,4,Drop-on-defect; no stacked branches
+2.2.13,Wave B02,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B02,38,38,1,
 2.3.1,Wave B03,Bulk-copy runbook: per-object registry filters,/wire:bulk-copy-migration-generate --wave B03 + /wire:bulk-copy-migration-validate --wave B03,32,33,2,
 2.3.2,Wave B03,Bulk-copy safety-gate approval (HUMAN GATE),/wire:bulk-copy-migration-review --wave B03,33,33,1,Authorises this wave's Stage 1 pilot only
 2.3.3,Wave B03,"Execute two-stage copy: pilot, gate, remainder",runbook execution + equivalency checks 1 and 6 (pilot gate),34,36,3,
@@ -585,10 +589,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.3.5,Wave B03,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,37,37,1,
 2.3.6,Wave B03,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B03,37,40,4,/wire:equivalency-investigate / -fix on failures
 2.3.7,Wave B03,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B03 + /wire:reverse-etl-equivalency-validate,37,40,4,Promotion needs exact tier-1 pass
-2.3.8,Wave B03,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,38,41,4,Card set resolved from wave collections/dashboards
-2.3.9,Wave B03,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B03 / -validate / -review,38,40,3,
-2.3.10,Wave B03,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B03 + /wire:equivalency-post-merge-verify,40,43,4,Drop-on-defect; no stacked branches
-2.3.11,Wave B03,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B03,43,43,1,
+2.3.8,Wave B03,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,38,40,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.3.9,Wave B03,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,39,41,3,Snippets before consumers; shared-card decisions explicit
+2.3.10,Wave B03,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,41,42,2,Feeds the Stage 2 connection-cutover gate
+2.3.11,Wave B03,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B03 / -validate / -review,38,40,3,
+2.3.12,Wave B03,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B03 + /wire:equivalency-post-merge-verify,40,43,4,Drop-on-defect; no stacked branches
+2.3.13,Wave B03,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B03,43,43,1,
 2.4.1,Wave B04,Bulk-copy runbook: per-object registry filters,/wire:bulk-copy-migration-generate --wave B04 + /wire:bulk-copy-migration-validate --wave B04,37,38,2,
 2.4.2,Wave B04,Bulk-copy safety-gate approval (HUMAN GATE),/wire:bulk-copy-migration-review --wave B04,38,38,1,Authorises this wave's Stage 1 pilot only
 2.4.3,Wave B04,"Execute two-stage copy: pilot, gate, remainder",runbook execution + equivalency checks 1 and 6 (pilot gate),39,41,3,
@@ -596,10 +602,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.4.5,Wave B04,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,42,42,1,
 2.4.6,Wave B04,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B04,42,45,4,/wire:equivalency-investigate / -fix on failures
 2.4.7,Wave B04,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B04 + /wire:reverse-etl-equivalency-validate,42,45,4,Promotion needs exact tier-1 pass
-2.4.8,Wave B04,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,43,46,4,Card set resolved from wave collections/dashboards
-2.4.9,Wave B04,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B04 / -validate / -review,43,45,3,
-2.4.10,Wave B04,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B04 + /wire:equivalency-post-merge-verify,45,48,4,Drop-on-defect; no stacked branches
-2.4.11,Wave B04,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B04,48,48,1,
+2.4.8,Wave B04,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,43,45,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.4.9,Wave B04,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,44,46,3,Snippets before consumers; shared-card decisions explicit
+2.4.10,Wave B04,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,46,47,2,Feeds the Stage 2 connection-cutover gate
+2.4.11,Wave B04,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B04 / -validate / -review,43,45,3,
+2.4.12,Wave B04,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B04 + /wire:equivalency-post-merge-verify,45,48,4,Drop-on-defect; no stacked branches
+2.4.13,Wave B04,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B04,48,48,1,
 2.5.1,Wave B05,Bulk-copy runbook: per-object registry filters,/wire:bulk-copy-migration-generate --wave B05 + /wire:bulk-copy-migration-validate --wave B05,42,43,2,
 2.5.2,Wave B05,Bulk-copy safety-gate approval (HUMAN GATE),/wire:bulk-copy-migration-review --wave B05,43,43,1,Authorises this wave's Stage 1 pilot only
 2.5.3,Wave B05,"Execute two-stage copy: pilot, gate, remainder",runbook execution + equivalency checks 1 and 6 (pilot gate),44,46,3,
@@ -607,10 +615,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.5.5,Wave B05,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,47,47,1,
 2.5.6,Wave B05,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B05,47,50,4,/wire:equivalency-investigate / -fix on failures
 2.5.7,Wave B05,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B05 + /wire:reverse-etl-equivalency-validate,47,50,4,Promotion needs exact tier-1 pass
-2.5.8,Wave B05,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,48,51,4,Card set resolved from wave collections/dashboards
-2.5.9,Wave B05,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B05 / -validate / -review,48,50,3,
-2.5.10,Wave B05,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B05 + /wire:equivalency-post-merge-verify,50,53,4,Drop-on-defect; no stacked branches
-2.5.11,Wave B05,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B05,53,53,1,
+2.5.8,Wave B05,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,48,50,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.5.9,Wave B05,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,49,51,3,Snippets before consumers; shared-card decisions explicit
+2.5.10,Wave B05,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,51,52,2,Feeds the Stage 2 connection-cutover gate
+2.5.11,Wave B05,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B05 / -validate / -review,48,50,3,
+2.5.12,Wave B05,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B05 + /wire:equivalency-post-merge-verify,50,53,4,Drop-on-defect; no stacked branches
+2.5.13,Wave B05,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B05,53,53,1,
 2.6.1,Wave B06,Bulk-copy runbook: per-object registry filters,/wire:bulk-copy-migration-generate --wave B06 + /wire:bulk-copy-migration-validate --wave B06,47,48,2,
 2.6.2,Wave B06,Bulk-copy safety-gate approval (HUMAN GATE),/wire:bulk-copy-migration-review --wave B06,48,48,1,Authorises this wave's Stage 1 pilot only
 2.6.3,Wave B06,"Execute two-stage copy: pilot, gate, remainder",runbook execution + equivalency checks 1 and 6 (pilot gate),49,51,3,
@@ -618,10 +628,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.6.5,Wave B06,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,52,52,1,
 2.6.6,Wave B06,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B06,52,55,4,/wire:equivalency-investigate / -fix on failures
 2.6.7,Wave B06,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B06 + /wire:reverse-etl-equivalency-validate,52,55,4,Promotion needs exact tier-1 pass
-2.6.8,Wave B06,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,53,56,4,Card set resolved from wave collections/dashboards
-2.6.9,Wave B06,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B06 / -validate / -review,53,55,3,
-2.6.10,Wave B06,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B06 + /wire:equivalency-post-merge-verify,55,58,4,Drop-on-defect; no stacked branches
-2.6.11,Wave B06,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B06,58,58,1,
+2.6.8,Wave B06,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,53,55,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.6.9,Wave B06,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,54,56,3,Snippets before consumers; shared-card decisions explicit
+2.6.10,Wave B06,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,56,57,2,Feeds the Stage 2 connection-cutover gate
+2.6.11,Wave B06,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B06 / -validate / -review,53,55,3,
+2.6.12,Wave B06,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B06 + /wire:equivalency-post-merge-verify,55,58,4,Drop-on-defect; no stacked branches
+2.6.13,Wave B06,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B06,58,58,1,
 2.7.1,Wave B07,Bulk-copy runbook: per-object registry filters,/wire:bulk-copy-migration-generate --wave B07 + /wire:bulk-copy-migration-validate --wave B07,52,53,2,
 2.7.2,Wave B07,Bulk-copy safety-gate approval (HUMAN GATE),/wire:bulk-copy-migration-review --wave B07,53,53,1,Authorises this wave's Stage 1 pilot only
 2.7.3,Wave B07,"Execute two-stage copy: pilot, gate, remainder",runbook execution + equivalency checks 1 and 6 (pilot gate),54,56,3,
@@ -629,10 +641,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.7.5,Wave B07,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,57,57,1,
 2.7.6,Wave B07,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B07,57,60,4,/wire:equivalency-investigate / -fix on failures
 2.7.7,Wave B07,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B07 + /wire:reverse-etl-equivalency-validate,57,60,4,Promotion needs exact tier-1 pass
-2.7.8,Wave B07,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,58,61,4,Card set resolved from wave collections/dashboards
-2.7.9,Wave B07,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B07 / -validate / -review,58,60,3,
-2.7.10,Wave B07,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B07 + /wire:equivalency-post-merge-verify,60,63,4,Drop-on-defect; no stacked branches
-2.7.11,Wave B07,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B07,63,63,1,
+2.7.8,Wave B07,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,58,60,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.7.9,Wave B07,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,59,61,3,Snippets before consumers; shared-card decisions explicit
+2.7.10,Wave B07,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,61,62,2,Feeds the Stage 2 connection-cutover gate
+2.7.11,Wave B07,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B07 / -validate / -review,58,60,3,
+2.7.12,Wave B07,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B07 + /wire:equivalency-post-merge-verify,60,63,4,Drop-on-defect; no stacked branches
+2.7.13,Wave B07,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B07,63,63,1,
 2.8.1,Wave B08,Bulk-copy runbook: per-object registry filters,/wire:bulk-copy-migration-generate --wave B08 + /wire:bulk-copy-migration-validate --wave B08,57,58,2,
 2.8.2,Wave B08,Bulk-copy safety-gate approval (HUMAN GATE),/wire:bulk-copy-migration-review --wave B08,58,58,1,Authorises this wave's Stage 1 pilot only
 2.8.3,Wave B08,"Execute two-stage copy: pilot, gate, remainder",runbook execution + equivalency checks 1 and 6 (pilot gate),59,61,3,
@@ -640,10 +654,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.8.5,Wave B08,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,62,62,1,
 2.8.6,Wave B08,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B08,62,65,4,/wire:equivalency-investigate / -fix on failures
 2.8.7,Wave B08,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B08 + /wire:reverse-etl-equivalency-validate,62,65,4,Promotion needs exact tier-1 pass
-2.8.8,Wave B08,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,63,66,4,Card set resolved from wave collections/dashboards
-2.8.9,Wave B08,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B08 / -validate / -review,63,65,3,
-2.8.10,Wave B08,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B08 + /wire:equivalency-post-merge-verify,65,68,4,Drop-on-defect; no stacked branches
-2.8.11,Wave B08,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B08,68,68,1,
+2.8.8,Wave B08,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,63,65,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.8.9,Wave B08,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,64,66,3,Snippets before consumers; shared-card decisions explicit
+2.8.10,Wave B08,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,66,67,2,Feeds the Stage 2 connection-cutover gate
+2.8.11,Wave B08,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B08 / -validate / -review,63,65,3,
+2.8.12,Wave B08,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B08 + /wire:equivalency-post-merge-verify,65,68,4,Drop-on-defect; no stacked branches
+2.8.13,Wave B08,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B08,68,68,1,
 2.9.1,Wave B09,Bulk-copy runbook: per-object registry filters,/wire:bulk-copy-migration-generate --wave B09 + /wire:bulk-copy-migration-validate --wave B09,62,63,2,
 2.9.2,Wave B09,Bulk-copy safety-gate approval (HUMAN GATE),/wire:bulk-copy-migration-review --wave B09,63,63,1,Authorises this wave's Stage 1 pilot only
 2.9.3,Wave B09,"Execute two-stage copy: pilot, gate, remainder",runbook execution + equivalency checks 1 and 6 (pilot gate),64,66,3,
@@ -651,10 +667,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.9.5,Wave B09,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,67,67,1,
 2.9.6,Wave B09,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B09,67,70,4,/wire:equivalency-investigate / -fix on failures
 2.9.7,Wave B09,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B09 + /wire:reverse-etl-equivalency-validate,67,70,4,Promotion needs exact tier-1 pass
-2.9.8,Wave B09,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,68,71,4,Card set resolved from wave collections/dashboards
-2.9.9,Wave B09,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B09 / -validate / -review,68,70,3,
-2.9.10,Wave B09,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B09 + /wire:equivalency-post-merge-verify,70,73,4,Drop-on-defect; no stacked branches
-2.9.11,Wave B09,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B09,73,73,1,
+2.9.8,Wave B09,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,68,70,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.9.9,Wave B09,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,69,71,3,Snippets before consumers; shared-card decisions explicit
+2.9.10,Wave B09,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,71,72,2,Feeds the Stage 2 connection-cutover gate
+2.9.11,Wave B09,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B09 / -validate / -review,68,70,3,
+2.9.12,Wave B09,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B09 + /wire:equivalency-post-merge-verify,70,73,4,Drop-on-defect; no stacked branches
+2.9.13,Wave B09,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B09,73,73,1,
 2.10.1,Wave B10,Bulk-copy runbook: per-object registry filters,/wire:bulk-copy-migration-generate --wave B10 + /wire:bulk-copy-migration-validate --wave B10,67,68,2,
 2.10.2,Wave B10,Bulk-copy safety-gate approval (HUMAN GATE),/wire:bulk-copy-migration-review --wave B10,68,68,1,Authorises this wave's Stage 1 pilot only
 2.10.3,Wave B10,"Execute two-stage copy: pilot, gate, remainder",runbook execution + equivalency checks 1 and 6 (pilot gate),69,71,3,
@@ -662,10 +680,12 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 2.10.5,Wave B10,"Relocate review: probe rulings, manual-review sign-offs",/wire:dbt-carveout-relocate-review,72,72,1,
 2.10.6,Wave B10,Sandbox builds + tenant-scoped equivalency,/wire:dbt-migration-defer-build + /wire:equivalency-validate --wave B10,72,75,4,/wire:equivalency-investigate / -fix on failures
 2.10.7,Wave B10,Author 60 sync twins + sync-grain equivalence,/wire:reverse-etl-migration-generate --wave B10 + /wire:reverse-etl-equivalency-validate,72,75,4,Promotion needs exact tier-1 pass
-2.10.8,Wave B10,Migrate 40 Metabase cards (wave card set),/wire:metabase-migration-generate + /wire:metabase-migration-validate,73,76,4,Card set resolved from wave collections/dashboards
-2.10.9,Wave B10,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B10 / -validate / -review,73,75,3,
-2.10.10,Wave B10,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B10 + /wire:equivalency-post-merge-verify,75,78,4,Drop-on-defect; no stacked branches
-2.10.11,Wave B10,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B10,78,78,1,
+2.10.8,Wave B10,"Carve the wave's 40 cards + dashboards (layer decisions, registry filters)",/wire:metabase-carveout-generate / -validate / -review,73,75,3,Sandboxing/warehouse/parameter layers first; card edits last resort
+2.10.9,Wave B10,"Migrate the wave's cards (manifest, five surfaces, dependency order)",/wire:metabase-migration-generate + /wire:metabase-migration-validate,74,76,3,Snippets before consumers; shared-card decisions explicit
+2.10.10,Wave B10,Card-level equivalence at the card grain,/wire:metabase-equivalency-validate --dashboard <wave dashboards>,76,77,2,Feeds the Stage 2 connection-cutover gate
+2.10.11,Wave B10,Recreate 6 Airflow DAGs (SAFETY GATE),/wire:orchestration-migration-generate --wave B10 / -validate / -review,73,75,3,
+2.10.12,Wave B10,Raise PRs by readiness; client merge; production verify,/wire:dbt-migration-batch-raise --wave B10 + /wire:equivalency-post-merge-verify,75,78,4,Drop-on-defect; no stacked branches
+2.10.13,Wave B10,Wave acceptance pack sign-off,/wire:migration-acceptance-pack-review --wave B10,78,78,1,
 3.1,Continuous (scheduled / as needed),"Drift gate (nightly): source drift, cross-release triggers",/wire:migration-drift-generate,22,85,64,
 3.2,Continuous (scheduled / as needed),"Client-watch tick: answers ledger, merge detection",/wire:utils-client-watch,20,88,69,
 3.3,Continuous (scheduled / as needed),Weekly capped ask list (re-ask guarded),/wire:utils-ask-list-generate,22,85,64,
@@ -674,7 +694,7 @@ wbs,task_group,task,wire_command,start_day,end_day,duration_days,notes
 4.1,Phase 3 - Prove isolation and cut over,Full-estate equivalency confirmation (checks_failing == 0),/wire:equivalency-validate,79,81,3,
 4.2,Phase 3 - Prove isolation and cut over,Logical-access UAT plan + validation,/wire:logical-access-uat-generate --region <code> + /wire:logical-access-uat-validate,79,81,3,>=1 negative test per IAM boundary
 4.3,Phase 3 - Prove isolation and cut over,UAT execution + isolation sign-off (HUMAN GATE),/wire:logical-access-uat-review,82,84,3,
-4.4,Phase 3 - Prove isolation and cut over,"Metabase connection cutover (two-stage, with rollback)",/wire:metabase-migration-review (repoint stages),82,84,3,
+4.4,Phase 3 - Prove isolation and cut over,"Metabase connection cutover (two-stage, with rollback)",/wire:metabase-migration-review (repoint stages),82,84,3,Gated: every in-scope card pass/pass_qualified from /wire:metabase-equivalency-validate
 4.5,Phase 3 - Prove isolation and cut over,Cutover runbook + validation,/wire:cutover-generate + /wire:cutover-validate,84,85,2,
 4.6,Phase 3 - Prove isolation and cut over,Cutover approval + execution (SAFETY GATE - point of no return),/wire:cutover-review,86,87,2,
 4.7,Phase 3 - Prove isolation and cut over,Migration report,/wire:migration-report-generate / -validate / -review,87,89,3,

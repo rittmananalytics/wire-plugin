@@ -19,7 +19,7 @@ The registry resolves one item at a time. `migration.tenant_predicate` stays, an
 | Column | Meaning |
 |---|---|
 | `item_id` | Model, table, or view name — matches `region_tags_adjudicated.csv`'s `item_id` |
-| `item_type` | `dbt_model` \| `table` \| `view` \| `reverse_etl_sync` |
+| `item_type` | `dbt_model` \| `table` \| `view` \| `reverse_etl_sync` \| `metabase_card` \| `metabase_dashboard` (#184) |
 | `mechanism` | One of the five below, or `unresolved` |
 | `expression` | The filter text, in target dialect. Empty for `object_carve`, `inherited`, and `unresolved` |
 | `tenant_column` | The column the expression filters on, where there is one. Empty for `object_carve` and `inherited` |

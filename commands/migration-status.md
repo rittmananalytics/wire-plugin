@@ -73,6 +73,8 @@ Assignment is by **highest stage reached** (tests mirror it: `wire/tests/platfor
 
 `authored-on-branch` exists because a main-only count once misread several hundred authored twins as not-started — work that existed, on branches, invisible to a count that only read main. Branch and draft-PR reads are part of the live repo read.
 
+**Card columns** (when the release has a Metabase scope, #184), exclusive per native card: `to-do` (no manifest row applied), `translated`/`carved` (manifest row applied), `eqv-ok` (current `metabase-equivalency-validate` verdict `pass`/`pass_qualified`), `cut-over` (on the production target connection). MBQL cards are counted once as a repoint-only total, not per-card rows. Dashboards report derived state: done when every constituent card is.
+
 ## Subcommands
 
 - **`item <name>`** — one object's full derivation: register row, current verdict (+ window fields where present), delivery stage with the live-repo evidence, wave, drift state, parent linkage for relocated models.
@@ -82,6 +84,22 @@ Assignment is by **highest stage reached** (tests mirror it: `wire/tests/platfor
 ## `--json`
 
 Emit the same numbers as JSON (waves array + unassigned + provenance block), for report and chart generation. The JSON carries the provenance header's fields — a chart built from this output stays traceable to the manifest instant and repo fetch it derives from.
+
+## Workflow
+
+### Step 1: Resolve the inputs, live
+
+1. Parse the source dbt project to a manifest (`specs/utils/dbt_manifest_parse.md` — scratch directory, no warehouse connection) and record the engine, parse instant, and snapshot commit.
+2. Read `migration/migration_register.csv` (abort with `[wire] No migration_register.csv — run /wire:migration-register-generate $ARGUMENTS first.` if absent), `migration/migration_batching.csv` for wave membership (models with no wave row become the unassigned count), and `migration/migration_verdict_log.csv` where present.
+3. **Fetch each `migration.client_repos` repo live** (`git fetch` + `gh pr list` covering open, draft, and merged PRs, plus branch enumeration for sync twins). Record each fetch instant. If a repo is unreachable, say so in the provenance header and mark its derived columns `unverified` — never silently substitute the register's memory of merge state.
+
+### Step 2: Derive the stages
+
+Assign every model its exclusive stage (the table above; live merge state wins over the register's `delivery_stage`, and any correction is listed), partition drift, derive sync stages (including authored-on-branch from the branch/draft-PR read), and card stages where a Metabase scope exists. Register rows the live read corrects are reported under the table.
+
+### Step 3: Render
+
+Print the provenance header, then the requested subcommand's output (`waves` default; `item` / `blocking` / `exceptions` as asked). Under `--json`, emit the JSON document instead, carrying the provenance fields.
 
 ## Relationship to `/wire:status`
 

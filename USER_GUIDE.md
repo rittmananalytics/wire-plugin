@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.11.4 | **Date**: August 2026
+**Version**: 3.11.5 | **Date**: August 2026
 
 ---
 
@@ -5012,6 +5012,12 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v3.11.5 — Metabase reports become first-class migration objects (August 2026)
+
+Implements the Metabase gap review (#184). **The BI-tool audit**: `metabase-audit` connects via the Metabase MCP server where available and catalogues template tags (field ids), snippets, card references, sandboxing, and the card-to-dashboards reverse index — cards are shared objects, and no write decision is made without it. **Migration behind a manifest gate**: native cards transform across five surfaces in snippet-first dependency order, MBQL cards split out as repoint-only, every write gated by a signed-off card-manifest row, shared cards carrying explicit edit-vs-clone decisions. **Carve-out** (`/wire:metabase-carveout-*`): layer decisions first (sandboxing, warehouse view, dashboard parameter), card edits last with registry-resolved filters injected via AST; unresolved cards flagged, never carved unfiltered; no-tenant-data cards lose dashcards, never the card. **Equivalence** (`/wire:metabase-equivalency-validate`): card-grain verdicts in the model taxonomy, with the connection cutover gated on every card passing. Metabase objects join the inventory, register, verdict log, region tagging, wave schedule, and `migration-status`.
 
 ---
 

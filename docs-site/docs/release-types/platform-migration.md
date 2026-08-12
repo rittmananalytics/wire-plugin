@@ -561,8 +561,12 @@ Wire's reporting-layer support was Looker-only. Metabase is now a recognised rep
 
 | Command | Purpose |
 |---|---|
-| `/wire:metabase-audit-*` | Catalogue collections, dashboards, cards (with SQL), database connections, and permission groups; map each card's warehouse dependencies. The reporting-layer counterpart to the reverse-ETL audit. |
-| `/wire:metabase-migration-*` | Translate card SQL to BigQuery dialect, remap permission groups, validate on a throwaway decoy collection / non-production connection, then repoint the Metabase database connection from Snowflake to BigQuery in two stages with per-stage rollback. Requires a client-supplied query inventory — it will not proceed without one. |
+| `/wire:metabase-audit-*` | The first member of the **BI-tool audit category**: catalogue collections, dashboards, cards (SQL, template tags, snippets, card references), database connections, permission groups and sandboxing, plus the card-to-dashboards **reverse index** — via the Metabase MCP server where available, with REST/serialization fallback. |
+| `/wire:metabase-migration-*` | Translate native cards across all five surfaces (query, connection id, template-tag field remaps, snippets, card references, in dependency order), MBQL cards split out as repoint-only, every write gated by the signed-off **card manifest**; validate on a decoy collection, then repoint the connection in two stages with per-stage rollback — Stage 2 gated on card-level equivalence. Requires a client-supplied query inventory. |
+| `/wire:metabase-carveout-*` | Tenant carve-out of the report estate (carve-out scope only): per card set, choose the scoping layer (data sandboxing, a warehouse-layer tenant view, a dashboard parameter, or — last resort — a card edit with the filter resolved from the tenant predicate registry); prune dashcards for no-tenant-data cards (the card stays in its collection); manifest-gated like the migration. |
+| `/wire:metabase-equivalency-validate` | Card-level equivalence in the model verdict taxonomy: full migration compares the source-dialect query on the source connection against the translated query on the target; a carve-out compares the parent connection (registry-filtered) against the tenant connection. Gates the connection cutover: every in-scope card must hold `pass`/`pass_qualified`. |
+
+Metabase cards and dashboards are first-class migration objects (#184): they appear in the migration inventory (with model→card edges), the register (`object_type: metabase_card` for native cards), the verdict log, region tagging (carve-out adjudication), the wave schedule (cards order after the models they read), and `migration-status`.
 
 Both build on the imported Metabase agent skills (`skills/metabase/SKILL.md`, wrapping the upstream `metabase/agent-skills`).
 

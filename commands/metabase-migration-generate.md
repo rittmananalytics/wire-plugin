@@ -111,15 +111,31 @@ The production database connection is not touched during the migration phase. Wo
 2. **Create a throwaway decoy collection** to hold test copies of in-scope cards. Production cards and dashboards are left untouched.
 3. **Use a non-production database connection for validation** — the test copies in the decoy collection run against the target BigQuery connection scoped to non-production data. No production card is repointed to validate.
 
-### Step 3: Translate cards by approach
+### Step 3: Build the card manifest — the review gate (#184)
 
-Load in-scope cards from the client inventory and group by approach (from the audit). Process `repoint` first, then `rewrite_sql`, then `rebuild`.
+Before any transformation, write `migration/metabase_card_manifest.csv` — one row per in-scope card: `card_id, card_name, query_type, dashboards, shared, action, source_sql, proposed_sql, template_tag_remaps, snippets_used, card_references, status, notes`. This file is the review gate and the rollback record: **nothing is written to any card until a human signs off its row** (`status: proposed → signed_off → applied → validated`). `metabase-migration-review` presents it.
 
-- **repoint** — MBQL cards and portable-SQL cards: no SQL change; they resolve against the target connection once it is the card's database. Verify the card returns rows on the target connection; if a `repoint` card fails, downgrade it to `rewrite_sql`.
-- **rewrite_sql** — translate the card's `dataset_query.native.query` from the source dialect to **BigQuery** using the platform-pair guide (`wire/platform_pairs/snowflake_to_bigquery/translation_guide.md`) and the §-level reference for gotchas. Test the translated SQL against the target connection — row count and result shape match the source card output against a frozen baseline. Record a before/after SQL diff in the runbook.
-- **rebuild** — cards depending on a source-only construct are rebuilt against the target connection; capture the original definition first.
+**Split MBQL out first.** MBQL cards are dialect-neutral — they regenerate against whatever connection they point at — and are usually the majority. They enter the manifest as `action: repoint` with no proposed SQL, so the manual effort is scoped to native cards only.
 
-Make the test copies (in the decoy collection) point at the target BigQuery connection; leave production cards on Snowflake until cutover.
+**Resolve the shared-card decision before any write.** From the audit's card-to-dashboards reverse index: a card on more than one dashboard is a shared object, and editing it changes every dashboard it appears on. Per shared card, record the decision in the manifest — `edit_in_place` (all dashboards move together) or `clone` (the target dashboard gets the converted copy; the others keep the original, which forks maintenance and is recorded as such). The decision is never made implicitly by a write.
+
+### Step 3b: Transform native cards — five surfaces, in dependency order
+
+Conversion order comes from the audit's object graph: **snippets first** (separate objects with their own SQL — convert before any card that uses them), then **leaf cards** (no `{{#id}}` references), then referencing cards. For each native card, five surfaces need attention, not just the query string:
+
+1. **`dataset_query.native.query`** — transpile to the target dialect as a first pass (a mechanical transpiler draft), then correct against the platform-pair guide (`wire/platform_pairs/<pair>/translation_guide.md`). Expect the draft to fail on date arithmetic, window frame syntax, semi-structured access, regex functions, and UDFs — **treat transpiler output as a draft, never a result**. Record the before/after diff in the manifest.
+2. **`dataset_query.database`** — must change to the target connection id. Translated SQL against the old connection still runs the old engine.
+3. **`template-tags`** — field filters carry **field ids from the source database** which do not survive the connection change; remap each against the target database's field metadata, recorded per tag in the manifest.
+4. **Snippets** — `{{snippet: name}}` bodies translated before their consumers (the ordering above).
+5. **Card references** — `{{#id-name}}` targets converted before their referrers (the ordering above).
+
+Also convert each affected **dashboard's own filter parameter mappings**, which reference field ids the same way template tags do.
+
+**Cards that resist translation** are `rebuild` (source-only construct, rebuilt against the target connection; original definition captured first). A `repoint` card that fails on the target connection downgrades to `rewrite_sql` in the manifest, never silently.
+
+### Step 3c: Write back — serialization for bulk, per-card PUT for touch-ups
+
+For a whole-estate move, prefer **serialization export → transform the YAML tree → import to target**: it is diffable, reviewable as a change set, and reversible. Per-card `PUT /api/card/:id` is for surgical corrections. Either path applies only to manifest rows at `status: signed_off`, and applies to the **decoy collection test copies** during the migration phase — production cards stay on the source connection until cutover.
 
 ### Step 4: Remap permission groups
 
@@ -138,7 +154,11 @@ Validate the test copies in the decoy collection only — never production cards
 1. **Result comparison** — run the test card on the target BigQuery connection and compare row count, key columns, and aggregates against the frozen source baseline result.
 2. **Dashboard spot-check** — for dashboards built from migrated cards, confirm the decoy copies render with matching values.
 
-No production card or dashboard is repointed to validate.
+No production card or dashboard is repointed to validate. Card-level **equivalence verdicts** (the model taxonomy, per card) come from `/wire:metabase-equivalency-validate` — the decoy check here confirms cards run; the equivalence command proves they return the same rows, and the Stage 2 connection cutover is gated on every in-scope card holding `pass`/`pass_qualified` (#184).
+
+### Step 5b: Update the migration register (#184)
+
+Upsert one register row per **native** card (`object_type: metabase_card`): `source_path` (collection path), `bq_target` (target connection + database), `state: migrated` on a signed-off, applied manifest row (`failed` on a validation failure; `pending` while `proposed`). MBQL cards are repoint-only and are not tracked as register rows — the connection repoint carries them. Dashboards get `object_type: metabase_dashboard` rows whose `state` derives from their cards (migrated when every constituent card is). Skip silently if the register does not exist.
 
 ### Step 6: Write the runbook
 
@@ -148,7 +168,7 @@ Structure:
 1. Topology and rationale (additive target connection + decoy collection; connection is the cutover pivot)
 2. Build steps (add target BigQuery connection, create decoy collection, copy test cards)
 3. Pre-flight checklist (target objects exist, dbt batches complete, client inventory present, source baseline frozen, decoy collection + non-production connection in place)
-4. Per-card translation — repoint / rewrite_sql (with SQL diff) / rebuild (with rebuild plan)
+4. Per-card translation — the card manifest (repoint / rewrite_sql with SQL diff and the five-surface record / rebuild with rebuild plan), in snippet → leaf-card → referencing-card order, with every shared-card edit-vs-clone decision stated
 5. **Permission group remap table** (source → target permissions per group)
 6. Decoy mapping (production card → test copy in decoy collection; production connection → target connection)
 7. Validation procedure — result comparison vs frozen baseline on the decoy collection only
@@ -173,6 +193,10 @@ artifacts:
     permission_groups_remapped: N
     decoy_collection: "{{DECOY_COLLECTION_NAME}}"
     query_inventory_source: "approved_audit" | "client_export"
+    card_manifest: migration/metabase_card_manifest.csv
+    shared_cards_cloned: N          # shared-card decisions that chose clone (forked maintenance, recorded)
+    shared_cards_edited: N          # shared-card decisions that chose edit_in_place
+    snippets_converted: N
 ```
 
 ### Step 8: Output next command
@@ -184,6 +208,8 @@ artifacts:
 ## Output Files
 
 - `.wire/releases/$ARGUMENTS/migration/metabase_migration_runbook.md`
+- `.wire/releases/$ARGUMENTS/migration/metabase_card_manifest.csv`
+- Updated `.wire/releases/$ARGUMENTS/migration/migration_register.csv` (native-card and dashboard rows)
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 
 

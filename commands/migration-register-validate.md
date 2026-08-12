@@ -36,9 +36,9 @@ Read `migration/migration_register.csv`, `audit/dbt_audit.csv`, and the latest e
 The header carries all seventeen columns: `model, object_type, source_path, source_layer, last_migrated_commit, bq_target, state, snapshot_strategy, last_equivalence_result, last_equivalence_t, last_validated_commit, delivery_stage, pr_url, parent_release, parent_model, parent_verdict_ref, notes`. A twelve-column register predating v3.11.0 is a FAIL with the fix hint "run /wire:upgrade to add delivery_stage and pr_url"; a fourteen-column register predating the cross-release linkage columns (#180) is a FAIL with the fix hint "run /wire:upgrade to add parent_release, parent_model, parent_verdict_ref".
 PASS/FAIL.
 
-**Check 2 — One row per in-scope model and snapshot, unique key**
-Every in-scope model from `dbt_audit.csv` has exactly one `object_type = model` row, and every snapshot from `dbt_snapshots.csv` has exactly one `object_type = snapshot` row; `model` is unique across both; no orphan rows except those marked `state = removed`.
-PASS/FAIL with missing/duplicate models and snapshots.
+**Check 2 — One row per in-scope object, unique key**
+Every in-scope model from `dbt_audit.csv` has exactly one `object_type = model` row, and every snapshot from `dbt_snapshots.csv` has exactly one `object_type = snapshot` row; `model` is unique across all rows. Rows of `object_type` `reverse_etl_sync`, `metabase_card`, and `metabase_dashboard` (#184) trace to the reverse-ETL audit and the Metabase manifests respectively — they are not orphans. Any other row not in a source catalogue is an orphan unless marked `state = removed`.
+PASS/FAIL with missing/duplicate/orphan objects.
 
 **Check 3 — State values valid**
 Every `state` is one of `pending | migrated | drifted | failed | removed | deferred`.

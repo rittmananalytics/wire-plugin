@@ -9,6 +9,24 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.5 — Metabase reports become first-class migration objects
+
+**Released**: August 2026
+
+This release implements the Metabase gap review in full: cards and dashboards stop being a side-channel and join the migration estate.
+
+**A BI-tool audit category, with the reverse index that makes card writes safe.** `metabase-audit` now connects via the Metabase MCP server where available (REST and serialization fallbacks produce the same catalog), and catalogues what the downstream commands actually need: per-card template tags with their field ids, snippets, card references, sandboxing policies, and the card-to-dashboards **reverse index**. Cards are shared objects — editing a card on one dashboard changes all of them — so no write decision is made without the index.
+
+**Dialect migration behind a manifest gate.** Native cards transform across all five surfaces (the query as a transpiler draft, the connection id, template-tag field remaps, snippets, card references) in dependency order — snippets first, referenced cards before referrers — with MBQL cards split out as repoint-only. Every write is gated by a signed-off row in the card manifest, shared cards carry an explicit edit-vs-clone decision, and bulk write-back prefers serialization export/transform/import.
+
+**A tenant carve-out path for the report estate.** `/wire:metabase-carveout-*` scopes the tenant's reports with the mechanical card edit as the last resort: data sandboxing, a warehouse-layer tenant view, or a dashboard parameter come first, recorded and adjudicated as layer decisions. Where cards must be edited, the filter resolves from the tenant predicate registry and is injected via AST at the outermost SELECT — never string-appended — and an unresolved card is flagged, never carved unfiltered. Cards with no tenant data lose their dashcards; the card always stays in its collection.
+
+**Card-level equivalence gates the cutover.** `/wire:metabase-equivalency-validate` proves a migrated or carved card returns the same rows, in the model verdict taxonomy — a full migration compares the source-dialect query on the source connection against the translated query on the target; a carve-out compares the parent connection (registry-filtered) against the tenant connection. The production connection repoint requires every in-scope card at `pass`/`pass_qualified`.
+
+Metabase objects now appear in the migration inventory (with model-to-card edges), the register, the verdict log, region tagging, the wave schedule, and `migration-status`. Four new commands, three behavioural test suites, and the 90-day carve-out example plan regenerated with per-wave card carve/migrate/prove rows.
+
+---
+
 ## v3.11.4 — The migration gap backlog closes
 
 **Released**: August 2026

@@ -88,7 +88,9 @@ Read `--region` from `$ARGUMENTS` (default `de`). Record the resolved region cod
 
 ### Step 2: Load all in-scope items
 
-Read each audit and assemble the full list of in-scope items, each tagged with its `source_audit` and `item_type` (`connector`, `table`, `view`, `dbt_model`, `role`, `reverse_etl_sync`, `reverse_etl_destination`). This union is the classification scope — every item is classified exactly once.
+Read each audit and assemble the full list of in-scope items, each tagged with its `source_audit` and `item_type` (`connector`, `table`, `view`, `dbt_model`, `role`, `reverse_etl_sync`, `reverse_etl_destination`, and — when a `metabase_audit` is approved — `metabase_card` and `metabase_dashboard`, #184). This union is the classification scope — every item is classified exactly once.
+
+**Metabase item signals.** A card classifies by its collection/dashboard naming (a tenant-named collection is a confident-region signal), the tenant scope of the warehouse objects it reads (a card over only confident-region models inherits their confidence), and its audience (permission groups). A dashboard classifies with its card set. A card over shared-row-level models is itself `shared-row-level` — its tenant mechanism resolves at `metabase-carveout-generate` from the predicate registry, and the ruling on whether it belongs to the tenant at all is the adjudicator's, like every other shared item.
 
 ### Step 3: Classify each item into one of three buckets
 

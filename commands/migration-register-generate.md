@@ -48,7 +48,7 @@ The register is maintained **incrementally** by the migration commands (see the 
 | Column | Meaning |
 |--------|---------|
 | `model` | dbt model **or snapshot** name (unique key) |
-| `object_type` | `model` (default) or `snapshot` — a snapshot is an SCD-2 history object, tracked here so its migration strategy and state travel with everything else |
+| `object_type` | `model` (default), `snapshot` (an SCD-2 history object, tracked here so its migration strategy and state travel with everything else), `reverse_etl_sync` (a sync with a real equivalence verdict, `reverse-etl-equivalency-validate`), `metabase_card` (a **native** Metabase card — MBQL cards are repoint-only and carried by the connection, not tracked as rows), or `metabase_dashboard` (state derives from its cards) — #184 |
 | `source_path` | path to the model/snapshot in the source dbt project (e.g. `models/business/orders.sql`, `snapshots/orders_snapshot.sql`) |
 | `source_layer` | source-project layer (e.g. `source_project`, `business_project`, `reporting`) |
 | `last_migrated_commit` | source repo commit SHA the translated model was built from |
@@ -74,6 +74,7 @@ The register is maintained **incrementally** by the migration commands (see the 
 - **`dbt-migration-batch-raise`** — sets `delivery_stage: in_pr` + `pr_url` when a model enters a client PR, advances to `merged` on merge detection, and clears both if the PR closes unmerged.
 - **`equivalency-post-merge-verify`** — advances `delivery_stage` to `production_verified` when the post-merge production comparison returns `pass` or `pass_qualified`.
 - **`dbt-carveout-relocate-generate`** — on relocated rows only, writes the cross-release linkage columns `parent_release` / `parent_model` / `parent_verdict_ref` (#180), alongside the upsert it already performs.
+- **`metabase-migration-generate` / `metabase-carveout-generate`** — upsert `object_type: metabase_card` rows for native cards (and `metabase_dashboard` rows derived from their cards) as manifest rows are signed off and applied; `metabase-equivalency-validate` writes their `last_equivalence_*` via the standard merge (#184).
 - **`equivalency-sweep`** — blanks a superseded `last_equivalence_result` (with an audit note in `notes` naming the sweep and pattern id) when a defect-class sweep invalidates a standing verdict; it never deletes rows or verdict-log history.
 
 This command does not duplicate that logic — it seeds and reconciles the file.

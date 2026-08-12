@@ -94,7 +94,7 @@ Identify objects that appear in multiple audits and link them:
 
 Construct a directed dependency graph where:
 - Edges point from dependency to dependent (data flows downstream)
-- Node types: `connector`, `table`, `view`, `dbt_model`, `snapshot`, `job`, `role`, `reverse_etl_sync`, `reverse_etl_destination`
+- Node types: `connector`, `table`, `view`, `dbt_model`, `snapshot`, `job`, `role`, `reverse_etl_sync`, `reverse_etl_destination` — plus, when a `metabase_audit` is approved, `metabase_card` and `metabase_dashboard` (#184), with a **model→card** edge for every warehouse object a card reads (from the audit's dependency map) and a **card→dashboard** edge from the reverse index. These edges are what let batching schedule a card after the models it reads and `migration-status` derive dashboard state from card state.
 - For every snapshot, add an **upstream→snapshot** edge (from its ref/source parent) and a **snapshot→dependent** edge to each downstream model. This is what lets migration batching order the snapshot after the model it reads and before its dependents — without these edges a downstream model looks like it has no snapshot prerequisite and can be scheduled ahead of it.
 
 The graph now spans the full data flow: ingestion sources → warehouse objects → dbt models → reverse ETL syncs → SaaS destinations.

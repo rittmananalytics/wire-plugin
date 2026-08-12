@@ -112,7 +112,7 @@ Because `reporting_tool: metabase`, audit and migrate the reporting layer alongs
 /wire:metabase-migration-generate 01-tenant-carveout
 ```
 
-The audit catalogues collections, dashboards, cards (with their SQL), database connections, and permission groups. The migration translates native-SQL card dialect to BigQuery, remaps permission groups, validates on a throwaway decoy collection against a frozen baseline, then repoints the Metabase database connection from Snowflake to BigQuery in two stages with per-stage rollback. It will not run without a client-supplied query inventory.
+The audit catalogues collections, dashboards, cards (SQL, template tags, snippets, card references), connections, permission groups and sandboxing, and the card-to-dashboards reverse index — shared cards are the trap: editing a card on one dashboard changes it on all of them, so every write decision reads the index. The migration translates native cards across all five surfaces in dependency order (snippets first), gated by a signed-off card manifest; MBQL cards are repoint-only. Under the carve-out, `/wire:metabase-carveout-*` scopes the tenant's report estate first — layer decisions (sandboxing, warehouse view, dashboard parameter) before card edits, filters from the predicate registry, dashcards pruned where a card has no tenant data — and `/wire:metabase-equivalency-validate` proves each card at the card grain before the connection repoints. It will not run without a client-supplied query inventory.
 
 ## Step 4 — Bulk copy, in place of re-ingestion
 

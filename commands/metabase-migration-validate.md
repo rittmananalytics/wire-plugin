@@ -78,6 +78,14 @@ PASS: both stages and both rollbacks documented. FAIL: single-stage cutover, or 
 The runbook does not repoint or delete the production Snowflake connection during the migration phase — only at cutover. The Snowflake connection remains the rollback path through Stage 2.
 PASS: connection repoint appears only in the cutover section. FAIL: production connection repointed/deleted in migration or validation steps.
 
+**Check 11 — Card manifest gate holds (#184)**
+`migration/metabase_card_manifest.csv` exists with one row per in-scope card; every applied change corresponds to a row whose `status` reached `signed_off` first; MBQL cards carry `action: repoint` with no proposed SQL; every shared card (per the audit reverse index) carries an explicit `edit_in_place`/`clone` decision.
+PASS/FAIL with offending rows.
+
+**Check 12 — Dependency order respected (#184)**
+No card converted before a snippet it uses; no referencing card converted before its `{{#id}}` targets; every affected dashboard's filter parameter mappings and every field-filter template tag carry a target-database field-id remap.
+PASS/FAIL with offending cards.
+
 ### Write validation report
 
 Append a `## Validation` section to `migration/metabase_migration_runbook.md` with a per-check PASS/FAIL table and a "Gaps to address" list.

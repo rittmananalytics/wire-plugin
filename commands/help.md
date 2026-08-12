@@ -253,6 +253,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:reverse-etl-migration-generate` | `<release-folder> [--wave id]` | Generate Hightouch sync migration runbook — repoint, rewrite, rebuild |
 | `/wire:reverse-etl-migration-validate` | `<release-folder> [--wave id]` | Validate reverse ETL migration runbook completeness |
 | `/wire:reverse-etl-migration-review` | `<release-folder> [--wave id]` | Internal RA review of reverse ETL migration runbook |
+| `/wire:reverse-etl-equivalency-validate` | `<release-folder> [--syncs name1,name2] [--tier N]` | Sync-level equivalence — old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass |
 | `/wire:migration-inventory-generate` | `<release-folder>` | Synthesise all audits into unified catalogue with dependency graph |
 | `/wire:migration-inventory-validate` | `<release-folder>` | Validate migration inventory object counts and dependency graph |
 | `/wire:migration-inventory-review` | `<release-folder>` | Internal RA and client scope confirmation |
@@ -284,6 +285,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:migration-register-validate` | `<release-folder>` | Validate the migration register — schema, coverage, state consistency |
 | `/wire:migration-drift-generate` | `<release-folder>` | Scheduled drift gate — diff live source vs last-migrated commit, flag downstream syncs and masking changes |
 | `/wire:migration-drift-validate` | `<release-folder>` | Validate the migration drift report — classification, sync flagging, masking hook |
+| `/wire:migration-status` | `<release-folder> [waves/item/blocking/exceptions] [--json]` | Operational status view — per-wave exclusive model/sync stages, drift partition, provenance header, item/blocking/exceptions subcommands, JSON output |
 | `/wire:data-residency-assessment-generate` | `<release-folder>` | Generate the GDPR and data-residency assessment, including the historical-window legal review (tenant carve-out) |
 | `/wire:data-residency-assessment-validate` | `<release-folder>` | Validate the data residency assessment — all required sections present and non-empty |
 | `/wire:data-residency-assessment-review` | `<release-folder>` | Client DPO/legal sign-off gate for the data residency assessment |
@@ -302,6 +304,10 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:metabase-migration-generate` | `<release-folder>` | Generate Metabase migration runbook — translate card SQL, remap permission groups, two-stage connection repoint |
 | `/wire:metabase-migration-validate` | `<release-folder>` | Validate Metabase migration runbook completeness |
 | `/wire:metabase-migration-review` | `<release-folder>` | Internal RA review of Metabase migration runbook |
+| `/wire:metabase-carveout-generate` | `<release-folder> [--collection id] [--dashboard id]` | Tenant carve-out of the Metabase estate — layer decision per card set (sandboxing/warehouse/dashboard-parameter/card-edit), registry-resolved filters, dashcard pruning, manifest review gate |
+| `/wire:metabase-carveout-validate` | `<release-folder>` | Validate the Metabase carve-out — filters re-derived from the registry, no unfiltered card, dashcard-level removals, explicit shared-card decisions |
+| `/wire:metabase-carveout-review` | `<release-folder>` | Human gate for the Metabase carve-out — adjudicate layer decisions, sign off manifest rows, resolve manual-review cards |
+| `/wire:metabase-equivalency-validate` | `<release-folder> [--cards id1,id2] [--dashboard id]` | Card-level equivalence — migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover |
 | `/wire:omni-audit-generate` | `<release-folder>` | Catalog Omni connections, model (topics/views/dimensions/measures), and folders/workbooks/tiles |
 | `/wire:omni-audit-validate` | `<release-folder>` | Validate Omni audit completeness and dependency coverage |
 | `/wire:omni-audit-review` | `<release-folder>` | Internal RA review of Omni audit |
@@ -357,9 +363,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:adopt` | `[repo-path-or-url]` | Adopt an in-flight project into Wire — assess repo and external sources, map existing work to artifacts, set up engagement structure, generate adoption playbook |
 | `/wire:custom-define` | `<release-folder>` | Define a custom release type from SoW or project documents — map deliverables to Wire commands or generate bespoke specs |
 | `/wire:custom-feature-request` | `<custom-spec-name>` | Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition |
-| `/wire:reverse-etl-equivalency-validate` | `<release-folder> [--syncs name1,name2] [--tier N]` | Sync-level equivalence — old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass |
 | `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N ` | Present migration batch acceptance pack for stakeholder sign-off |
-| `/wire:migration-status` | `<release-folder> [waves/item/blocking/exceptions] [--json]` | Operational status view — per-wave exclusive model/sync stages, drift partition, provenance header, item/blocking/exceptions subcommands, JSON output |
 | `/wire:migration-source-register` | `<release-folder> <source_type> <github_url>` | Register a source repository for a given migration source type |
 | `/wire:migration-source-refresh` | `<release-folder> <source_type>` | Pull a fresh local snapshot of a registered migration source |
 | `/wire:ads-audit-all` | `<release-folder>` | Run all three agentic data stack audits in parallel |
