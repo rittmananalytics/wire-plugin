@@ -39,6 +39,30 @@ Every lane brief includes, verbatim:
 - **Resume contract**: on restart with the same brief, read the state file first and skip every completed item. Losing the session must cost at most the in-flight item.
 - **Completion**: the final state-file write marks the lane `complete` with a one-line summary; the orchestrator treats a lane with no writes for 30 minutes as stalled and may re-dispatch its remaining items to a new lane (the resume contract makes this safe).
 
+**Chunk ledgers with deterministic job ids (#179).** A lane moving data in chunks (a bulk copy, a history bring-in) keeps a **chunk ledger** — one row per chunk: boundary keys, row count, load-job id, state — and derives each load-job id deterministically from the release, table, and chunk boundary (e.g. `wire_<release>_<table>_<chunk_floor>`), never from a timestamp or a random suffix. A deterministic id makes the re-run idempotent: re-submitting a completed chunk is rejected by the warehouse as a duplicate job instead of loading the rows twice. Observed failure: a copy killed by a credential expiry mid-table could only be resumed row-safely because the ledger plus deterministic ids let the re-run skip completed chunks; without them the options are re-copy-all or diff-by-hand.
+- **Staged runbooks before credential stops.** When a lane can predict losing its credentials (an expiring ADC token, a scheduled MCP re-auth), it writes the remaining steps as a staged runbook in its state file *before* the stop, so the resume — by the same lane or its replacement — starts from a plan rather than a reconstruction.
+- **Resume-by-message.** A paused or killed session resumes by sending the same lane brief to a fresh agent; the state file carries the context. No lane may hold essential state only in conversation memory.
+
+## Report-once protocol (#179)
+
+Progress lives in ledgers and state files; the conversation gets **terminal reports only** — a lane reports when it completes, stalls, or hits a decision it cannot make, never a running commentary. The orchestrator reads progress from state files (and answers the director from them); it does not poll lanes with "how is it going" messages, and lanes do not emit unprompted status updates that bury the signal. Observed failure: polling chatter between the orchestrator and busy lanes consumed context and tokens while adding nothing the state files did not already hold.
+
+Outward-facing publishes (a PR raise, a client post, a merged-state update) are **`&&`-gated chains**: every local step must succeed before the publish step runs — build `&&` compare `&&` parity `&&` raise — so a failed precondition stops the chain instead of publishing a claim the evidence does not back. A publish that happened is reported once, with its reference; it is never re-narrated.
+
+## Cost governance (#179)
+
+Rule 5 above states that every lane's spend counts against the release budget (`migration.cost_controls`). The mechanics:
+
+- **The dry-run bound is the authorisation figure.** A build or comparison authorises the cost its dry-run estimated; the actual is recorded next to it. An overrun (actual above the authorised estimate) is **disclosed in the lane's report**, never silently absorbed — repeated overruns mean the estimation method is wrong, which is itself a finding.
+- **Views and external tables are estimated from object sizes, never a 0-byte dry-run.** A dry-run against a view or an external (e.g. Iceberg/BigLake) table can report 0 bytes while the real scan bills the full underlying object. Estimate from the referenced objects' storage metadata instead, and treat a 0-byte estimate on a non-trivial object as "unknown", not "free". Observed failure: an unguarded build day billed four figures, with one model accounting for a mid-three-figure scan a 0-byte dry-run had waved through.
+- **Shared-credential attribution by destination dataset.** When several lanes run under one service account, attribute spend by each job's destination dataset (which rule 3's tree ownership makes unambiguous), so the per-lane budget lines stay meaningful under a shared credential.
+
+## Contention rules (#179)
+
+- **Worktree-per-branch, never the main checkout.** A lane that needs a branch checkout (a batch raise, a CI-parity run) works in its own `git worktree`; the main delivery checkout is never switched under a running fleet. Observed failure: a branch switch in the shared checkout changed every other lane's view of the tree mid-run.
+- **Acquire-per-build locks, released between builds.** A build lane holds `migration/locks/build_{project}.lock` for one build and releases it before its next item, rather than holding it for the lane's lifetime — other lanes' occasional builds interleave instead of starving (the lock and its 60-minute staleness rule are `dbt-migration-defer-build`'s).
+- **File-scoped commits only.** A lane commits exactly the files it owns (rule 3), named explicitly — never `git add -A`/`git commit -a`, which under a fleet commits other lanes' in-flight work. Observed failure: a broad commit from one lane swept up another's half-written state file and corrupted both lanes' resume points.
+
 ## The consolidation and backstop pass (mandatory)
 
 After lanes report, the orchestrating session runs a consolidation pass over their output before anything ships: re-check build results against the warehouse (not the lane's claim), scan for the engagement's documented traps, verify register/verdict consistency, and spot-check a sample at full depth. This pass is not optional overhead. The controlled contrast that justifies it: identical lane briefs run on a lower tier produced format-faithful output in which the consolidation pass caught two hard build failures and eight recurrences of a documented trap. Backstop passes stay in the template regardless of which model runs the lanes; the model choice changes how much the backstop finds, not whether it runs.

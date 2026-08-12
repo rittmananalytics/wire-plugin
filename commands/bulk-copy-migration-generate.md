@@ -23,8 +23,8 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Generate a Snowflake→BigQuery bulk historical copy runbook (tenant carve-out) — two-stage copy with an equivalency gate
-argument-hint: <release-folder> [--wave id] [--snapshots [names]]
+description: Generate a Snowflake→BigQuery bulk historical copy runbook — tenant carve-out two-stage copy with an equivalency gate, plus a bring-in mode for source-platform-only history in any scope
+argument-hint: <release-folder> [--wave id] [--snapshots [names]] [--mode bring-in [--dry-run]]
 ---
 
 ## Auto-Delegation
@@ -77,10 +77,11 @@ If any generated copy step would write to a source platform, target a production
 
 Generates the runbook for a one-off **bulk historical copy of a single tenant's data from Snowflake to BigQuery**, using the **BigQuery Data Transfer Service** (managed Snowflake connector) or a **GCS-staged** path (Snowflake `COPY INTO` an external GCS stage → BigQuery load from GCS). This is the carve-out alternative to re-ingestion: it moves the existing historical rows in bulk rather than re-running Fivetran/connector ingestion against the target.
 
-This command has two copy paths, gated separately (see Step 1):
+This command has three copy paths, gated separately (see Step 1):
 
 - **Raw-table / connector copy** (ingestion-replacement) — carve-out-only. It runs only in **tenant carve-out** scope (`migration.scope == tenant_carveout`). For a full migration, raw tables re-land via `/wire:ingestion-migration-generate` instead, so bulk-copy must not copy raw/connector tables outside carve-out.
 - **Snapshot-history copy** — runs in **any** scope. A dbt snapshot's SCD-2 history cannot be reconstructed from the current source, so it is copied rather than re-ingested regardless of scope. Under carve-out it is tenant-filtered like every other extract; in a full migration it copies the **whole** history, unfiltered. The `--snapshots` scope runs this path on its own.
+- **History bring-in** (`--mode bring-in`, #179) — runs in **any** scope. For **source-platform-only history**: tables whose data exists nowhere upstream to re-ingest from — ML inference outputs, event history predating the current connectors, billion-row archives whose upstream is gone. A sizing pass classifies each table COPYABLE / EXPORT / CONNECTOR-ONLY against a configurable gate, the copyable path is a chunked, ledgered, resumable copy with a verification battery, and the over-gate path emits a client-run execute-pack — RA never runs writes on the source platform. See "Bring-in mode" below.
 
 **Always a runbook/script.** Native SQL and the BigQuery Storage Write / load path are always available — there is no MCP-server dependency and no execution-vs-runbook branching. `method` is always `runbook`.
 
@@ -97,9 +98,38 @@ This command has two copy paths, gated separately (see Step 1):
 
 - `--wave <id>` — restrict this run to the tables `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `dbt-migration-generate`'s Step 1w: normalise the wave id, load `migration_batching.csv` (abort if missing), filter to rows where `batch_id` matches **and** `object_type == "connector"`, then cross-reference each matched `object_id` against `ingestion_audit.md`'s connector identifiers for the landed tables to copy. Print the mandatory resolved-table preview before proceeding. If rows match the wave but none are `connector` rows, print `[wire] Wave <id> has no connector/table objects — nothing to copy for this command.` and stop cleanly.
 - `--snapshots` — **targeted snapshot-history-copy scope.** Restrict the run to copying the selected snapshot histories only (the snapshot-history-copy path in Step 3), skipping the raw-table / connector copy entirely. `--snapshots` (bare) copies every `copy_and_continue` snapshot history in the release (`object_type = snapshot` in the migration register / `audit/dbt_snapshots.csv`; `rebuild_from_T` snapshots are correctly skipped — they start fresh at `T`); `--snapshots name1,name2` copies only the named snapshots. Selection resolves against the snapshot object-type rows, never a connector/table list. This is the path that runs in a **full migration** — where raw tables re-land via ingestion, but snapshot history still has to be copied. Under carve-out it stays tenant-filtered; in a full migration it copies the whole history, unfiltered (see Step 1). Standalone scope — abort if combined with `--batch`, `--wave`, `--model`, `--models`, `--select`, `--exclude`, or `--macros`: `[wire] --snapshots is a standalone scope. Run it on its own; do not combine with --batch/--wave/--model/--models/--select/--exclude/--macros.`
+- `--mode bring-in` — the history bring-in path (see the "Bring-in mode" section below). Standalone: abort if combined with `--wave` or `--snapshots`. `--dry-run` stops after the sizing pass and classification, writing nothing and running no copy.
 - No flag — process every landed table for connectors with `include_in_migration: true`, plus every `copy_and_continue` snapshot history (today's behaviour, unchanged; carve-out only).
 
 When `--wave` is supplied, the runbook is wave-labelled (`migration/bulk_copy_migration_runbook_{wave_id}.md`) and status.md tracks the wave under `wave` / `waves_complete`.
+
+## Bring-in mode (`--mode bring-in`, #179)
+
+**Scope of the mode.** The in-scope table list is the migration inventory's source-platform-only history set: tables flagged as having no re-ingestion path (no live connector upstream), plus any table the consultant names explicitly. Under `tenant_carveout` every extract still resolves its filter from the tenant predicate registry (Step 2a rules apply unchanged — an unresolved object gets no copy step); in a full migration extracts are unfiltered.
+
+**Step B1 — Sizing pass (read-only, always first).** For every candidate table, read row count and stored bytes from the source platform's metadata (`INFORMATION_SCHEMA` / `SHOW TABLES` — SELECT/SHOW only, never a data scan), and record the source's current high-water mark (max load timestamp or key) as the **vintage pin** for everything downstream. Write the sizing table into the runbook: table, rows, GB, classification.
+
+**Step B2 — Classification (deterministic — tests mirror it: `wire/tests/platform_migration/validate_bring_in_classification.py`).** Read the gate from `migration.bring_in.copy_gate` in status.md (defaults `max_rows: 10000000`, `max_gb: 3`):
+
+| Condition | Classification | Path |
+|---|---|---|
+| A live connector still serves the table | **CONNECTOR-ONLY** | No copy step — it re-lands via ingestion; listed with the serving connector |
+| Rows ≤ `max_rows` AND GB ≤ `max_gb` | **COPYABLE** | Chunked copy (Step B3) |
+| Over either limit | **EXPORT** | Client-run execute-pack (Step B4) |
+
+**Step B3 — COPYABLE path: chunked, ledgered, resumable copy.** Per table:
+
+- **Pinned vintage**: every chunk's extract is bounded by the Step B1 vintage pin, so a moving source never smears the copy.
+- **Boundary-keyed chunks**: chunks cut on a monotonic key or partition column, each chunk's boundaries recorded before it runs.
+- **Chunk ledger**: `migration/bring_in/<table>_ledger.csv` — one row per chunk: boundary keys, row count, load-job id, state (`pending`/`loaded`/`verified`). Rewritten after each chunk, per the fleet resume contract (`specs/utils/migration_fleet.md`).
+- **Deterministic load-job ids**: derived from release + table + chunk floor (e.g. `wire_<release>_<table>_<chunk_floor>`), never timestamps — a re-run re-submitting a completed chunk is rejected by the warehouse as a duplicate job instead of double-loading. **A killed copy resumes mid-table from the ledger**, skipping every `loaded`/`verified` chunk.
+- **Verification battery** per table once all chunks load: exact row count, numeric column sums, key min/max, all at the pinned vintage on both sides. Exactness, not tolerance — a bring-in is a copy, not a translation.
+
+**Step B4 — EXPORT path: the client-run execute-pack.** For each over-gate table, emit `migration/bring_in/export_pack_<table>.md` as a client-handoff artifact: the storage-integration setup, the `COPY INTO` parquet unload statements (vintage-pinned, chunk-bounded), the target load or BigLake external-table DDL, and the same verification battery as B3 for the client to run and return. **RA never executes writes on the source platform** — the pack is prepared, reviewed at `bulk-copy-migration-review`, and handed over.
+
+**Step B5 — Register rows.** Each brought-in table upserts a register row whose `notes` carry the **vintage pin** (`vintage: <instant-or-key>` — this is a pinned snapshot of a moving source, and the note is what stops it being mistaken for a live feed) and the **production-promotion route** (`promotion: weekly_copy_dag | client_pipe | frozen` — how, if at all, the table stays current after the one-off bring-in).
+
+Bring-in runbook: `migration/bulk_copy_migration_runbook_bring_in.md`. The review gate (`bulk-copy-migration-review`) covers the first COPYABLE execution and every EXPORT pack handoff.
 
 ## Inputs
 
@@ -228,6 +258,12 @@ artifacts:
     tenant_predicate: "{{migration.tenant_predicate}}"   # null for an unfiltered full-migration snapshot copy
     wave: "B01"                  # set only when run with --wave; the wave id just processed
     waves_complete: ["B01"]      # set only when run with --wave; accumulates across runs
+    mode: standard | bring_in    # bring_in only under --mode bring-in
+    bring_in:                    # set only under --mode bring-in
+      copyable: N                # tables classified COPYABLE (chunked copy)
+      export: N                  # tables classified EXPORT (client execute-pack)
+      connector_only: N          # tables still served by a live connector — no copy step
+      vintage_pin: "<instant>"   # the sizing pass's high-water mark every extract is bounded by
 ```
 
 ### Step 5: Output next command

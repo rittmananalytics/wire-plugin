@@ -60,6 +60,9 @@ The register is maintained **incrementally** by the migration commands (see the 
 | `last_validated_commit` | source commit at the last equivalency validation (lets the drift gate tell "validated-then-drifted" from "never validated") |
 | `delivery_stage` | blank \| `in_pr` \| `merged` \| `production_verified` — how far past "migrated" the object has shipped. Orthogonal to `state`: `state` records translation lifecycle and health (a merged model can still go `drifted`), `delivery_stage` records delivery progress. Blank until the object enters a client PR |
 | `pr_url` | URL of the client PR carrying this object (set with `delivery_stage: in_pr`; kept through `merged`/`production_verified`; cleared with `delivery_stage` if the PR closes unmerged) |
+| `parent_release` | **Relocated rows only** (`origin: relocate` in `notes`): the parent migration release folder the model's translation came from (from `migration.parent_release`). Blank on every other row |
+| `parent_model` | Relocated rows only: the model's name in the parent register (usually identical; recorded so a rename never breaks the link) |
+| `parent_verdict_ref` | Relocated rows only: a reference to the parent verdict that proves the SQL being relocated — the parent register row's `last_equivalence_result` plus its evidence (`<parent_release>:<report_ref>`, e.g. `05-parent-migration:migration/equivalency_report_12.md#orders`). Blank when the parent register was unreachable at relocate time — an evidence gap the relocate-mode comparator treats as unproven (see `equivalency-validate`, Relocate-mode comparison) |
 | `notes` | free text (e.g. reason for `deferred`/`failed`; for a `rebuild_from_T` snapshot, the required data-owner sign-off — name + date) |
 
 ## Maintenance contract (which command writes which columns)
@@ -70,6 +73,8 @@ The register is maintained **incrementally** by the migration commands (see the 
 - **`migration-drift-generate`** — flips `state` to `drifted` (modified upstream) or `removed`, and records the drifting commit in `notes`. It never touches `delivery_stage` — a merged model that drifts keeps its delivery progress and gains a health flag.
 - **`dbt-migration-batch-raise`** — sets `delivery_stage: in_pr` + `pr_url` when a model enters a client PR, advances to `merged` on merge detection, and clears both if the PR closes unmerged.
 - **`equivalency-post-merge-verify`** — advances `delivery_stage` to `production_verified` when the post-merge production comparison returns `pass` or `pass_qualified`.
+- **`dbt-carveout-relocate-generate`** — on relocated rows only, writes the cross-release linkage columns `parent_release` / `parent_model` / `parent_verdict_ref` (#180), alongside the upsert it already performs.
+- **`equivalency-sweep`** — blanks a superseded `last_equivalence_result` (with an audit note in `notes` naming the sweep and pattern id) when a defect-class sweep invalidates a standing verdict; it never deletes rows or verdict-log history.
 
 This command does not duplicate that logic — it seeds and reconciles the file.
 
@@ -81,20 +86,33 @@ The register is **current-state**: one row per object, reconciled in place, so a
 
 ## Prerequisites
 
-- `audit/dbt_audit.csv` exists (the in-scope model list); `audit/dbt_snapshots.csv` too if the project defines snapshots
+- `audit/dbt_audit.csv` exists (the in-scope model list); `audit/dbt_snapshots.csv` too if the project defines snapshots — **or**, under `--from region-tagging`, `migration/region_tags_adjudicated.csv` exists instead
 - `migration_sources.dbt` registered (so `last_migrated_commit` can be resolved)
+
+## Flags (#180)
+
+- `--from region-tagging` — **carve-out bootstrap.** Seed the register from the adjudicated region-tagging output instead of the dbt audit: one row per `region_tags_adjudicated.csv` item with `adjudicated_ruling: carve_in`, mapped by `item_type` (`dbt_model` → `object_type: model`; snapshot rows from `audit/dbt_snapshots.csv` where present), `state: pending`, and the item's separation mechanism from `migration/tenant_predicate_registry.csv` recorded in `notes` (`mechanism: <value>`). This is the natural seed for a carve-out that reached delivery before its register existed — the adjudication is already the locked ruling on what is in scope. Items ruled `exclude`/`defer` are not seeded. Requires `migration.scope == tenant_carveout`; abort otherwise with `[wire] --from region-tagging applies to tenant_carveout releases only.`
+- `--ingest-merge-state` — **retroactive PR ingestion.** For a release whose models reached client PRs (or main) before the register tracked them, backfill `delivery_stage` and `pr_url` from **live** repo state, and record PR-body verdicts as dated verdict-log evidence. See Step 2b. Composable with `--from region-tagging` (bootstrap then ingest) or usable alone against an existing register.
 
 ## Workflow
 
 ### Step 1: Seed or reconcile
 
-If the register does not exist, create it from `TEMPLATES/migration/migration_register.csv` and seed one row per in-scope model from `dbt_audit.csv` (`object_type = model`), plus one row per snapshot from `dbt_snapshots.csv` (`object_type = snapshot`, `snapshot_strategy` from the strategy doc as above), all with `state = pending` and all migration/validation columns `null`.
+If the register does not exist, create it from `TEMPLATES/migration/migration_register.csv` and seed one row per in-scope model from `dbt_audit.csv` (`object_type = model`), plus one row per snapshot from `dbt_snapshots.csv` (`object_type = snapshot`, `snapshot_strategy` from the strategy doc as above), all with `state = pending` and all migration/validation columns `null`. Under `--from region-tagging`, the seed source is `migration/region_tags_adjudicated.csv` filtered to `carve_in` instead (see Flags) — the seeded set is the adjudicated carve-in set, and each row's `notes` records its predicate-registry mechanism.
 
 If it exists, **reconcile** rather than overwrite: add rows for any new in-scope models (`state = pending`); never clobber `last_migrated_commit` / `last_equivalence_*` / `last_validated_commit` already recorded; mark rows whose model no longer exists in the dbt audit as `state = removed` (do not delete the row — the history matters).
 
 ### Step 2: Backfill from existing artifacts (first run)
 
 On first creation, backfill state from what already happened: read the batch acceptance packs and per-model `.diff.md` files to set `state` (`migrated`/`failed`) and `last_migrated_commit` where derivable; read the latest equivalency report to set `last_equivalence_result` / `last_equivalence_t` / `last_validated_commit`. Leave unknown fields `null` rather than guessing.
+
+### Step 2b: Retroactive PR ingestion (`--ingest-merge-state`, #180)
+
+For each configured client repo (`migration.client_repos`), read the **live** PR series — `gh pr list --state merged` plus open PRs, filtered to this release's branches/authors — and resolve which register models each PR carried (from the PR's changed files mapped back to model names).
+
+- **`delivery_stage` comes from live repo state, never from the release folder's own status records.** A model whose file is merged to the client's base branch: `delivery_stage: merged` (+ `pr_url`); in an open PR: `in_pr` (+ `pr_url`); in a PR closed unmerged, or nowhere: `delivery_stage` blank. Where the folder's prior notes disagree with `gh`, `gh` wins and the correction is reported — stale local status is exactly the failure this flag exists to repair. Set `state: migrated` for any ingested model still `pending` (its file demonstrably shipped).
+- **PR-body verdicts are evidence, ingested but marked.** A PR body carrying verdict-grade comparison evidence (counts, checksums, windows argued per model) appends one row per model to `migration/migration_verdict_log.csv`: `verdict` as stated, `run_point: standard`, `lane_id: retro-ingest`, `method_class: pr_body_evidence`, `report_ref: <pr_url>`, `written_at` = the PR's merge (or last-update) instant. These rows are dated history, not fresh proof — every ingested model is flagged **re-verify: post_merge** in `notes`, and `equivalency-post-merge-verify` is the command that replaces the prose evidence with a real production comparison. A PR body with no verdict-grade evidence ingests delivery state only, no log row.
+- The ingestion is idempotent: re-running re-reads live state and reconciles; it never duplicates verdict-log rows for the same (model, pr_url) pair.
 
 ### Step 3: Write the register and update status
 

@@ -9,6 +9,30 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.4 — The migration gap backlog closes
+
+**Released**: August 2026
+
+This release implements every remaining item of the two migration gap reviews (#179 for `platform_migration`, #180 for `tenant_carveout`), closing both.
+
+**Divergence with a proven benign cause stops being re-argued per PR.** Two structured qualifiers land in `equivalency-validate`. A **declared availability window** handles the target that holds less history than the source: the floor auto-derives from the target Bronze `MIN(loaded_at)` or partition metadata (or is declared explicitly with reasoned exclusions), the cap is the run's pinned as-of, and the verdict binds to it — `diff_availability` with mechanism `declared_window_availability` and the floor, cap, and exclusions carried as structured fields on the verdict row. It is claimable only when the in-window comparison passes exactly; an in-window divergence is never availability. A **connector-emission known-differences registry** (`migration/known_differences.yaml`) records each proven connector behaviour class once, with a detection query; a divergence classifies `pass_qualified` with the entry cited only when the query accounts for the entire delta. An unregistered surplus still fails.
+
+**The carve-out and its parent release are now machine-linked.** Three register columns (`parent_release`, `parent_model`, `parent_verdict_ref`) tie every relocated model to the parent verdict that proves its SQL. The relocate step refuses to relocate a model whose parent verdict is `fail` — copying proven-wrong SQL into the tenant project is a defect transfer, not a relocation — and the relocate-mode comparator will not use the parent target as a comparison basis until the parent verdict is proven. `cross_release_triggers` in status.md make parent-to-carve-out dependencies ("closes when the parent completes its Bronze backfill") a condition the drift gate evaluates each run, and a parent defect-class sweep marks the relocated copies re-verify-owed through the linkage.
+
+**One root-caused defect sweeps the whole estate.** `/wire:equivalency-sweep <release> --pattern <rule-id>` enumerates a defect pattern across the delivery tree, the client main (live read), and open PRs, classifying each site CORRECT, DEFECT-FREE-MODEL (fixed in tree, re-verify owed), DEFECT-MERGED (a quantified probe, then a fix-forward batch), or NOT-TRANSLATED-YET. A sweep that does not end with the pattern encoded as a lint rule is incomplete.
+
+**Syncs get real verdicts.** `/wire:reverse-etl-equivalency-validate` compares the old sync's model output against its target twin at the sync grain — row set by primary key plus changed-field hashes, pinned vintage, differing keys named — with a tier-2 decoy-destination diff where a read-back path exists. Sync promotion requires an exact tier-1 pass.
+
+**The status question gets one answer.** `/wire:migration-status` derives per-wave exclusive model and sync stages live from the dbt manifest, the register, and a fresh read of the client repos, never from a committed rollup — including the **authored-on-branch** sync stage that a main-only count misreads as not started, and a provenance header on every invocation. `--json` feeds reports and charts.
+
+**The client-facing tail is productised.** `/wire:utils-client-watch` runs as a headless tick: channel replies land in the answers ledger with the client's words quoted verbatim, and a merged PR advances the register and fires post-merge verification. `/wire:utils-ask-list-generate` drafts the capped top-N ask list from the register's blocker taxonomy with a mechanical re-ask guard — anything the ledger already answers is refused a slot. Drafts only; nothing is auto-posted.
+
+**History with no re-ingestion path moves safely.** `bulk-copy-migration-generate --mode bring-in` sizes every candidate table read-only, classifies against a configurable gate (COPYABLE chunk-ledgered copies with deterministic load-job ids, resumable mid-table; EXPORT client-run execute-packs — writes on the source platform are never run by the consultancy; CONNECTOR-ONLY skipped), and stamps register rows with the vintage pin and promotion route.
+
+Rounding it out: `migration-register-generate --from region-tagging` bootstraps a carve-out register from the adjudicated carve-in set, `--ingest-merge-state` backfills delivery state from live repo reads (which always beat stale folder status) and ingests PR-body verdicts as marked, re-verify-owed evidence; and the fleet operating spec gains the rules the packaging fix alone did not carry — the report-once protocol, chunk ledgers, cost governance including the never-trust-a-0-byte-dry-run rule, and the worktree/lock/file-scoped-commit contention rules.
+
+---
+
 ## v3.11.3 — A tenant predicate per item, and the carve-out review queue shrinks
 
 **Released**: August 2026

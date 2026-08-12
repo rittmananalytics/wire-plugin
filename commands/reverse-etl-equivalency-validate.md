@@ -1,9 +1,9 @@
 ---
-description: Validate the migration register — schema, coverage, state consistency
-argument-hint: <release-folder>
+description: Sync-level equivalence — old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass
+argument-hint: <release-folder> [--syncs name1,name2] [--tier N]
 ---
 
-# Validate the migration register — schema, coverage, state consistency
+# Sync-level equivalence — old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass
 
 ## User Input
 
@@ -23,64 +23,69 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Validate the per-model migration register — schema, uniqueness, coverage, and state consistency
+description: Sync-level equivalence — verify a repointed reverse-ETL sync would write the same rows to its destination, at the sync grain, before its promotion PR merges
+argument-hint: <release-folder> [--syncs name1,name2] [--tier 1|2]
 ---
 
-# Migration Register — Validate
+## Data Safety — Read Before Proceeding
 
-## Validation Checks
+Tier 1 reads both warehouses, SELECT only. Tier 2 runs syncs against **decoy destinations only** — the decoy ID-mapping table and scoped credential from `reverse-etl-migration`'s validation posture; production destination IDs are never present. If any step would run a sync against a production destination, stop and report.
 
-Read `migration/migration_register.csv`, `audit/dbt_audit.csv`, and the latest equivalency report.
+---
 
-**Check 1 — Schema present**
-The header carries all seventeen columns: `model, object_type, source_path, source_layer, last_migrated_commit, bq_target, state, snapshot_strategy, last_equivalence_result, last_equivalence_t, last_validated_commit, delivery_stage, pr_url, parent_release, parent_model, parent_verdict_ref, notes`. A twelve-column register predating v3.11.0 is a FAIL with the fix hint "run /wire:upgrade to add delivery_stage and pr_url"; a fourteen-column register predating the cross-release linkage columns (#180) is a FAIL with the fix hint "run /wire:upgrade to add parent_release, parent_model, parent_verdict_ref".
-PASS/FAIL.
+# Reverse ETL Equivalency — Validate
 
-**Check 2 — One row per in-scope model and snapshot, unique key**
-Every in-scope model from `dbt_audit.csv` has exactly one `object_type = model` row, and every snapshot from `dbt_snapshots.csv` has exactly one `object_type = snapshot` row; `model` is unique across both; no orphan rows except those marked `state = removed`.
-PASS/FAIL with missing/duplicate models and snapshots.
+## Purpose
 
-**Check 3 — State values valid**
-Every `state` is one of `pending | migrated | drifted | failed | removed | deferred`.
-PASS/FAIL with offending rows.
+Model equivalency proves the warehouse tables match; nothing proved a **repointed sync writes the same rows to its destination**. The register's sync rows carried no real equivalence result, and the gap was flagged to a client as an assurance hole at cutover (#179 item 5). This command closes it with a two-tier comparison, verdicts in the same taxonomy as models, and a gate the promotion flow consumes.
 
-**Check 4 — Migrated rows are complete**
-Every `state = migrated` row has a non-null `last_migrated_commit` and `bq_target`. A migrated model with no recorded source commit can't be drift-checked.
-PASS/FAIL.
+Like `equivalency-validate`, this is a repeatable loop command, not a generate/validate/review artifact.
 
-**Check 5 — Equivalence fields consistent**
-`last_equivalence_result` is one of `pass | pass_qualified | diff_vintage | diff_availability | diff_schema_type | fail | null` (the verdict taxonomy; the legacy value `info` is accepted with a warning and read as `pass_qualified`); when it is non-null, `last_validated_commit` is set. `last_equivalence_t` is a UTC instant or null.
-PASS/FAIL.
+## Prerequisites
 
-**Check 6 — Validated-vs-migrated coherence**
-No row claims `last_equivalence_result = pass` with a `last_validated_commit` that predates `last_migrated_commit` (would mean it was validated before it was (re)migrated).
-PASS/FAIL with offending rows.
+- `reverse_etl_audit` complete (the sync inventory, each sync's model resolved)
+- The target-side twin exists for each in-scope sync (`reverse-etl-migration` authored it)
 
-**Check 7 — Snapshot strategy valid and signed off**
-Every `object_type = snapshot` row has a `snapshot_strategy` of exactly `copy_and_continue` or `rebuild_from_T`; every `object_type = model` row has a blank `snapshot_strategy`. Every `rebuild_from_T` row records a data-owner sign-off in `notes` — a `rebuild_from_T` with no sign-off is a FAIL. A blank `snapshot_strategy` on a snapshot row is also a FAIL (a snapshot must never be left unassigned, which would risk defaulting to a history-discarding rebuild).
-PASS: every snapshot row has a valid, signed-off-where-required strategy. FAIL: list offending rows. Note "no snapshot rows" when none exist.
+## Workflow
 
-**Check 8 — Delivery stage consistent**
-Every `delivery_stage` is blank or one of `in_pr | merged | production_verified`. A non-blank `delivery_stage` requires `state = migrated` or `state = drifted` (delivery progress survives drift; it cannot precede migration). `in_pr` requires a non-blank `pr_url`. `production_verified` requires at least one `run_point = post_merge_prod` row with verdict `pass` or `pass_qualified` for the model in `migration/migration_verdict_log.csv` (skip this sub-check with a warning if the log is absent).
-PASS/FAIL with offending rows.
+### Step 1 — Resolve scope
 
-**Check 9 — Verdict log well-formed (when present)**
-If `migration/migration_verdict_log.csv` exists: the header carries `model, object_type, run_point, verdict, divergence_mechanism, method_class, mode, baseline_t, file_version, lane_id, report_ref, written_at`; every `run_point` is one of `standard | pre_raise | post_merge_prod`; every `verdict` is a taxonomy value; every verdict other than `pass` has a non-blank `divergence_mechanism`; `written_at` values are non-decreasing down the file (append-only order).
-PASS/FAIL with offending rows. Note "no verdict log" when the file does not exist.
+Every migrated sync pair (old sync on the source warehouse, twin on the target warehouse) from the reverse-ETL audit and migration outputs; `--syncs name1,name2` narrows. Under `migration.scope == tenant_carveout`, each sync's model resolves its filter from the tenant predicate registry exactly as models do — an `unresolved` sync is verdict `fail`, reason `unresolved_predicate`, never compared unfiltered.
 
-**Check 10 — Cross-release linkage consistent (#180)**
-The three parent columns travel together and only on relocated rows: a row with `origin: relocate` in `notes` has a non-blank `parent_release` and `parent_model` (blank `parent_verdict_ref` is legal — it records an evidence gap, not an error); a row without `origin: relocate` has all three blank. Every non-blank `parent_verdict_ref` starts with the row's own `parent_release` followed by `:`.
-PASS/FAIL with offending rows. Note "no relocated rows" when none exist.
+### Step 2 — Tier 1: model-output comparison at the sync grain (no destination access needed)
 
-### Update status
+Per sync pair, run the OLD sync's model query against the source warehouse and the NEW twin's against the target warehouse, under the same pinned-vintage discipline as model equivalence (a pinned as-of, or the baseline `T`), and compare **at the sync grain**:
+
+- **Row set by primary key** — the sync's configured PK. Every key present on exactly both sides; missing/extra keys are named.
+- **Changed-field hashes** — per row, hash the synced field set (the sync's field mapping, canonically ordered and normalised per the equivalency edge-case rules). A key present on both sides with differing hashes is a differing row, named by key and field.
+
+This is a real verdict on "would the destination receive the same rows": the destination write is a function of the model output and the field mapping, both of which this compares. Verdicts use the model taxonomy (`pass`, `pass_qualified` via the pair allow-list or a known-difference entry, `diff_*` with a named mechanism, `fail`). Tests mirror the comparison: `wire/tests/platform_migration/validate_reverse_etl_equivalency.py`.
+
+### Step 3 — Tier 2: decoy-destination diff (where the destination or its API allows)
+
+Run the twin against the **decoy** destination, export or read back what landed, and compare it to the tier-1 expectation. Tier 2 catches what tier 1 cannot — destination-side transformation, API-level field coercion — and is run where the destination offers a read-back path; where it does not, the verdict rests on tier 1 and the report says so. Tier 2 never runs against a production destination.
+
+### Step 4 — Verdicts, register, and log
+
+Each sync's verdict appends to `migration/migration_verdict_log.csv` (`object_type: reverse_etl_sync`, same single-writer merge as model lanes, per `specs/migration/equivalency/verdict_schema.md`) and updates the sync's register row where one exists — sync rows carry a **real** `last_equivalence_result` from here on; the status table's `n/a` disappears wherever tier 1 has run.
+
+### Step 5 — Gate integration
+
+Sync promotion (the reverse-ETL cutover PRs, or `dbt-migration-batch-raise` deriving sync twins) requires **tier-1 `pass`** for every sync in the batch — a sync's output leaves the warehouse by definition, so the external-exactness rule applies (`pass_qualified` is not sufficient). Go-live remains the client's call; this gate governs what RA raises, not what the client merges.
+
+### Step 6 — Report and status
+
+`.wire/releases/$ARGUMENTS/migration/reverse_etl_equivalency_report_{run_number}.md`: per sync — tier(s) run, PK counts both sides, missing/extra/differing keys (named), verdict. Update status:
 
 ```yaml
 artifacts:
-  migration_register:
-    validate: pass | fail
-    validated_date: "{{TODAY}}"
+  reverse_etl_equivalency:
+    last_run_date: "{{TODAY}}"
+    syncs_checked: N
+    tier1_pass: N
+    tier2_run: N
+    failing: N
 ```
-
 
 ## Post-Execution Hooks
 
@@ -88,11 +93,9 @@ After updating `status.md`, run these in sequence:
 
 1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact, `validate` as action.
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `reverse_etl_equivalency` as artifact, `validate` as action.
 
-3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact_id, `Migration Register` as artifact_name, and the `file` value from `artifacts.migration_register` in status.md as file_path.
-
-4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `migration_register` as artifact, `validate` as action.
+3. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `reverse_etl_equivalency` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 

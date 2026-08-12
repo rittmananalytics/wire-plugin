@@ -208,6 +208,16 @@ Report in the summary: `Registry backfilled: N rows (M unresolved — resolve vi
 
 ---
 
+### Step 6b: Add the cross-release linkage columns to the migration register (#180, migration releases only)
+
+Applies only when `release_type` is a migration type and `migration/migration_register.csv` exists. Skip silently otherwise.
+
+If the register header lacks any of `parent_release`, `parent_model`, `parent_verdict_ref`, insert the missing columns between `pr_url` and `notes` (matching `TEMPLATES/migration/migration_register.csv`) with every existing row's new cells blank. Blank is the correct backfill: linkage is written by `dbt-carveout-relocate-generate` at relocate time, and inventing it retroactively would fabricate evidence references. For a carve-out release whose relocated rows predate the columns (`origin: relocate` in `notes`, blank `parent_release`), report them so the consultant can backfill from the parent register deliberately: `N relocated row(s) have no parent linkage — re-run /wire:dbt-carveout-relocate-generate for their waves, or backfill parent_release/parent_model by hand from the parent register.`
+
+Under `--dry-run`, report the columns that would be added and the unlinked relocated-row count, and write nothing.
+
+---
+
 ### Step 7: Surface New Commands
 
 Based on `release_type` and the detected additions, report any commands that are now available but were not present in the installed version when the release was created. Use the following known command introductions as the reference:

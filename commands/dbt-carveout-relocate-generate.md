@@ -183,6 +183,16 @@ Run the count, compare it against registry rows already resolved for the same co
 
 Tests mirror this ladder (`wire/tests/platform_migration/validate_carveout_predicate_resolution.py`).
 
+### Step 1.9: Parent verdict gate (#180)
+
+A relocated model inherits the parent release's proof that its SQL is correct — so read that proof before copying anything. Resolve the parent register at `.wire/releases/<migration.parent_release>/migration/migration_register.csv` (skip this step with a note in the manifest if `migration.parent_release` is null or the file is unreachable — every relocated row then carries a blank `parent_verdict_ref`, which the relocate-mode comparator treats as unproven).
+
+For each model in the Step 1.5 set, read its parent row's `last_equivalence_result`:
+
+- **`fail`** — **refuse to relocate the model.** Record it in the manifest with reason `parent_verdict_fail` and the parent reference (`<parent_release>:<model>`, plus the parent's evidence ref). Relocating SQL the parent release has proven wrong copies a known defect into the tenant project; the fix belongs in the parent first.
+- **`pass` / `pass_qualified`** — relocate, and carry the linkage into Step 6b.
+- **Any `diff_*`, `null`, or no parent row** — relocate (the SQL is not proven wrong), record the parent verdict as found (or `none`), and leave `parent_verdict_ref` blank when there is no evidence to reference. The relocate-mode comparator does not use the parent target as a trusted basis until the parent verdict is `pass`/`pass_qualified` (see `equivalency-validate`, Relocate-mode comparison).
+
 ### Step 2: Relocate each in-scope model
 
 For each model in the Step 1.5 set, read its bucket from `region_tags_adjudicated.csv`:
@@ -252,6 +262,8 @@ artifacts:
 ### Step 6b: Update the migration register (v3.11.1)
 
 For every successfully relocated model, upsert its row in `migration/migration_register.csv` exactly as `dbt-migration-generate` does: `source_path`, `source_layer`, `last_migrated_commit` (the parent-release source snapshot SHA the relocated file was taken from), `bq_target` (the tenant project relation), `state: migrated` (`failed` on a compile failure; a `manual_review_required` predicate injection stays `pending` until resolved; `not_applicable_inherited` is `migrated` — an inherited model is resolved, not pending). Record `origin: relocate` in `notes` — the ship-and-verify pipeline reads this to pick the relocate-mode comparator (`equivalency-validate`, Relocate-mode comparison). Without these rows, relocated models are invisible to `dbt-migration-batch-raise` candidate derivation and to the delivery stage ladder. Skip silently if the register doesn't exist.
+
+**Cross-release linkage (#180).** On the same upsert, write the three linkage columns from Step 1.9: `parent_release` (from `migration.parent_release`), `parent_model` (the model's name in the parent register), and `parent_verdict_ref` (`<parent_release>:<parent evidence ref>` — the parent register row's `last_equivalence_result` evidence; blank when the parent register was unreachable, recording the evidence gap rather than inventing a reference). These columns are what let a parent defect-class fix find its relocated copies (`equivalency-sweep`, `cross_release_triggers`) and what the relocate-mode comparator checks before trusting the parent target as a comparison basis.
 
 ### Step 7: Output summary
 

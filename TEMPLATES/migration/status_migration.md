@@ -22,6 +22,40 @@ migration:
                                            # the comparison source for relocate-origin models (equivalency-validate,
                                            # Relocate-mode comparison) and as defer-build's fallback defer state.
                                            # Leave null for full_migration or a carve-out with no landed parent.
+  parent_release: null                     # tenant_carveout only: the parent migration's release folder name
+                                           # (e.g. "05-lift-and-shift"). dbt-carveout-relocate reads the parent's
+                                           # migration_register.csv from it to write the parent_release /
+                                           # parent_model / parent_verdict_ref linkage columns, and refuses to
+                                           # relocate a model whose parent verdict is fail. Leave null when the
+                                           # parent register is not reachable from this checkout.
+  cross_release_triggers: []               # tenant_carveout only: machine-readable parent→carve-out dependencies,
+                                           # checked by migration-drift-generate (Step 5c). One entry per trigger:
+                                           #   - event: "parent_bronze_backfill_complete"   # short id, unique in list
+                                           #     parent_release: "05-lift-and-shift"
+                                           #     condition: "<what to check, e.g. parent register rows X..Y reach
+                                           #                 state=migrated / delivery_stage=production_verified>"
+                                           #     action: "re-verify <models> | re-run /wire:equivalency-validate --models <...>"
+                                           #     status: open                               # open | fired | closed
+                                           # A caveat that "closes when the parent completes X" belongs here,
+                                           # not in a PR comment nobody re-reads.
+  declared_windows: []                     # Optional per-object availability windows (equivalency-validate Step 1e).
+                                           # Auto-derivation from target Bronze MIN(loaded_at) needs no entry here;
+                                           # add one to declare a window explicitly or to add exclusions:
+                                           #   - object: "orders"            # object name or table pattern
+                                           #     floor: "2023-06-01T00:00:00Z"
+                                           #     cap: null                   # null = the run's pinned as-of
+                                           #     exclusions:
+                                           #       - range: "2023-06-01"
+                                           #         reason: "connector initial-load day — bulk backfill row shapes"
+  known_differences_path: null             # Optional path to the engagement's connector-emission known-differences
+                                           # registry (default: migration/known_differences.yaml when present).
+                                           # Loaded by equivalency-validate; a divergence matching an entry
+                                           # classifies pass_qualified with the entry cited. See
+                                           # TEMPLATES/migration/known_differences.yaml.
+  bring_in:                                # bulk-copy-migration-generate --mode bring-in (source-platform-only history)
+    copy_gate:                             # per-table gate between the chunked-copy and export paths
+      max_rows: 10000000                   #   tables at or under both limits are COPYABLE via chunked copy
+      max_gb: 3                            #   over either limit → EXPORT (client-run execute-pack)
   dbt_project_path: "{{DBT_PROJECT_PATH}}" # default: ./dbt
   orchestration_tool: "{{ORCHESTRATION_TOOL}}" # dagster | dbt_cloud | airflow | none
   ingestion_tool: "{{INGESTION_TOOL}}"     # fivetran | rudderstack | coupler-io | segment | airbyte | other
@@ -97,6 +131,13 @@ data_safety:
     last_run_date: null
     loop_history: []
     status: null    # null | failing | passing | complete
+
+client_comms:                 # utils-client-watch / utils-ask-list-generate config. Nothing here is hardcoded
+                              # in the commands — an unset slack_channel_id disables the watch tick cleanly.
+  slack_channel_id: null      # required for utils-client-watch; no default
+  ask_list_max: 5             # hard cap on open asks per list (client-ruled ceiling; default 5)
+  answers_ledger: "decisions.md"   # release-relative path to the dated client-answers ledger
+  post_merge_action: "/wire:equivalency-post-merge-verify"   # fired by the watch when an own PR merges
 
 jira:
   project_key: null

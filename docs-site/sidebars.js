@@ -28,6 +28,7 @@ const sidebars = {
         'release-types/dashboard-first',
         'release-types/enablement',
         'release-types/platform-migration',
+        'release-types/tenant-carveout',
         'release-types/agentic-data-stack',
         'release-types/droughty',
         'release-types/custom',

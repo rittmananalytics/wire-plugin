@@ -222,6 +222,8 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:utils-pipeline-status` | `<release-folder>` | Check configured pipeline tool connection status |
 | `/wire:utils-git-workflow` | `<release-folder> <artifact-id> <action>` | Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR (composes utils-commit and utils-pr-create) |
 | `/wire:utils-ci-parity` | `<release-folder> [--repo <path-or-role>] [--branch <name>]` | Client CI parity gate: detect the client repo's CI system, replicate its locally-runnable checks against a branch before raising, report pass/fail per check |
+| `/wire:utils-client-watch` | `<release-folder>` | One client-watch tick — channel replies to tracked posts recorded in the answers ledger, merged client PRs advance the register and fire the post-merge action |
+| `/wire:utils-ask-list-generate` | `<release-folder> [--max N]` | Draft the top-N client ask list from the register's blocker taxonomy — capped, and guarded against re-asking anything the answers ledger holds |
 | `/wire:utils-delivery-forecast` | `<client-name> [--release <folder>]` | Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates |
 | `/wire:utils-doc-analyze` | `<file-path-or-url> [<file-path-2> ...]` | Extract deliverables, acceptance criteria, and timeline from SoW or project documents |
 
@@ -271,6 +273,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:equivalency-investigate` | `<release-folder> --object <table_or_model>` | Deep diagnostics for a specific failing object |
 | `/wire:equivalency-fix` | `<release-folder> --object <name> --approach <description>` | Apply agreed fix and re-run equivalency checks for affected objects |
 | `/wire:equivalency-post-merge-verify` | `<release-folder> [--models list] [--no-wait]` | Post-merge production verification: wait for the client pipeline to materialise merged models, compare at the full verdict bar, advance the register to production_verified |
+| `/wire:equivalency-sweep` | `<release-folder> --pattern <rule-id> [--dry-run]` | Estate-wide defect-class sweep — enumerate one root-caused pattern across delivery tree, client main and open PRs, classify each site, close by encoding the lint rule |
 | `/wire:cutover-generate` | `<release-folder>` | Generate cutover runbook (SAFETY GATE — point of no return) |
 | `/wire:cutover-validate` | `<release-folder>` | Validate cutover runbook completeness |
 | `/wire:cutover-review` | `<release-folder>` | Safety-gated sign-off before live cutover |
@@ -354,7 +357,9 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:adopt` | `[repo-path-or-url]` | Adopt an in-flight project into Wire — assess repo and external sources, map existing work to artifacts, set up engagement structure, generate adoption playbook |
 | `/wire:custom-define` | `<release-folder>` | Define a custom release type from SoW or project documents — map deliverables to Wire commands or generate bespoke specs |
 | `/wire:custom-feature-request` | `<custom-spec-name>` | Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition |
+| `/wire:reverse-etl-equivalency-validate` | `<release-folder> [--syncs name1,name2] [--tier N]` | Sync-level equivalence — old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass |
 | `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N ` | Present migration batch acceptance pack for stakeholder sign-off |
+| `/wire:migration-status` | `<release-folder> [waves/item/blocking/exceptions] [--json]` | Operational status view — per-wave exclusive model/sync stages, drift partition, provenance header, item/blocking/exceptions subcommands, JSON output |
 | `/wire:migration-source-register` | `<release-folder> <source_type> <github_url>` | Register a source repository for a given migration source type |
 | `/wire:migration-source-refresh` | `<release-folder> <source_type>` | Pull a fresh local snapshot of a registered migration source |
 | `/wire:ads-audit-all` | `<release-folder>` | Run all three agentic data stack audits in parallel |

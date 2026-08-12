@@ -1,9 +1,9 @@
 ---
-description: Validate the migration register — schema, coverage, state consistency
+description: One client-watch tick — channel replies to tracked posts recorded in the answers ledger, merged client PRs advance the register and fire the post-merge action
 argument-hint: <release-folder>
 ---
 
-# Validate the migration register — schema, coverage, state consistency
+# One client-watch tick — channel replies to tracked posts recorded in the answers ledger, merged client PRs advance the register and fire the post-merge action
 
 ## User Input
 
@@ -23,76 +23,74 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Validate the per-model migration register — schema, uniqueness, coverage, and state consistency
+description: One client-watch tick — read the client channel for replies to tracked posts and the client repos for merged PRs, record rulings in the answers ledger, fire the configured post-merge action
+argument-hint: <release-folder>
 ---
 
-# Migration Register — Validate
+# Utils — Client Watch
 
-## Validation Checks
+## Purpose
 
-Read `migration/migration_register.csv`, `audit/dbt_audit.csv`, and the latest equivalency report.
+One tick of the client-communication watch (#179). During delivery, two classes of client signal arrive asynchronously and go stale when nobody is watching: replies in the client channel (rulings, answers to open asks) and merges of our PRs in the client repos. On a live engagement, both ran as session-local practice — and its absence as product produced two documented failures: questions the client had already answered were re-asked (twice), and merged PRs sat undetected until someone thought to look.
 
-**Check 1 — Schema present**
-The header carries all seventeen columns: `model, object_type, source_path, source_layer, last_migrated_commit, bq_target, state, snapshot_strategy, last_equivalence_result, last_equivalence_t, last_validated_commit, delivery_stage, pr_url, parent_release, parent_model, parent_verdict_ref, notes`. A twelve-column register predating v3.11.0 is a FAIL with the fix hint "run /wire:upgrade to add delivery_stage and pr_url"; a fourteen-column register predating the cross-release linkage columns (#180) is a FAIL with the fix hint "run /wire:upgrade to add parent_release, parent_model, parent_verdict_ref".
-PASS/FAIL.
+This command is designed to run headless on a schedule (a cron/scheduler invoking one tick), configured entirely from status.md — nothing is hardcoded.
 
-**Check 2 — One row per in-scope model and snapshot, unique key**
-Every in-scope model from `dbt_audit.csv` has exactly one `object_type = model` row, and every snapshot from `dbt_snapshots.csv` has exactly one `object_type = snapshot` row; `model` is unique across both; no orphan rows except those marked `state = removed`.
-PASS/FAIL with missing/duplicate models and snapshots.
-
-**Check 3 — State values valid**
-Every `state` is one of `pending | migrated | drifted | failed | removed | deferred`.
-PASS/FAIL with offending rows.
-
-**Check 4 — Migrated rows are complete**
-Every `state = migrated` row has a non-null `last_migrated_commit` and `bq_target`. A migrated model with no recorded source commit can't be drift-checked.
-PASS/FAIL.
-
-**Check 5 — Equivalence fields consistent**
-`last_equivalence_result` is one of `pass | pass_qualified | diff_vintage | diff_availability | diff_schema_type | fail | null` (the verdict taxonomy; the legacy value `info` is accepted with a warning and read as `pass_qualified`); when it is non-null, `last_validated_commit` is set. `last_equivalence_t` is a UTC instant or null.
-PASS/FAIL.
-
-**Check 6 — Validated-vs-migrated coherence**
-No row claims `last_equivalence_result = pass` with a `last_validated_commit` that predates `last_migrated_commit` (would mean it was validated before it was (re)migrated).
-PASS/FAIL with offending rows.
-
-**Check 7 — Snapshot strategy valid and signed off**
-Every `object_type = snapshot` row has a `snapshot_strategy` of exactly `copy_and_continue` or `rebuild_from_T`; every `object_type = model` row has a blank `snapshot_strategy`. Every `rebuild_from_T` row records a data-owner sign-off in `notes` — a `rebuild_from_T` with no sign-off is a FAIL. A blank `snapshot_strategy` on a snapshot row is also a FAIL (a snapshot must never be left unassigned, which would risk defaulting to a history-discarding rebuild).
-PASS: every snapshot row has a valid, signed-off-where-required strategy. FAIL: list offending rows. Note "no snapshot rows" when none exist.
-
-**Check 8 — Delivery stage consistent**
-Every `delivery_stage` is blank or one of `in_pr | merged | production_verified`. A non-blank `delivery_stage` requires `state = migrated` or `state = drifted` (delivery progress survives drift; it cannot precede migration). `in_pr` requires a non-blank `pr_url`. `production_verified` requires at least one `run_point = post_merge_prod` row with verdict `pass` or `pass_qualified` for the model in `migration/migration_verdict_log.csv` (skip this sub-check with a warning if the log is absent).
-PASS/FAIL with offending rows.
-
-**Check 9 — Verdict log well-formed (when present)**
-If `migration/migration_verdict_log.csv` exists: the header carries `model, object_type, run_point, verdict, divergence_mechanism, method_class, mode, baseline_t, file_version, lane_id, report_ref, written_at`; every `run_point` is one of `standard | pre_raise | post_merge_prod`; every `verdict` is a taxonomy value; every verdict other than `pass` has a non-blank `divergence_mechanism`; `written_at` values are non-decreasing down the file (append-only order).
-PASS/FAIL with offending rows. Note "no verdict log" when the file does not exist.
-
-**Check 10 — Cross-release linkage consistent (#180)**
-The three parent columns travel together and only on relocated rows: a row with `origin: relocate` in `notes` has a non-blank `parent_release` and `parent_model` (blank `parent_verdict_ref` is legal — it records an evidence gap, not an error); a row without `origin: relocate` has all three blank. Every non-blank `parent_verdict_ref` starts with the row's own `parent_release` followed by `:`.
-PASS/FAIL with offending rows. Note "no relocated rows" when none exist.
-
-### Update status
+## Configuration (status.md)
 
 ```yaml
-artifacts:
-  migration_register:
-    validate: pass | fail
-    validated_date: "{{TODAY}}"
+client_comms:
+  slack_channel_id: "<id>"          # required; unset disables the tick cleanly with a note
+  ask_list_max: 5                   # consumed by utils-ask-list-generate, kept here as the one config block
+  answers_ledger: "decisions.md"    # release-relative path to the dated answers ledger
+  post_merge_action: "/wire:equivalency-post-merge-verify"   # fired when an own PR merges
 ```
 
+Client repos come from `migration.client_repos` — the same list `dbt-migration-batch-raise` and `utils-ci-parity` read; this command adds no second repo registry.
+
+## State
+
+`.wire/releases/$ARGUMENTS/client_comms/watch_state.json` — the tracked-post list (message refs this release has posted to the channel and is awaiting replies on) and the last-tick cursors (per-channel last-read timestamp, per-repo last-seen merged PR). Rewritten at the end of each tick; a killed tick loses at most one tick's cursor advance and the next tick re-reads idempotently.
+
+## Workflow (one tick)
+
+### Step 1 — Read the channel
+
+Read `client_comms.slack_channel_id` since the last cursor. For each reply that answers a tracked post or states a ruling ("option B", "approved", "use the June floor"), append an entry to the answers ledger (`client_comms.answers_ledger`):
+
+```markdown
+## {{DATE}} — <topic>
+**Asked**: <the tracked post's question, one line>
+**Answer (verbatim)**: "<the client's words, quoted exactly>"
+**Consequence**: <what this settles — the config set, the gate cleared, the approach ruled out>
+**Ref**: <channel permalink>
+```
+
+The verbatim quote is the point: a paraphrase is how a ruling drifts. Remove the answered post from the tracked list. A reply that is discussion rather than an answer stays tracked, noted.
+
+### Step 2 — Read the client repos
+
+For each `migration.client_repos` entry, `gh pr list --state merged` since the last cursor, filtered to this release's PRs (the register's `pr_url` values). For each newly-merged PR:
+
+1. Advance its models in `migration/migration_register.csv` to `delivery_stage: merged` (the same transition `dbt-migration-batch-raise` Step 7 performs on demand — one contract, two triggers).
+2. Fire `client_comms.post_merge_action` for the merged models (default: `/wire:equivalency-post-merge-verify`).
+
+### Step 3 — Report once
+
+Terminal report only (the fleet's report-once protocol, `specs/utils/migration_fleet.md`): new answers recorded (count + topics), PRs merged (count + urls), actions fired, posts still tracked. A tick with nothing new reports one line and exits.
+
+### Step 4 — Update state
+
+Rewrite `client_comms/watch_state.json` with the advanced cursors and the surviving tracked-post list.
+
+## The ledger as a gate
+
+The answers ledger is not an archive — it is the input to the re-ask guard. Any command about to surface a question to the client (`utils-ask-list-generate` mechanically; anything else by convention) checks the ledger first: an entry matching the question means the client has already answered, and the answer is used, not re-asked. Re-asking an answered question is the single fastest way to burn client patience with an agentic delivery.
 
 ## Post-Execution Hooks
 
-After updating `status.md`, run these in sequence:
+After the tick, run:
 
 1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
-
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact, `validate` as action.
-
-3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `migration_register` as artifact_id, `Migration Register` as artifact_name, and the `file` value from `artifacts.migration_register` in status.md as file_path.
-
-4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `migration_register` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 

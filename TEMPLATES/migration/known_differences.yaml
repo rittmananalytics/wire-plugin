@@ -1,0 +1,45 @@
+# Connector-emission known-differences registry (wire#180 item 4).
+#
+# An engagement-level catalogue of divergences that are a connector behaviour
+# class, not a migration defect — e.g. one platform's connector emits
+# zero-metric filler rows the other's does not. Each entry is proven once,
+# with a detection query, and cited automatically from then on; without this
+# file every team re-discovers and re-argues the same difference per PR.
+#
+# Loaded by equivalency-validate (Step 1f) from
+# migration.known_differences_path in status.md, defaulting to
+# migration/known_differences.yaml in the release folder. A divergence
+# matching an entry classifies pass_qualified with the entry cited as
+# known_connector_emission:<id>. An unregistered surplus still fails —
+# this registry never widens by default, only by a recorded entry.
+#
+# Fields, all required unless marked optional:
+#   id:               short unique slug, cited in the verdict mechanism
+#   connector:        the connector/source the behaviour belongs to
+#   table_pattern:    glob over the landed table names the entry may match
+#   difference_class: one-line name of the behaviour (what kind of rows)
+#   direction:        target_surplus | source_surplus — which side has more
+#   detection_query:  a query (or exact rule) that isolates the differing
+#                     rows and proves they are ALL of this class; the match
+#                     is confirmed only when the query accounts for the
+#                     entire delta
+#   verdict_treatment: pass_qualified   (the only legal value — an entry can
+#                     qualify a divergence, never hide one)
+#   provenance:       where this was proven (PR, report, analysis doc)
+#   verified_date:    ISO date the detection query last confirmed the class
+#
+# known_differences:
+#   - id: ads_zero_impression_days
+#     connector: facebook_ads
+#     table_pattern: "*_ads_insights*"
+#     difference_class: "zero-impression ad-day filler rows emitted by the target-side connector only"
+#     direction: target_surplus
+#     detection_query: >-
+#       SELECT COUNT(*) FROM <target_table> t
+#       LEFT JOIN <source_table> s USING (ad_id, date_day)
+#       WHERE s.ad_id IS NULL AND t.impressions = 0 AND t.spend = 0
+#     verdict_treatment: pass_qualified
+#     provenance: "<PR or report reference>"
+#     verified_date: "2026-08-01"
+
+known_differences: []

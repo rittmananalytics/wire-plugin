@@ -448,6 +448,38 @@ Live-to-live comparison surfaces timing differences, not translation differences
 
 Baseline mode reads the clone and watermark instead of live tables, fixes `CURRENT_TIMESTAMP`/`CURRENT_DATE`-relative logic and sampling (the deterministic-build switch), and runs a **tier-3 value-level comparator** — per-column fingerprints plus a normalised cross-platform row hash, with the allow-list applied so a correct type translation isn't flagged as drift. Every run records its mode, batch, `T`, watermarks, clone location, and source commit.
 
+### Declared windows and known differences (v3.11.4)
+
+Two structured qualifiers close the gap between "diverged" and "wrong", so a real difference with a proven benign cause stops being re-argued in prose per PR:
+
+- **Declared windows.** A target that holds less history than the source (young Bronze connectors, bounded bring-ins) reads 90 to 99% short on a full-table check for a reason that is availability, not translation. Where an object carries a declared window (floor auto-derived from target Bronze `MIN(loaded_at)` or partition metadata, or declared in `migration.declared_windows` with reasoned exclusions; cap at the run's pinned as-of), the verdict binds to it: `diff_availability` with mechanism `declared_window_availability` and the floor/cap/exclusions as structured fields on the verdict row. It is claimable only when the in-window comparison passes exactly. An in-window divergence is never availability. `batch-raise` renders the window fields in the PR body.
+- **Connector-emission known differences.** Some divergences are a connector behaviour class, not a defect: one platform's connector emits zero-metric filler rows the other's does not. `migration/known_differences.yaml` records each proven class once (connector, table pattern, direction, detection query, provenance); a divergence classifies `pass_qualified` with the entry cited only when the detection query accounts for the entire delta. A partial match leaves an unexplained residual and fails; an unregistered surplus still fails.
+
+## Estate-wide defect-class sweeps (v3.11.4)
+
+`equivalency-investigate`/`-fix` handle one model; a root-caused defect usually sits in every model sharing the shape. `/wire:equivalency-sweep <release> --pattern <rule-id>` enumerates one pattern across the delivery tree, the client main (live read), and open PRs, then classifies each site: **CORRECT** (no hit, or a harmless hit), **DEFECT-FREE-MODEL** (fixed in the tree now, standing verdict superseded, re-verify owed), **DEFECT-MERGED** (a quantified SELECT probe measures the real impact, then a fix-forward batch via `batch-raise` carries the figures), or **NOT-TRANSLATED-YET** (a note for the translation guide). A sweep that does not end with the pattern encoded as an error-severity lint rule is incomplete: the rule is what blocks the class prospectively.
+
+## Sync-level equivalence (v3.11.4)
+
+Model equivalency proves the warehouse tables match; nothing proved a repointed sync writes the same rows to its destination. `/wire:reverse-etl-equivalency-validate` closes that: tier 1 runs the old sync's model query on the source warehouse and the twin's on the target, and compares at the sync grain (row set by primary key plus changed-field hashes over the sync's field mapping, pinned vintage, differing keys named); tier 2 diffs against decoy destinations where a read-back path exists. Verdicts land in the verdict log (`object_type: reverse_etl_sync`) and the register, and sync promotion requires an exact tier-1 `pass` — a sync's output leaves the warehouse, so `pass_qualified` is not sufficient.
+
+## The migration status view (v3.11.4)
+
+`/wire:migration-status <release> [waves | item <name> | blocking <name> | exceptions] [--json]` is the operational answer to "where are we", derived live from the dbt manifest, the register, and a fresh read of the client repos — never from a committed rollup. The waves table gives per-wave **exclusive** model stages (to-do / translated / eqv-ok / in-PR / merged / prod-verified; drift is a partition, not a stage) and sync stages including **authored-on-branch** (twins on unmerged branches or draft PRs, which a main-only count misreads as not started). Every invocation prints a provenance header — manifest engine and parse time, snapshot commit, repo fetch instants — and merged state always comes from the live repo read. `--json` feeds report and chart generation.
+
+## Client-communication utilities (v3.11.4)
+
+Two commands productise the client-facing tail that otherwise runs as session-local practice:
+
+- `/wire:utils-client-watch` — one headless tick, designed for a scheduler: read the client channel for replies to tracked posts (a ruling is recorded in the answers ledger, dated, with the client's words quoted verbatim), and read the client repos for merged PRs (the register advances and the configured post-merge action fires, default `equivalency-post-merge-verify`).
+- `/wire:utils-ask-list-generate` — drafts the top-N client asks from the register's blocker taxonomy, capped at `client_comms.ask_list_max` (default 5), with a mechanical **re-ask guard**: any candidate matching an answers-ledger entry is refused a slot and the recorded answer applied instead. The output is a draft the consultant sends; it is never auto-posted.
+
+Configuration lives in the `client_comms` block in status.md. The answers ledger (default `decisions.md`) is a gate, not an archive: anything about to surface a client question checks it first.
+
+## History bring-ins (v3.11.4)
+
+For source-platform-only history — tables with no re-ingestion path (ML outputs, event archives whose upstream is gone) — `bulk-copy-migration-generate --mode bring-in` runs in **any** scope: a read-only sizing pass, then a per-table classification against `migration.bring_in.copy_gate` (defaults 10M rows / 3 GB) into **COPYABLE** (a chunked copy with a per-table ledger, deterministic load-job ids so re-runs are idempotent, a pinned vintage, and an exact verification battery — resumable mid-table), **EXPORT** (a client-run `COPY INTO` execute-pack; RA never runs writes on the source platform), or **CONNECTOR-ONLY** (still served by a live connector — no copy step). Register rows carry the vintage pin and the production-promotion route. `--dry-run` sizes and classifies without writing anything.
+
 ## Faithful materialisation
 
 `dbt-migration-generate` preserves each model's resolved materialisation by default — incremental stays incremental with its `incremental_strategy`/`partition_by`/`cluster_by`; table stays table. To diverge (force a materialisation the source didn't use), point `migration.materialization_overrides_path` at an engagement YAML:
@@ -466,7 +498,7 @@ The framework ships no path, no layer names, and no rules — divergence is opt-
 
 A long migration runs against a moving source. Two commands keep migrated models honest:
 
-- **`/wire:migration-register-generate`** maintains `migration_register.csv` — one row per model: source path, last-migrated commit, BigQuery target, state, and last equivalence result + `T`. `dbt-migration` and `equivalency-validate` keep it current.
+- **`/wire:migration-register-generate`** maintains `migration_register.csv` — one row per model: source path, last-migrated commit, BigQuery target, state, and last equivalence result + `T`. `dbt-migration` and `equivalency-validate` keep it current. From v3.11.4 it also bootstraps: `--from region-tagging` seeds a carve-out register from the adjudicated carve-in set, and `--ingest-merge-state` backfills `delivery_stage`/`pr_url` from live `gh` state (which always beats the folder's stale status) and ingests PR-body verdicts as dated, re-verify-owed evidence rows in the verdict log.
 - **`/wire:migration-drift-generate`** is a scheduled gate: it diffs the live source against each model's last-migrated commit (`dbt ls --select state:modified`), classifies new/modified/removed, flags the downstream Hightouch syncs a re-migrated/removed model feeds (with a config diff), and triggers a policy-tag regeneration when a source `meta.masking_policy` changes.
 
 Deploy the bundled CI templates (`TEMPLATES/migration/ci/`) to run the tiered sweep on any change to a migrated model and the drift gate on a cron.
@@ -521,38 +553,7 @@ Four commands are specific to the carve-out flow, plus a fifth that only applies
 | `/wire:dbt-carveout-relocate-*` | Migration — **only when the carve-out is staged after the parent migration has already landed** | Relocates already-translated, already-correct target-dialect dbt SQL into the carve-out's own dbt project **in place of re-translation** (`dbt-migration`'s relocation-only counterpart, the same relationship `bulk-copy-migration` has to `ingestion-migration`). Copies tenant-exclusive (`confident-region`) models unchanged; injects each shared (`shared-row-level`) model's filter, resolved per model from the tenant predicate registry, at the point the v3.11.3 resolution ladder identifies, flagging only what the ladder cannot resolve as `manual_review_required`. `-validate` re-derives every claim from the adjudicated CSV and the relocated files on disk, never from the manifest's own report. `-review` blocks on any unresolved `manual_review_required` model and on any unruled probe proposal. |
 | `/wire:logical-access-uat-*` | Before cutover | Region-scoped logical-access UAT proving users in the tenant's project reach only that project. Positive and negative tests per role; `-validate` requires at least one negative test per IAM boundary in `04_security.sql`; `-review` is the isolation-proof sign-off gate. |
 
-A worked example of the carve-out flow — including both the concurrent-with-parent-migration case (`dbt-migration`) and the staged-after-parent-migration case (`dbt-carveout-relocate`) — is in the [Tutorial: Tenant Carve-out](../tutorials/platform-migration-tenant-carveout).
-
-### Ship and verify under the carve-out (v3.11.1)
-
-The v3.11.0 ship-and-verify pipeline runs in `tenant_carveout` scope with the adaptations the isolation deliverable demands: `defer-build` refuses any write outside the tenant project (`tenant_write_guard`) and defers to the parent migration's prod manifest when the tenant project has none; `batch-raise` keeps `equivalence_before_pr` as the default and refuses `ship_then_verify` until the adjudication and DPO/legal residency gates are complete; `utils-ci-parity --scaffold-from` derives parity checks from the parent repo when the tenant repo has no CI yet; and relocate-origin models compare **parent target (predicate-scoped) vs tenant target** rather than re-proving the parent's translation against the source platform. `dbt-carveout-relocate-generate` writes the register and chains the downstream gates, so relocated models enter the same delivery stage ladder as everything else. Carve-out verdicts carry `scope` and a predicate hash. Fleet-wise, the three human gates are park points, not lane stalls.
-
-### The tenant predicate registry (v3.11.3)
-
-`migration.tenant_predicate` is one string, and a carve-out needs several mechanisms at once. `migration/tenant_predicate_registry.csv` (contract: `specs/utils/tenant_predicate_registry.md`) resolves one item at a time:
-
-| Mechanism | When it applies | Filter a consumer applies |
-|---|---|---|
-| `row_predicate` | A boolean over a column the object carries | `WHERE <expression>` |
-| `derived_expr` | The tenant is recoverable only by an expression, not equality on a column | `WHERE <expression>` |
-| `account_cascade` | The upstream platform carries no market column; the tenant is an enumerated id set | `WHERE <col> IN (...)` |
-| `object_carve` | No row predicate exists — the whole object is in or out by name or schema convention | None. Compare or copy it whole |
-| `inherited` | No tenant column of its own; the entire upstream path is already scoped | None. `resolving_node` names the upstream |
-| `unresolved` | No mechanism established | **Flagged.** Never compared or copied unfiltered |
-
-`region-tagging-generate` seeds one row per classified item and `region-tagging-review` turns a seed into a ruling. Four commands read it: `equivalency-validate` (per-object comparison filter; an unresolved object is verdict `fail`, reason `unresolved_predicate`), `bulk-copy-migration-generate` (per-object extract filter; an unresolved object gets no copy step at all), `dbt-carveout-relocate-generate` (the filter it injects), and `dbt-migration-defer-build` (an unresolved model is dropped from the build set). `migration.tenant_predicate` remains as the seed's default row predicate, and nothing else.
-
-### Resolving the relocate step's ambiguity (v3.11.3)
-
-`dbt-carveout-relocate-generate`'s Step 1.8 walks a six-rung ladder over each `shared-row-level` model before anything reaches the reviewer: strip SQL comments before scanning, parenthesize the existing `WHERE` body unconditionally, restructure a `WHERE` trapped inside a Jinja conditional, substitute a SELECT-list alias's defining expression, probe the row distribution and propose a disposition, then resolve by upstream inheritance. Step 1.7 builds the wave's `ref()`/`source()` graph first, because a `UNION ALL` branch and a model with no tenant column are both graph lookups — answering them one model at a time re-derives the same graph each time. On the reference wave the manual-review queue fell from 128 models to single digits, and `manual_review_required` now means genuinely novel rather than merely unexamined.
-
-Rung 4's proposals are evidence, not rulings: written to the registry at medium confidence with the query and its result, ruled on at `-review` Step 3b, checked by `-validate` Check 4b. A registry row carrying a human ruling is never overwritten by a re-run, and re-running after an upstream gains a mechanism resolves its descendants with nobody re-triaging them.
-
-### Branching strategy
-
-A carve-out release tracks a moving parent release — the parent keeps landing changes while the carve-out extracts the tenant on its own branch. Keep the two in sync with `git merge <parent-branch>` into the carve-out branch on a regular cadence, not rebase: the releases touch disjoint files (parent extends staging/warehouse models, carve-out adds region tags, tenant IAM, bulk-copy runbooks), so the merges are close to conflict-free. Reserve `git rebase` for short-lived, single-owner per-batch branches cut *from* the carve-out branch, where there's no shared history to protect.
-
-Once any per-batch branch has been cut, treat the carve-out branch as append-only. Rebasing it and force-pushing rewrites its history, which moves the commit those per-batch branches' merge-base points at — the force-push silently orphans them, with no error to flag it.
+The carve-out has its own full reference page — [Tenant Carve-out](./tenant-carveout) — covering the command sequence grouped by cadence (run-once, per-wave loop, run-once at the end), the key data stores (the tenant predicate registry, the adjudicated region tags, the register and verdict log), the files that support fully-agentic delivery of the per-wave loop, how to enable the agent fleet, and the carve-out branching strategy. A worked example — including both the concurrent-with-parent-migration case (`dbt-migration`) and the staged-after-parent-migration case (`dbt-carveout-relocate`) — is in the [Tutorial: Tenant Carve-out](../tutorials/platform-migration-tenant-carveout).
 
 ## Metabase reporting-layer migration
 
@@ -653,6 +654,9 @@ Both build on the `smml-semantic-modeling` and `dbt-to-smml` skills (`wire/skill
 /wire:equivalency-validate <release>
 /wire:equivalency-investigate <release> --object <table_or_model>
 /wire:equivalency-fix <release> --object <table_or_model>
+/wire:equivalency-sweep <release> --pattern <rule-id>      # estate-wide defect-class sweep, closes with a lint rule
+/wire:reverse-etl-equivalency-validate <release>           # sync-level equivalence (reverse ETL in scope)
+/wire:migration-status <release> waves                     # live per-wave stage view, any time
 
 # ⚠ SAFETY GATE — point of no return
 /wire:cutover-generate <release>
@@ -668,19 +672,11 @@ Both build on the `smml-semantic-modeling` and `dbt-to-smml` skills (`wire/skill
 
 ### Carve-out and reporting-layer additions
 
-For a `tenant_carveout` release, these slot into the sequence: region tagging after the audits, the data-residency assessment alongside strategy, the bulk copy in place of ingestion migration, and logical-access UAT before cutover. Metabase commands run for any migration where `reporting_tool: metabase`; Omni commands run where `reporting_tool: omni`; OAC commands run where `reporting_tool: oac`. When the carve-out is staged after its parent migration has already landed, `dbt-carveout-relocate` replaces `dbt-migration` in the sequence — everything else here is unchanged.
+For a `tenant_carveout` release, five command families slot into the sequence: region tagging after the audits, the data-residency assessment alongside strategy, the bulk copy in place of ingestion migration, `dbt-carveout-relocate` in place of `dbt-migration` when the carve-out is staged after its parent migration has already landed, and logical-access UAT before cutover. The full carve-out sequence, grouped by cadence, is on the [Tenant Carve-out](./tenant-carveout) page.
+
+Metabase commands run for any migration where `reporting_tool: metabase`; Omni commands run where `reporting_tool: omni`; OAC commands run where `reporting_tool: oac` — full migration or carve-out alike.
 
 ```
-# ── after audits, before inventory ──────────────────────────────
-/wire:region-tagging-generate <release> [--region <code>]
-/wire:region-tagging-validate <release>
-/wire:region-tagging-review <release>                # human adjudication gate
-
-# ── alongside strategy (Stage 1 deliverable) ────────────────────
-/wire:data-residency-assessment-generate <release>
-/wire:data-residency-assessment-validate <release>
-/wire:data-residency-assessment-review <release>     # client DPO/legal sign-off
-
 # ── reporting layer (reporting_tool: metabase) ──────────────────
 /wire:metabase-audit-generate <release>              # …-validate / …-review
 /wire:metabase-migration-generate <release>          # …-validate / …-review
@@ -692,24 +688,6 @@ For a `tenant_carveout` release, these slot into the sequence: region tagging af
 # ── reporting layer (reporting_tool: oac) ────────────────────────
 /wire:oac-audit-generate <release>                   # …-validate / …-review
 /wire:oac-migration-generate <release>               # …-validate / …-review
-
-# ⚠ SAFETY GATE — in place of ingestion-migration for a carve-out; supports --wave <id>
-/wire:bulk-copy-migration-generate <release>
-/wire:bulk-copy-migration-validate <release>
-/wire:bulk-copy-migration-review <release>           # safety gate before first copy
-
-# ── in place of dbt-migration, only when the carve-out is staged ──
-# ── after its parent migration has already landed ──────────────────
-/wire:dbt-carveout-relocate-generate <release> [--wave id] \
-    --source-dbt-project-path <path> --target-dbt-project-path <path> \
-    --target-project <name>
-/wire:dbt-carveout-relocate-validate <release> --target-dbt-project-path <path>
-/wire:dbt-carveout-relocate-review <release>         # blocks on unresolved manual_review_required models
-
-# ⚠ before cutover — proves tenant isolation
-/wire:logical-access-uat-generate <release> [--region <code>]
-/wire:logical-access-uat-validate <release>          # ≥1 negative test per IAM boundary
-/wire:logical-access-uat-review <release>            # isolation-proof sign-off
 ```
 
 :::info[Tutorial available]

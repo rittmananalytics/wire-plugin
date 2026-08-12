@@ -1,1 +1,1 @@
-model,object_type,source_path,source_layer,last_migrated_commit,bq_target,state,snapshot_strategy,last_equivalence_result,last_equivalence_t,last_validated_commit,delivery_stage,pr_url,notes
+model,object_type,source_path,source_layer,last_migrated_commit,bq_target,state,snapshot_strategy,last_equivalence_result,last_equivalence_t,last_validated_commit,delivery_stage,pr_url,parent_release,parent_model,parent_verdict_ref,notes

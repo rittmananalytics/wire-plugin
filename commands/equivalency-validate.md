@@ -77,7 +77,7 @@ Every object gets one verdict per run, not a bare PASS/FAIL. The classification 
 | `pass` | No check diverged. |
 | `pass_qualified` | Divergence whose named mechanism is on the pair's benign allow-list (e.g. a type widening in `type_translation_allowlist`). |
 | `diff_vintage` | Divergence explained by data vintage: the two sides reflect different load instants. Claiming it requires a matched-vintage re-run (pin both sides to the same instant) that passes, or is scheduled and referenced. |
-| `diff_availability` | Divergence explained by source data that has not landed on the target (e.g. history not yet copied). |
+| `diff_availability` | Divergence explained by source data that has not landed on the target (e.g. history not yet copied). Where the object carries a **declared window** (Step 1e), the verdict binds to it: mechanism `declared_window_availability`, with the window's floor/cap/exclusions as structured fields on the verdict row — and it is claimable **only** when the in-window comparison passes exactly. |
 | `diff_schema_type` | Divergence explained by a type-translation difference beyond the allow-list, drilled to the exact column and cast. |
 | `fail` | Divergence with no named mechanism, or a mechanism that indicates a translation defect. |
 
@@ -145,6 +145,8 @@ Carve-out lane verdict files record `scope: tenant_carveout` and `tenant_predica
 
 **Relocate-mode comparison (carve-out staged after the parent migration, v3.11.1).** Models whose register row carries `origin: relocate` in `notes` (written by `dbt-carveout-relocate-generate`) were copied from the already-migrated parent target, not translated from the source platform — so comparing them against the source platform re-proves the parent's work, not the carve-out's. For these models only, the comparison sides change: the **source side is the parent target project's production relation with the model's resolved registry filter applied** (parent project from `migration.parent_target_project`), and the **target side is the tenant project's relation, unscoped** (the tenant project is single-tenant by construction). Every check type, pin, and taxonomy rule is otherwise unchanged. If `migration.parent_target_project` is null while relocate-origin models are in scope, stop and report for those models — the comparator needs a parent to compare against. Non-relocate models in the same carve-out (translated fresh from the source platform) keep the standard both-sides-predicated comparison above.
 
+**The parent target must itself be proven before it is a comparison basis (#180).** Using the parent relation as the trusted side assumes the parent's own verdict — a comparison against an unproven or failing parent proves nothing about the carve-out. Per relocate-origin model, read its register row's `parent_verdict_ref` (and, where `migration.parent_release` is set, the parent register row it points at): when the parent verdict is `pass` or `pass_qualified`, compare as above; when it is `fail`, any `diff_*`, `null`, or the linkage is blank, do **not** compare — record the model as blocked with reason `parent_verdict_insufficient`, naming the parent reference (or its absence), and route the fix to the parent release. A blocked model counts as failing for `checks_failing`; it is evidence owed, not evidence given.
+
 ### Step 1b: Baseline-pin mode (deterministic equivalency)
 
 By default the checks read live source and target tables. With `--baseline` (or when `migration.equivalency_baseline` is set in status.md), run in **baseline-pin mode** against the frozen baseline defined in the migration strategy's "frozen equivalency baseline" section — comparing two pinned states at instant `T`, not two moving platforms.
@@ -194,6 +196,45 @@ For flagged models materialised as tables, the stored data on each side reflects
 Before the check types run, establish the **deployment** warehouse's actual column types so the schema check (check type 2) validates against them, not against a scratch/sample/playground validation warehouse whose types differ. Run `specs/utils/deployment_type_preflight.md` for the in-scope objects: it reads the deployment warehouse's column types (from `migration.deployment_project` in status.md if set, else the prod-like target in `profiles.yml` — never the validation warehouse), loads the active pair's **"Deployment type-divergence patterns"** section, and returns per-model divergence findings plus an explicit warning when the validation and deployment warehouses differ.
 
 When the validation and deployment warehouses are the same warehouse (the common case — equivalency usually runs against the live deployment target), this records "validation and deployment warehouse are the same — no type-drift risk" and is otherwise a no-op. When they differ, record the warning in the equivalency report (Step 4) and treat any firing type-divergence pattern as a failing object with reason `deployment_type_divergence`, so a model that only passes because the validation warehouse's types differ from deployment is flagged before cutover. Skip only if no deployment warehouse is reachable — recording that the pre-flight could not run rather than passing silently.
+
+### Step 1e: Declared-window / availability-bounded comparison (#180)
+
+A migration target routinely holds less history than the source — a carve-out's Bronze connectors are young, a bring-in lands a bounded window — so a full-table comparison reads 90–99% short for a reason that is availability, not translation. Before this step existed, every such PR body re-argued the qualifier by hand. The declared window makes it a first-class, structured claim the verdict itself carries.
+
+**Resolving the window (per object).** An object has a declared window when either applies:
+
+1. **Explicit** — `migration.declared_windows` in status.md carries an entry for the object (or a table pattern matching it): `floor`, optional `cap`, optional `exclusions` (each with a reason). `floor_derivation: explicit`.
+2. **Auto-derived** — the object's target-side upstream landing table exists and its history floor is readable: derive `floor` as the target Bronze `MIN(loaded_at)` (the connector's loaded-at column from the ingestion audit) or, where partition metadata is cheaper, the earliest populated partition. Record which one as `floor_derivation: bronze_min_loaded_at | partition_metadata`.
+
+The `cap` defaults to the run's pinned as-of instant (Step 1c) — or the baseline `T` in baseline mode — so live drift past the pin never enters the comparison. `exclusions` are always explicit and always carry a reason (the connector's initial-load day, a documented ramp-up window); an exclusion with no reason is invalid and ignored with a warning. The window applies on the object's declared time column (from the ingestion audit / model metadata); an object with no resolvable time column cannot carry a declared window and is compared full-table as before.
+
+**How the checks use it.** The data-bearing checks (1, 3, 6, 7) run as specified. When a check diverges on an object that has a declared window, re-run the comparison **in-window** — both sides filtered to `floor <= <time_column> <= cap`, minus the exclusions, on top of any tenant filter — at the same verdict bar (exactness inside the window, not tolerance).
+
+**Verdict binding (deterministic — tests mirror it: `wire/tests/platform_migration/validate_declared_window.py`).**
+
+| Condition | Verdict |
+|---|---|
+| In-window comparison exact, and every missing row sits before the floor, after the cap, or inside a declared exclusion | `diff_availability`, mechanism `declared_window_availability`, with the structured `window` fields (`floor`, `floor_derivation`, `cap`, `exclusions`, `in_window_result: pass`) on the verdict row per `specs/migration/equivalency/verdict_schema.md` |
+| In-window comparison diverges (any missing, extra, or differing row inside the window) | `fail` — an in-window divergence is never availability |
+| Shortfall not fully explained by the window (missing rows inside `floor..cap` outside every exclusion) | `fail` |
+| Object short with no declared window and no resolvable floor | The existing rules apply unchanged: `fail`, unless a named mechanism earns another `diff_*` verdict |
+
+`diff_availability` still counts as failing for `checks_failing` and the cutover gate until formally accepted, and it is not sufficient for `equivalence_before_pr` batch-raise eligibility — the window makes the claim structured and checkable, it does not upgrade the verdict. The report (Step 4) records the window per object, and a month-by-month in-window drill may be included as supporting evidence where the client asks for it. `dbt-migration-batch-raise` renders the window fields in the PR body for every `declared_window_availability` verdict it ships under `ship_then_verify`.
+
+### Step 1f: Load the connector-emission known-differences registry (#180)
+
+Some divergences are a **connector behaviour class**, not a migration defect: the two platforms' connectors for the same source emit different row sets by design — one emits zero-metric filler rows, the other does not. The class recurs on every table that connector lands, and without a registry each team re-discovers and re-argues it per PR.
+
+Load the engagement's known-differences registry from `migration.known_differences_path` in status.md, defaulting to `migration/known_differences.yaml` in the release folder (template: `TEMPLATES/migration/known_differences.yaml`). No file means no registered differences — every divergence classifies under the standard rules. Entries carry: `id`, `connector`, `table_pattern`, `difference_class`, `direction` (`target_surplus` | `source_surplus`), `detection_query`, `verdict_treatment` (always `pass_qualified`), `provenance`, `verified_date`.
+
+**Classification (deterministic — tests mirror it: `wire/tests/platform_migration/validate_known_differences.py`).** When a data-bearing check diverges on an object:
+
+1. Find registry entries whose `connector` matches the object's landing connector and whose `table_pattern` matches the object, and whose `direction` matches the observed surplus side.
+2. Run the entry's `detection_query`. The entry applies **only when the query accounts for the entire delta** — every surplus row isolates to the registered class, exactly.
+3. On a full match: verdict `pass_qualified`, `divergence_mechanism: known_connector_emission:<id>`, with the entry's `provenance` cited in the report. A partial match (the query explains some rows but not all) is **not** a match: the residual is an unexplained divergence and the standard rules classify it (`fail` unless another named mechanism applies) — the report records how much the entry explained so the investigation starts from the residual.
+4. No matching entry: the standard rules apply unchanged. **An unregistered surplus still fails.** The registry never widens by default; a new behaviour class enters it only as a recorded entry with its proof.
+
+This is the connector-behaviour analogue of the pair's `type_translation_allowlist`: both qualify a divergence with a named, pre-proven mechanism; neither hides one.
 
 ### Step 2: Run all check types
 

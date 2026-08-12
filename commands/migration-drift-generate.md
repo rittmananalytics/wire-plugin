@@ -104,11 +104,22 @@ At translation time, `dbt-migration-generate` Step 3.1 item b substitutes `CAST(
 
 Record each stale NULL-pad in the drift report (Step 6) and set the model's register `state = drifted` (its translation no longer matches the source) with a `notes` entry naming the restored column. Do not silently leave a column synthesizing NULL once the source carries real data — that is a widening, invisible data gap.
 
+### Step 5c: Cross-release triggers (tenant carve-out, #180)
+
+Applies only when `migration.cross_release_triggers` in status.md is non-empty (a carve-out tracking a live parent release). A carve-out inherits the parent's translations, backfills, and defects, and the dependencies between the two releases go stale exactly like blocker notes do — "closes when the parent completes its Bronze backfill" is a caveat nobody re-tests unless a gate does.
+
+For each trigger with `status: open`:
+
+1. **Evaluate the condition** against the parent release's current state — read the parent register at `.wire/releases/<trigger.parent_release>/migration/migration_register.csv` (and, where the condition names them, the parent's verdict log or drift report). A condition is met only by evidence read this run, never by the trigger's age.
+2. **When met**, set `status: fired` in status.md and surface the trigger's `action` in the drift report: the dependent carve-out models to re-verify (resolved via the register's `parent_release` / `parent_model` linkage columns), the command to run, and the event that fired.
+3. **Parent defect-class propagation.** When the parent release records a defect-class sweep (`equivalency-sweep`) whose pattern hits models this carve-out relocated, mark each relocated copy **re-verify-owed**: append a `notes` entry naming the parent sweep and pattern id, and list the models in the drift report. Their standing verdicts are stale evidence — the parent's fix does not re-prove the copy.
+4. A trigger stays `fired` until the surfaced re-verifications complete (the drift report lists it every run); the consultant closes it (`status: closed`) once the dependent register rows carry fresh verdicts.
+
 ### Step 6: Write the drift report
 
 **Output location**: `.wire/releases/$ARGUMENTS/migration/migration_drift_report.md`
 
-Use `TEMPLATES/migration/migration_drift_report.md`. Include: `drift_head` and the run timestamp; counts (modified / removed / new / unchanged); the per-model drift table (model, classification, change summary, prior equivalence state); the flagged downstream syncs with their config diffs; the masking changes with the policy-tag regeneration actions; and the **stale NULL-pad restores** (Step 5b) — each flagged model, column, now-present market(s), and synthesized type, marked flag-for-restore. Re-write the affected register rows (Step 2 and Step 5b).
+Use `TEMPLATES/migration/migration_drift_report.md`. Include: `drift_head` and the run timestamp; counts (modified / removed / new / unchanged); the per-model drift table (model, classification, change summary, prior equivalence state); the flagged downstream syncs with their config diffs; the masking changes with the policy-tag regeneration actions; the **stale NULL-pad restores** (Step 5b) — each flagged model, column, now-present market(s), and synthesized type, marked flag-for-restore; and the **cross-release triggers** (Step 5c) — each fired trigger with its event, the dependent re-verifications, and the re-verify-owed relocated models. Re-write the affected register rows (Step 2, Step 5b, and Step 5c item 3).
 
 ### Step 7: Update status
 
@@ -125,6 +136,7 @@ artifacts:
     syncs_flagged: N
     masking_changes: N
     stale_null_pads: N        # STALE_NULL_PAD_BRONZE_PRESENT — MARKET GAP columns now present in the live source, flagged for restore
+    cross_release_triggers_fired: N   # carve-out only — triggers whose condition was met this run (Step 5c)
 ```
 
 ### Step 8: Output next command

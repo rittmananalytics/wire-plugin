@@ -53,6 +53,7 @@ Every equivalency lane writes exactly one JSON file per run to:
 | `verdicts[].method_class` | The declared comparison window class used (e.g. `full_history`, `windowed_event`, `aggregate_only`) — see the Verdict bar in `equivalency-validate`. |
 | `verdicts[].file_version` | The `last_migrated_commit` the verdict binds to. A verdict is evidence about one exact file version, never about the model name in the abstract. |
 | `verdicts[].evidence_ref` | Path plus anchor to the check evidence in the run's report. |
+| `verdicts[].window` | Optional. **Required when `divergence_mechanism` is `declared_window_availability`** (see `equivalency-validate` Step 1e); omitted or `null` otherwise. An object carrying the declared comparison window as structured fields, so the verdict itself states what was compared instead of a PR body re-arguing it in prose: `{"floor": "<UTC instant>", "floor_derivation": "bronze_min_loaded_at" \| "partition_metadata" \| "explicit", "cap": "<UTC instant>", "exclusions": [{"range": "<UTC date or range>", "reason": "<why>"}], "in_window_result": "pass"}`. A `declared_window_availability` verdict with no `window` object, or with `in_window_result` other than `pass`, is malformed and the merge rejects the row (an in-window divergence is never availability — it is `fail`). |
 
 ## Single-writer rule
 

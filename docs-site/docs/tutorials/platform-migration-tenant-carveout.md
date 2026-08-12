@@ -7,7 +7,7 @@ title: "Tutorial: Tenant Carve-out"
 
 This walkthrough covers the **tenant carve-out** variant of a platform migration — extracting a single tenant's data from a shared Snowflake platform into a dedicated BigQuery project, rather than migrating the whole platform. It assumes you know the standard migration flow from the [Platform Migration tutorial](./platform-migration); here we focus only on what the carve-out adds.
 
-The carve-out is a variant, not a separate release type. Audits, inventory, strategy, dbt migration, equivalency, and cutover all run as normal. Four extra commands and some tenant scoping make the difference.
+The carve-out is a variant, not a separate release type. Audits, inventory, strategy, dbt migration, equivalency, and cutover all run as normal. Five extra command families and per-object tenant scoping make the difference. The full reference — command sequence by cadence, data stores, agentic-delivery files, and how to start the agent fleet — is on the [Tenant Carve-out](../release-types/tenant-carveout) page.
 
 ## Statement of Work
 
@@ -52,11 +52,11 @@ migration:
 
 Every migration command now reads `migration.scope`. With `full_migration` (or the field absent) nothing below changes. With `tenant_carveout` the predicate threads through equivalency and the security chain, and the four carve-out commands become part of the flow.
 
-One branching note before you start cutting branches: `01-tenant-carveout` tracks a moving parent migration release, so sync it with periodic `git merge <parent-branch>` rather than rebase, and once you've cut a per-batch branch from it, don't rebase-and-force-push the carve-out branch — that orphans the batch branch by moving the commit its merge-base points at. See [Branching strategy](../release-types/platform-migration#branching-strategy) for the full reasoning.
+One branching note before you start cutting branches: `01-tenant-carveout` tracks a moving parent migration release, so sync it with periodic `git merge <parent-branch>` rather than rebase, and once you've cut a per-batch branch from it, don't rebase-and-force-push the carve-out branch — that orphans the batch branch by moving the commit its merge-base points at. See [Branching strategy](../release-types/tenant-carveout#branching-strategy) for the full reasoning.
 
 ## Step 1 — Region tagging (after the audits)
 
-Once the five audits are approved, classify every in-scope item by whether it belongs to the regional tenant being carved out, with [`/wire:region-tagging-generate`](../release-types/platform-migration#tenant-carve-out-variant).
+Once the five audits are approved, classify every in-scope item by whether it belongs to the regional tenant being carved out, with [`/wire:region-tagging-generate`](../release-types/tenant-carveout#phase-1-run-once-up-front).
 
 ```
 /wire:region-tagging-generate 01-tenant-carveout --region north
@@ -86,7 +86,7 @@ The command produces **candidates, not decisions** — it never emits an include
 
 ## Step 2 — Data-residency assessment (alongside strategy)
 
-This is the Stage 1 contractual deliverable. RA prepares it **as data processor** with [`/wire:data-residency-assessment-generate`](../release-types/platform-migration#tenant-carve-out-variant) — it structures the GDPR and residency questions and the legal review of the ~3-year window, and flags every legal determination for the client's DPO.
+This is the Stage 1 contractual deliverable. RA prepares it **as data processor** with [`/wire:data-residency-assessment-generate`](../release-types/tenant-carveout#phase-1-run-once-up-front) — it structures the GDPR and residency questions and the legal review of the ~3-year window, and flags every legal determination for the client's DPO.
 
 ```
 /wire:data-residency-assessment-generate 01-tenant-carveout
@@ -116,7 +116,7 @@ The audit catalogues collections, dashboards, cards (with their SQL), database c
 
 ## Step 4 — Bulk copy, in place of re-ingestion
 
-A carve-out copies the tenant's existing history rather than re-ingesting it. [`bulk-copy-migration`](../release-types/platform-migration#tenant-carve-out-variant) replaces [`ingestion-migration`](../release-types/platform-migration#ingestion-migration-mcp-driven-execution) in the flow.
+A carve-out copies the tenant's existing history rather than re-ingesting it. [`bulk-copy-migration`](../release-types/tenant-carveout#phase-2-the-iterative-carve-out-loop-repeated-per-wave) replaces [`ingestion-migration`](../release-types/platform-migration#ingestion-migration-mcp-driven-execution) in the flow.
 
 ```
 /wire:bulk-copy-migration-generate 01-tenant-carveout
@@ -136,7 +136,7 @@ Stage 2 — remainder
 
 Meridian's carve-out above runs **alongside** the parent Snowflake→BigQuery migration — the tenant's dbt models still need translating, so [`dbt-migration`](../release-types/platform-migration#dbt-migration-parallel-agents-batches-and-folder-structure) stays in the sequence exactly as shown in Step 4 above and the "Where the carve-out lands" diagram below.
 
-A different, common shape: the carve-out is scoped as a **second release, after the parent platform migration has already landed** — the whole estate is already on BigQuery, and the tenant's dbt models are already correct, already-translated target-dialect SQL sitting in the parent release's dbt repo. Re-running `dbt-migration`'s translate-and-equivalency loop against SQL that's already correct is pointless work re-deriving the same answer. This is where [`dbt-carveout-relocate`](../release-types/platform-migration#tenant-carve-out-variant) replaces `dbt-migration` in the sequence — it relocates the already-correct SQL into the carve-out's own dbt project instead of re-translating it, injecting the tenant row filter only where a model is genuinely shared:
+A different, common shape: the carve-out is scoped as a **second release, after the parent platform migration has already landed** — the whole estate is already on BigQuery, and the tenant's dbt models are already correct, already-translated target-dialect SQL sitting in the parent release's dbt repo. Re-running `dbt-migration`'s translate-and-equivalency loop against SQL that's already correct is pointless work re-deriving the same answer. This is where [`dbt-carveout-relocate`](../release-types/tenant-carveout#phase-2-the-iterative-carve-out-loop-repeated-per-wave) replaces `dbt-migration` in the sequence — it relocates the already-correct SQL into the carve-out's own dbt project instead of re-translating it, injecting the tenant row filter only where a model is genuinely shared:
 
 ```
 /wire:dbt-carveout-relocate-generate 02-tenant-carveout --wave B01 \
@@ -184,6 +184,8 @@ Check 2 re-reads the relocated file's own text rather than trusting the generate
 
 Re-running is cheap and monotonic: once an upstream model gains a mechanism, its descendants resolve by inheritance on the next run without anyone re-triaging them. Registry rows carrying a human ruling are read and never overwritten.
 
+From v3.11.4, relocation is also gated on the parent's own proof. With `migration.parent_release` set, the generate step reads each model's verdict in the parent register before copying anything: a model the parent release has proven wrong (`fail`) is refused with the parent reference, and every relocated row carries the cross-release linkage columns (`parent_release`, `parent_model`, `parent_verdict_ref`). The relocate-mode comparison below will not treat the parent target as a trusted basis until the parent verdict is `pass`/`pass_qualified`.
+
 ```
 /wire:dbt-carveout-relocate-review 02-tenant-carveout
 ```
@@ -192,7 +194,7 @@ Run this once per environment — playground first, then production once playgro
 
 ## Step 5 — Logical-access UAT (before cutover)
 
-Before cutover, prove the isolation actually holds with [`/wire:logical-access-uat-generate`](../release-types/platform-migration#tenant-carve-out-variant).
+Before cutover, prove the isolation actually holds with [`/wire:logical-access-uat-generate`](../release-types/tenant-carveout#phase-3-run-once-at-the-end).
 
 ```
 /wire:logical-access-uat-generate 01-tenant-carveout --region north
@@ -229,6 +231,16 @@ You do not run a different equivalency command. The existing checks gain each ob
 
 From v3.11.1, two additions. **Relocate-mode comparison**: models the relocate step copied from the parent migration (`origin: relocate` in the register) no longer compare against the source platform — that would re-prove the parent's work, not the carve-out's. Their source side is the **parent target project's production relation with the tenant predicate applied** (`migration.parent_target_project`), and their target side is the tenant project's relation, unscoped. Freshly-translated models in the same carve-out keep the standard both-sides-predicated comparison. **Verdict provenance**: every carve-out verdict records `scope: tenant_carveout` and a hash of the exact predicate applied, so a carve-out verdict can never be mistaken for a full-estate one.
 
+### Declared windows and known differences (v3.11.4)
+
+Meridian's carve-out hits the classic availability wall: the tenant's Bronze connectors are weeks old, so a full-history comparison on `orders` reads 96% short for a reason that has nothing to do with translation. With a **declared window** the verdict states that structurally instead of a PR body arguing it: the floor auto-derives from the target Bronze `MIN(loaded_at)`, the connector's initial-load day is excluded with its reason, the cap is the run's pinned as-of, and the verdict comes back `diff_availability` with mechanism `declared_window_availability` and the window as structured fields — claimable only because the in-window comparison passed **exactly**. One missing row inside the window and the verdict is `fail`.
+
+The **known-differences registry** (`migration/known_differences.yaml`) handles the other recurring argument: a connector behaviour class, like the target-side ads connector emitting zero-impression filler days the source connector never wrote. Proven once with a detection query, the entry classifies every future match `pass_qualified` with the citation — but only when the query accounts for the entire delta. A partial match, or any unregistered surplus, still fails.
+
+### Sync twins get real verdicts (v3.11.4)
+
+With Hightouch in scope, `/wire:reverse-etl-equivalency-validate` replaces the register's hardwired `n/a` for syncs: tier 1 runs the old sync's model query on the parent warehouse and the twin's on the tenant project and compares at the sync grain — row set by primary key, changed-field hashes, differing keys named. Sync promotion requires an exact tier-1 `pass`: sync output leaves the warehouse, so `pass_qualified` is not enough.
+
 ## Shipping and verifying the carve-out (v3.11.1)
 
 The v3.11.0 ship-and-verify pipeline runs under the carve-out with four adaptations, and the same fleet framing applies — you direct, the agent invokes:
@@ -239,6 +251,8 @@ The v3.11.0 ship-and-verify pipeline runs under the carve-out with four adaptati
 - **`utils-ci-parity --scaffold-from`** covers the brand-new tenant repo: parity checks derive from the parent repo's pipeline until the new repo grows its own CI, and the extracted check list doubles as the starting point for that pipeline.
 
 Human gates stay human: adjudication, residency sign-off, and the isolation UAT are **park points** for the fleet — an item waiting on a ruling parks, and the lanes move to the next runnable item (`specs/utils/migration_fleet.md`).
+
+Three v3.11.4 additions round the operating model out. `/wire:migration-status` is the answer to "where are we": per-wave exclusive stages derived live from the manifest, the register, and a fresh read of the client repos, with a provenance header so a quoted number is always traceable — merged state comes from the repos, never from a committed rollup. `/wire:utils-client-watch` runs as a scheduled tick: client replies land in the answers ledger verbatim, and a merged PR advances the register and fires post-merge verification automatically. And if the carve-out reached delivery before its register existed, `migration-register-generate --from region-tagging` seeds it from the adjudicated carve-in set while `--ingest-merge-state` backfills delivery state from live `gh` reads — the folder's stale status never wins over what the repos actually show.
 
 ### Batches do not stack (v3.11.2)
 

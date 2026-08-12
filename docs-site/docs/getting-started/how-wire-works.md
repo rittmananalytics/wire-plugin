@@ -244,7 +244,7 @@ flowchart LR
 
 The command file specifies the workflow. The skill specifies the craft. Both are Markdown files loaded into the model's context — they combine at runtime to constrain what gets generated.
 
-Skills are listed in `/wire:help` and documented in the [Skills reference](/reference/skills).
+Skills are listed in `/wire:help` and documented in the [Skills reference](../reference/skills).
 
 ### The embedded checklist
 
@@ -395,4 +395,4 @@ Wire's approach has a few concrete implications:
 
 **You can contribute.** The plugin is open source. If you find a rule that doesn't apply to your context, or a step that should be there but isn't, a PR to the command file is all it takes.
 
-Next: [Worked Example →](/advanced/worked-example)
+Next: [Worked Example →](../advanced/worked-example)

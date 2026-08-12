@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.11.3 | **Date**: August 2026
+**Version**: 3.11.4 | **Date**: August 2026
 
 ---
 
@@ -5012,6 +5012,12 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v3.11.4 — The migration gap backlog closes (August 2026)
+
+Implements every remaining item of the two gap reviews (#179 platform_migration, #180 tenant_carveout). **Structured qualifiers**: a declared availability window (floor auto-derived from target Bronze `MIN(loaded_at)`, reasoned exclusions, cap at the pinned as-of) turns a short-history shortfall into `diff_availability` with the window as structured verdict fields, claimable only on an exact in-window pass; a connector-emission known-differences registry (`migration/known_differences.yaml`) classifies a proven behaviour class `pass_qualified` with the entry cited, only when its detection query accounts for the entire delta. **Cross-release linkage**: register columns `parent_release`/`parent_model`/`parent_verdict_ref`; the relocate step refuses models whose parent verdict is `fail`; the relocate-mode comparator requires a proven parent; `cross_release_triggers` are evaluated by the drift gate, and a parent defect sweep marks relocated copies re-verify-owed. **Five new commands**: `/wire:equivalency-sweep` (estate-wide defect-class classification, closing with a lint rule), `/wire:reverse-etl-equivalency-validate` (sync-grain tier-1/tier-2 equivalence, exact-pass promotion), `/wire:migration-status` (live per-wave exclusive stages with provenance), `/wire:utils-client-watch` and `/wire:utils-ask-list-generate` (the answers ledger and its re-ask guard). Plus `bulk-copy-migration --mode bring-in` (sizing pass, COPYABLE/EXPORT/CONNECTOR-ONLY gate, resumable chunk-ledgered copies, client-run execute-packs), register bootstrap from region tagging with retroactive PR ingestion, and the fleet spec completed (report-once protocol, chunk ledgers, cost governance, contention rules).
 
 ---
 
