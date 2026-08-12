@@ -59,6 +59,16 @@ If non-empty, this blocks approval until every entry is resolved one of two ways
 
 If any entry has neither a clean re-run nor an explicit sign-off, stop: `[wire] N manual-review-required model(s) unresolved. Address each before approving.`
 
+### Step 3b: Rule on the proposed dispositions (v3.11.3)
+
+The manifest's **proposed dispositions** are the models Rung 4 resolved from live evidence: a row-count-by-column probe, its result, and the precedent it was compared against. Each is a proposal, not a ruling. Present each one as: the model, the two (or more) candidate resolutions, the probe query, its result, and the precedent.
+
+For each, the reviewer either **accepts** — the registry row's `resolved_by` becomes `adjudication` and `confidence` becomes `high`, which also makes it immune to being overwritten by a later re-run — or **rejects and rules otherwise**, recording the mechanism and expression they want and the reason the probe was not decisive. Reject is a real answer: a distribution that is 100% one market today does not prove the column is the tenant boundary, and the reviewer is the one who knows whether it is.
+
+Also present, separately, any probe whose result **contradicts an existing object-level adjudication** — a row distribution that disagrees with a prior `exclude`/`carve_in` ruling. That is a re-adjudication question for `region-tagging-review`, not something to settle here; list it and route it back.
+
+Leaving proposals unruled blocks approval: `[wire] N proposed disposition(s) awaiting a ruling. Accept or reject each before approving.` This is what `dbt-carveout-relocate-validate`'s Check 4b looks for.
+
 ### Step 4: Record decision
 
 ```markdown

@@ -62,7 +62,9 @@ Relocates already-translated, already-correct target-dialect dbt SQL for a tenan
 
 For each in-scope model:
 - **`bucket: confident-region`** (tenant-exclusive) — the `.sql` file and its companion schema/properties YAML are copied unchanged.
-- **`bucket: shared-row-level`** (serves every tenant) — the file is copied, then a `WHERE {migration.tenant_predicate}` clause is injected into the model's outermost `SELECT`. Where the model's structure doesn't allow a clean single-point injection, the file is copied unmodified and flagged `predicate_injection: manual_review_required` rather than guessed.
+- **`bucket: shared-row-level`** (serves every tenant) — the file is copied, then the model's filter, resolved per model from the tenant predicate registry, is injected at the point the resolution ladder identifies (Step 1.8). Where the ladder cannot resolve the model, the file is copied unmodified and flagged `predicate_injection: manual_review_required` rather than guessed.
+
+From v3.11.3 the ladder does the work that used to land in the reviewer's queue as "ambiguous": it strips comments before scanning, builds the wave's `ref()` graph up front, parenthesizes unconditionally, restructures a `WHERE` trapped inside a Jinja conditional, resolves SELECT-list aliases, probes the row distribution where live evidence is what decides, and resolves models with no tenant column of their own by inheritance from a covered upstream. `manual_review_required` narrows to what is genuinely novel.
 
 This command runs only in **tenant carve-out** scope (`migration.scope == tenant_carveout`), and only after the carve-out's `region_tagging` output has been through human adjudication — it consumes that adjudication, it never re-derives it.
 
@@ -71,6 +73,7 @@ This command runs only in **tenant carve-out** scope (`migration.scope == tenant
 - `migration.scope == tenant_carveout` and `migration.tenant_predicate` is set
 - `region_tagging review: approved`
 - `.wire/releases/$ARGUMENTS/migration/region_tags_adjudicated.csv` exists (written by `region-tagging-review`)
+- `.wire/releases/$ARGUMENTS/migration/tenant_predicate_registry.csv` exists (seeded by `region-tagging-generate`; `/wire:upgrade` adds it to a pre-v3.11.3 release)
 - `--target-dbt-project-path` is an already-initialized dbt project (`dbt_project.yml` and a working profile exist) pointed at the carve-out's target warehouse — this command relocates models into it, it does not scaffold the project itself
 
 ## Flags
@@ -89,6 +92,7 @@ This command runs only in **tenant carve-out** scope (`migration.scope == tenant
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/migration/region_tags_adjudicated.csv` — the adjudicated region-tagging output (see `region-tagging-review`); columns `item_id,item_type,source_audit,bucket,signal,confidence_score,adjudicated_ruling,adjudication_note`
+- `.wire/releases/$ARGUMENTS/migration/tenant_predicate_registry.csv` — per-item resolution mechanisms; read at Step 1.6, written back at Step 2c (`specs/utils/tenant_predicate_registry.md`)
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.csv` — model catalog (used by `--batch` resolution)
 - `.wire/releases/$ARGUMENTS/migration/migration_batching.csv` — authoritative execution schedule (used by `--wave` resolution)
 - `.wire/releases/$ARGUMENTS/status.md` — `migration.scope`, `migration.tenant_predicate`
@@ -120,17 +124,80 @@ Load `migration/region_tags_adjudicated.csv`. Filter to rows where `item_type ==
 - If the intersection is empty, stop cleanly: `[wire] No carve_in dbt_model rows in this scope. Nothing to relocate.`
 - Print the resolved relocation set (model name, bucket) before proceeding, mirroring the mandatory preview pattern used elsewhere.
 
+### Step 1.6: Load the tenant predicate registry (v3.11.3)
+
+Read `.wire/releases/$ARGUMENTS/migration/tenant_predicate_registry.csv` (seeded by `region-tagging-generate`, rulings added by `region-tagging-review`). The contract, the five mechanisms, and the read order are in `specs/utils/tenant_predicate_registry.md`.
+
+If the file does not exist, stop: `[wire] No tenant_predicate_registry.csv found. Re-run /wire:region-tagging-generate $ARGUMENTS to seed it (this command resolves per-model mechanisms, it does not invent them).` A carve-out release created before v3.11.3 gets the registry from `/wire:upgrade`.
+
+The registry, not `migration.tenant_predicate`, is what this command injects from. The global string remains only as the seed's default row predicate.
+
+### Step 1.7: Build the wave dependency graph (v3.11.3)
+
+Build the `ref()`/`source()` dependency graph over the **entire** Step 1.5 set before touching any single model, from the source project's manifest (already parsed in Step 1). Record for each in-scope model its direct upstream nodes, and mark each node `covered` when either its registry row carries a mechanism other than `unresolved`, or its adjudicated bucket is `confident-region`.
+
+This runs before the per-model work and not after it, which is the opposite of the intuitive order. Most models that carry no tenant column at all are scoped by an upstream that does, and most branches of a top-level set operation read from models in the same wave. Neither can be classified without knowing whether its upstream is already resolved, so resolving them one at a time means re-deriving the same graph once per model. One engagement's wave had 128 models needing predicate review, of which 102 carried no tenant column and 17 were top-level `UNION ALL`s — a single traversal, not 119 judgment calls. Triaging the no-tenant-column pile last, which the per-model ordering encourages, is the expensive way round.
+
+### Step 1.8: Resolve each shared-row-level model's filter (v3.11.3)
+
+For every `shared-row-level` model, classify its SQL shape and then walk the ladder. Each rung either resolves the model — writing its mechanism and provenance into the registry (Step 2c) — or hands it to the next. Only a model that falls off the end is `manual_review_required`, and that is what the flag should mean: genuinely novel, not merely unexamined.
+
+**Rung 0 — strip comments before scanning.** Remove `/* ... */` blocks and `-- ...` line remainders from a working copy of the SQL before looking for tenant-column references, injection points, or set operations. A tenant column name inside a comment is not a column reference. This is a scanner correctness fix, not a heuristic: without it a commented-out `country` filter reads as a live one and the model is confidently mis-shaped. Injection still writes into the original text, comments intact.
+
+**Rung 1 — always parenthesize the existing `WHERE` body.** When appending the filter to an existing `WHERE`, wrap the original body in parentheses first: `WHERE (<original body>) AND <filter>`. Do this unconditionally, not only when the original contains a top-level `OR`. Parenthesizing is precedence-safe either way, so the unconditional form is strictly safer than detecting the `OR` case, and it removes depth-0 `OR` as a category of failure rather than adding a special case to detect. Record `resolved_by` unchanged (the registry mechanism is what resolved it); note the parenthesization in the manifest.
+
+**Rung 2 — restructure a `WHERE` inside a Jinja conditional.** When the outermost `WHERE` sits inside a Jinja conditional (`{% if is_incremental() %} WHERE ... {% endif %}`), the tenant filter must not inherit that condition — it applies on every run. Emit an unconditional top-level `WHERE <filter>` and re-nest the original conditional body as an `AND (...)` inside its own `{% if %}`:
+
+```sql
+-- before
+{% if is_incremental() %}
+WHERE updated_at > (SELECT MAX(updated_at) FROM {{ this }})
+{% endif %}
+
+-- after
+WHERE country = 'DE'
+{% if is_incremental() %}
+  AND (updated_at > (SELECT MAX(updated_at) FROM {{ this }}))
+{% endif %}
+```
+
+The shape was already detected before v3.11.3; only the restructure was missing.
+
+**Rung 3 — resolve a SELECT-list alias.** If the registry row's `tenant_column` is not a real column at the target `WHERE`'s query depth but a SELECT-list alias defined at that same depth, the `WHERE` cannot reference it (BigQuery does not resolve a flat query's own select-list alias in its `WHERE`). Substitute the alias's defining expression into the filter and inject that. Inside a CTE the alias is legitimately visible to an outer query, so this rung applies only when the alias and the `WHERE` share a depth. Write the substituted expression to the registry with `mechanism: derived_expr`, `resolved_by: alias_resolution`, and the original alias in `notes`.
+
+**Rung 4 — probe the row distribution.** Two shapes need live evidence rather than more parsing, and both take the same query:
+
+- **Two plausible tenant columns in scope** and the registry row does not say which. Run a row-count-by-each-candidate-column query over the source relation and compare the distributions.
+- **A hardcoded literal where a per-row signal exists elsewhere** — the model pins a market as a constant, but another column carries the tenant per row (an account id, a naming convention in a key).
+
+Run the count, compare it against registry rows already resolved for the same column or the same upstream, and emit a **proposed** disposition with the query and its result as provenance: `mechanism` set, `resolved_by: row_distribution_probe`, `confidence: medium`, `verified_date` today. A proposal is written to the registry and listed in the manifest for the reviewer; it is not treated as a ruling, and `dbt-carveout-relocate-review` is where it becomes one. The same probe belongs in the reviewer's hands for the reverse case too: it has reclassified items from `exclude` to `carve_in` on live evidence, and an object-level adjudication that the row distribution contradicts is worth re-opening.
+
+**Rung 5 — resolve by upstream inheritance.** Using Step 1.7's graph:
+
+- **No tenant column present at all.** Walk each upstream path to the nearest `covered` node. If **every** path reaches one, the model needs no filter of its own — its rows are already tenant-only. Write `mechanism: inherited`, `resolved_by: upstream_inheritance`, `resolving_node` set to the nearest covering node (naming one per path in `notes` where there are several), and record `predicate_injection: not_applicable_inherited`. If any path reaches an `unresolved` node or a source outside the wave, the model stays unresolved — and the reason names the uncovered upstream, so fixing that one model resolves this one on the next run.
+- **Top-level `UNION`/`UNION ALL`/`INTERSECT`/`EXCEPT`.** Classify each branch separately before deciding anything about the model. A branch reading from a `covered` upstream needs no injection of its own; a branch that already yields no tenant rows (its upstream is wholly outside the carve-out) needs none either, and that fact is a graph lookup, not a data read. Inject only into the branches that need it, and only when every branch is resolved one way or the other. If any branch is unresolved, the model is `manual_review_required` and the reason names **that branch**, not the whole model.
+
+**Off the end — `manual_review_required`.** Multiple depth-0 `SELECT`s that are not a set operation, and any shape none of the rungs above fit. Record the shape, the rung that last examined it, and the specific reason. This list is the reviewer's queue.
+
+**Re-run behaviour.** The ladder is idempotent and monotonic: re-running after an upstream model gains a mechanism resolves its descendants by Rung 5 without anyone re-triaging them. Rows whose `resolved_by` is `adjudication` or `manual` are read and never overwritten (`specs/utils/tenant_predicate_registry.md`).
+
+Tests mirror this ladder (`wire/tests/platform_migration/validate_carveout_predicate_resolution.py`).
+
 ### Step 2: Relocate each in-scope model
 
 For each model in the Step 1.5 set, read its bucket from `region_tags_adjudicated.csv`:
 
 - **`bucket: confident-region`** — read the model's relative path within `--source-dbt-project-path` (from the manifest node), copy the `.sql` file and its companion schema/properties YAML entry into the mirrored path under `--target-dbt-project-path`, unchanged. Record `predicate_injection: not_applicable`.
-- **`bucket: shared-row-level`** — copy the file to the mirrored path, then inject `WHERE {migration.tenant_predicate}` into the model's outermost `SELECT`:
-  - **Single top-level `SELECT`, no top-level `UNION`/`UNION ALL`/`INTERSECT`/`EXCEPT`** — this is the clean case. Append the predicate to the outermost `SELECT`'s `WHERE` clause (combining with `AND` if a `WHERE` already exists there), not to any subquery/CTE. Record `predicate_injection: injected` and the exact predicate text applied.
-  - **Anything else** — no top-level `SELECT` at all (e.g. a pure CTE chain with an ambiguous final projection), a top-level `UNION`/`UNION ALL`/`INTERSECT`/`EXCEPT` (injecting on one branch and not the others is wrong; injecting after the set operation may not be equivalent), or any other structure where a single clean injection point can't be identified — **do not guess.** Copy the file unmodified and record `predicate_injection: manual_review_required` with the specific reason (e.g. `"top-level UNION ALL across 2 branches — ambiguous injection point"`).
+- **`bucket: shared-row-level`** — copy the file to the mirrored path, then apply the model's filter from its registry row (Step 1.6) at the injection point the resolution ladder (Step 1.8) identified. A resolved model records `predicate_injection: injected`, the exact filter text applied, and the `resolved_by` value that got it there. A model the ladder could not resolve is copied unmodified and records `predicate_injection: manual_review_required` with its shape and reason — **do not guess.**
 - **Any other `bucket` value** (`global-deferred`, missing, or anything not `confident-region`/`shared-row-level`) that reached this scope despite Step 1.5's filter — this is a resolution bug upstream, not a case to paper over here. **Abort**: `[wire] <model> has bucket "<bucket>" but adjudicated_ruling carve_in — this combination should not exist. Check region-tagging-review's output before re-running.`
 
 Preserve the exact subdirectory structure from the source project for both the `.sql` file and its companion YAML.
+
+### Step 2c: Write resolutions back to the registry (v3.11.3)
+
+Update `migration/tenant_predicate_registry.csv` in place for every model the ladder touched: `mechanism`, `expression`, `tenant_column`, `resolved_by`, `resolving_node`, `provenance` (the rule id, the evidence query and its result, or the resolving node), `verified_date`, and `confidence`. Back up the file before writing and re-read it after, per the single-writer discipline in `specs/utils/migration_fleet.md` — under a fleet this command may be running in one lane while another reads the registry.
+
+Never overwrite a row whose `resolved_by` is `adjudication` or `manual`. A model whose ladder result disagrees with such a row is reported as a conflict in the manifest and left as the ruling says: a command that silently reverses a human ruling is worse than one that stops.
 
 ### Step 3: Configure the target profile
 
@@ -148,8 +215,12 @@ If compile fails, list the failing models and the compile error; do not silently
 
 Include:
 - Scope resolved (wave/batch/selector), source and target project paths, target project/dataset
-- Every relocated model: bucket, `predicate_injection` state, and the exact predicate text where injected
-- The manual-review-required list, each with its specific reason
+- Every relocated model: bucket, `predicate_injection` state, the mechanism and `resolved_by` from the registry, and the exact filter text where injected
+- **Resolution summary** — a count per rung of how many models each resolved, and the resulting `manual_review_required` count. This is the number a reviewer's queue is measured by, so it belongs at the top of the manifest, not buried per model.
+- **Proposed dispositions** (Rung 4) — each with its evidence query, the result, and the precedent compared against. These need a reviewer's ruling; they are not resolved.
+- **Inheritance resolutions** (Rung 5) — each with its resolving node, and each unresolved model's *uncovered upstream* named, so the reviewer can see which single upstream fix unblocks which descendants.
+- The manual-review-required list, each with its shape, the rung that last examined it, and its specific reason
+- Registry conflicts (a ladder result disagreeing with an `adjudication`/`manual` row)
 - Models skipped because they had no `carve_in` adjudication in this scope
 - Compile result (pass/fail, per model on failure)
 
@@ -169,6 +240,10 @@ artifacts:
     confident_region_count: N
     shared_row_level_count: N
     manual_review_required_count: N
+    inherited_count: N              # Rung 5 — scoped by a covered upstream, no filter of their own
+    proposed_disposition_count: N   # Rung 4 — awaiting a reviewer's ruling
+    registry_conflict_count: N      # ladder result vs an adjudication/manual row
+    predicate_registry: migration/tenant_predicate_registry.csv
     compile: pass | fail
     wave: "B01"          # set only when run with --wave
     waves_complete: ["B01"]   # set only when run with --wave; accumulates across runs
@@ -176,7 +251,7 @@ artifacts:
 
 ### Step 6b: Update the migration register (v3.11.1)
 
-For every successfully relocated model, upsert its row in `migration/migration_register.csv` exactly as `dbt-migration-generate` does: `source_path`, `source_layer`, `last_migrated_commit` (the parent-release source snapshot SHA the relocated file was taken from), `bq_target` (the tenant project relation), `state: migrated` (`failed` on a compile failure; a `manual_review_required` predicate injection stays `pending` until resolved). Record `origin: relocate` in `notes` — the ship-and-verify pipeline reads this to pick the relocate-mode comparator (`equivalency-validate`, Relocate-mode comparison). Without these rows, relocated models are invisible to `dbt-migration-batch-raise` candidate derivation and to the delivery stage ladder. Skip silently if the register doesn't exist.
+For every successfully relocated model, upsert its row in `migration/migration_register.csv` exactly as `dbt-migration-generate` does: `source_path`, `source_layer`, `last_migrated_commit` (the parent-release source snapshot SHA the relocated file was taken from), `bq_target` (the tenant project relation), `state: migrated` (`failed` on a compile failure; a `manual_review_required` predicate injection stays `pending` until resolved; `not_applicable_inherited` is `migrated` — an inherited model is resolved, not pending). Record `origin: relocate` in `notes` — the ship-and-verify pipeline reads this to pick the relocate-mode comparator (`equivalency-validate`, Relocate-mode comparison). Without these rows, relocated models are invisible to `dbt-migration-batch-raise` candidate derivation and to the delivery stage ladder. Skip silently if the register doesn't exist.
 
 ### Step 7: Output summary
 
@@ -193,6 +268,7 @@ Unless `--no-chain` was passed, run the same gate chain `dbt-migration-generate`
 ## Output Files
 
 - `.wire/releases/$ARGUMENTS/migration/dbt_carveout_relocate_manifest.md` (`_{wave_id}` suffix when run with `--wave`)
+- Updated `.wire/releases/$ARGUMENTS/migration/tenant_predicate_registry.csv` (Step 2c)
 - Relocated `.sql` and companion schema/properties YAML files under `--target-dbt-project-path`, mirroring the source project's subdirectory structure
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 

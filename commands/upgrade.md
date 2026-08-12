@@ -196,12 +196,26 @@ If the write fails, surface the error and leave the original file unchanged.
 
 ---
 
+### Step 6a: Backfill the tenant predicate registry (v3.11.3, carve-out releases only)
+
+Applies only when `release_type` is a migration type and `migration.scope == tenant_carveout`. Skip silently otherwise.
+
+If `migration/tenant_predicate_registry.csv` is absent and `migration/region_tags.csv` (or `region_tags_adjudicated.csv`, preferred when present) exists, create the registry by applying the seed table in `specs/utils/tenant_predicate_registry.md` to the existing buckets — the same seed `region-tagging-generate` Step 5b would have written. Set `provenance` to `backfilled by /wire:upgrade from region_tags` and leave `verified_date` empty: a backfilled row is a seed, not a verified mechanism.
+
+Under `--dry-run`, report the row count that would be created and the resulting `unresolved` count, and write nothing. Never overwrite an existing registry file, and never invent a mechanism for an item the region tags do not cover — an item with no bucket seeds `unresolved`, which is the correct answer and the one that keeps it out of an unfiltered comparison.
+
+Report in the summary: `Registry backfilled: N rows (M unresolved — resolve via /wire:dbt-carveout-relocate-generate or a ruling at region-tagging-review).`
+
+---
+
 ### Step 7: Surface New Commands
 
 Based on `release_type` and the detected additions, report any commands that are now available but were not present in the installed version when the release was created. Use the following known command introductions as the reference:
 
 | Added in | Commands | Relevant release types |
 |---|---|---|
+| v3.11.3 | (schema, not commands) per-item tenant predicate registry `migration/tenant_predicate_registry.csv`, read by equivalency-validate, bulk-copy, carveout-relocate and defer-build; carve-out predicate resolution ladder in `dbt-carveout-relocate-generate`; sibling-naming cross-check in region tagging | `platform_migration` with `migration.scope: tenant_carveout` — see the registry backfill in Step 6a |
+| v3.11.2 | (packaging and process, no new commands) shared specs ship in both packages; `dbt-migration-batch-raise --allow-stack-depth` with stacked batches refused by default | `platform_migration`, `data_warehouse_migration` |
 | v3.11.1 | (carve-out adaptation, no new commands) relocate-mode equivalency via `migration.parent_target_project`; relocate register writes + gate chain; defer-build tenant guard; residency-gated `ship_then_verify`; `utils-ci-parity --scaffold-from`; region-tagging roles rule | `platform_migration` with `migration.scope: tenant_carveout` |
 | v3.11.0 | `/wire:dbt-migration-defer-build`, `/wire:dbt-migration-batch-raise`, `/wire:equivalency-post-merge-verify`, `/wire:utils-ci-parity` | `platform_migration`, `data_warehouse_migration` — the ship-and-verify pipeline beyond "migrated": cost-guarded sandbox builds, register-driven PR batches, client CI parity, post-merge production verification |
 | v3.11.0 | (schema, not commands) register columns `delivery_stage`/`pr_url`; append-only verdict log `migration/migration_verdict_log.csv`; verdict taxonomy replacing pass/fail; `migration.gate_policy`/`client_repos`/`cost_controls` status keys | `platform_migration`, `data_warehouse_migration` — the upgrade adds missing keys/columns with defaults; existing `pass`/`fail` verdicts stay valid, legacy `info` reads as `pass_qualified` |

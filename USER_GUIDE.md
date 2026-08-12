@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.11.2 | **Date**: August 2026
+**Version**: 3.11.3 | **Date**: August 2026
 
 ---
 
@@ -5012,6 +5012,12 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v3.11.3 — A tenant predicate per item, and the carve-out review queue shrinks (August 2026)
+
+Two carve-out gaps. **The predicate registry**: `migration.tenant_predicate` is one string, and a real carve-out needs several mechanisms at once — a plain row predicate, a differently-named column on globalised models, an object-level schema-prefix carve where no row predicate exists, an enumerated account-id list, a derived expression over a composite key. `migration/tenant_predicate_registry.csv` resolves one item at a time across five mechanisms, with provenance and a verified date; the global string narrows to the seed's default. `region-tagging-generate` seeds it; `equivalency-validate`, `bulk-copy-migration-generate`, `dbt-carveout-relocate-generate` and `dbt-migration-defer-build` read it. An item with no resolved mechanism is flagged everywhere and never compared or copied unfiltered. **The resolution ladder**: `dbt-carveout-relocate-generate` used to detect injection ambiguity and stop, so every ambiguous shape reached the reviewer — 128 models on one wave, almost none needing judgment. Six rungs now resolve the mechanical shapes (comment stripping, unconditional parenthesizing, Jinja-conditional restructure, alias resolution, row-distribution probes proposed for review, upstream inheritance over a wave graph built up front), and `manual_review_required` narrows to what is genuinely novel.
 
 ---
 

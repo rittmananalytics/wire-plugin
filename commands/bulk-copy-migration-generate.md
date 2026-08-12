@@ -48,9 +48,12 @@ Source platform (snowflake): READ ONLY.
 
 [If migration.scope == tenant_carveout:]
 Tenant carve-out scope — this copy moves ONE tenant's data only:
-  Every extract is filtered by migration.tenant_predicate ([tenant_predicate]).
-  A copy step that omits the predicate, or whose predicate does not match
-  migration.tenant_predicate, MUST NOT run.
+  Every extract is filtered by its object's resolved tenant filter, from
+  migration/tenant_predicate_registry.csv (Step 2a). An object whose
+  mechanism is object_carve is copied whole, by design.
+  A copy step that omits its object's resolved filter, or whose filter does
+  not match the registry row, MUST NOT run. An object with no resolved
+  mechanism is NOT copied at all.
 
 [If migration.scope is full_migration/absent (snapshot-history copy only):]
 Full-migration snapshot-history copy — unfiltered:
@@ -105,6 +108,7 @@ When `--wave` is supplied, the runbook is wave-labelled (`migration/bulk_copy_mi
 - `.wire/releases/$ARGUMENTS/migration/migration_register.csv` — each snapshot's assigned `snapshot_strategy` (`copy_and_continue` vs `rebuild_from_T`)
 - `.wire/releases/$ARGUMENTS/migration/migration_strategy.md` — copy mechanism decision (BQ Data Transfer Service vs GCS-staged), per-table tolerances, and the tenant-scoped IAM model
 - `.wire/releases/$ARGUMENTS/migration/migration_batching.csv` — consumed only by `--wave` mode
+- `.wire/releases/$ARGUMENTS/migration/tenant_predicate_registry.csv` — per-object tenant filter, resolved at Step 2a under carve-out (`specs/utils/tenant_predicate_registry.md`)
 - `.wire/releases/$ARGUMENTS/status.md` — `migration.scope`, `migration.tenant_predicate`, `data_safety`, target platform/project
 
 ## Workflow
@@ -118,7 +122,7 @@ When `--wave` is supplied, the runbook is wave-labelled (`migration/bulk_copy_mi
    - **Snapshot-history copy** — copying built `copy_and_continue` snapshot histories. In scope for a bare run (alongside the raw-table copy), a `--wave` run, or — on its own — a `--snapshots` run.
 
 3. **Gate each path against `migration.scope`** (the guard is a function of scope × copy path):
-   - If `migration.scope == tenant_carveout`: **both** paths are allowed and **both** are tenant-filtered. Confirm `migration.tenant_predicate` is set — if null, stop: "migration.tenant_predicate is required to scope the carve-out copy." Every extract (raw-table and snapshot-history alike) carries `WHERE {migration.tenant_predicate}`, exactly as today.
+   - If `migration.scope == tenant_carveout`: **both** paths are allowed and **both** are tenant-filtered. Confirm `migration.tenant_predicate` is set — if null, stop: "migration.tenant_predicate is required to scope the carve-out copy." Every extract (raw-table and snapshot-history alike) carries a tenant filter — from v3.11.3 **resolved per object from the tenant predicate registry**, not the global string applied to everything (see Step 2a).
    - If `migration.scope` is `full_migration` or absent:
      - The **raw-table / connector copy path is blocked.** If this run would copy raw/connector tables (a bare run, or a `--wave` run), stop: "Bulk copy of raw/connector tables runs in tenant carve-out scope only. For a full migration, raw tables re-land via /wire:ingestion-migration-generate; bulk-copy in a full migration copies snapshot histories only — run with --snapshots."
      - The **snapshot-history copy path is allowed** (run with `--snapshots`). It copies the **whole** snapshot history **unfiltered** — no tenant predicate is applied, and `migration.tenant_predicate` is **not** required (do not stop on a null predicate for this path). Only `copy_and_continue` snapshots are copied; `rebuild_from_T` snapshots start fresh at `T` and are skipped.
@@ -141,7 +145,7 @@ There is no MCP probe. Instead, verify the safety posture for a pilot export bef
 2. **Copy guard** — confirm a guard is in place so a misconfigured copy cannot write outside the designated target:
    - the destination resolves to `migration.target_project` and is not in `data_safety.production_projects`;
    - for GCS-staged, the staging bucket is dedicated to this run and the service account has no access to other tenants' buckets.
-   - **Under carve-out only:** additionally confirm every source extract carries `WHERE {migration.tenant_predicate}` so a misconfigured copy cannot touch another tenant's data. A **full-migration snapshot-history copy** (`--snapshots`) is unfiltered by design — there is no tenant predicate to check; confirm instead that the run copies only snapshot histories (no raw/connector tables).
+   - **Under carve-out only:** additionally confirm every source extract carries its object's resolved tenant filter (Step 2a) so a misconfigured copy cannot touch another tenant's data. A **full-migration snapshot-history copy** (`--snapshots`) is unfiltered by design — there is no tenant filter to check; confirm instead that the run copies only snapshot histories (no raw/connector tables).
 3. Output the pre-flight table before generating the runbook:
 
 ```
@@ -150,15 +154,33 @@ Bulk Copy Pre-flight Check
 
   Copy mechanism      : BigQuery Data Transfer Service | GCS-staged
   Scope               : tenant_carveout | full_migration (snapshots only)
-  Tenant predicate    : [migration.tenant_predicate]  (n/a — unfiltered full-migration snapshot copy)
+  Tenant filters      : resolved per object from the registry (Step 2a); N unresolved → not copied
+                        (n/a — unfiltered full-migration snapshot copy)
   Scoped SA           : [service account identity]
   Target destination  : [migration.target_project] / [dataset]
-  Copy guard          : ✅ destination verified · [carve-out: predicate on every extract]
+  Copy guard          : ✅ destination verified · [carve-out: resolved filter on every extract]
   Objects in scope    : N
 
 ```
 
 If the scoped service account or the copy guard cannot be confirmed, stop and report — do not generate copy steps that could run without them.
+
+### Step 2a: Resolve each object's tenant filter from the registry (v3.11.3, carve-out only)
+
+Read `migration/tenant_predicate_registry.csv` and resolve one filter per in-scope object, applying the read contract in `specs/utils/tenant_predicate_registry.md`:
+
+| Registry `mechanism` | Extract filter |
+|---|---|
+| `row_predicate`, `derived_expr`, `account_cascade` | `WHERE <expression>` from the row |
+| `object_carve` | None — the whole object is inside the carve-out by name or schema convention, so copy it whole. Record `object_carve` against the step so a reader does not mistake the absent filter for an omission |
+| `inherited` | Not applicable to a raw-table copy: an inherited mechanism describes a derived model scoped by its upstream, not a landed table. Treat as `unresolved` here and report it — a raw table cannot inherit a filter it has no upstream for |
+| `unresolved`, or no row | **Emit no copy step.** List the object under unresolved items with its registry state |
+
+**An unresolved object is never copied unfiltered.** Copying every tenant's rows into the tenant's own project is a data-residency incident, not a test failure, and it is not undone by deleting rows afterwards — the data has already crossed the boundary. This is why the rule is refuse-and-list rather than warn-and-proceed.
+
+If the registry is absent, stop: `[wire] No tenant_predicate_registry.csv found. Re-run /wire:region-tagging-generate $ARGUMENTS to seed it (or /wire:upgrade for a release created before v3.11.3).`
+
+Print the per-object resolution table (object, mechanism, filter, `resolved_by`) before generating any copy step, and carry the unresolved list into the runbook. `bulk-copy-migration-review` is the gate where a reviewer sees which objects are being left behind and why.
 
 ### Step 3: Generate the bulk copy runbook
 
@@ -166,15 +188,15 @@ If the scoped service account or the copy guard cannot be confirmed, stop and re
 
 **Under `--snapshots` scope, skip this raw-table / connector loop entirely** — generate only the snapshot-history-copy steps below (Step 1s's resolved snapshot set). For every other scope, document the raw-table copy for each source dataset/table in scope (Step 1w's resolved set under `--wave`, otherwise every landed table for connectors with `include_in_migration: true`; smallest / lowest-risk first) via the mechanism chosen in the migration strategy:
 
-- **BigQuery Data Transfer Service** — a transfer config per table whose query applies `WHERE {migration.tenant_predicate}` (or reads a tenant-scoped source view), landing in the target dataset.
-- **GCS-staged** — Snowflake `COPY INTO @<tenant_stage> FROM (SELECT ... WHERE {migration.tenant_predicate})` to the dedicated GCS bucket, then a BigQuery load job from that bucket into the target table.
+- **BigQuery Data Transfer Service** — a transfer config per table whose query applies that table's resolved tenant filter (Step 2a), or reads a tenant-scoped source view, landing in the target dataset.
+- **GCS-staged** — Snowflake `COPY INTO @<tenant_stage> FROM (SELECT ... WHERE <resolved filter>)` to the dedicated GCS bucket, then a BigQuery load job from that bucket into the target table. An `object_carve` table unloads whole, with no `WHERE`.
 
 **Snapshot history copy (`copy_and_continue` snapshots).** A dbt snapshot is an SCD-2 history table, not a re-ingestable source — its closed versions exist only in the built snapshot relation and cannot be reconstructed from the current source. For every snapshot assigned `copy_and_continue` in the migration register / strategy (skip any assigned `rebuild_from_T` — those start fresh at `T` on a recorded sign-off, so there is no history to copy), add a copy step that moves the **built snapshot table** source→target, landing at the snapshot's exact `target_schema` relation (from the snapshot catalog) so the target `dbt snapshot` run finds and continues it in place. The copy must:
 
 - **Preserve the payload columns and the four dbt meta columns** — `dbt_scd_id`, `dbt_updated_at`, `dbt_valid_from`, `dbt_valid_to` — in their exact ordinal order (payload first, meta columns at the tail in that order), never dropping or reordering them. A dropped or reordered meta column breaks continuation.
 - **Translate column types via the pair's `type_mapping.md`**, reading the SCD meta-column types from the active pair's **"Snapshot SCD mechanisms"** section — never hardcode them. `dbt_scd_id` is a string/varchar hash; the temporal meta columns follow the snapshot's `updated_at` type mapping.
 - **Freeze the source snapshot at the strategy's baseline instant `T` first** — read the source from the zero-copy clone at `T` (the `wire_baseline` schema, `… AT (TIMESTAMP => '<T>')`), not the live snapshot, so continued source snapshotting does not move the copied history and the copied `dbt_scd_id` set matches what the target adopt-and-continue run will extend.
-- **Tenant scope** — under carve-out (`migration.scope == tenant_carveout`), filter the unload to only the in-scope tenant/region history: apply `WHERE {migration.tenant_predicate}` (and any region predicate) to the snapshot extract exactly as for a landed table, so only the extracted tenant's version rows are copied. In a **full migration** (the `--snapshots` path), the snapshot-history copy is **unfiltered** — copy the whole history, with no tenant predicate.
+- **Tenant scope** — under carve-out (`migration.scope == tenant_carveout`), filter the unload to only the in-scope tenant/region history: apply the snapshot's resolved tenant filter (Step 2a, and any region predicate) to the snapshot extract exactly as for a landed table, so only the extracted tenant's version rows are copied. In a **full migration** (the `--snapshots` path), the snapshot-history copy is **unfiltered** — copy the whole history, with no tenant predicate.
 
 The target-side adopt-and-continue (`dbt snapshot --select <snap>`) is run by `dbt-migration-generate` after this copy lands — this runbook only moves the history. Note the ordering in the runbook: copy the built snapshot history before the target `dbt snapshot` run, never after (a `dbt snapshot` against an empty target relation would open fresh version rows and orphan the copied history).
 

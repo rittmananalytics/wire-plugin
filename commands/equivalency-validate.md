@@ -117,20 +117,33 @@ Read the list of in-scope tables and dbt models from `migration/migration_invent
 
 Read `migration.scope` from status.md. When it is absent or `full_migration`, run every check exactly as specified below — no predicate is applied and behaviour is unchanged.
 
-When `migration.scope == tenant_carveout`, read `migration.tenant_predicate` (e.g. `tenant_id = 4815`) and apply it as a `WHERE` clause on **both** source and target in every data-bearing check, so equivalency validates only the extracted tenant's rows. The parallel fan-out above is unchanged — each subagent threads the same predicate through the checks for its assigned objects.
+When `migration.scope == tenant_carveout`, apply a tenant filter as a `WHERE` clause on **both** source and target in every data-bearing check, so equivalency validates only the extracted tenant's rows. The parallel fan-out above is unchanged — each subagent threads its objects' filters through the checks for its assigned objects.
 
-- **Row count (1)**, **value sampling (3)**, **freshness (4)**, **row-level checksum (6)**, and **business invariants / aggregate control totals (7)** all add the predicate to both sides.
-- **Schema (2)** compares column names, types, and nullability — it is structural, not row-data, so the predicate does not change what it checks; it runs unchanged.
-- **Governance (8)** compares column-level protection metadata — also structural, not row-data — so the predicate does not apply; it runs unchanged.
-- **dbt tests (5)** run through dbt against the already tenant-scoped target models, so no predicate is injected into the test SQL.
+- **Row count (1)**, **value sampling (3)**, **freshness (4)**, **row-level checksum (6)**, and **business invariants / aggregate control totals (7)** all add the filter to both sides.
+- **Schema (2)** compares column names, types, and nullability — it is structural, not row-data, so the filter does not change what it checks; it runs unchanged.
+- **Governance (8)** compares column-level protection metadata — also structural, not row-data — so the filter does not apply; it runs unchanged.
+- **dbt tests (5)** run through dbt against the already tenant-scoped target models, so no filter is injected into the test SQL.
 
 No new check types are introduced. min/max already lives inside value sampling (check 3); row-level checksum (check 6) and aggregate control totals (check 7) already exist. The carve-out only narrows the row set each existing check sees.
 
-If `migration.tenant_predicate` is null while `scope == tenant_carveout`, stop and report — the predicate is required to scope the carve-out.
+**Resolve the filter per object, from the registry (v3.11.3).** The filter is **not** `migration.tenant_predicate` applied to everything. Read the object's row from `migration/tenant_predicate_registry.csv` and apply the read contract in `specs/utils/tenant_predicate_registry.md`:
 
-Carve-out lane verdict files record `scope: tenant_carveout` and `tenant_predicate_sha256` (the SHA-256 of the exact predicate applied), per `specs/migration/equivalency/verdict_schema.md` — a carve-out verdict must never be mistakable for a full-estate one.
+| Registry `mechanism` | Filter applied to both sides |
+|---|---|
+| `row_predicate`, `derived_expr`, `account_cascade` | `WHERE <expression>` from the row |
+| `object_carve` | None. The object is wholly in the carve-out; compare it whole |
+| `inherited` | None. Its rows are tenant-only on both sides already; record the `resolving_node` in the verdict |
+| `unresolved`, or no row for the object | **Verdict `fail`, reason `unresolved_predicate`** |
 
-**Relocate-mode comparison (carve-out staged after the parent migration, v3.11.1).** Models whose register row carries `origin: relocate` in `notes` (written by `dbt-carveout-relocate-generate`) were copied from the already-migrated parent target, not translated from the source platform — so comparing them against the source platform re-proves the parent's work, not the carve-out's. For these models only, the comparison sides change: the **source side is the parent target project's production relation with `migration.tenant_predicate` applied** (parent project from `migration.parent_target_project`), and the **target side is the tenant project's relation, unscoped** (the tenant project is single-tenant by construction). Every check type, pin, and taxonomy rule is otherwise unchanged. If `migration.parent_target_project` is null while relocate-origin models are in scope, stop and report for those models — the comparator needs a parent to compare against. Non-relocate models in the same carve-out (translated fresh from the source platform) keep the standard both-sides-predicated comparison above.
+One carve-out needed five mechanisms simultaneously across one release — a plain row predicate, a differently-named column on globalised models, an object-level schema-prefix carve where no row predicate exists, an enumerated account-id list, and a derived expression over a composite key. A single config string cannot express that, so applying one to every object silently compares the wrong row sets.
+
+**An unresolved object is never compared unfiltered.** Verdict `fail`, reason `unresolved_predicate`, naming the object and that no registry mechanism exists — not a `diff_*` value, because nothing was compared and there is no divergence to classify. Unfiltered is the one wrong answer that looks like a real finding: the source side returns every tenant's rows, so the comparison fails for a reason that has nothing to do with the migration, and a reviewer spends the afternoon on a phantom.
+
+If the registry file itself is absent while `scope == tenant_carveout`, stop and report — re-run `region-tagging-generate` to seed it, or `/wire:upgrade` for a release created before v3.11.3. If `migration.tenant_predicate` is null **and** the registry has no resolved row for an in-scope object, that object is `unresolved` per the table above.
+
+Carve-out lane verdict files record `scope: tenant_carveout` and `tenant_predicate_sha256` (the SHA-256 of the exact filter applied — the resolved per-object expression, not the global config string), per `specs/migration/equivalency/verdict_schema.md` — a carve-out verdict must never be mistakable for a full-estate one. From v3.11.3 they also record the resolved `mechanism` and, for `inherited`, the `resolving_node`: a verdict reached with no filter must say which of `object_carve` and `inherited` earned that, since the two are not interchangeable evidence.
+
+**Relocate-mode comparison (carve-out staged after the parent migration, v3.11.1).** Models whose register row carries `origin: relocate` in `notes` (written by `dbt-carveout-relocate-generate`) were copied from the already-migrated parent target, not translated from the source platform — so comparing them against the source platform re-proves the parent's work, not the carve-out's. For these models only, the comparison sides change: the **source side is the parent target project's production relation with the model's resolved registry filter applied** (parent project from `migration.parent_target_project`), and the **target side is the tenant project's relation, unscoped** (the tenant project is single-tenant by construction). Every check type, pin, and taxonomy rule is otherwise unchanged. If `migration.parent_target_project` is null while relocate-origin models are in scope, stop and report for those models — the comparator needs a parent to compare against. Non-relocate models in the same carve-out (translated fresh from the source platform) keep the standard both-sides-predicated comparison above.
 
 ### Step 1b: Baseline-pin mode (deterministic equivalency)
 
@@ -194,7 +207,8 @@ For each in-scope object, run check types 1–6 and check type 8 (governance); f
 SELECT COUNT(*) AS row_count FROM source_project.source_schema.table_name;
 -- Target
 SELECT COUNT(*) AS row_count FROM target_db.target_schema.table_name;
--- Tenant carve-out (migration.scope == tenant_carveout): add `WHERE {migration.tenant_predicate}` to both queries.
+-- Tenant carve-out (migration.scope == tenant_carveout): add the object's resolved registry filter
+-- (specs/utils/tenant_predicate_registry.md) as a WHERE clause to both queries.
 ```
 PASS: |source_count - target_count| / source_count ≤ tolerance (default 0.1%, configurable per table in migration strategy)
 FAIL: Count outside tolerance
@@ -218,14 +232,14 @@ For string columns: compare distinct count and null percentage
 PASS: Statistical measures within ±1% (configurable)
 FAIL: Deviation outside threshold
 Min and max are already part of this check — no separate min/max check type is needed.
-Tenant carve-out: compute every statistic over `WHERE {migration.tenant_predicate}` on both source and target (and take the 10K-row sample from within the scoped set).
+Tenant carve-out: compute every statistic over the object's resolved registry filter on both source and target (and take the 10K-row sample from within the scoped set).
 Relative-date-flagged models (Step 1.5): compute every statistic over the pinned inline relation on both sides.
 
 **Check type 4 — Freshness**
 Compare max(updated_at) or max(loaded_at) between source and target.
 PASS: Target is within max(sync_frequency, 24h) of source
 FAIL: Target data is more than 24 hours stale relative to source
-Tenant carve-out: apply `WHERE {migration.tenant_predicate}` to the max() on both sides. Without it the source max() reflects all tenants and the check would falsely fail against a target holding only the extracted tenant.
+Tenant carve-out: apply the object's resolved registry filter to the max() on both sides. Without it the source max() reflects all tenants and the check would falsely fail against a target holding only the extracted tenant.
 
 **Check type 5 — dbt tests**
 Run `dbt test --profiles-dir ~/.dbt --target target_profile` for the translated dbt models.
@@ -244,7 +258,7 @@ FROM target_db.target_schema.table_name AS t;
 -- Snowflake side
 SELECT COUNT(*) AS n, SUM(HASH(OBJECT_CONSTRUCT(*)::STRING)) AS hash_agg
 FROM source_project.source_schema.table_name;
--- Tenant carve-out: add `WHERE {migration.tenant_predicate}` to both sides, and apply it inside the deterministic
+-- Tenant carve-out: add the object's resolved registry filter to both sides, and apply it inside the deterministic
 -- sampling filter for large tables so the same scoped rows are sampled on each platform.
 ```
 Canonicalise before hashing so the comparison is not defeated by benign representation differences — see the edge-case checklist below. Relative-date-flagged models (Step 1.5): hash over the pinned inline relation on both sides. PASS: aggregate hashes match over the same row set. FAIL: mismatch (drill into the differing rows via `equivalency-investigate`).
@@ -255,7 +269,7 @@ The checks above confirm the data moved; invariants confirm it still *means* the
 Typical invariants: total revenue (`SUM(amount)` over orders), active customer count, row counts per key dimension (e.g. orders per region), and any control total the client already trusts. These are engagement-specific and come from `migration_strategy.md`.
 
 PASS: each invariant matches within its defined tolerance (default: exact for counts, ±0.01% for monetary sums to allow for float representation). FAIL: list the invariant, source value, target value, and delta.
-Tenant carve-out: add `WHERE {migration.tenant_predicate}` to each aggregate control-total query on both sides so the invariant is computed over the extracted tenant only. These are the same aggregate control totals as for a full migration — only the row set is narrowed.
+Tenant carve-out: add the object's resolved registry filter to each aggregate control-total query on both sides so the invariant is computed over the extracted tenant only. These are the same aggregate control totals as for a full migration — only the row set is narrowed.
 
 **Check type 8 — Column governance / masking equivalence**
 Row-level equivalency (checks 1, 3, 6, 7) confirms the data moved; it cannot see column-level security metadata. A column masked at source but landing **unprotected** at target produces identical rows — so every data check passes while the security posture silently regresses. This check closes that gap. It is deliberately separate from row-level equivalency: it compares *protection*, not data.

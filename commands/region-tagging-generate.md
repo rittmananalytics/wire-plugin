@@ -114,6 +114,12 @@ A confident-region match wins over shared-row-level; shared-row-level wins over 
 
 Tests mirror this rule (`wire/tests/platform_migration/validate_region_tagging_classification.py`).
 
+### Step 3b: Sibling-naming cross-check (v3.11.3)
+
+Before scoring, catch the items whose ruling is already implied by a sibling group's. Group the classified items by name convention: strip a trailing version or variant token (`__v1`, `_v2`, `_new`, `_old`, `_deprecated`) and any region token, and treat the remainder as the family key. For each family where **some members are already ruled out of scope** — an `exclude` ruling in a prior wave's `region_tags_adjudicated.csv`, or an explicit exclusion recorded in the migration inventory — flag the unruled members with `sibling_exclusion_candidate: <the excluded sibling>` and carry them into the adjudication pile with that note.
+
+This is a scope question, and it belongs here rather than three commands downstream. A model named for an already-excluded family (a re-platform variant, a deprecated parallel build) that is not flagged here falls through classification, through adjudication, and lands in `dbt-carveout-relocate-generate` as an injection failure — where it looks like a SQL-shape problem and is not one. Flagging it is all this step does: the ruling stays human, exactly as every other bucket's does.
+
 ### Step 4: Assign a confidence score
 
 Give each row a confidence score in `[0.0, 1.0]`:
@@ -134,7 +140,17 @@ item_id,item_type,source_audit,bucket,signal,confidence_score
 ```
 One row per in-scope item, classified exactly once. `bucket` is one of `confident-region | shared-row-level | global-deferred`. No include/exclude or removal column — this artifact carries candidates only.
 
-The **adjudication pile** is the subset a human must rule on: every `shared-row-level` row, plus any `confident-region` or `global-deferred` row below a confidence threshold (default `< 0.8`). Carry it forward to the review gate.
+The **adjudication pile** is the subset a human must rule on: every `shared-row-level` row, plus any `confident-region` or `global-deferred` row below a confidence threshold (default `< 0.8`), plus every row Step 3b flagged `sibling_exclusion_candidate`. Carry it forward to the review gate.
+
+### Step 5b: Seed the tenant predicate registry (v3.11.3)
+
+**Output location**: `.wire/releases/$ARGUMENTS/migration/tenant_predicate_registry.csv` (template `TEMPLATES/migration/tenant_predicate_registry.csv`)
+
+Emit one registry row per classified item, following the seed table in `specs/utils/tenant_predicate_registry.md`: `confident-region` seeds `object_carve` (`resolved_by: object_signal`); `shared-row-level` seeds `row_predicate` with `migration.tenant_predicate` as the expression when the item carries the column that predicate filters on, and `unresolved` when it does not; `global-deferred` seeds `unresolved`.
+
+Determining whether an item carries the tenant column: for a dbt model, scan its compiled or source SQL **with SQL comments stripped first** (`/* ... */` and `-- ...` — a column name inside a comment is not a column reference, and treating one as a signal produces a confidently wrong seed); for a table or view, read the column list from the db-object audit.
+
+The seed is a starting position. Nothing here is a decision, exactly as with the buckets: every `medium`/`low` row is already in the adjudication pile, and `region-tagging-review` is where a mechanism becomes a ruling (`resolved_by: adjudication`).
 
 ### Step 6: Write the summary
 
@@ -155,6 +171,7 @@ artifacts:
     generate: complete
     file: migration/region_tagging.md
     data_file: migration/region_tags.csv
+    predicate_registry: migration/tenant_predicate_registry.csv
     generated_date: "{{TODAY}}"
     target_region: "{{REGION}}"
     items_classified: N
@@ -162,6 +179,9 @@ artifacts:
     shared_row_level: N
     global_deferred: N
     adjudication_pile: N
+    sibling_exclusion_candidates: N
+    registry_seeded: N
+    registry_unresolved: N
 ```
 
 ### Step 8: Output summary
@@ -175,6 +195,7 @@ Print: target region, bucket counts, adjudication pile size, and next command:
 ## Output Files
 
 - `.wire/releases/$ARGUMENTS/migration/region_tags.csv`
+- `.wire/releases/$ARGUMENTS/migration/tenant_predicate_registry.csv`
 - `.wire/releases/$ARGUMENTS/migration/region_tagging.md`
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 

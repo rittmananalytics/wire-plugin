@@ -47,8 +47,16 @@ For every model in the ground-truth set, confirm the corresponding `.sql` file e
 PASS: every model has a file. FAIL: list models with no file — a silent drop during relocation.
 
 **Check 2 — Every shared-row-level model actually contains the injected predicate**
-For every model in the ground-truth set with `bucket == shared-row-level` and no `predicate_injection: manual_review_required` flag, read the relocated `.sql` file directly and independently confirm it contains a `WHERE` clause referencing `migration.tenant_predicate` on the outermost `SELECT` — do not read this from the manifest's own `predicate_injection: injected` claim; re-derive it from the file text.
-PASS: predicate confirmed present in the file for every such model. FAIL: list models where the manifest claims injection but the file doesn't show it (or shows it on the wrong query level).
+For every model in the ground-truth set with `bucket == shared-row-level` whose `predicate_injection` is `injected`, read the relocated `.sql` file directly and independently confirm it contains a `WHERE` clause carrying that model's filter **from its registry row** (`migration/tenant_predicate_registry.csv`, not `migration.tenant_predicate` — from v3.11.3 the filter is per model) on the outermost `SELECT`. Do not read this from the manifest's own claim; re-derive it from the file text. Strip SQL comments before re-deriving, for the same reason generate does: a commented-out filter is not a filter.
+PASS: filter confirmed present in the file for every such model. FAIL: list models where the manifest claims injection but the file doesn't show it (or shows it on the wrong query level).
+
+**Check 2b — Inherited models carry no filter, and their resolving node does (v3.11.3)**
+For every model whose `predicate_injection` is `not_applicable_inherited`, confirm two things independently of the manifest: the relocated file contains no injected filter, and the registry row's `resolving_node` names an item whose own registry row carries a mechanism other than `unresolved`. Follow `resolving_node` transitively and confirm the chain terminates — an inheritance chain that loops, or that ends at an unresolved node, means the model is unscoped while claiming to be resolved.
+PASS: every inherited model's chain terminates at a resolved node. FAIL: name the model, the chain walked, and where it broke.
+
+**Check 2c — Registry completeness and internal consistency (v3.11.3)**
+Run the registry-wide checks in `specs/utils/tenant_predicate_registry.md` over `migration/tenant_predicate_registry.csv`: one row per `carve_in` item; expression present exactly for `row_predicate`/`derived_expr`/`account_cascade` and empty for the rest; `inherited` rows resolving to something; no inheritance cycle; `verified_date` accompanied by `provenance`.
+PASS: all five hold. FAIL: list each violation with its row.
 
 **Check 3 — No confident-region model carries an injected predicate**
 For every model in the ground-truth set with `bucket == confident-region`, confirm its relocated `.sql` file does **not** contain a `WHERE` clause referencing `migration.tenant_predicate` that wasn't already present in the source file. A predicate showing up on a `confident-region` model indicates a bucket misclassification upstream (in `region-tagging-generate`/`-review`), not something this command should silently accept.
@@ -57,6 +65,10 @@ PASS: no unexpected predicate found. FAIL: list models with an unexpected predic
 **Check 4 — Manual-review-required list is empty, or every entry is explicitly signed off**
 Read the manifest's manual-review-required list. For each entry, confirm either it no longer applies (the file has since been hand-edited and Check 2 now passes for it) or `dbt-carveout-relocate-review` recorded an explicit sign-off for that specific model (see that spec's Step 3).
 PASS: list is empty, or every entry has a matching sign-off record. FAIL: list any entry with neither.
+
+**Check 4b — Proposed dispositions are not treated as rulings (v3.11.3)**
+For every registry row with `resolved_by: row_distribution_probe` and `confidence: medium` (a Rung 4 proposal), confirm `dbt-carveout-relocate-review` recorded a ruling for it. A proposal is evidence for a decision, not the decision, and a model shipped on one has been scoped by a query nobody approved.
+PASS: every proposal has a ruling, or there are none. FAIL: list each unruled proposal with its evidence query.
 
 **Check 5 — Target project compiles cleanly**
 Run `dbt parse` (or `dbt compile`) against `--target-dbt-project-path` for the ground-truth model set, via the same scratch-directory pattern as generate's Step 4.

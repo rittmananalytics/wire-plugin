@@ -1,0 +1,13 @@
+item_id,item_type,mechanism,expression,tenant_column,resolved_by,resolving_node,provenance,verified_date,confidence,notes
+# Per-item tenant-predicate registry for a tenant_carveout release.
+# Contract, mechanisms, seed rules and read order: specs/utils/tenant_predicate_registry.md
+# mechanism: row_predicate | derived_expr | account_cascade | object_carve | inherited | unresolved
+# resolved_by: global_default | object_signal | adjudication | alias_resolution | row_distribution_probe | upstream_inheritance | manual
+# Delete these comment lines and the examples below when populating for a real release.
+wh_sales__orders_fact,dbt_model,row_predicate,country = 'DE',country,global_default,,region_tagging seed from migration.tenant_predicate,,medium,
+int_sales__orders_globalised,dbt_model,row_predicate,market_code = 'DE',market_code,adjudication,,"adjudicated 2026-08-12: this model names the column market_code, not country",2026-08-12,high,
+bronze_de_events,table,object_carve,,,object_signal,,name-suffix signal _de; no row predicate exists in the Bronze layer,,high,whole-object carve
+stg_ads__account_spend,dbt_model,account_cascade,ad_account_id IN (1234567890, 1234567891),ad_account_id,row_distribution_probe,,"probe 2026-08-12: 2 of 47 accounts map to the tenant; source carries no market column",2026-08-12,high,
+int_dealers__group_dim,dbt_model,derived_expr,LEFT(group_id, 2) = 'DE',group_id,adjudication,,adjudicated 2026-08-12: market is the first two characters of the composite group id,2026-08-12,high,
+wh_sales__orders_daily_agg,dbt_model,inherited,,,upstream_inheritance,wh_sales__orders_fact,graph traversal: entire upstream path scoped at wh_sales__orders_fact,2026-08-12,high,no tenant column of its own
+int_reference__currency_rates,dbt_model,unresolved,,,,,global-deferred at region tagging; no tenant column found,,low,flagged — never compared or copied unfiltered

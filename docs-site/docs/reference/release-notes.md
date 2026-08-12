@@ -9,6 +9,24 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.3 — A tenant predicate per item, and the carve-out review queue shrinks
+
+**Released**: August 2026
+
+Two more `tenant_carveout` gaps closed.
+
+**One tenant predicate is not enough.** `migration.tenant_predicate` is a single string, and a real carve-out needs several mechanisms at the same time. One engagement's needed five on one release: a plain row predicate over most models, a differently-named column on a handful of globalised ones, an object-level schema-prefix carve on the Bronze layer where no row predicate exists at all, an enumerated advertising-account id list where the upstream platform carries no market column, and a derived expression over a composite key. Pinning that variety as prose inside one config field means every consumer re-parses it and reaches a different answer. `migration/tenant_predicate_registry.csv` resolves one item at a time across five mechanisms — `row_predicate`, `derived_expr`, `account_cascade`, `object_carve`, `inherited` — each with its expression, how it was resolved, its provenance and the date it was last verified. `region-tagging-generate` seeds it from the buckets, `region-tagging-review` is where a seed becomes a ruling, and four commands read it: `equivalency-validate` resolves the comparison filter per object, `bulk-copy-migration-generate` per copy step, `dbt-carveout-relocate-generate` injects from it, and `dbt-migration-defer-build` drops what it cannot resolve. `migration.tenant_predicate` stays, with a narrower job: the default value the seed uses, never something a consumer reads directly.
+
+**An unresolved item is flagged, never compared or copied unfiltered.** This is the same rule in all four consumers, and it exists because unfiltered is the one wrong answer that looks like a real finding. A source-side query with no tenant filter returns every tenant's rows, so a comparison against a single-tenant target fails for a reason that has nothing to do with the migration and a reviewer spends the afternoon on a phantom. In a bulk copy the same mistake moves another tenant's data into the tenant's project, which is a residency incident rather than a test failure, and deleting the rows afterwards does not undo it.
+
+**The relocate step now resolves the ambiguity it used to only flag.** `dbt-carveout-relocate-generate` detected shapes it could not safely inject into and emitted `manual_review_required` — correct, but it stopped one step short. On one wave that queue was 128 models, and triaging it by hand showed almost none needed open-ended judgment: it decomposed into named patterns, one repeatable data check, and one graph traversal that accounted for 102 of them. Step 1.8 is now a six-rung ladder: strip SQL comments before scanning (a commented-out column name was reading as a live one), parenthesize the existing `WHERE` body unconditionally (precedence-safe either way, so it removes depth-0 `OR` as a category rather than adding a case to detect), restructure a `WHERE` trapped inside a Jinja conditional so the tenant filter does not inherit the incremental condition, substitute a SELECT-list alias's defining expression where BigQuery cannot resolve the alias, probe the row distribution where live evidence is what decides, and resolve models with no tenant column of their own by inheritance from a covered upstream. Step 1.7 builds the wave's `ref()`/`source()` graph before any per-model work, because the two largest buckets are graph lookups and resolving them one model at a time re-derives the same graph each time. What falls off the end is `manual_review_required`, and on the reference wave that is single digits.
+
+Rung 4's probes are evidence, not decisions: each is written to the registry at medium confidence with its query and result, ruled on at `dbt-carveout-relocate-review`, and checked by `-validate`. A probe result that contradicts an existing object-level ruling is routed back to `region-tagging-review` rather than settled in place. Registry rows carrying a human ruling are read and never overwritten by a re-run. Re-running after an upstream model gains a mechanism resolves its descendants without anyone re-triaging them.
+
+Region tagging also gains a sibling-naming cross-check: a model named for an already-excluded family (a re-platform variant, a deprecated parallel build) is flagged as a scope question at tagging time, instead of falling through classification and adjudication to surface as an injection failure that looks like a SQL-shape problem. `/wire:upgrade` backfills the registry for a carve-out release created before v3.11.3.
+
+---
+
 ## v3.11.2 — Shared specs actually ship, and batches stop stacking
 
 **Released**: August 2026

@@ -148,17 +148,41 @@ A different, common shape: the carve-out is scoped as a **second release, after 
 For each model in the wave, it reads the bucket `region-tagging-review` adjudicated it into (`migration/region_tags_adjudicated.csv`, filtered to `adjudicated_ruling: carve_in`):
 
 - **`confident-region`** (tenant-exclusive, e.g. `stg_orders_north`) — the `.sql` and its companion schema YAML are copied unchanged.
-- **`shared-row-level`** (e.g. `dim_customers`) — copied, then `WHERE tenant_id = 1042` is injected into the model's outermost `SELECT`. Where the injection point isn't clean — a top-level `UNION`, no single top-level `SELECT` — the model is copied unmodified and flagged `manual_review_required` rather than guessed.
+- **`shared-row-level`** (e.g. `dim_customers`) — copied, then the model's own filter from the predicate registry is injected at the point the resolution ladder identifies.
+
+#### The resolution ladder (v3.11.3)
+
+Until v3.11.3 this step injected where the injection point was obviously clean and flagged everything else `manual_review_required` — correct, and one step short. On one engagement's wave that queue was **128 models**, and working through it by hand showed almost none of it needed open-ended judgment. It decomposed into named patterns, one repeatable data check, and one graph traversal accounting for 102 of the 128.
+
+The command now walks a ladder over each shared model, and the order matters more than the individual rungs:
+
+| Rung | Shape | What it does |
+|---|---|---|
+| 0 | Tenant column matched inside a comment | Strips `/* … */` and `-- …` before scanning. A commented-out filter was reading as a live one |
+| 1 | Depth-0 `OR` in the existing `WHERE` | Parenthesizes the existing body unconditionally. Precedence-safe either way, so it removes the category instead of adding a case to detect |
+| 2 | `WHERE` inside `{% if is_incremental() %}` | Pulls the tenant filter out to an unconditional top-level `WHERE`, re-nests the original as an `AND (…)` inside its own `{% if %}`. The tenant filter applies on every run |
+| 3 | Tenant column is a SELECT-list alias | Substitutes the alias's defining expression, since BigQuery cannot resolve a flat query's own alias in its `WHERE` |
+| 4 | Two candidate columns, or a hardcoded market with a per-row signal elsewhere | Probes the row distribution and **proposes** a disposition with the query and result |
+| 5 | Top-level `UNION ALL`, or no tenant column at all | Resolves by inheritance from a covered upstream, using the graph |
+
+**Step 1.7 builds the wave's `ref()`/`source()` graph before any of this**, which is the opposite of the intuitive order. A `UNION ALL` branch cannot be classified, and a model with no tenant column cannot be confirmed to inherit one, without knowing whether its upstream is already resolved. Those two buckets were 119 of the 128 — one traversal, not 119 judgment calls. Triaging them last, which per-model ordering encourages, is the expensive way round.
+
+Rung 4's output is evidence, not a decision. Each proposal lands in the registry at medium confidence with its query and result, and `-review` Step 3b is where the reviewer accepts or rules otherwise. Reject is a real answer: a distribution that is 100% one market today does not prove that column is the tenant boundary. A probe result that contradicts an existing object-level ruling is routed back to `region-tagging-review` rather than settled here.
 
 ```
 /wire:dbt-carveout-relocate-validate 02-tenant-carveout --target-dbt-project-path ../tenant-north-dbt
-✓ Check 1 — every carve_in model has a relocated file
-✓ Check 2 — every shared-row-level model's file independently re-derives the predicate
-✓ Check 3 — no confident-region model carries an unexpected predicate
-✓ Check 5 — target project compiles cleanly
+✓ Check 1  — every carve_in model has a relocated file
+✓ Check 2  — every injected model's file independently re-derives its registry filter
+✓ Check 2b — every inherited model's resolving chain terminates at a resolved node
+✓ Check 2c — registry complete and internally consistent (5 checks)
+✓ Check 3  — no confident-region model carries an unexpected predicate
+✓ Check 4b — every probe proposal has a reviewer ruling
+✓ Check 5  — target project compiles cleanly
 ```
 
-Check 2 re-reads the relocated file's own text rather than trusting the generate run's manifest — the same "re-derive, don't trust the report" posture `dbt-audit-validate` and `migration-batching-validate` use elsewhere. `-review` is the human approval gate: it blocks on any unresolved `manual_review_required` model, and presents a diff sample of the injected predicates so the reviewer confirms them by eye, not just by check result.
+Check 2 re-reads the relocated file's own text rather than trusting the generate run's manifest — the same "re-derive, don't trust the report" posture `dbt-audit-validate` and `migration-batching-validate` use elsewhere, and it strips comments before re-deriving for the same reason rung 0 does. `-review` is the human approval gate: it blocks on any unresolved `manual_review_required` model and any unruled proposal, and presents a diff sample of the injected filters so the reviewer confirms them by eye, not just by check result.
+
+Re-running is cheap and monotonic: once an upstream model gains a mechanism, its descendants resolve by inheritance on the next run without anyone re-triaging them. Registry rows carrying a human ruling are read and never overwritten.
 
 ```
 /wire:dbt-carveout-relocate-review 02-tenant-carveout
@@ -193,7 +217,15 @@ The plan derives its tests from the IAM boundaries in `target_setup_scripts/04_s
 
 ## How equivalency changes
 
-You do not run a different equivalency command. The existing checks gain the tenant predicate on both source and target, so the carve-out validates only the carved-out tenant's rows. Row count, value sampling, freshness, checksum, and aggregate control totals all scope to `tenant_id = 1042`. Schema stays structural and unchanged — there is no row data for a predicate to act on. No new check types were added.
+### One predicate per item, not one for the release (v3.11.3)
+
+Before any of the below, know which filter each object actually needs. `migration.tenant_predicate` is a single string and a real carve-out needs several mechanisms at once — on one engagement, five on the same release: a plain row predicate on most models, a differently-named column on a handful of globalised ones, an object-level schema-prefix carve on the Bronze layer where no row predicate exists at all, an enumerated advertising-account id list where the source platform carries no market column, and a derived expression over a composite key.
+
+`region-tagging-generate` now seeds `migration/tenant_predicate_registry.csv`, one row per classified item, and `region-tagging-review` is where a seeded default becomes a ruling. Each row carries its mechanism (`row_predicate`, `derived_expr`, `account_cascade`, `object_carve`, `inherited`, or `unresolved`), the expression, how it was resolved, its provenance, and the date it was last verified against live data or a human decision.
+
+Four commands read it rather than the global string: `equivalency-validate`, `bulk-copy-migration-generate`, `dbt-carveout-relocate-generate`, and `dbt-migration-defer-build`. All four apply the same rule to an item with no established mechanism: **flag it, never proceed unfiltered.** Unfiltered is worth spelling out because it is the one wrong answer that looks like a real finding. A source-side query with no tenant filter returns every tenant's rows, so a row-count comparison against a single-tenant target fails for a reason that has nothing to do with the migration. In a bulk copy the same mistake moves another tenant's data into the tenant's own project, which is a residency incident rather than a test failure, and deleting the rows afterwards does not undo the crossing.
+
+You do not run a different equivalency command. The existing checks gain each object's resolved filter on both source and target, so the carve-out validates only the carved-out tenant's rows. Row count, value sampling, freshness, checksum, and aggregate control totals all scope to `tenant_id = 1042`. Schema stays structural and unchanged — there is no row data for a predicate to act on. No new check types were added.
 
 From v3.11.1, two additions. **Relocate-mode comparison**: models the relocate step copied from the parent migration (`origin: relocate` in the register) no longer compare against the source platform — that would re-prove the parent's work, not the carve-out's. Their source side is the **parent target project's production relation with the tenant predicate applied** (`migration.parent_target_project`), and their target side is the tenant project's relation, unscoped. Freshly-translated models in the same carve-out keep the standard both-sides-predicated comparison. **Verdict provenance**: every carve-out verdict records `scope: tenant_carveout` and a hash of the exact predicate applied, so a carve-out verdict can never be mistaken for a full-estate one.
 
