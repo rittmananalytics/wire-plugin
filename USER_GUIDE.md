@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.11.5 | **Date**: August 2026
+**Version**: 3.11.6 | **Date**: August 2026
 
 ---
 
@@ -5012,6 +5012,12 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v3.11.6 — The reverse-ETL path closes at both ends (August 2026)
+
+The reverse-ETL commands covered the middle well and stopped at both ends (#193). **Twin authoring**: `/wire:reverse-etl-twin-generate` authors the target-warehouse copy per in-scope sync — additive (the existing sync is untouched and stays the rollback), paused, pointed at the same-type decoy, model carried from the approved runbook, manifest keyed on the normalised sync id. 575 of 643 were written by hand on one engagement, and because nothing generated them, nothing validated them. **The `primaryKey` casing rule now runs**: an upper-case key on a BigQuery-source sync makes it run green and send nothing; the rule sat at error severity in a rule file loaded by `dbt-migration-lint`, which has no reverse-ETL path, so it could not fire — a hand sweep of 621 twins found 22 violations. It is now `reverse-etl-migration-validate` Check 13, and lint reports any rule it cannot evaluate with the command that does. **Destination safety** is a set comparison against every source-warehouse destination on the client default branch, built once, with no destination type named in the check (the first attempt was a fixed list of Google Sheets ids: right for 151 of 776 syncs, silent on 625). **Retirement**: `/wire:reverse-etl-retire-generate` produces the runbook with deterministic eligibility, ordered groups, evidence per sync, and irreversible retirements marked; execution stays a client action. **Blocked syncs**: `migration-status` names every sync waiting on an unmerged upstream table, grouped by the blocking table.
 
 ---
 

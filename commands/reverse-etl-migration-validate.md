@@ -1,9 +1,9 @@
 ---
-description: Validate reverse ETL migration runbook completeness
-argument-hint: <release-folder> [--wave id]
+description: Validate reverse ETL migration runbook completeness, plus the authored twins — primaryKey casing (error) and destination-set safety
+argument-hint: <release-folder> [--wave id] [--twins-only]
 ---
 
-# Validate reverse ETL migration runbook completeness
+# Validate reverse ETL migration runbook completeness, plus the authored twins — primaryKey casing (error) and destination-set safety
 
 ## User Input
 
@@ -33,13 +33,17 @@ argument-hint: <release-folder> [--wave id]
 
 Checks the reverse ETL migration runbook for completeness — the migration topology is recorded, every in-scope sync has migration steps, SQL translations are present for rewrite_model syncs, rebuild plans cover all Customer Studio audiences and Journeys, validation is preview-based against a frozen baseline with syncs disabled, sync-level transformation logic is reviewed, and Lightning schema provisioning is documented. Produces a PASS/FAIL report.
 
+From v3.11.6 it also validates the **authored twins themselves**, not only the plan: the `primaryKey` casing rule (Check 13) and the destination-set safety check (Check 14). Both read the config files on the branch, so they cover twins authored by hand as well as those `reverse-etl-twin-generate` wrote.
+
 ## Flags
 
 - `--wave <id>` — validate the wave-labelled runbook (`reverse_etl_migration_runbook_{wave_id}.md`) against the syncs `migration/migration_batching.csv` assigns to this wave, resolved identically to `reverse-etl-migration-generate`'s Step 1w. Every check below reads "in-scope sync" as this resolved set instead of every `include_in_migration: true` sync.
+- `--twins-only` — run Checks 13 and 14 only, against the twin configs on the branch. For the tight loop after `reverse-etl-twin-generate`, and for a pre-raise gate on a hand-authored batch, without re-validating the whole runbook.
 
 ## Prerequisites
 
-- `migration/reverse_etl_migration_runbook.md` (or `_{wave_id}.md` under `--wave`) exists
+- `migration/reverse_etl_migration_runbook.md` (or `_{wave_id}.md` under `--wave`) exists — not required under `--twins-only`
+- For Checks 13 and 14: the Hightouch config repo is reachable, on the working branch, and its default branch can be read
 
 ## Validation Checks
 
@@ -91,6 +95,32 @@ PASS: Mapping table, scoped credential, and the absent-production-IDs statement 
 The runbook lists any syncs deferred because their source model is not yet built on target ("Deferred — source model not built on target"), and any syncs reclassified from `repoint` to `rewrite_model` by the approach re-verification, with the construct found.
 PASS: Both lists present (empty lists stated explicitly). FAIL: Either omitted.
 
+---
+
+Checks 13 and 14 read the **twin config files on the branch**, not the runbook. Checks 1–12 validate the plan; these two validate what was actually authored, whether by `reverse-etl-twin-generate` or by hand. Hand-authored twins are the population every known defect of this class came from, so the checks deliberately do not care which produced them.
+
+**Check 13 — `primaryKey` casing (`REVERSE_ETL_PRIMARY_KEY_CASE`, error severity)**
+
+For every twin config on the branch whose source is the target warehouse, read its `primaryKey` and fail if it contains **any** upper-case character.
+
+A BigQuery-source Hightouch sync whose `primaryKey` is not lower-case runs successfully and sends **nothing**. There is no error, no partial send, and no alert: the run is green and the destination receives zero rows. That is the whole reason this sits at error severity rather than warn — it is the failure mode indistinguishable from success, and the only signal is a destination quietly going stale.
+
+The rule was written down at error severity in an engagement rule set and **no command evaluated it**. `dbt-migration-lint` loads engagement rules but operates on the dbt project and contains no reverse-ETL path, so it never opened the files the rule describes. A by-hand sweep of 621 authored twins later found **22 with upper-case keys**, including every sync in one open PR; all 22 would have sent nothing. Check 13 is where that rule now actually runs.
+
+PASS: every twin's `primaryKey` is entirely lower-case. FAIL (error severity, blocks the gate): list each offending **file path and key**, with the target model's actual column casing where it can be resolved. Report the count separately from other findings — this one is worth seeing on its own line.
+
+**Check 14 — Destination safety, as a set comparison**
+
+Build, **once per run**, the complete set of destination ids referenced by every source-warehouse sync on the client repo's **default branch**. Then test each twin's destination id against that set. A twin whose destination is in the set fails.
+
+The set is built once and tested against, and per-file lookups are banned, because a per-file check cannot see the whole and the wrong rule follows naturally from inspection. The first attempt at this on one engagement was a fixed list of Google Sheets destination ids — correct for 151 of 776 syncs and silently passing the other 625, which went to Google Ads customer match, DV360, Salesforce, Facebook custom audiences, Slack and Iterable. A destination type is not a safety property; membership of the live-destination set is.
+
+No destination type appears anywhere in this check. If a check ever needs to name a destination type to decide safety, that is the bug this check exists to prevent.
+
+Also report, as **information** rather than a failure: any destination id shared by two or more twins. Fan-in is legitimate in some designs (several models feeding one audience) and a copy-paste mistake in others, and the check cannot tell which — so it names them and leaves the reading to a person.
+
+PASS: no twin's destination appears in the source-warehouse destination set. FAIL (error severity): list each twin, its destination id, and the source-warehouse sync that also writes there. If the default branch cannot be read, the check is `unverified`, never `pass` — an unreadable branch means the set is unknown, and an unknown set cannot clear a twin.
+
 ### Write validation report
 
 Append a `## Validation` section to `migration/reverse_etl_migration_runbook.md` following the standard format.
@@ -101,6 +131,11 @@ artifacts:
   reverse_etl_migration:
     validate: pass | fail
     validated_date: "{{TODAY}}"
+    twins_checked: N                     # Checks 13/14 scope
+    primary_key_case_failures: N         # REVERSE_ETL_PRIMARY_KEY_CASE, error severity
+    production_destination_failures: N   # twin pointing into the live destination set
+    shared_destination_twins: N          # information only, not a failure
+    destination_set_source: default_branch | unverified
     wave_validate:               # set only when run with --wave, keyed by wave id
       B01: pass | fail
 ```

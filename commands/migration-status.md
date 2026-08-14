@@ -24,7 +24,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: The migration's operational status view — per-wave model and sync stages derived live from the manifest, the register, and a fresh read of the client repos, never from committed rollups
-argument-hint: <release-folder> [waves | item <name> | blocking <name> | exceptions] [--json]
+argument-hint: <release-folder> [waves | item <name> | blocking <name> | blocked-syncs | exceptions] [--json]
 ---
 
 # Migration Status
@@ -73,13 +73,20 @@ Assignment is by **highest stage reached** (tests mirror it: `wire/tests/platfor
 
 `authored-on-branch` exists because a main-only count once misread several hundred authored twins as not-started — work that existed, on branches, invisible to a count that only read main. Branch and draft-PR reads are part of the live repo read.
 
+**`blocked` is a sync partition, not a stage (v3.11.6).** A Hightouch model reads a warehouse table; if that table is not migrated and merged, the sync cannot be worked at all. Alongside its exclusive stage, every sync is counted again in the wave's `blocked` partition when any of its upstream warehouse objects has not reached `merged` — the same partition-not-stage treatment `drifted` gets for models, and for the same reason: "where is this sync" and "can this sync be worked" are different questions and collapsing them loses one.
+
+Derive it by joining the sync's `warehouse_objects` (from `audit/reverse_etl_audit.csv`, which resolves them for every model type) to the register's model rows, and taking the lowest stage across them. This works today without sync register rows: the join needs sync→table and table→stage, both of which already exist. Once `reverse_etl_sync` register rows land (wire#191), read the sync side from the register instead and say so in the provenance header; the derivation is otherwise unchanged.
+
+Before this, nobody could answer "which syncs are blocked on an unmerged table" without deriving it by hand each time, so the answer was recomputed, inconsistently, by whoever was asked.
+
 **Card columns** (when the release has a Metabase scope, #184), exclusive per native card: `to-do` (no manifest row applied), `translated`/`carved` (manifest row applied), `eqv-ok` (current `metabase-equivalency-validate` verdict `pass`/`pass_qualified`), `cut-over` (on the production target connection). MBQL cards are counted once as a repoint-only total, not per-card rows. Dashboards report derived state: done when every constituent card is.
 
 ## Subcommands
 
 - **`item <name>`** — one object's full derivation: register row, current verdict (+ window fields where present), delivery stage with the live-repo evidence, wave, drift state, parent linkage for relocated models.
-- **`blocking <name>`** — why an object is not at the next stage: the failing gate, the block reason from batch-raise's eligibility table, the unresolved registry row, or the human gate it is parked on — each with the command that clears it.
-- **`exceptions`** — everything that needs a decision: `manual_review_required` models, unresolved predicate rows, `fail` verdicts, drifted-while-merged models, fired cross-release triggers, ledger-answered asks still listed anywhere.
+- **`blocking <name>`** — why an object is not at the next stage: the failing gate, the block reason from batch-raise's eligibility table, the unresolved registry row, or the human gate it is parked on — each with the command that clears it. For a **sync**, this names each upstream warehouse object that has not reached `merged`, with that object's current stage, so the answer is "blocked on these two tables" rather than "blocked".
+- **`blocked-syncs`** — every blocked sync **by name**, each with its blocking upstream objects and their stages, grouped by the blocking object so one unmerged table shows all the syncs waiting on it. That grouping is the useful direction: it turns a list of blocked syncs into a ranked list of tables worth merging next.
+- **`exceptions`** — everything that needs a decision: `manual_review_required` models, unresolved predicate rows, `fail` verdicts, drifted-while-merged models, fired cross-release triggers, ledger-answered asks still listed anywhere, and any twin whose `primaryKey` failed the casing rule or whose destination is in the live-destination set (`reverse-etl-migration-validate` Checks 13–14) — both are error-severity and both are silent in the running system.
 
 ## `--json`
 
@@ -90,16 +97,16 @@ Emit the same numbers as JSON (waves array + unassigned + provenance block), for
 ### Step 1: Resolve the inputs, live
 
 1. Parse the source dbt project to a manifest (`specs/utils/dbt_manifest_parse.md` — scratch directory, no warehouse connection) and record the engine, parse instant, and snapshot commit.
-2. Read `migration/migration_register.csv` (abort with `[wire] No migration_register.csv — run /wire:migration-register-generate $ARGUMENTS first.` if absent), `migration/migration_batching.csv` for wave membership (models with no wave row become the unassigned count), and `migration/migration_verdict_log.csv` where present.
+2. Read `migration/migration_register.csv` (abort with `[wire] No migration_register.csv — run /wire:migration-register-generate $ARGUMENTS first.` if absent), `migration/migration_batching.csv` for wave membership (models with no wave row become the unassigned count), and `migration/migration_verdict_log.csv` where present. Where the release has reverse-ETL scope, also read `audit/reverse_etl_audit.csv` for each sync's `warehouse_objects` and `migration/reverse_etl_twin_manifest.csv` for authored twins.
 3. **Fetch each `migration.client_repos` repo live** (`git fetch` + `gh pr list` covering open, draft, and merged PRs, plus branch enumeration for sync twins). Record each fetch instant. If a repo is unreachable, say so in the provenance header and mark its derived columns `unverified` — never silently substitute the register's memory of merge state.
 
 ### Step 2: Derive the stages
 
-Assign every model its exclusive stage (the table above; live merge state wins over the register's `delivery_stage`, and any correction is listed), partition drift, derive sync stages (including authored-on-branch from the branch/draft-PR read), and card stages where a Metabase scope exists. Register rows the live read corrects are reported under the table.
+Assign every model its exclusive stage (the table above; live merge state wins over the register's `delivery_stage`, and any correction is listed), partition drift, derive sync stages (including authored-on-branch from the branch/draft-PR read), partition blocked syncs by joining each sync's `warehouse_objects` to its upstream models' stages, and derive card stages where a Metabase scope exists. Register rows the live read corrects are reported under the table.
 
 ### Step 3: Render
 
-Print the provenance header, then the requested subcommand's output (`waves` default; `item` / `blocking` / `exceptions` as asked). Under `--json`, emit the JSON document instead, carrying the provenance fields.
+Print the provenance header, then the requested subcommand's output (`waves` default; `item` / `blocking` / `blocked-syncs` / `exceptions` as asked). Under `--json`, emit the JSON document instead, carrying the provenance fields and the blocked-sync edges (sync → blocking objects), so a chart can show the merge order that unblocks the most syncs.
 
 ## Relationship to `/wire:status`
 

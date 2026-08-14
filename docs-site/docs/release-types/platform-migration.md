@@ -459,13 +459,30 @@ Two structured qualifiers close the gap between "diverged" and "wrong", so a rea
 
 `equivalency-investigate`/`-fix` handle one model; a root-caused defect usually sits in every model sharing the shape. `/wire:equivalency-sweep <release> --pattern <rule-id>` enumerates one pattern across the delivery tree, the client main (live read), and open PRs, then classifies each site: **CORRECT** (no hit, or a harmless hit), **DEFECT-FREE-MODEL** (fixed in the tree now, standing verdict superseded, re-verify owed), **DEFECT-MERGED** (a quantified SELECT probe measures the real impact, then a fix-forward batch via `batch-raise` carries the figures), or **NOT-TRANSLATED-YET** (a note for the translation guide). A sweep that does not end with the pattern encoded as an error-severity lint rule is incomplete: the rule is what blocks the class prospectively.
 
+## The reverse-ETL lifecycle: authoring, safety, retirement (v3.11.6)
+
+The reverse-ETL commands covered the middle of the process — audit, plan, equivalence, PR — and stopped at both ends.
+
+**`/wire:reverse-etl-twin-generate`** authors the target-warehouse twin config per in-scope sync. `reverse-etl-migration-generate` produces the plan; this writes the copies, which used to be hand work (575 of 643 on one engagement, one file at a time). Each twin is a **new** file alongside the existing sync, which is never opened for writing and stays the rollback path until cutover; it is authored **paused**, points at the **same-type decoy** from the plan's mapping, and carries the model translation the runbook already recorded. It never enables a sync — that is the client's decision by design. Where the safe answer is unavailable it declines rather than improvises: a missing or wrong-type decoy, a Customer Studio `rebuild` approach, an unresolved tenant predicate, or a `primaryKey` that will not resolve against the target's columns each produce a recorded `not_authored` reason instead of a guess. The manifest keys on the **normalised sync id** (extension and trailing `-bq`/`-bigquery` marker stripped, lower-cased) — a raw-string join matched 6 of 609 twins to the audit on one engagement where the normalised join matched 575 of 643.
+
+**Two checks on what was actually authored**, in `reverse-etl-migration-validate` (`--twins-only` for the tight loop). Both read the config files on the branch, so they cover hand-authored twins as well:
+
+| Check | Rule |
+|---|---|
+| 13 | `REVERSE_ETL_PRIMARY_KEY_CASE`, **error** severity: any upper-case character in a BigQuery-source sync's `primaryKey`. The sync runs green and sends nothing — the failure mode indistinguishable from success. Names the file and the key |
+| 14 | Destination safety as a **set comparison**: build the complete destination set of every source-warehouse sync on the client default branch once, then test each twin against it. No destination type is named anywhere in the check. An unreadable branch is `unverified`, never `pass`. Shared destinations between twins are reported as information |
+
+Check 13 exists because the rule existed and nothing evaluated it: written at error severity in a rule file `dbt-migration-lint` loads, which has no reverse-ETL path and so never opened a sync config. A later hand sweep of 621 twins found 22 violations. The general fix ships with it — engagement rules declare `applies_to`, and lint reports every rule outside its own scope with the command that does evaluate it, raising `RULE_HAS_NO_EVALUATOR` for one that names none. Check 14 is a set rather than a list because the inspection-derived rule is wrong: a fixed list of Google Sheets destination ids was right for 151 of 776 syncs and silently passed the 625 going to Google Ads customer match, DV360, Salesforce, Facebook custom audiences, Slack and Iterable.
+
+**`/wire:reverse-etl-retire-generate`** closes the other end. After switchover both the old sync and its copy exist, and nothing removed the old one or tracked what was owed retirement. Eligibility is deterministic: classified `retire` in the audit, or superseded by a twin that is `production_verified`, carries a latest verdict of exactly `pass`, and has run cleanly for at least `--min-clean-days` (default 7). `pass_qualified` is not sufficient — a sync's output leaves the warehouse. Clean running comes from the sync-run history, so a replacement that has never run is not clean whatever its verdict. Order is classified-first then longest-clean-first, grouped so all of a destination's syncs retire together or none do, and where the source warehouse is already decommissioned the runbook states per sync that there is no rollback. Execution stays a client action: the command disables and deletes nothing.
+
 ## Sync-level equivalence (v3.11.4)
 
 Model equivalency proves the warehouse tables match; nothing proved a repointed sync writes the same rows to its destination. `/wire:reverse-etl-equivalency-validate` closes that: tier 1 runs the old sync's model query on the source warehouse and the twin's on the target, and compares at the sync grain (row set by primary key plus changed-field hashes over the sync's field mapping, pinned vintage, differing keys named); tier 2 diffs against decoy destinations where a read-back path exists. Verdicts land in the verdict log (`object_type: reverse_etl_sync`) and the register, and sync promotion requires an exact tier-1 `pass` — a sync's output leaves the warehouse, so `pass_qualified` is not sufficient.
 
 ## The migration status view (v3.11.4)
 
-`/wire:migration-status <release> [waves | item <name> | blocking <name> | exceptions] [--json]` is the operational answer to "where are we", derived live from the dbt manifest, the register, and a fresh read of the client repos — never from a committed rollup. The waves table gives per-wave **exclusive** model stages (to-do / translated / eqv-ok / in-PR / merged / prod-verified; drift is a partition, not a stage) and sync stages including **authored-on-branch** (twins on unmerged branches or draft PRs, which a main-only count misreads as not started). Every invocation prints a provenance header — manifest engine and parse time, snapshot commit, repo fetch instants — and merged state always comes from the live repo read. `--json` feeds report and chart generation.
+`/wire:migration-status <release> [waves | item <name> | blocking <name> | blocked-syncs | exceptions] [--json]` is the operational answer to "where are we", derived live from the dbt manifest, the register, and a fresh read of the client repos — never from a committed rollup. The waves table gives per-wave **exclusive** model stages (to-do / translated / eqv-ok / in-PR / merged / prod-verified; drift is a partition, not a stage) and sync stages including **authored-on-branch** (twins on unmerged branches or draft PRs, which a main-only count misreads as not started). Every invocation prints a provenance header — manifest engine and parse time, snapshot commit, repo fetch instants — and merged state always comes from the live repo read. From v3.11.6 syncs also carry a **`blocked`** partition — a sync whose model reads a warehouse object short of `merged` cannot be worked at all — and the `blocked-syncs` subcommand names every blocked sync with its blocking objects, grouped by the blocking object so one unmerged table shows everything waiting on it. `--json` feeds report and chart generation.
 
 ## Client-communication utilities (v3.11.4)
 
@@ -659,7 +676,11 @@ Both build on the `smml-semantic-modeling` and `dbt-to-smml` skills (`wire/skill
 /wire:equivalency-investigate <release> --object <table_or_model>
 /wire:equivalency-fix <release> --object <table_or_model>
 /wire:equivalency-sweep <release> --pattern <rule-id>      # estate-wide defect-class sweep, closes with a lint rule
+/wire:reverse-etl-twin-generate <release> --wave <id>      # author the target-warehouse twins (paused, decoy-pointed)
+/wire:reverse-etl-migration-validate <release> --twins-only # primaryKey casing + destination-set safety
 /wire:reverse-etl-equivalency-validate <release>           # sync-level equivalence (reverse ETL in scope)
+/wire:reverse-etl-retire-generate <release>                # retirement runbook, after twins are production-verified
+/wire:migration-status <release> blocked-syncs             # syncs waiting on an unmerged upstream table
 /wire:migration-status <release> waves                     # live per-wave stage view, any time
 
 # ⚠ SAFETY GATE — point of no return

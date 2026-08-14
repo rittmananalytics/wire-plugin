@@ -178,6 +178,22 @@ These read the pair's **"Deployment-integration / provenance defect patterns"** 
 
 Engagement override files may add rows (e.g. a client-specific UDF that has no target equivalent) or downgrade a severity with a documented reason.
 
+### Rules this command does not evaluate (`applies_to`)
+
+An engagement rule row may carry an `applies_to` field naming the artefact class it describes. It defaults to `dbt_models`, which is what this command lints (plus `dbt_macros` under `--macros`). Anything else — `reverse_etl_config`, `orchestration_config`, `semantic_layer` — describes files this command never opens.
+
+**A rule this command cannot evaluate is reported, never silently skipped.** For each such rule, the report's **Rules not evaluated here** section names the rule id, its severity, its `applies_to`, and the command that does evaluate it. A rule whose `applies_to` is outside this command's scope **and** which names no evaluating command is itself a finding, at the rule's own severity: `RULE_HAS_NO_EVALUATOR`.
+
+The reason this exists as a check rather than a convention: an engagement wrote `primaryKey` casing on BigQuery-source Hightouch syncs as an **error**-severity rule, in the engagement rule file this command loads. This command loads that file, operates on the dbt project, and contains no reverse-ETL path — so it never opened a sync config and the rule could not fire. Nobody noticed, because the rule was written down and people stop checking once they believe a rule exists. A later hand sweep found 22 violations, every one of which would have run green and sent nothing. The lesson generalises past that one rule: a rule set loaded by a command that cannot evaluate part of it needs to say so out loud.
+
+Known evaluators for non-model rule classes:
+
+| `applies_to` | Evaluated by |
+|---|---|
+| `dbt_models` (default) | this command |
+| `dbt_macros` | this command, under `--macros` |
+| `reverse_etl_config` | `reverse-etl-migration-validate` (Checks 13–14) |
+
 ## Workflow
 
 ### Step 0 — Load config overlay, resolve project(s)
@@ -220,6 +236,7 @@ Write `migration/lint/batch_N_lint.md` (and `.json` if `--format json`) — or `
 - **Summary**: counts by severity; models clean vs flagged.
 - **Findings**: grouped by model, ordered by severity. Each finding shows snippet, fix hint, and reference link.
 - **Coverage gaps**: models that could only be partially parsed (heavy Jinja, no compiled artifact), so a clean result there is "not fully checked", not "clean".
+- **Rules not evaluated here**: every loaded rule whose `applies_to` is outside this command's scope, with its severity and the command that does evaluate it. A rule with no named evaluator appears here as a `RULE_HAS_NO_EVALUATOR` finding at its own severity. Omit the section only when there are none — never omit it because the rules are "not this command's problem", which is exactly how an error-severity rule went unevaluated for a whole engagement.
 
 ### Step 4 — Update status
 ```yaml

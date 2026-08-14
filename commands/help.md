@@ -251,9 +251,11 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:reverse-etl-audit-validate` | `<release-folder>` | Validate reverse ETL audit completeness and dependency mapping |
 | `/wire:reverse-etl-audit-review` | `<release-folder>` | Internal RA review of reverse ETL audit |
 | `/wire:reverse-etl-migration-generate` | `<release-folder> [--wave id]` | Generate Hightouch sync migration runbook — repoint, rewrite, rebuild |
-| `/wire:reverse-etl-migration-validate` | `<release-folder> [--wave id]` | Validate reverse ETL migration runbook completeness |
+| `/wire:reverse-etl-migration-validate` | `<release-folder> [--wave id] [--twins-only]` | Validate reverse ETL migration runbook completeness, plus the authored twins — primaryKey casing (error) and destination-set safety |
 | `/wire:reverse-etl-migration-review` | `<release-folder> [--wave id]` | Internal RA review of reverse ETL migration runbook |
 | `/wire:reverse-etl-equivalency-validate` | `<release-folder> [--syncs name1,name2] [--tier N]` | Sync-level equivalence — old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass |
+| `/wire:reverse-etl-twin-generate` | `<release-folder> [--wave id] [--syncs a,b] [--dry-run]` | Author the target-warehouse twin config per in-scope sync — additive, paused, decoy-pointed, model translated, manifest keyed on the normalised sync id |
+| `/wire:reverse-etl-retire-generate` | `<release-folder> [--wave id] [--min-clean-days N]` | Generate the reverse-ETL retirement runbook — superseded and retire-classified syncs, ordered, with the evidence each replacement has run cleanly and the rollback |
 | `/wire:migration-inventory-generate` | `<release-folder>` | Synthesise all audits into unified catalogue with dependency graph |
 | `/wire:migration-inventory-validate` | `<release-folder>` | Validate migration inventory object counts and dependency graph |
 | `/wire:migration-inventory-review` | `<release-folder>` | Internal RA and client scope confirmation |
