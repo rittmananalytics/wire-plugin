@@ -511,12 +511,14 @@ overrides:
 
 The framework ships no path, no layer names, and no rules — divergence is opt-in engagement policy.
 
-## Keeping migrated models in sync — register and drift gate
+## Keeping migrated models in sync — register, drift gate, reverse port
 
 A long migration runs against a moving source. Two commands keep migrated models honest:
 
 - **`/wire:migration-register-generate`** maintains `migration_register.csv` — one row per model: source path, last-migrated commit, BigQuery target, state, and last equivalence result + `T`. `dbt-migration` and `equivalency-validate` keep it current. From v3.11.4 it also bootstraps: `--from region-tagging` seeds a carve-out register from the adjudicated carve-in set, and `--ingest-merge-state` backfills `delivery_stage`/`pr_url` from live `gh` state (which always beats the folder's stale status) and ingests PR-body verdicts as dated, re-verify-owed evidence rows in the verdict log.
 - **`/wire:migration-drift-generate`** is a scheduled gate: it diffs the live source against each model's last-migrated commit (`dbt ls --select state:modified`), classifies new/modified/removed, flags the downstream Hightouch syncs a re-migrated/removed model feeds (with a config diff), and triggers a policy-tag regeneration when a source `meta.masking_policy` changes.
+
+- **`/wire:dbt-migration-reverse-port`** (v3.11.7) sweeps the opposite direction: after a PR merges, it compares the client default branch against the delivery tree per merged model and classifies four ways: `in_sync`, `client_ahead` (ported into the delivery tree), `delivery_ahead` (flagged, never written, no override flag), `diverged` (flagged as a conflict). A register row at `merged` with no file on the client branch is `merge_state_stale` and skipped rather than classified. A port blanks the model's standing equivalence verdict and emits the re-verify as owed, because that verdict was bound to the file version the port replaced. The register gains `last_reverse_ported_commit`; `migration-status exceptions` lists merged models never swept. Different axis from the drift gate: that compares the live source against `last_migrated_commit`, this compares what shipped against what was authored.
 
 Deploy the bundled CI templates (`TEMPLATES/migration/ci/`) to run the tiered sweep on any change to a migrated model and the drift gate on a cron.
 

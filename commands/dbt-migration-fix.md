@@ -43,7 +43,7 @@ This is to `dbt-migration-pre-pr-review` what `equivalency-fix` is to `equivalen
 
 ## Flags
 
-- `--batch N` / `--wave <id>` / `--model <name>` — scope, resolved exactly as `dbt-migration-pre-pr-review` resolves them (Step 0w / Step 1w). `--wave` and `--batch` cannot be combined.
+- `--batch N` / `--wave <id>` / `--model <name>` — scope, resolved exactly as `dbt-migration-pre-pr-review` resolves them (Step 0w / Step 1w); wave-id form and normalisation follow the shared contract in `specs/utils/wave_resolution.md` (normative). `--wave` and `--batch` cannot be combined.
 - `--models <names>` — narrow a `--wave`/`--batch` to a named subset (the register-driven resume subset — see `dbt-migration-generate`).
 - `--base <ref>` — the diff base the findings were taken against; passed through to the review re-runs.
 - `--max-iterations N` — cap on the auto-fix loop (default 5, matching `dbt-migration-generate`'s per-model loop). The loop stops earlier when no auto-fixable finding remains or a pass makes no progress.

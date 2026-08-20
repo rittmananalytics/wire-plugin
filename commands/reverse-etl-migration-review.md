@@ -33,6 +33,9 @@ argument-hint: <release-folder> [--wave id]
 
 Internal RA review of the reverse ETL migration runbook before execution. Confirms SQL translations are correct, rebuild plans are feasible, the decoy destination mapping is sound, and the PR-gated cutover sequence (two client-merged PRs) is agreed.
 
+
+The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_etl_approach.md` (normative): `repoint`, `rewrite_model`, `rebuild`, `decommission`. There is no `retire` value.
+
 ## Flags
 
 - `--wave <id>` — review the wave-labelled runbook (`reverse_etl_migration_runbook_{wave_id}.md`) instead of the unscoped one. Required once more than one wave's runbook exists.

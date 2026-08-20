@@ -72,7 +72,7 @@ This command authors the twins. It is deliberately narrow: it writes new config 
 
 ## Flags
 
-- `--wave <id>` — restrict to the syncs `migration/migration_batching.csv` assigns to this wave, resolved identically to `reverse-etl-migration-generate`'s Step 1w. Wave-labelled manifest (`migration/reverse_etl_twin_manifest_{wave_id}.csv`).
+- `--wave <id>` — restrict to the syncs `migration/migration_batching.csv` assigns to this wave, resolved identically to `reverse-etl-migration-generate`'s Step 1w. Wave-id form and normalisation follow the shared contract in `specs/utils/wave_resolution.md` (normative). Wave-labelled manifest (`migration/reverse_etl_twin_manifest_{wave_id}.csv`).
 - `--syncs a,b` — author only the named syncs (original sync ids, normalised per Step 0). Mutually exclusive with `--wave`; abort if both are supplied: `[wire] --wave and --syncs cannot be combined. Pick one.`
 - `--dry-run` — print the per-sync plan (source file, twin path, decoy id, approach, translated-model summary) and write nothing.
 - No flag — every sync the plan carries with `include_in_migration: true` that is not already twinned.
@@ -93,7 +93,7 @@ Every artifact in the reverse-ETL path keys on the **normalised original sync id
 2. Strip a trailing target-warehouse marker: `-bq`, `_bq`, `-bigquery`, `_bigquery` (case-insensitive).
 3. Lower-case the result.
 
-A raw-string join between authored twins and the audit matched 6 of 609 on one engagement; the normalised join matched 575 of 643, with the residual explained (syncs classified `retire` never get a twin). Record both the original id and the twin id in the manifest so no consumer has to re-derive the rule, and so the join to the register works unchanged once sync register rows exist (wire#191).
+A raw-string join between authored twins and the audit matched 6 of 609 on one engagement; the normalised join matched 575 of 643, with the residual explained (syncs classified `decommission` never get a twin). Record both the original id and the twin id in the manifest so no consumer has to re-derive the rule, and so the join to the register works unchanged once sync register rows exist (wire#191).
 
 ## Workflow
 
@@ -101,7 +101,7 @@ A raw-string join between authored twins and the audit matched 6 of 609 on one e
 
 Resolve the sync set per **Flags**. Read any existing manifest and skip syncs already twinned unless their source config has changed since (compare the recorded source-file hash). Print the resolved list — sync id, approach, twin path, decoy id — before writing anything.
 
-A sync whose `migration_approach` is `retire` is **not twinned**: print it as skipped (`[wire] <sync>: approach retire — no twin authored.`) and carry it to `reverse-etl-retire-generate`. Twinning a sync that is going away is work with a negative return.
+Route every sync by its `migration_approach`, per the closed vocabulary in `specs/utils/reverse_etl_approach.md`. A sync whose approach is **`decommission`** is **not twinned**: print it as skipped (`[wire] <sync>: approach decommission — no twin authored.`) and carry it to `reverse-etl-retire-generate`, which lists it on the classified-retirement ground. Twinning a sync that is being switched off is work with a negative return, and on one release that would have been 98 of them. An approach outside the closed set is an error naming the value and the sync, never a fall-through to authoring.
 
 ### Step 2: Author one twin per sync
 

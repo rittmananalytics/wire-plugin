@@ -36,7 +36,7 @@ Internal RA review of a translated dbt batch. The reviewer confirms translation 
 ## Flags
 
 - `--batch N` — review topological batch N only (the `dbt_audit.batch_number` scheme — `batch_N_summary.md`)
-- `--wave <id>` — review execution wave `<id>` only (the `migration_batching.csv` scheme — `batch_{wave_id}_summary.md`, since `dbt-migration-generate` Step 1w substitutes the wave id directly into the same `batch_{N}` filename template). Accepts zero-padded (`B01`) or bare (`1`) forms, normalised identically to `dbt-migration-generate`'s `--wave`. `--batch` and `--wave` read different numbering schemes and cannot be combined — abort if both are supplied: `[wire] --batch and --wave read different numbering schemes and cannot be combined. Pick one.`
+- `--wave <id>` — review execution wave `<id>` only (the `migration_batching.csv` scheme — `batch_{wave_id}_summary.md`, since `dbt-migration-generate` Step 1w substitutes the wave id directly into the same `batch_{N}` filename template). Accepts zero-padded (`B01`) or bare (`1`) forms, normalised identically to `dbt-migration-generate`'s `--wave`. Wave-id form and normalisation are the shared contract in `specs/utils/wave_resolution.md` (normative; accepts `2`, `B02`, `b2`, or the `W02` display form). `--batch` and `--wave` read different numbering schemes and cannot be combined — abort if both are supplied: `[wire] --batch and --wave read different numbering schemes and cannot be combined. Pick one.`
 
 ## Workflow
 

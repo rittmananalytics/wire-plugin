@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.11.6 | **Date**: August 2026
+**Version**: 3.11.7 | **Date**: August 2026
 
 ---
 
@@ -1752,6 +1752,7 @@ The Platform Migration release type (`release_type: platform_migration`) covers 
 | `equivalency_validation` | `/wire:equivalency-*` | No (loop) | Iterative row-count, schema, value, freshness comparison |
 | `migration_register` | `/wire:migration-register-*` | No | Per-model state store — source commit, BigQuery target, state, last equivalence result; maintained incrementally by other migration commands |
 | `migration_drift` | `/wire:migration-drift-*` | No | Scheduled gate — diffs the live source against each model's last-migrated commit, flags downstream Hightouch syncs and masking-policy changes |
+| `dbt_migration_reverse_port` | `/wire:dbt-migration-reverse-port` | No | Post-merge sweep: carries changes made to a model in the client's repo back into the delivery tree, and never overwrites unraised local work |
 | `cutover` | `/wire:cutover-*` | **Yes** | Go-live runbook — point of no return |
 | `migration_report` | `/wire:migration-report-*` | No | Post-migration record |
 
@@ -2200,6 +2201,10 @@ A long migration runs against a moving source — models get added, edited, and 
 
 **`/wire:migration-drift-generate`** is the scheduled gate. It diffs the live source dbt repo against each migrated model's `last_migrated_commit` (`dbt ls --select state:modified`, no warehouse connection needed — falls back to a `git diff`-based approximation if no dbt binary is available), classifies each model new / modified / removed, updates register state accordingly, and surfaces blast radius: which downstream Hightouch syncs a drifted model feeds (via `lineage-generate`'s `model_sync_map.json`), and whether a source `meta.masking_policy` change needs the policy tags regenerated. It's meant to run on a schedule and as a CI gate — drift gets caught the day it happens, not during a cutover scramble.
 
+**`/wire:dbt-migration-reverse-port`** closes the other direction. Once a model's PR merges, the version on the client's default branch can differ from the delivery tree's copy: a CI fix applied in the PR, a reviewer's change, a conflict resolved at merge time. Nothing carried that back, so the delivery tree that the next wave translates against stops being the authored truth. On one release 86 of 94 models had drifted this way, because the sweep existed only as a habit in a process document. This is a different axis from the drift gate: that one asks whether the source we translated has changed underneath us, this one asks whether what we shipped changed after we shipped it. Both can be true at once.
+
+Each merged model is classified four ways against a common ancestor: `in_sync` (nothing to do), `client_ahead` (the client's version is copied into the delivery tree), `delivery_ahead` (flagged, never written), and `diverged` (flagged as a conflict for a person). There is no override flag on `delivery_ahead`: the drift is a stale copy of something that also exists in the client repo, while an unraised local edit exists nowhere else. A register row at `merged` whose file is absent from the client repo is reported as `merge_state_stale` and skipped, not classified. A port supersedes the model's standing equivalence verdict, since that verdict was bound to the file version the port replaced, so re-verification is emitted as owed. The register gains `last_reverse_ported_commit`, and `migration-status exceptions` lists merged models that have never been swept.
+
 Two bundled CI templates (`TEMPLATES/migration/ci/`) deploy this: `migrated-model-ci.yml` runs a tiered sweep (Tier 1 `dbt-migration-lint`, Tier 3 `equivalency-validate --baseline`) on any pull request touching a migrated model's path (derived from the register's `source_path` column), and `migration-drift-schedule.yml` runs the drift gate on a cron (default weekdays 06:00 UTC — adjust to the engagement's cadence).
 
 ---
@@ -2296,6 +2301,9 @@ Four commands require explicit confirmation before proceeding. Each gate display
 # or run ad hoc any time source changes mid-migration are suspected
 /wire:migration-drift-generate <release>
 /wire:migration-drift-validate <release>
+
+# Post-merge sweep: run after every merge, before the next wave translates
+/wire:dbt-migration-reverse-port <release> [--wave B01 | --models a,b] [--dry-run]
 
 # ⚠ SAFETY GATE — point of no return
 /wire:cutover-generate <release>

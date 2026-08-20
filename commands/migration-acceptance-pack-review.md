@@ -69,7 +69,7 @@ Formal stakeholder sign-off on a completed migration batch. Once all models in a
 ## Flags
 
 - `--batch N` — review the acceptance pack for topological batch N specifically (the `dbt_audit.batch_number` scheme — `acceptance_pack_batch_N.md`).
-- `--wave <id>` — review the acceptance pack for execution wave `<id>` specifically (the `migration_batching.csv` scheme — `acceptance_pack_batch_{wave_id}.md`, since `dbt-migration-generate` Step 1w substitutes the wave id directly into the same `batch_{N}` filename template). Accepts zero-padded (`B01`) or bare (`1`) forms, normalised identically to `dbt-migration-generate`'s `--wave`. `--batch` and `--wave` read different numbering schemes and cannot be combined — abort if both are supplied: `[wire] --batch and --wave read different numbering schemes and cannot be combined. Pick one.`
+- `--wave <id>` — review the acceptance pack for execution wave `<id>` specifically (the `migration_batching.csv` scheme — `acceptance_pack_batch_{wave_id}.md`, since `dbt-migration-generate` Step 1w substitutes the wave id directly into the same `batch_{N}` filename template). Accepts zero-padded (`B01`) or bare (`1`) forms, normalised identically to `dbt-migration-generate`'s `--wave`. Wave-id form and normalisation are the shared contract in `specs/utils/wave_resolution.md` (normative; accepts `2`, `B02`, `b2`, or the `W02` display form). `--batch` and `--wave` read different numbering schemes and cannot be combined — abort if both are supplied: `[wire] --batch and --wave read different numbering schemes and cannot be combined. Pick one.`
 
 ## Workflow
 

@@ -32,6 +32,9 @@ description: Internal RA review of reverse ETL audit
 
 Internal RA review of the reverse ETL audit before it feeds into the migration inventory. The reviewer confirms sync coverage, agrees on decommission decisions, validates that warehouse dependency mapping is complete, and flags any syncs that need deeper investigation before the migration strategy is drafted — particularly any Customer Studio audiences or Journeys that require rebuild.
 
+
+The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_etl_approach.md` (normative): `repoint`, `rewrite_model`, `rebuild`, `decommission`. There is no `retire` value.
+
 ## Prerequisites
 
 - `audit/reverse_etl_audit.md` exists with `validate: pass`

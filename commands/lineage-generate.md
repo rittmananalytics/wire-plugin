@@ -41,6 +41,9 @@ Produces a self-contained interactive HTML visualisation of the full data lineag
 
 The output is a single HTML file with no external dependencies beyond CDN-loaded vis.js and Font Awesome. It can be opened in a browser, shared with stakeholders, or committed to the project repo.
 
+
+The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_etl_approach.md` (normative): `repoint`, `rewrite_model`, `rebuild`, `decommission`. There is no `retire` value.
+
 ## Prerequisites
 
 - `migration_inventory: review: approved` — the migration inventory must be approved first; lineage enriches nodes with the complexity and batch data it produces

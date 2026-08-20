@@ -102,6 +102,12 @@ Row volume estimates are needed for cutover sequencing. Obtain these from the cl
 (Hightouch UI → sync run history) and add to the audit before migration inventory is drafted.
 ```
 
+**Check 9 — `migration_approach` is inside the closed vocabulary (v3.11.7)**
+Every row's `migration_approach` is one of exactly `repoint`, `rewrite_model`, `rebuild`, `decommission` (`specs/utils/reverse_etl_approach.md`). No blanks, no synonyms, no fifth value.
+PASS: every row inside the set. FAIL: list each offending sync id with the value found, and the closed set.
+
+This is a producer-side check because the vocabulary has already drifted once on the consumer side, silently. Two commands shipped keying on `retire`, a value this audit never writes, so on a release with 98 `decommission` syncs one command would have authored 98 unnecessary twins and the other would have listed none of them for retirement. Neither errored. Enforcing the set only in the consumers means each consumer discovers the drift independently, which is how one token became four commands' worth of the same bug. It is enforced here, where the value is written.
+
 ### Step 3: Write validation report
 
 Append a `## Validation` section to `audit/reverse_etl_audit.md`:

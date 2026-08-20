@@ -31,7 +31,7 @@ argument-hint: <release-folder> [--wave id]
 
 ## Flags
 
-- `--wave <id>` — validate only the connectors `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `ingestion-migration-generate`'s Step 1w. Every check below reads "in scope" as this resolved connector set instead of every `include_in_migration: true` connector.
+- `--wave <id>` — validate only the connectors `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `ingestion-migration-generate`'s Step 1w. Wave-id form and normalisation follow the shared contract in `specs/utils/wave_resolution.md` (normative). Every check below reads "in scope" as this resolved connector set instead of every `include_in_migration: true` connector.
 
 ## Validation Checks
 

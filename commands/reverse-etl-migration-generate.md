@@ -73,6 +73,9 @@ Generates a step-by-step runbook for migrating every in-scope Hightouch sync fro
 
 Parallel-workspace and in-place API re-point remain documented as alternatives, no longer the default — see Step 2.
 
+
+The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_etl_approach.md` (normative): `repoint`, `rewrite_model`, `rebuild`, `decommission`. There is no `retire` value.
+
 ## Prerequisites
 
 - `target_setup review: approved` — target warehouse schemas and objects exist
@@ -83,7 +86,7 @@ Parallel-workspace and in-place API re-point remain documented as alternatives, 
 
 ## Flags
 
-- `--wave <id>` — restrict this run to the syncs `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `dbt-migration-generate`'s Step 1w: normalise the wave id, load `migration_batching.csv` (abort if missing), filter to rows where `batch_id` matches **and** `object_type == "reverse_etl_sync"`, then cross-reference each matched `object_id` against `reverse_etl_audit.md`'s sync identifiers for the full per-sync detail. Print the mandatory resolved-sync preview before proceeding. If rows match the wave but none are `reverse_etl_sync` rows, print `[wire] Wave <id> has no reverse-ETL sync objects — nothing to migrate for this command.` and stop cleanly.
+- `--wave <id>` — restrict this run to the syncs `migration/migration_batching.csv` assigns to this wave. Resolution is identical to `dbt-migration-generate`'s Step 1w: normalise the wave id, load `migration_batching. Wave-id form and normalisation follow the shared contract in `specs/utils/wave_resolution.md` (normative).csv` (abort if missing), filter to rows where `batch_id` matches **and** `object_type == "reverse_etl_sync"`, then cross-reference each matched `object_id` against `reverse_etl_audit.md`'s sync identifiers for the full per-sync detail. Print the mandatory resolved-sync preview before proceeding. If rows match the wave but none are `reverse_etl_sync` rows, print `[wire] Wave <id> has no reverse-ETL sync objects — nothing to migrate for this command.` and stop cleanly.
 - No flag — process every sync with `include_in_migration: true` (today's behaviour, unchanged).
 
 When `--wave` is supplied, the runbook and decoy-mapping outputs are wave-labelled (`migration/reverse_etl_migration_runbook_{wave_id}.md`, `migration/reverse_etl_decoy_mapping_{wave_id}.csv`), and each wave gets its own PR sequence (Step 8) — a wave's target-warehouse syncs are additive alongside any prior wave's, exactly as a wave's dbt models are additive alongside prior waves in the same GitHub-Sync repo.

@@ -31,7 +31,7 @@ argument-hint: <release-folder> [--wave id]
 
 ## Flags
 
-- `--wave <id>` — validate the wave-labelled runbook (`orchestration_migration_runbook_{wave_id}.md`) against the jobs `migration/migration_batching.csv` assigns to this wave, resolved identically to `orchestration-migration-generate`'s Step 1w. Every check below reads "in scope" as this resolved job set instead of every `recreate`/`translate` job.
+- `--wave <id>` — validate the wave-labelled runbook (`orchestration_migration_runbook_{wave_id}.md`) against the jobs `migration/migration_batching.csv` assigns to this wave, resolved identically to `orchestration-migration-generate`'s Step 1w. Wave-id form and normalisation follow the shared contract in `specs/utils/wave_resolution.md` (normative). Every check below reads "in scope" as this resolved job set instead of every `recreate`/`translate` job.
 
 ## Validation Checks
 

@@ -48,6 +48,12 @@ Rebuild the batch-level dependency graph from the CSV's `depends_on_batches` col
 PASS: acyclic.
 FAIL: list the cycle (the sequence of batch_ids).
 
+**Check 2b — `batch_id` token form (v3.11.7)**
+Every row's `batch_id` matches the canonical form in `specs/utils/wave_resolution.md`: zero-padded upper-case `B` plus digits (`B01`, `B02`, … `B10`), or the reserved `NO-DEP`. Nothing else.
+PASS: every row canonical. FAIL: list each offending row with the value found and the expected form.
+
+This check exists because the form was documented here and in 18 consuming specs, agreed on by all of them, and then a produced CSV carried `b1..b10` anyway (wire#192). Every `--wave` command downstream aborted with "no rows found" for a wave that existed, and a lane agent was blocked. The consumers now normalise case- and pad-insensitively as defence in depth, but the file is still wrong and this is the gate that says so. A validation that only checks what `batch_id` *means* (coverage, cycles, cross-batch edges) and never what it *is* leaves the cheapest failure to be found by the most expensive reader.
+
 **Check 3 — Every real cross-batch graph edge is declared**
 Independently rebuild the object-level dependency graph from `migration_inventory.md`'s adjacency list plus `dbt_audit.csv`'s manifest-derived model dependencies. Do **not** read `migration_batching.md`'s own DAG as ground truth. For every graph edge whose two endpoints land in different batches (per the CSV's `batch_id` assignments), confirm the dependency direction is represented in `depends_on_batches` for the dependent batch. This is the check that directly answers "does this batch plan actually hold against the real dependencies."
 

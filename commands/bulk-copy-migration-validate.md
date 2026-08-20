@@ -31,7 +31,7 @@ argument-hint: <release-folder> [--wave id]
 
 ## Flags
 
-- `--wave <id>` — validate the wave-labelled runbook (`bulk_copy_migration_runbook_{wave_id}.md`) against the tables `migration/migration_batching.csv` assigns to this wave, resolved identically to `bulk-copy-migration-generate`'s Step 1w. Every check below reads "in-scope table" as this resolved set instead of every landed table for `include_in_migration: true` connectors.
+- `--wave <id>` — validate the wave-labelled runbook (`bulk_copy_migration_runbook_{wave_id}.md`) against the tables `migration/migration_batching.csv` assigns to this wave, resolved identically to `bulk-copy-migration-generate`'s Step 1w. Wave-id form and normalisation follow the shared contract in `specs/utils/wave_resolution.md` (normative). Every check below reads "in-scope table" as this resolved set instead of every landed table for `include_in_migration: true` connectors.
 - `--snapshots` — validate the snapshots-labelled runbook (`bulk_copy_migration_runbook_snapshots.md`) produced by `bulk-copy-migration-generate --snapshots`. Only the snapshot-history-copy checks apply: run **Check 9** over the resolved `copy_and_continue` snapshot set and skip the raw-table checks (Checks 1–2, 4). This is the retrofit companion for a full-migration snapshot-history copy. Standalone scope — abort if combined with `--wave`.
 
 ## Validation Checks

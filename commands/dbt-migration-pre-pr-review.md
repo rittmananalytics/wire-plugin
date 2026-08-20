@@ -49,7 +49,7 @@ This is the last gate before the diff leaves for the client. It re-reads the oth
 ## Flags
 
 - `--batch N` — review topological batch N only (`dbt_audit.batch_number`).
-- `--wave <id>` — review execution wave `<id>` (the `migration_batching.csv` scheme). Accepts zero-padded (`B01`) or bare (`1`) forms, normalised identically to `dbt-migration-generate`'s `--wave`. `--batch` and `--wave` read different numbering schemes — abort if both are supplied: `[wire] --batch and --wave read different numbering schemes and cannot be combined. Pick one.`
+- `--wave <id>` — review execution wave `<id>` (the `migration_batching.csv` scheme). Accepts zero-padded (`B01`) or bare (`1`) forms, normalised identically to `dbt-migration-generate`'s `--wave`. Wave-id form and normalisation are the shared contract in `specs/utils/wave_resolution.md` (normative; accepts `2`, `B02`, `b2`, or the `W02` display form). `--batch` and `--wave` read different numbering schemes — abort if both are supplied: `[wire] --batch and --wave read different numbering schemes and cannot be combined. Pick one.`
 - `--model <name>` — review a single translated model.
 - `--base <ref>` — the git ref the translated diff is taken against (default: the branch point / `main`). The review scopes to files changed in the diff, so a re-review after a fix only re-checks what moved.
 - `--severity error|warn|info` — minimum severity to report (default: `info`).

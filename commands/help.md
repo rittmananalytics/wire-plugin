@@ -165,6 +165,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:dbt-migration-review` | `<release-folder> [--batch N ` | Review translated dbt models |
 | `/wire:dbt-migration-defer-build` | `<release-folder> --models <list> [--allow-graph] [--override-budget] [--dry-run]` | Cost-guarded sandbox build: refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors, dry-run cost screen |
 | `/wire:dbt-migration-batch-raise` | `<release-folder> [--wave id ` | Register-driven PR shipping pipeline: derive gate-passing candidates, smoke-build from the client branch, pre-raise comparison, drop-on-defect, raise with evidence-first body |
+| `/wire:dbt-migration-reverse-port` | `<release-folder> [--wave id ` | Carry merged client changes back into the delivery tree — four-way classification per merged model, never clobbering unraised local work |
 | `/wire:orchestration-migration-generate` | `<release-folder> [--wave id]` | Generate orchestration job migration runbook |
 | `/wire:orchestration-migration-validate` | `<release-folder> [--wave id]` | Validate orchestration migration runbook |
 | `/wire:orchestration-migration-review` | `<release-folder> [--wave id]` | Safety-gated approval before activating jobs on target |

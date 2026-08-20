@@ -39,6 +39,9 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: migration_invent
 
 Synthesises all approved audits into a single unified migration inventory. The five core audits (ingestion, db_object, security, dbt, orchestration) are always required. The reverse ETL audit is required when `migration.reverse_etl_tool` is set in `status.md`. The inventory is the canonical scope document — every object that will be migrated, its complexity, its migration approach, and its dependencies. It is the primary input to migration strategy and the reference point for all subsequent generate commands.
 
+
+The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_etl_approach.md` (normative): `repoint`, `rewrite_model`, `rebuild`, `decommission`. There is no `retire` value.
+
 ## Prerequisites
 
 The following five audits must always have `review: approved`:

@@ -45,7 +45,7 @@ This command produces a RUNBOOK. It disables and deletes nothing.
   this runbook sets out. RA does not disable, pause, or delete a sync.
 
   A sync listed here is one whose replacement has already been proven, or
-  one the engagement classified retire outright. Nothing else is listed.
+  one the audit classified decommission. Nothing else is listed.
 ```
 
 If any generated step would disable, delete, or mutate a sync outside a client-merged PR, stop and report the conflict.
@@ -56,19 +56,19 @@ If any generated step would disable, delete, or mutate a sync outside a client-m
 
 ## Purpose
 
-After switchover both the old sync and its twin exist, and nothing removed the old one. On one engagement, 84 of 643 syncs were classified `retire` outright, before counting those superseded by their own twins — and nothing in the command set tracked which were owed retirement or on what evidence. The estate quietly doubles: two syncs per destination, one live and one dormant, with no record of which is which.
+After switchover both the old sync and its twin exist, and nothing removed the old one. On one engagement, 84 of 643 syncs were classified `decommission`, and on its sister release 98 of 726, before counting those superseded by their own twins — and nothing in the command set tracked which were owed retirement or on what evidence. The estate quietly doubles: two syncs per destination, one live and one dormant, with no record of which is which.
 
 This command produces the retirement runbook and the state tracking. Execution stays a client action, in the same PR-gated posture as every other reverse-ETL change.
 
 ## Prerequisites
 
-- `reverse_etl_audit review: approved` — the source of `retire` classifications
+- `reverse_etl_audit review: approved` — the source of `decommission` classifications (`specs/utils/reverse_etl_approach.md`)
 - `migration/reverse_etl_twin_manifest.csv` exists where any sync is being retired **because it was superseded** (a supersession claim needs the twin it names)
 - `migration/migration_verdict_log.csv` exists — the evidence a replacement actually passed
 
 ## Flags
 
-- `--wave <id>` — restrict to the syncs `migration/migration_batching.csv` assigns to this wave, resolved identically to `reverse-etl-migration-generate`'s Step 1w. Wave-labelled runbook.
+- `--wave <id>` — restrict to the syncs `migration/migration_batching.csv` assigns to this wave, resolved identically to `reverse-etl-migration-generate`'s Step 1w. Wave-id form and normalisation follow the shared contract in `specs/utils/wave_resolution.md` (normative). Wave-labelled runbook.
 - `--min-clean-days N` — how long a replacement must have been running cleanly before its predecessor is listed. Default `7`. Record the value used in the runbook; a shorter window is a judgment the client should see stated, not one buried in a flag.
 
 ## Who is eligible (deterministic)
@@ -77,7 +77,7 @@ Tests mirror this table exactly (`wire/tests/platform_migration/validate_reverse
 
 | # | Ground | Condition | Refusal reason when unmet |
 |---|---|---|---|
-| 1 | **Classified retire** | The audit's `migration_approach` is `retire` | — (no replacement is expected; nothing to prove) |
+| 1 | **Classified decommission** | The audit's `migration_approach` is `decommission` (the closed vocabulary in `specs/utils/reverse_etl_approach.md`; there is no `retire` value) | — (no replacement is expected; nothing to prove) |
 | 2 | **Superseded by its twin** | A twin exists in the manifest for this sync id, the twin's `delivery_stage` is `production_verified`, its latest `reverse_etl_sync` verdict is `pass`, and it has been running cleanly for at least `--min-clean-days` | `no_twin` · `twin_not_production_verified` · `no_passing_verdict` · `verdict_not_pass` · `clean_window_too_short` |
 
 **A sync whose replacement has no passing verdict is never listed.** `pass_qualified` is not sufficient here, for the same reason it is not sufficient at `batch-raise`: a reverse-ETL sync's output leaves the warehouse, so the external-exactness rule applies. Retiring the old sync on a qualified verdict removes the rollback path while the qualification is still unexplained.
@@ -88,7 +88,7 @@ Tests mirror this table exactly (`wire/tests/platform_migration/validate_reverse
 
 ### Step 1: Resolve the candidate set
 
-Read the audit for `retire`-classified syncs, and the twin manifest for `authored` twins. Join on the normalised sync id (`reverse-etl-twin-generate`'s Step 0 rule — the same key throughout). Read the verdict log for each twin's latest `object_type: reverse_etl_sync` verdict, and each twin's `delivery_stage` (from the register once wire#191 lands; from the twin manifest and a live repo read until then, and say which in the runbook).
+Read the audit for `decommission`-classified syncs, and the twin manifest for `authored` twins. Join on the normalised sync id (`reverse-etl-twin-generate`'s Step 0 rule — the same key throughout). Read the verdict log for each twin's latest `object_type: reverse_etl_sync` verdict, and each twin's `delivery_stage` (from the register once wire#191 lands; from the twin manifest and a live repo read until then, and say which in the runbook).
 
 Apply the eligibility table. Print the resolved list and, separately, every refused candidate with its reason — the refusals are the more useful half of the output, because each one names the evidence still owed.
 
@@ -96,7 +96,7 @@ Apply the eligibility table. Print the resolved list and, separately, every refu
 
 Order is not arbitrary and not alphabetical:
 
-1. **`retire`-classified syncs first.** They have no replacement to keep watching, so nothing is learned by waiting, and removing them shrinks the set everything else is reasoned about.
+1. **`decommission`-classified syncs first.** They have no replacement to keep watching, so nothing is learned by waiting, and removing them shrinks the set everything else is reasoned about.
 2. **Then superseded syncs, longest-clean first.** The most-proven replacement is the safest predecessor to remove, and going in that order means the earliest steps build confidence for the later ones.
 3. **Group by destination.** All syncs writing to one destination retire together, so no destination is left served by a mix of old and new for longer than one step. A destination whose syncs are not all eligible retires none of them yet — record it as **held** with the blocking sync named.
 
@@ -104,7 +104,7 @@ Order is not arbitrary and not alphabetical:
 
 For each listed sync, the runbook records, in this order: the replacement twin's id, its verdict and verdict date, its `delivery_stage` and the live-repo evidence for it, the clean-run window observed (runs, errors, row-count range), and the destination it serves. A retirement step with no evidence block is not a step; it is a request.
 
-For a `retire`-classified sync, the evidence block instead records the classification, its adjudication note from the audit, and the confirmation that no twin exists — so a reader can tell the two grounds apart at a glance.
+For a `decommission`-classified sync, the evidence block instead records the classification, its adjudication note from the audit, and the confirmation that no twin exists — so a reader can tell the two grounds apart at a glance.
 
 ### Step 4: The rollback
 
@@ -133,7 +133,7 @@ artifacts:
     generated_date: "{{TODAY}}"
     file: migration/reverse_etl_retirement_runbook.md   # or _{wave_id}.md under --wave
     min_clean_days: 7
-    listed_retire_classified: N
+    listed_decommission_classified: N
     listed_superseded: N
     refused: N
     refused_reasons: {no_twin: N, twin_not_production_verified: N, no_passing_verdict: N, verdict_not_pass: N, clean_window_too_short: N}

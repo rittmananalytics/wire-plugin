@@ -9,6 +9,26 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.7 — A shipped token defect, two written contracts, and the post-merge sweep
+
+**Released**: August 2026
+
+Three items, ordered by what bites soonest, so the shipped defect leads (#195).
+
+**A consumer keyed on a token the producer never emits.** Both `reverse-etl-twin-generate` and `reverse-etl-retire-generate` looked for a `migration_approach` value of `retire`. The producer, `reverse-etl-audit-generate`, writes a closed set of `repoint`, `rewrite_model`, `rebuild`, `decommission`, and has never written `retire`. On live releases that meant the twin command would have authored twins for all 182 syncs classified `decommission` (98 on one release, 84 on another), and the retirement command would have listed none of them. Neither command errored, because a consumer looking for a token the producer never emits sees an empty match and carries on: no exception, no warning, a plausible-looking empty result. This is the same defect class as the v3.11.6 rule that could not fire.
+
+The fix is a written contract plus producer-side enforcement. `specs/utils/reverse_etl_approach.md` states the closed set, what each value means, the per-consumer routing table, and that there is no `retire` value. Both commands now key on `decommission`, which is a retirement ground rather than an exclusion from retirement: out of scope for migration, in scope for retirement, listed with no replacement evidence owed. `reverse-etl-audit-validate` Check 9 fails any row outside the closed set, because enforcing only in consumers means each consumer rediscovers the drift independently, one release at a time.
+
+**The wave contract, and a correction to the premise.** The issue reported that the specs disagreed on wave-id form. They did not: `migration-batching/generate.md` documents `batch_id` as zero-padded (`B01`) and every consumer expected that. What happened is that a produced CSV carried `b1` through `b10` and nothing checked the token form, so a documented rule with no gate behind it drifted at the first opportunity. `specs/utils/wave_resolution.md` now records the canonical form (`B0N`, plus the reserved `NO-DEP`), the normalisation table, and the resolution steps. `migration-batching-validate` Check 2b enforces the form at the gate that writes it. Matching stays case- and pad-insensitive on both sides, so a release already holding a non-canonical CSV is not bricked mid-flight while still failing validate. The 18 specs that each restated the rule now reference the contract instead of being the only record of it.
+
+**The post-merge sweep becomes a step with a state.** After a model's PR merges, the version on the client's default branch can differ from the delivery tree's copy: a CI fix applied in the PR, a reviewer's change, a conflict resolved at merge. Nothing carried that back, so the delivery tree that the next wave translates against, and that every later lint and comparison treats as the authored truth, quietly stopped being true. On one release 86 of 94 models had drifted this way, because the sweep existed only as a habit in an engagement process document. `/wire:dbt-migration-reverse-port` makes it a command with a recorded state.
+
+It is a different axis from the drift gate. That gate compares the live source platform against `last_migrated_commit`, asking whether the thing we translated has changed underneath us. This asks whether the thing we shipped changed after we shipped it. Both can be true at once and neither substitutes for the other.
+
+Classification is four-way against a common ancestor: `in_sync` (recorded, nothing written), `client_ahead` (the client's version is copied into the delivery tree), `delivery_ahead` (flagged, never written), `diverged` (flagged as a conflict, both diffs emitted, resolved by a person). `delivery_ahead` has no override flag, deliberately: the drift is a stale copy of something that also exists in the client repo, while an unraised local edit exists nowhere else, so a sweep that overwrote it would destroy more than the drift cost. A register row at `merged` whose file is absent from the client branch is reported as `merge_state_stale` and skipped rather than classified, since that is a register correction and not a port. Nothing is normalised before comparing, not even whitespace: a change the client's formatter made in CI is a real change to the authored file. A port supersedes the model's standing equivalence verdict and emits the re-verify as owed, because the verdict was bound to the file version the port replaced. The register gains `last_reverse_ported_commit`, and `migration-status exceptions` lists both merged models never swept and verdicts a port superseded.
+
+---
+
 ## v3.11.6 — The reverse-ETL path closes at both ends
 
 **Released**: August 2026

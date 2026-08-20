@@ -35,9 +35,12 @@ Checks the reverse ETL migration runbook for completeness — the migration topo
 
 From v3.11.6 it also validates the **authored twins themselves**, not only the plan: the `primaryKey` casing rule (Check 13) and the destination-set safety check (Check 14). Both read the config files on the branch, so they cover twins authored by hand as well as those `reverse-etl-twin-generate` wrote.
 
+
+The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_etl_approach.md` (normative): `repoint`, `rewrite_model`, `rebuild`, `decommission`. There is no `retire` value.
+
 ## Flags
 
-- `--wave <id>` — validate the wave-labelled runbook (`reverse_etl_migration_runbook_{wave_id}.md`) against the syncs `migration/migration_batching.csv` assigns to this wave, resolved identically to `reverse-etl-migration-generate`'s Step 1w. Every check below reads "in-scope sync" as this resolved set instead of every `include_in_migration: true` sync.
+- `--wave <id>` — validate the wave-labelled runbook (`reverse_etl_migration_runbook_{wave_id}.md`) against the syncs `migration/migration_batching.csv` assigns to this wave, resolved identically to `reverse-etl-migration-generate`'s Step 1w. Wave-id form and normalisation follow the shared contract in `specs/utils/wave_resolution.md` (normative). Every check below reads "in-scope sync" as this resolved set instead of every `include_in_migration: true` sync.
 - `--twins-only` — run Checks 13 and 14 only, against the twin configs on the branch. For the tight loop after `reverse-etl-twin-generate`, and for a pre-raise gate on a hand-authored batch, without re-validating the whole runbook.
 
 ## Prerequisites

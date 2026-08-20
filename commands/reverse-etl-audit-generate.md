@@ -41,6 +41,9 @@ Catalogs every active reverse ETL sync in the Hightouch workspace, capturing the
 
 Supports Hightouch as the first reverse ETL tool. Future tools (Census, Polytomic) follow the same output shape but use tool-specific API branches.
 
+
+The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_etl_approach.md` (normative): `repoint`, `rewrite_model`, `rebuild`, `decommission`. There is no `retire` value.
+
 ## Prerequisites
 
 - Release folder with `release_type: platform_migration` in `status.md`
