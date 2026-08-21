@@ -10,7 +10,16 @@ A shared contract, not a command. `migration-batching-generate` writes the token
 
 `migration_batching.csv`'s `batch_id` column carries **zero-padded, upper-case `B` + digits**: `B01`, `B02`, … `B10`, `B11`. Plus one reserved value, `NO-DEP`, for objects with no model consumer (a holding pen for human triage, not a schedulable wave).
 
-Nothing else is a valid `batch_id`. `b1`, `1`, `W01`, `wave-1` are not.
+Two further reserved forms exist, minted only by `migration-batching-generate` in `partition_mode: readiness_waves` (wire#199, the tenant carve-out readiness partition):
+
+- **`B00`**: shipped history. Models this release has already delivered (`delivery_stage: merged` or `production_verified`). Not a schedulable wave; preserved across re-runs so history survives re-partitioning.
+- **`PEN-<NAME>`**: a named holding pen, same principle as `NO-DEP`. `PEN-` followed by upper-case letters and hyphens, starting and ending with a letter. The two pens readiness mode mints are `PEN-UNRESOLVED` (no established carve mechanism) and `PEN-EXCLUSION-PENDING` (adjudicated `defer`/`split`, pending a rescope). Not schedulable waves.
+
+A `batch_id` of `B00` or `PEN-*` in a `domain` or `build_ordered_waves` CSV is a token-form failure (`migration-batching-validate` Check 2b): only readiness mode mints them.
+
+Nothing else is a valid `batch_id`. `b1`, `1`, `W01`, `wave-1`, `pen-unresolved` (lower-case in the file) are not.
+
+Release types may extend this canonical set. Any extension must state its minting artifact here, extend the normalisation table below in the same change, and update the mirror test.
 
 ## Normalisation (what a consumer accepts as input)
 
@@ -21,8 +30,10 @@ A consultant types `--wave` by hand, so the flag is permissive where the file is
 | `2`, `02` | `B02` |
 | `b2`, `B2`, `b02`, `B02` | `B02` |
 | `w2`, `W2`, `W02` | `B02` (the `W` display form the status tooling shows consultants) |
+| `0`, `00`, `b0`, `B00`, `w0` | `B00` (the shipped-history wave; only readiness mode mints it, so on any other release resolution finds no rows and aborts with the standard message) |
 | `NO-DEP`, `no-dep` | `NO-DEP` |
-| `wave-2`, `B 02`, `2a`, anything else | Reject: `[wire] Unrecognised wave id "<input>". Expected a wave number (2), a padded id (B02), or NO-DEP.` |
+| `pen-unresolved`, `PEN-UNRESOLVED` | `PEN-UNRESOLVED` (any well-formed `PEN-<NAME>` normalises to its upper-case form; pens are addressable by `--wave` exactly like `NO-DEP`) |
+| `wave-2`, `B 02`, `2a`, `PEN-` (no name), anything else | Reject: `[wire] Unrecognised wave id "<input>". Expected a wave number (2), a padded id (B02), NO-DEP, or a holding-pen id (PEN-UNRESOLVED).` |
 
 Matching is case- and pad-insensitive **on both sides**. A file carrying `b2` still resolves against `--wave B02`, and a file carrying `B02` still resolves against `--wave 2`. This is defence in depth, not permission for the producer to write a non-canonical file: `migration-batching-validate` still fails such a file, and the tolerant match exists so a release already holding one is not bricked mid-flight.
 

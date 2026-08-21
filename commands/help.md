@@ -310,6 +310,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:metabase-carveout-generate` | `<release-folder> [--collection id] [--dashboard id]` | Tenant carve-out of the Metabase estate — layer decision per card set (sandboxing/warehouse/dashboard-parameter/card-edit), registry-resolved filters, dashcard pruning, manifest review gate |
 | `/wire:metabase-carveout-validate` | `<release-folder>` | Validate the Metabase carve-out — filters re-derived from the registry, no unfiltered card, dashcard-level removals, explicit shared-card decisions |
 | `/wire:metabase-carveout-review` | `<release-folder>` | Human gate for the Metabase carve-out — adjudicate layer decisions, sign off manifest rows, resolve manual-review cards |
+| `/wire:metabase-carveout-transport` | `<release-folder> [--target-instance-url url] [--collection id] [--dashboard id] [--dry-run]` | Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance: id-mapped via a confirmed database mapping, dependency-ordered, idempotent by recorded target id |
 | `/wire:metabase-equivalency-validate` | `<release-folder> [--cards id1,id2] [--dashboard id]` | Card-level equivalence — migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover |
 | `/wire:omni-audit-generate` | `<release-folder>` | Catalog Omni connections, model (topics/views/dimensions/measures), and folders/workbooks/tiles |
 | `/wire:omni-audit-validate` | `<release-folder>` | Validate Omni audit completeness and dependency coverage |
@@ -343,6 +344,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | Command | Arguments | Description |
 |---------|-----------|-------------|
 | `/wire:delegate` | `<release-folder>` | Decompose a release's pending work into typed tasks and dispatch to specialist local subagents |
+| `/wire:status-sync` | `[release-folder]` | Reconcile recorded release state against evidence (git, execution log, disk, sprint plan) and repair the record with confirmation |
 | `/wire:playbook-generate` | `<release-folder>` | Generate a step-by-step BPMN delivery playbook for any Wire release |
 | `/wire:conceptual_model-generate` | `<project-folder>` | Generate conceptual entity model from requirements |
 | `/wire:conceptual_model-validate` | `<project-folder>` | Validate conceptual model completeness and correctness |

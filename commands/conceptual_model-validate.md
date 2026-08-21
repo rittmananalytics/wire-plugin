@@ -82,6 +82,7 @@ Work through each check systematically. For each Critical failure, the overall r
 | Mermaid syntax validity | No unclosed quotes, malformed cardinality markers, or duplicate entity definitions | Critical |
 | PascalCase naming | All entity names are singular PascalCase (e.g. `Student` not `students`, `STUDENT`, or `student_record`) | Major |
 | Entity descriptions | Every entity in Section 1 (Entity Inventory) has a description and at least 2 key business attributes | Major |
+| Reference legibility | Every reference code cited from other artifacts (e.g. FR-n) is expanded at first mention or resolved in the Reference key table — run the `reference_legibility` check per `specs/utils/reference_legibility.md` | Major |
 | Relationship narrative | Section 3 contains at least one explanatory sentence per relationship line in the diagram | Major |
 | Open questions documented | Any relationship or entity that is ambiguous has been listed in Section 5 rather than silently resolved | Major |
 | Out-of-scope section present | If any entities were considered and excluded, Section 4 is populated | Info |
@@ -277,7 +278,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

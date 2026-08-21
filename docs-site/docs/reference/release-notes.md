@@ -9,6 +9,30 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.8 — Eight field-raised closes: status reconciliation, reference legibility, and the carve-out gaps
+
+**Released**: August 2026
+
+Eight issues closed in one release, all raised from live engagements: two cross-cutting conventions from a custom-release build, three defects and three capability gaps from the tenant carve-out series (#191, #199 to #204 companion set).
+
+**Status maintenance decoupled from command runs.** Wire's status tracking updates only when work runs through a command; conversational and agent-assisted delivery, the normal case in `custom` releases, left `status.md`, the execution log, and the sprint plan behind — two stale-status incidents in one engagement's first week, both caught by the consultant rather than the framework. `/wire:status-sync` (#204) is the repair path: it diffs the recorded state against evidence from git, disk, and the log, classifies the drift deterministically (`record_behind`, `record_ahead`, `fields_incomplete`, `last_updated_stale`, `totals_stale`, `history_gap`), and repairs the record only on explicit confirmation. A drift report alone is a valid, side-effect-free outcome; history is append-only; the record is never downgraded on absence of evidence alone.
+
+**Reference legibility.** Wire artifacts mint codes (`FR-1`, `D3`, `PD-2`) and cite them across document boundaries, and nothing required a reader-facing definition anywhere. The convention (#205, `specs/utils/reference_legibility.md`) has two rules: every code is expanded in plain language at first mention, and any document citing codes defined in other artifacts carries a Reference key table (code, meaning, defining-document path). Eight document-chain validate commands run the named `reference_legibility` check at Major severity; a document read in isolation now resolves every code it contains without opening another file.
+
+**The sync-verdict path is reachable.** `reverse-etl-equivalency-validate` expected register rows that `migration-register-generate` could not create and `migration-register-validate` rejected as orphans — 621 compliance checks and 8 tier-1 verdicts on one engagement, none with a row to land on. The register now seeds one `reverse_etl_sync` row per audit row, keyed on the normalised sync id (the raw-string join matched 6 of 609; the normalised join 575 of 643), and validate joins sync rows to the reverse-ETL audit (#191).
+
+**Registry expressions survive commas.** 3.11.x registry writers truncated `expression` values at the first comma — every semi-join and regex predicate in the estate, 18 of 88 wave-1 models, all passing schema checks because the column count still looked right. Writers now quote at the CSV-writer level (RFC 4180, stated once in the registry contract), and every consuming validate blocks on a non-empty expression that fails a superficial well-formedness check: balanced parentheses, closed quotes, no dangling Jinja (#200).
+
+**Physical targets are resolved, never guessed.** The register's `bq_target` was dbt-relative, so post-merge verification guessed physical tables and failed three ways in one run, including a 70,229-row false divergence from a wrong-dataset guess. `bq_target` is now the fully qualified `project.dataset.table` resolved from the manifest's schema + alias; a consumer that cannot resolve a target exactly reports `unresolved_target` instead of comparing, and `/wire:upgrade` backfills legacy registers (#201).
+
+**Readiness-aware batching for staged carve-outs.** For a carve-out staged after a parent migration, neither the domain cut nor build order answers the scheduling question: which models are allowed to ship right now. The third partition mode, `readiness_waves` (#199), assigns waves from the rule's state in the predicate registry, the parent-release delivery state, and per-rule-group client approvals, with strict dependency closure, `B00` preserving shipped history, and named `PEN-*` holding pens — generalising the documented deviation that re-partitioned 1,494 models after the domain cut drifted within days.
+
+**CI parity becomes environment-faithful.** The pre-raise gate re-ran the client's CI commands but in the operator's environment, and operator-env `dbt parse` and CI-env `dbt --warn-error parse` over every project dir are different checks — a raise bounced on exactly that. Each check now runs in a clean environment carrying only the config's variables plus `CI=true`, with the repo's toolchain pins and the config's own iteration scope; a pass with a recorded deviation is `pass_with_env_deltas`, never a bare `pass` (#202).
+
+**Metabase carve-out transport.** All four Metabase command families were written against one instance; a live carve-out's target was a separately-provisioned deployment, and getting a signed-off card there was hand work. `/wire:metabase-carveout-transport` (#203) takes the signed-off manifest as its worklist and creates the objects on the target instance: source strictly read-only, target writes additive-only, database ids mapped through a consultant-confirmed table, idempotent by recorded target id, with cross-instance equivalency via the transport manifest's id map.
+
+---
+
 ## v3.11.7 — A shipped token defect, two written contracts, and the post-merge sweep
 
 **Released**: August 2026

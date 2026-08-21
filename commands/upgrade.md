@@ -200,7 +200,7 @@ If the write fails, surface the error and leave the original file unchanged.
 
 Applies only when `release_type` is a migration type and `migration.scope == tenant_carveout`. Skip silently otherwise.
 
-If `migration/tenant_predicate_registry.csv` is absent and `migration/region_tags.csv` (or `region_tags_adjudicated.csv`, preferred when present) exists, create the registry by applying the seed table in `specs/utils/tenant_predicate_registry.md` to the existing buckets — the same seed `region-tagging-generate` Step 5b would have written. Set `provenance` to `backfilled by /wire:upgrade from region_tags` and leave `verified_date` empty: a backfilled row is a seed, not a verified mechanism.
+If `migration/tenant_predicate_registry.csv` is absent and `migration/region_tags.csv` (or `region_tags_adjudicated.csv`, preferred when present) exists, create the registry by applying the seed table in `specs/utils/tenant_predicate_registry.md` to the existing buckets — the same seed `region-tagging-generate` Step 5b would have written. Set `provenance` to `backfilled by /wire:upgrade from region_tags` and leave `verified_date` empty: a backfilled row is a seed, not a verified mechanism. Write the backfilled rows with a CSV writer under the write contract in `specs/utils/tenant_predicate_registry.md` (comma-bearing expressions double-quoted, internal quotes doubled, #200).
 
 Under `--dry-run`, report the row count that would be created and the resulting `unresolved` count, and write nothing. Never overwrite an existing registry file, and never invent a mechanism for an item the region tags do not cover — an item with no bucket seeds `unresolved`, which is the correct answer and the one that keeps it out of an unfiltered comparison.
 
@@ -215,6 +215,20 @@ Applies only when `release_type` is a migration type and `migration/migration_re
 If the register header lacks any of `parent_release`, `parent_model`, `parent_verdict_ref`, insert the missing columns between `pr_url` and `notes` (matching `TEMPLATES/migration/migration_register.csv`) with every existing row's new cells blank. Blank is the correct backfill: linkage is written by `dbt-carveout-relocate-generate` at relocate time, and inventing it retroactively would fabricate evidence references. For a carve-out release whose relocated rows predate the columns (`origin: relocate` in `notes`, blank `parent_release`), report them so the consultant can backfill from the parent register deliberately: `N relocated row(s) have no parent linkage — re-run /wire:dbt-carveout-relocate-generate for their waves, or backfill parent_release/parent_model by hand from the parent register.`
 
 Under `--dry-run`, report the columns that would be added and the unlinked relocated-row count, and write nothing.
+
+---
+
+### Step 6c: Re-resolve legacy dbt-relative `bq_target` values (#201, migration releases only)
+
+Applies only when `release_type` is a migration type and `migration/migration_register.csv` exists. Skip silently otherwise.
+
+Registers written before #201 carry `bq_target` as a dbt-relative two-segment value (e.g. `de_source_project.orders`); from #201 it is the fully qualified physical relation (`project.dataset.table`), the form `equivalency-validate` Step 1g and `equivalency-post-merge-verify` resolve against. For every `object_type` `model` or `snapshot` row whose `bq_target` is non-blank with exactly two dot-separated segments, re-resolve the physical path from the target-side dbt manifest: parse the project that builds the translated models via `specs/utils/dbt_manifest_parse.md` (the client repo's dbt project where models have merged; else the release's delivery tree under `migration/dbt/` where it parses), look up the row's model by name, and write `<database/project>.<schema>.<alias>` (the model name only when no alias is set, dbt's own fallback).
+
+Never overwrite a three-segment value, and never compose a path from the model name when the manifest has no node for it: leave the legacy value in place and report the row; consumers classify it `unresolved_target` until it is resolved. Rows of `object_type` `metabase_card`/`metabase_dashboard` are exempt (their `bq_target` is a connection + database reference, not a warehouse relation).
+
+Under `--dry-run`, report the counts (rows that would be re-resolved, rows with no manifest node) and write nothing.
+
+Report in the summary: `bq_target backfilled: N rows re-resolved from the manifest (M unresolved: re-run /wire:dbt-migration-generate for those models, or resolve by hand).`
 
 ---
 
@@ -403,7 +417,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

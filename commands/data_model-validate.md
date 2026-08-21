@@ -121,6 +121,7 @@ Run: /wire:data_model-generate <project_id>
 |-------|------|----------|
 | Cross-system joins documented | Section 6 (Cross-System Join Keys) is present and non-empty if multiple sources are joined | Major |
 | Join key types compatible | Left and right join columns have compatible types | Major |
+| Reference legibility | Every reference code cited from other artifacts (e.g. FR-n, D-n, PD-n) is expanded at first mention or resolved in a Reference key table — run the `reference_legibility` check per `specs/utils/reference_legibility.md` | Major |
 
 ### Step 4: Generate Validation Report
 
@@ -336,7 +337,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

@@ -391,6 +391,15 @@ Standard commands work as usual:
 ### Suggested First Step
 
 /wire:[first-custom-artifact]-generate [release_folder]
+
+### Keeping Status Current
+
+Custom releases often do substantial work conversationally, outside the
+generated commands — and only command runs update status.md and the
+execution log automatically. Any work done outside a command run must
+reconcile the record before raising a PR:
+
+   /wire:status-sync [release_folder]
 ```
 
 ---
@@ -513,7 +522,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

@@ -88,7 +88,7 @@ Tests mirror this table exactly (`wire/tests/platform_migration/validate_reverse
 
 ### Step 1: Resolve the candidate set
 
-Read the audit for `decommission`-classified syncs, and the twin manifest for `authored` twins. Join on the normalised sync id (`reverse-etl-twin-generate`'s Step 0 rule — the same key throughout). Read the verdict log for each twin's latest `object_type: reverse_etl_sync` verdict, and each twin's `delivery_stage` (from the register once wire#191 lands; from the twin manifest and a live repo read until then, and say which in the runbook).
+Read the audit for `decommission`-classified syncs, and the twin manifest for `authored` twins. Join on the normalised sync id (`reverse-etl-twin-generate`'s Step 0 rule — the same key throughout). Read the verdict log for each twin's latest `object_type: reverse_etl_sync` verdict, and each twin's `delivery_stage` from the register's `reverse_etl_sync` rows, which `migration-register-generate` seeds from the audit (wire#191); for a register that predates the sync seeding, read it from the twin manifest and a live repo read, and say which in the runbook.
 
 Apply the eligibility table. Print the resolved list and, separately, every refused candidate with its reason — the refusals are the more useful half of the output, because each one names the evidence still owed.
 
@@ -273,7 +273,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

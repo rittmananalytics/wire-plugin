@@ -153,6 +153,8 @@ Update the requirements document with this mapping so the team knows which artif
 
 **Output Location**: `.wire/<project_id>/requirements/requirements_specification.md`
 
+Apply the reference-legibility convention (`specs/utils/reference_legibility.md`): every code minted here (FR-n, NFR-n, D-n) is defined at its minting site — the heading or table row that carries its plain-language name. If the document cites a code defined in another artifact, add a Reference key section in the canonical format from that spec.
+
 **Document Structure**:
 
 ```markdown
@@ -255,7 +257,12 @@ Update the requirements document with this mapping so the team knows which artif
 
 ## 9. Deliverables
 
-[From SOW Section 6]
+[From SOW Section 6. The ID column mints the D-codes: first cell the code, second cell its plain-language name, per specs/utils/reference_legibility.md.]
+
+| ID | Deliverable | Description | Acceptance Criteria |
+|----|------------|-------------|---------------------|
+| D1 | [Deliverable name] | [What it is] | [How acceptance is judged] |
+| D2 | [Deliverable name] | [What it is] | [How acceptance is judged] |
 
 | ID | Deliverable | Description | Acceptance Criteria | Agent Artifacts |
 |----|------------|-------------|---------------------|-----------------|
@@ -303,6 +310,14 @@ The following goals from the SOW are acknowledged but explicitly deferred to a f
 
 ### Appendix B: References
 [Links to SOW, technical docs, etc.]
+
+## Reference key
+
+[Only if this document cites codes defined in other artifacts — see specs/utils/reference_legibility.md. Omit this section when every code used is minted in this document.]
+
+| Code | Meaning | Defined in |
+|------|---------|------------|
+| [code] | [plain-language name from the defining document] | [path relative to the project root] |
 ```
 
 ### Step 6: Update Status
@@ -560,7 +575,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

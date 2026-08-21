@@ -150,6 +150,8 @@ The **adjudication pile** is the subset a human must rule on: every `shared-row-
 
 Emit one registry row per classified item, following the seed table in `specs/utils/tenant_predicate_registry.md`: `confident-region` seeds `object_carve` (`resolved_by: object_signal`); `shared-row-level` seeds `row_predicate` with `migration.tenant_predicate` as the expression when the item carries the column that predicate filters on, and `unresolved` when it does not; `global-deferred` seeds `unresolved`.
 
+Write the rows with a CSV writer under the write contract in `specs/utils/tenant_predicate_registry.md` (a field carrying a comma, quote, or newline is double-quoted, internal quotes doubled): a seeded expression with a comma in it must survive the write intact, and string concatenation truncates it at the first comma while keeping the column count valid (#200).
+
 Determining whether an item carries the tenant column: for a dbt model, scan its compiled or source SQL **with SQL comments stripped first** (`/* ... */` and `-- ...` — a column name inside a comment is not a column reference, and treating one as a signal produces a confidently wrong seed); for a table or view, read the column list from the db-object audit.
 
 The seed is a starting position. Nothing here is a decision, exactly as with the buckets: every `medium`/`low` row is already in the adjudication pile, and `region-tagging-review` is where a mechanism becomes a ruling (`resolved_by: adjudication`).
@@ -320,7 +322,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

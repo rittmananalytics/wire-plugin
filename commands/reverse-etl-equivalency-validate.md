@@ -50,7 +50,7 @@ Like `equivalency-validate`, this is a repeatable loop command, not a generate/v
 
 ### Step 1 — Resolve scope
 
-Every migrated sync pair (old sync on the source warehouse, twin on the target warehouse) from the reverse-ETL audit and migration outputs; `--syncs name1,name2` narrows. Under `migration.scope == tenant_carveout`, each sync's model resolves its filter from the tenant predicate registry exactly as models do — an `unresolved` sync is verdict `fail`, reason `unresolved_predicate`, never compared unfiltered.
+Every migrated sync pair (old sync on the source warehouse, twin on the target warehouse) from the reverse-ETL audit and migration outputs; `--syncs name1,name2` narrows. Under `migration.scope == tenant_carveout`, each sync's model resolves its filter from the tenant predicate registry exactly as models do — an `unresolved` sync is verdict `fail`, reason `unresolved_predicate`, never compared unfiltered, and a sync whose registry expression fails the well-formedness check in `specs/utils/tenant_predicate_registry.md` is verdict `fail`, reason `malformed_expression`, never compared on a truncated filter (#200).
 
 ### Step 2 — Tier 1: model-output comparison at the sync grain (no destination access needed)
 
@@ -67,7 +67,7 @@ Run the twin against the **decoy** destination, export or read back what landed,
 
 ### Step 4 — Verdicts, register, and log
 
-Each sync's verdict appends to `migration/migration_verdict_log.csv` (`object_type: reverse_etl_sync`, same single-writer merge as model lanes, per `specs/migration/equivalency/verdict_schema.md`) and updates the sync's register row where one exists — sync rows carry a **real** `last_equivalence_result` from here on; the status table's `n/a` disappears wherever tier 1 has run.
+Each sync's verdict appends to `migration/migration_verdict_log.csv` (`object_type: reverse_etl_sync`, same single-writer merge as model lanes, per `specs/migration/equivalency/verdict_schema.md`) and updates the sync's register row. `migration-register-generate` seeds one `reverse_etl_sync` row per audit sync, keyed on the normalised sync id (wire#191), so the verdict always has a row to land on. A missing row means the register predates the sync seeding: re-run `/wire:migration-register-generate $ARGUMENTS`, then write the verdict; never skip the register update. Sync rows carry a **real** `last_equivalence_result` from here on; the status table's `n/a` disappears wherever tier 1 has run.
 
 ### Step 5 — Gate integration
 
@@ -203,7 +203,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

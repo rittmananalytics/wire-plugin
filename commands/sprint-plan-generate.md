@@ -79,6 +79,8 @@ Generate the breakdown interactively — for each deliverable, propose epics and
 
 **Output location**: `.wire/releases/$ARGUMENTS/planning/sprint_plan.md`
 
+Apply the reference-legibility convention (`specs/utils/reference_legibility.md`): the sprint plan cites deliverable codes (D1, D2, …) minted in the release brief, so every "Maps to" line pairs the deliverable's plain-language name with its code, and the Reference key section below resolves each cited code to the release brief.
+
 ```markdown
 # Sprint Plan: [Release Name]
 
@@ -111,7 +113,7 @@ Generate the breakdown interactively — for each deliverable, propose epics and
 **Point target**: [X points]
 
 ### Epic 1: [Deliverable name]
-*Maps to: Release Brief D[N]*
+*Maps to: [deliverable plain-language name] (Release Brief D[N])*
 
 | Story | Tasks | Points | Owner | Status |
 |-------|-------|--------|-------|--------|
@@ -141,6 +143,16 @@ Generate the breakdown interactively — for each deliverable, propose epics and
 **Velocity assumption**: [X] points/day × [Y] days = [Z] points capacity
 
 **Buffer**: [X%] — [Y] points held back for unknowns and rework
+
+---
+
+## Reference key
+
+Codes used in this document that are defined in other artifacts:
+
+| Code | Meaning | Defined in |
+|------|---------|------------|
+| D[N] | [deliverable plain-language name] | planning/release_brief.md |
 
 ## Definition of Done
 
@@ -314,7 +326,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

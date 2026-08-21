@@ -75,6 +75,7 @@ Run `/wire:requirements-generate [folder]` first to generate requirements.
 | Stakeholders | Roles and responsibilities defined | Major |
 | Out of Scope | Explicitly documented | Major |
 | Assumptions | Dependencies documented | Major |
+| Reference legibility | Every reference code (FR-n, NFR-n, D-n) is defined at first use or resolved in a Reference key table — run the `reference_legibility` check per `specs/utils/reference_legibility.md` | Major |
 
 **Severity Levels**:
 - **Critical**: Must pass for validation to succeed
@@ -105,6 +106,7 @@ Run `/wire:requirements-generate [folder]` first to generate requirements.
 | Stakeholders | ✅ | All roles defined |
 | Out of Scope | ✅ | Documented |
 | Assumptions | ⚠️ | Only 2 assumptions - consider adding more |
+| Reference legibility | ✅ | reference_legibility: all 14 codes defined at first use or in the Reference key |
 
 ### Issues to Address
 
@@ -284,7 +286,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

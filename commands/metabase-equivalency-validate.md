@@ -57,7 +57,9 @@ Scope: every in-scope card from the migration manifest (and the carve-out manife
 | `full_migration` (or absent) | The card's **source-dialect query** on the **source connection** | The **translated query** on the **target connection** |
 | `tenant_carveout` | The **parent connection's** result with the card's **resolved registry filter** applied (`migration.parent_target_project` connection) | The **tenant connection's** result, unscoped (single-tenant by construction) |
 
-**MBQL cards** compare by executing the same MBQL against both connections — there is no translated SQL to distrust, but the two databases' data still has to match at the card grain. **Native cards** compare the source text against the manifest's proposed/applied text. Under `tenant_carveout`, a card whose registry mechanism is `unresolved` is **verdict `fail`, reason `unresolved_predicate`** — never compared unfiltered (the source side would return every tenant's rows and the comparison would fail for a reason unrelated to the carve).
+**MBQL cards** compare by executing the same MBQL against both connections — there is no translated SQL to distrust, but the two databases' data still has to match at the card grain. **Native cards** compare the source text against the manifest's proposed/applied text. Under `tenant_carveout`, a card whose registry mechanism is `unresolved` is **verdict `fail`, reason `unresolved_predicate`** — never compared unfiltered (the source side would return every tenant's rows and the comparison would fail for a reason unrelated to the carve). A card whose registry expression is non-empty but fails the well-formedness check in `specs/utils/tenant_predicate_registry.md` is likewise **verdict `fail`, reason `malformed_expression`** (#200): a truncated filter applied to the parent side compares a row set nobody ruled on.
+
+**Separately-hosted tenant instance (#203).** When the carve-out transported objects onto their own Metabase deployment (`/wire:metabase-carveout-transport`), the target side executes on the target instance: resolve each card's target copy through the transport manifest's recorded `source_id -> target_id` mapping (`migration/metabase_carveout_transport_manifest.csv`), never by name. A card with no recorded target id is verdict `fail`, reason `not_transported`; it blocks the go-live gate like any other fail.
 
 ### Step 2: Compare at the card grain
 
@@ -205,7 +207,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

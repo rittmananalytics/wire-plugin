@@ -45,7 +45,7 @@ Follow `specs/utils/meeting_context.md` to surface any Fathom recordings touchin
 ### Step 2: Present the batching summary
 
 Display:
-- The partition mode (`domain` or `build_ordered_waves`) — if the SCC fallback fired, explain that the estate is a single dependency SCC, so the plan is build-ordered waves rather than domain batches, and the domain column is a rollup tag not the build order
+- The partition mode (`domain`, `build_ordered_waves`, or `readiness_waves`) — if the SCC fallback fired, explain that the estate is a single dependency SCC, so the plan is build-ordered waves rather than domain batches, and the domain column is a rollup tag not the build order. In readiness mode, explain that waves are readiness bands (shipped / ready / per-approval-group gated / waiting on parent / residue, plus holding pens), that each gated wave unlocks whole when the client approves its rule group (recorded via `region-tagging-review` or a `resolved_by: manual` registry edit, then a re-run), and that `B00` is shipped history, not schedulable work
 - The batch summary table (batch_id, name, domain, object count, effort hours, depends_on_batches, batch-zero prerequisite)
 - The batch-level dependency DAG
 - The parallel-safe groupings (none in build-ordered mode — waves are strictly sequential)
@@ -225,7 +225,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

@@ -52,4 +52,5 @@
 
 - [ ] `status.md` reflects current artifact state
 - [ ] `execution_log.md` has entries for all commands run this session
+- [ ] Work done outside Wire commands reconciled via `/wire:status-sync`
 - [ ] No sensitive data (credentials, PII, client data) committed

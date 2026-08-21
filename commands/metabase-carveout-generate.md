@@ -55,7 +55,7 @@ Scopes the Metabase estate to the extracted tenant (#184): which reports and das
 | **Dashboard parameter** | A dashboard filter mapped per dashcard — card SQL untouched (native cards need a field-filter tag present to accept the mapping) | The need is interactive, not enforced |
 | **Card edit** | Per-card filter injection | Only when none of the above fits the card set |
 
-Under a carve-out staged after the parent migration, the tenant project is single-tenant by construction — cards repointed at the tenant connection see only tenant rows, and the layer decision records that as `warehouse_layer` with no edits. The card-edit path exists for the shared-instance cases (a shared Metabase, a shared warehouse, an interim period before cutover).
+Under a carve-out staged after the parent migration, the tenant project is single-tenant by construction — cards repointed at the tenant connection see only tenant rows, and the layer decision records that as `warehouse_layer` with no edits. The card-edit path exists for the shared-instance cases (a shared Metabase, a shared warehouse, an interim period before cutover). When the tenant runs on its own, separately-hosted Metabase deployment, the layer decision still governs how each card becomes tenant-only; `/wire:metabase-carveout-transport` is what then creates the signed-off objects on that instance (#203).
 
 ## Prerequisites
 
@@ -260,7 +260,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

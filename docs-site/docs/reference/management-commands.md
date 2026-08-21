@@ -55,6 +55,18 @@ With a specific release folder, output is expanded to show every artifact and it
 
 ---
 
+## `/wire:status-sync`
+
+Reconcile a release's recorded state against evidence, then repair the record with your confirmation (v3.11.8, #204). Status tracking updates automatically only when work runs through Wire commands; work done conversationally or agent-assisted — common in `custom` releases — leaves `status.md`, the execution log, and the sprint plan behind. `status-sync` is the repair path: `/wire:status` reports the record as it stands, `status-sync` fixes it when it has drifted.
+
+```
+/wire:status-sync <release-folder>
+```
+
+It diffs the recorded state (`status.md`, `execution_log.md`, the governing `sprint_plan.md`) against evidence from git history, files on disk, and the log itself, classifies the drift deterministically (`record_behind`, `record_ahead`, `fields_incomplete`, `last_updated_stale`, `totals_stale`, `history_gap`), and presents a numbered drift report. Nothing is written without explicit confirmation; declining is side-effect-free. History is append-only (backfilled log rows carry the sync's own timestamp), and the command never downgrades a recorded state on absence of evidence alone — `record_ahead` items are resolved one at a time with you. Run it before raising a PR for any work done outside command runs; the PR checklist includes it.
+
+---
+
 ## `/wire:archive`
 
 Archive a completed or cancelled release. This marks the release as archived in the execution log, writes a final status snapshot, and optionally exports all artifacts to a client-facing package.

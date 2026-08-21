@@ -55,8 +55,8 @@ For every model whose `predicate_injection` is `not_applicable_inherited`, confi
 PASS: every inherited model's chain terminates at a resolved node. FAIL: name the model, the chain walked, and where it broke.
 
 **Check 2c — Registry completeness and internal consistency (v3.11.3)**
-Run the registry-wide checks in `specs/utils/tenant_predicate_registry.md` over `migration/tenant_predicate_registry.csv`: one row per `carve_in` item; expression present exactly for `row_predicate`/`derived_expr`/`account_cascade` and empty for the rest; `inherited` rows resolving to something; no inheritance cycle; `verified_date` accompanied by `provenance`.
-PASS: all five hold. FAIL: list each violation with its row.
+Run the registry-wide checks in `specs/utils/tenant_predicate_registry.md` over `migration/tenant_predicate_registry.csv`: one row per `carve_in` item; expression present exactly for `row_predicate`/`derived_expr`/`account_cascade` and empty for the rest; `inherited` rows resolving to something; no inheritance cycle; `verified_date` accompanied by `provenance`; every non-empty expression well-formed (balanced parentheses, closed quotes, no dangling `{{`, per that spec's well-formedness check, #200).
+PASS: all six hold. FAIL: list each violation with its row. A `malformed_expression` violation blocks like the rest (fail, not warn): a truncated expression parses as a valid row while carrying half a rule.
 
 **Check 3 — No confident-region model carries an injected predicate**
 For every model in the ground-truth set with `bucket == confident-region`, confirm its relocated `.sql` file does **not** contain a `WHERE` clause referencing `migration.tenant_predicate` that wasn't already present in the source file. A predicate showing up on a `confident-region` model indicates a bucket misclassification upstream (in `region-tagging-generate`/`-review`), not something this command should silently accept.
@@ -204,7 +204,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

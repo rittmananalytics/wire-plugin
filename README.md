@@ -1,6 +1,6 @@
 <img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
-# Wire Framework v3.11.7
+# Wire Framework v3.11.8
 
 Wire is a structured delivery system for data platform engagements, built on top of Claude Code and Gemini CLI. It encodes analytics engineering methodology as workflow specifications that the AI reads before generating anything so that output follows consistent patterns, traces back to requirements and can be validated automatically rather than having to be manually eyeballed.
 
@@ -22,10 +22,11 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 
 ## Key Features
 
-- **263 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
+- **299 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
 - **12 release types** matching common engagement shapes: Shape Up discovery, SOP / Canonical discovery (sponsor-facing Findings Playback), full platform builds, pipeline-only, dbt development, dashboard extensions, dashboard-first rapid dev, enablement, platform migration (BigQuery ↔ Snowflake), agentic data stack (governed self-service analytics with eval suite), droughty (schema introspection and base-layer generation from live warehouses), and custom (bespoke deliverables defined from SoW documents)
 - **Two-tier engagement structure** separating long-running client context from individual scoped releases
 - **Generate / validate / review lifecycle** for every artifact: structured generation, automated checks, stakeholder sign-off
+- **Status reconciliation** (`/wire:status-sync`) for work done outside command runs: diffs recorded state against git history, files on disk, and the execution log, then repairs status files, sprint-plan story states, and session history with consultant confirmation
 - **27 ad-hoc development skills** that activate automatically during coding work (dbt, LookML, Dagster, Python, Fivetran, Airbyte, Coupler.io, RudderStack, Segment, Looker, Snowflake, Hightouch, BigQuery, Cloud Run, gcloud) without any explicit invocation, plus **26 Amplitude product-analytics skills** for working with an Amplitude instance
 - **Wire Agents** — 13 specialist subagents (dbt developer, semantic layer developer, pipeline engineer, migration specialist, and 9 others) dispatched automatically on every generate and validate command. `/wire:delegate` computes a full parallel/sequential execution plan across all pending work, with fan-out parallelism for large model sets (layers stay sequential; agents within each layer run in parallel)
 - **Autopilot mode** for autonomous end-to-end delivery
@@ -299,7 +300,7 @@ A VS Code extension (`wire-vscode/`) is in early development. The intention is t
 
 - [Documentation site](https://docs.rittmananalytics.com) — full documentation with search, covering all release types, commands, skills, and MCP servers
 - [User Guide](USER_GUIDE.md) — full operational guide covering all release types, worked examples, Autopilot, and troubleshooting
-- [Command Registry](wire/COMMANDS.md) — command catalog and conventions (run `/wire:help` for the full, current list of all 263 commands)
+- [Command Registry](wire/COMMANDS.md) — command catalog and conventions (run `/wire:help` for the full, current list of all 299 commands)
 - [Changelog](CHANGELOG.md)
 - [Release Notes](RELEASE_NOTES.md)
 - [Framework Source README](wire/README.md) — internals, build process, package structure

@@ -212,6 +212,7 @@ Same artifact lifecycle table, plus a Highlights section with additional context
 - For any artifact whose entry contains a URL-like field, surface it under that artifact's name
 - Include "Blockers:" only if `blockers` in frontmatter is non-empty
 - Include other notable items (e.g., "requirements approved by [stakeholder] on [date]")
+- If the report itself reveals drift — an execution-log row or artifact file newer than the recorded state, or a `last_updated` older than recent activity — add a line suggesting `/wire:status-sync <release-folder>` (the reconciler in `specs/utils/status_sync.md`)
 - Keep to 2-5 bullet points max
 
 ### Step 4: Determine Next Action

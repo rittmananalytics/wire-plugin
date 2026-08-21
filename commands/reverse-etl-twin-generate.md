@@ -93,7 +93,7 @@ Every artifact in the reverse-ETL path keys on the **normalised original sync id
 2. Strip a trailing target-warehouse marker: `-bq`, `_bq`, `-bigquery`, `_bigquery` (case-insensitive).
 3. Lower-case the result.
 
-A raw-string join between authored twins and the audit matched 6 of 609 on one engagement; the normalised join matched 575 of 643, with the residual explained (syncs classified `decommission` never get a twin). Record both the original id and the twin id in the manifest so no consumer has to re-derive the rule, and so the join to the register works unchanged once sync register rows exist (wire#191).
+A raw-string join between authored twins and the audit matched 6 of 609 on one engagement; the normalised join matched 575 of 643, with the residual explained (syncs classified `decommission` never get a twin). Record both the original id and the twin id in the manifest so no consumer has to re-derive the rule, and so the join to the register's `reverse_etl_sync` rows, which `migration-register-generate` seeds on the same key (wire#191), works unchanged.
 
 ## Workflow
 
@@ -135,7 +135,7 @@ production_destination_type,primary_key,primary_key_corrected,
 paused,model_translated,tenant_mechanism,authored_date,state,not_authored_reason
 ```
 
-`sync_id` is the normalised original id from Step 0 — the join key to the audit, and to the register's `reverse_etl_sync` rows once wire#191 lands. `state` is `authored | not_authored`. Every `not_authored` row carries its reason; a blank reason on a `not_authored` row is itself a defect.
+`sync_id` is the normalised original id from Step 0 — the join key to the audit, and to the register's `reverse_etl_sync` rows (wire#191). `state` is `authored | not_authored`. Every `not_authored` row carries its reason; a blank reason on a `not_authored` row is itself a defect.
 
 ### Step 4: Summarise and hand off
 
@@ -289,7 +289,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

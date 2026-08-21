@@ -8,9 +8,9 @@
 
 ## Partition Mode
 
-**Mode**: {{PARTITION_MODE}} (`domain` or `build_ordered_waves`)
+**Mode**: {{PARTITION_MODE}} (`domain`, `build_ordered_waves`, or `readiness_waves`)
 
-[Domain mode: "One batch per domain group; the domain dependency graph is a viable acyclic DAG." Build-ordered mode: state the SCC evidence — the domains form a single strongly-connected component (SCC count / largest-SCC size vs domain count), so no domain grouping can be both acyclic and declare every cross-batch edge. The partition of record is therefore build-ordered waves: a topological sort of the model graph cut into {{WAVE_COUNT}} waves, each depending on the full prefix of earlier waves. The `domain` column is retained on every row for client/milestone rollup, but it is not the build order.]
+[Domain mode: "One batch per domain group; the domain dependency graph is a viable acyclic DAG." Build-ordered mode: state the SCC evidence — the domains form a single strongly-connected component (SCC count / largest-SCC size vs domain count), so no domain grouping can be both acyclic and declare every cross-batch edge. The partition of record is therefore build-ordered waves: a topological sort of the model graph cut into {{WAVE_COUNT}} waves, each depending on the full prefix of earlier waves. The `domain` column is retained on every row for client/milestone rollup, but it is not the build order. Readiness mode: state the selection basis (`migration.scope: tenant_carveout` plus `migration.parent_release`, or the `--partition-mode` override) and that waves are readiness bands: B00 shipped history, ready, one gated wave per approval group, waiting on parent, residue, plus the PEN-UNRESOLVED and PEN-EXCLUSION-PENDING holding pens.]
 
 ## Seed Reconciliation
 
@@ -42,11 +42,27 @@ Batches within a group have zero dependency edges (either direction) between the
 |-------|---------|-------|
 | {{GROUP_ID}} | {{BATCH_IDS}} | {{ZERO_EDGE_CONFIRMATION}} |
 
+## Readiness Bands
+
+*Readiness mode only: omit this section entirely in the other modes.*
+
+| Band | Wave(s) | Models | What unlocks it |
+|------|---------|--------|-----------------|
+| Shipped (history) | B00 | {{COUNT}} | Nothing: already on the client's main. Preserved across re-runs |
+| Ready | {{WAVE_IDS}} | {{COUNT}} | Nothing: rules ruled, parent merged. Split: {{SELF_CONTAINED_COUNT}} approved self-contained, {{RIDER_COUNT}} no-approval riders |
+| Gated: {{GROUP_LABEL}} | {{WAVE_ID}} | {{COUNT}} | Client approval of the rule: `{{RULE_TEXT}}` (record via `region-tagging-review` or a `resolved_by: manual` registry edit, then re-run) |
+| Waiting on parent | {{WAVE_ID}} | {{COUNT}} | Parent-release translations merging on the client's main (evidence: {{LIVE_READ_OR_REGISTER}}) |
+| Residue | {{WAVE_ID}} | {{COUNT}} | Pen resolutions and/or multiple approvals: pen readers and mixed-gate closures |
+| PEN-UNRESOLVED | (pen) | {{COUNT}} | A carve mechanism being established for each item |
+| PEN-EXCLUSION-PENDING | (pen) | {{COUNT}} | A rescope of each `defer`/`split`-ruled item |
+
+[List models with no parent register row (not parent-gated; authored in this release), any prior-B00 rows kept despite a register discrepancy, and any rider chains terminating in an unresolved row (registry defects).]
+
 ### Cutover partition (secondary view)
 
-*Build-ordered mode only — omit this section entirely in domain mode.*
+*Wave modes only (build-ordered and readiness) — omit this section entirely in domain mode.*
 
-Build order (the waves above) and cutover/domain order **diverge** here: the SCC fallback fired precisely because no domain grouping could stay acyclic and declare every cross-batch edge, so the waves are not domain-coherent. This table is the domain-grouped rollup for client communication and milestone planning — it is **not** required to be acyclic or edge-complete, unlike the wave partition; it does not feed `depends_on_batches`, size balancing, or the parallel-safe analysis above.
+Build order (the waves above) and cutover/domain order **diverge** here: in build-ordered mode the SCC fallback fired precisely because no domain grouping could stay acyclic and declare every cross-batch edge; in readiness mode the waves are readiness bands. Either way the waves are not domain-coherent. This table is the domain-grouped rollup for client communication and milestone planning — it is **not** required to be acyclic or edge-complete, unlike the wave partition; it does not feed `depends_on_batches`, size balancing, or the parallel-safe analysis above.
 
 | Domain | Object count | Wave(s) its objects landed in |
 |--------|--------------|-------------------------------|

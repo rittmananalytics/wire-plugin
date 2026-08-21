@@ -24,7 +24,7 @@ When following the workflow specification below, resolve paths as follows:
 
 ---
 description: Partition the migration inventory into independently-schedulable domain batches, checked against the real dependency graph
-argument-hint: <release-folder> [--seed path] [--target-batches N]
+argument-hint: <release-folder> [--seed path] [--target-batches N] [--partition-mode mode]
 ---
 
 ## Auto-Delegation
@@ -43,7 +43,11 @@ Partitions the approved migration inventory into named **domain batches** — in
 
 This replaces the hand-drafted batch spreadsheet. It is re-runnable whenever the inventory or dbt audit changes, specifically so a domain-batch plan cannot silently drift out of sync with the real dependency graph — a hand-drawn plan on a past engagement scheduled batches in parallel that the graph, once known, showed could not build in parallel, and nothing was responsible for catching it.
 
-**Two partition modes.** The default output is one batch per domain group (`partition_mode: domain`). But some estates cross-reference in every direction — the domains form a single strongly-connected component (SCC), and no domain grouping can be both acyclic *and* declare every cross-batch edge (the two conditions `/wire:migration-batching-validate` enforces are mutually exclusive for an SCC). When Step 4b detects that, generate falls back automatically to **build-ordered waves** (`partition_mode: build_ordered_waves`): a topological sort of the model graph, cut into N waves, each depending on the full prefix of earlier waves. That is trivially acyclic and declares every edge, so it validates — and it reproduces from the command instead of a hand-rolled script. The domain tag is kept as a column for client/milestone rollup even when it can't be the build order.
+**Three partition modes.** The default output is one batch per domain group (`partition_mode: domain`). But some estates cross-reference in every direction — the domains form a single strongly-connected component (SCC), and no domain grouping can be both acyclic *and* declare every cross-batch edge (the two conditions `/wire:migration-batching-validate` enforces are mutually exclusive for an SCC). When Step 4b detects that, generate falls back automatically to **build-ordered waves** (`partition_mode: build_ordered_waves`): a topological sort of the model graph, cut into N waves, each depending on the full prefix of earlier waves. That is trivially acyclic and declares every edge, so it validates — and it reproduces from the command instead of a hand-rolled script. The domain tag is kept as a column for client/milestone rollup even when it can't be the build order.
+
+The third mode is **readiness waves** (`partition_mode: readiness_waves`), selected automatically when status.md carries `migration.scope: tenant_carveout` and a non-null `migration.parent_release`. A tenant carve-out staged after a parent migration is not scheduled by domain or by build order alone: the schedule depends on which models are allowed to ship right now, and that is determined by three inputs the other two modes never read: the carve rule's state in `migration/tenant_predicate_registry.csv`, whether the model's parent-release translation is merged on the client's main, and which rule groups the client has approved. A domain cut of such an estate drifts as those states change (on the reference engagement 270 of 1,494 models reclassified within days of the domain cut being built, and the plan was replaced by a hand-run readiness partition under a documented deviation). Step 4d specifies the assignment. Wave-id tokens minted in this mode (`B00` for shipped history, `PEN-<NAME>` holding pens) extend the canonical set in `specs/utils/wave_resolution.md`.
+
+**`--partition-mode <domain|build_ordered_waves|readiness_waves>`** overrides the automatic selection. `readiness_waves` requires `migration.scope: tenant_carveout` and the readiness inputs (abort with the missing input named if they are absent). `build_ordered_waves` skips the Step 4b decision and forces waves, including on a carve-out that would otherwise get readiness mode. `domain` forces the domain cut, but Step 4b's SCC test still runs: if the single-SCC condition holds, abort rather than emit a partition that cannot validate. Without the flag: readiness mode when the carve-out condition above holds; otherwise domain, with the Step 4b fallback.
 
 **Domain batches are not translation batches.** `dbt_audit.csv`'s `batch_number` is a translation batch — a group of ≤20 models sequenced for `/wire:dbt-migration-generate` runs. A domain batch is a business-scoped, multi-layer slice delivered as its own release or sprint. Do not conflate them.
 
@@ -75,7 +79,8 @@ Read `artifacts.migration_batching.reviewed_checksum` from `status.md` before do
 - `.wire/releases/$ARGUMENTS/audit/dbt_audit.csv` — per-model `batch_number`, `enabled`, `platform_macros`, layer/path (domain-grouping hints and the batch-zero dependency)
 - `.wire/releases/$ARGUMENTS/status.md`
 - **Optional seed**: if `status.md` carries a `sow.batch_allocation` path (or a similar hand-drafted batch plan reference), or `--seed <path>` was passed in `$ARGUMENTS`, read the referenced CSV/plan of human-assigned batch names and groupings as a **seed, not ground truth** — it is reconciled against the real graph in Step 3, never accepted or discarded silently. If no seed exists, proceed with pure graph-derived grouping.
-- **Optional `--target-batches N`**: the number of waves to cut the model graph into if the build-ordered fallback fires (Step 4b/4c). Ignored in the default domain mode. If unset, defaults to the candidate domain-group count (Step 3), so wave granularity stays comparable to what the domain partition would have produced.
+- **Optional `--target-batches N`**: the number of waves to cut the model graph into if the build-ordered fallback fires (Step 4b/4c). In readiness mode (Step 4d) it caps the number of sub-waves the ready band is cut into. Ignored in the default domain mode. If unset, defaults to the candidate domain-group count (Step 3), so wave granularity stays comparable to what the domain partition would have produced.
+- **Readiness-mode inputs** (only when `partition_mode: readiness_waves`, Step 4d): `migration/tenant_predicate_registry.csv` (per-item carve-rule state, per `specs/utils/tenant_predicate_registry.md`); `migration/region_tags_adjudicated.csv` (adjudicated rulings: `defer`/`split` rows are exclusion-pending); the parent register at `.wire/releases/<migration.parent_release>/migration/migration_register.csv` (`delivery_stage` per parent translation); this release's own `migration/migration_register.csv` (`delivery_stage` for shipped models); the prior `migration/migration_batching.csv` if one exists (`B00` preservation); and, when reachable, a live merge-state read against the client repo(s) (`migration.client_repos`), which wins over either register's `delivery_stage`, the same rule `migration_status.md` applies. Say in the narrative which source was used.
 
 ## Workflow
 
@@ -99,6 +104,8 @@ Assign every inventory object to exactly one candidate domain group:
 - **No silent default.** A non-dbt inventory object (Fivetran connector, warehouse object, reverse-ETL sync) with no structural grouping signal and no graph edge to any other object must never be forced into a default or nearest domain group just to keep the partition complete. Route it instead to the **`NO-DEP`** bucket — `batch_id: NO-DEP`, `batch_name: "No model dependency — review"` — for human triage at `/wire:migration-batching-review` (decommission, assign once its real consumer surfaces, or confirm it as genuinely foundational and hand-place it). This is the same rule Step 4c applies in build-ordered mode; a domain plan that quietly folds an orphan connector into whichever domain group happens to come first is the same defect by another name, just less visible because domain mode usually has a structural signal (schema, folder, connector→destination pairing) to fall back on. Use `NO-DEP` only when that structural signal is genuinely absent, not as a substitute for doing the structural grouping.
 
 ### Step 4: Build the batch-level dependency DAG
+
+**Mode selection first.** If readiness mode applies (`migration.scope: tenant_carveout` and `migration.parent_release` set, or `--partition-mode readiness_waves`), skip Steps 4–4c and go to Step 4d; the domain tags from Step 3 are kept on every row for rollup, exactly as in build-ordered mode. Otherwise proceed below.
 
 For every pair of domain groups with at least one graph edge crossing between them (from the inventory graph, dependency→dependent direction), record a directed batch-dependency edge from the prerequisite batch to the dependent batch.
 
@@ -138,6 +145,44 @@ Replace the domain partition with waves cut from the model-level build order:
 
 Non-dbt inventory objects (ingestion, warehouse objects, reverse ETL) attach to the wave of the earliest model that has a real graph edge to them — a model that `source()`s the object, or otherwise references it directly in the inventory graph. **Never default an object with no such edge into wave 1, or into any other wave.** An object with no model consumer anywhere in the graph goes into the **`NO-DEP`** bucket instead — `batch_id: NO-DEP`, `batch_name: "No model dependency — review"`, `depends_on_batches` empty — for human triage at `/wire:migration-batching-review`: decommission it, place it once its real consumer surfaces in a later audit pass, or confirm it as genuinely foundational and hand-assign it to a wave. Note the rule applied and the `NO-DEP` count in the narrative. This is not a hypothetical: on one engagement, "attach to wave 1 if nothing does" put 105 of a client's 168 Fivetran connectors into wave 1 against an intended 31 — and wave 1 is what the client authenticates first, so the defaulting was directly client-facing. In build-ordered mode there are no parallel-safe wave pairs — the full-prefix dependency makes every wave depend on all earlier ones — so Step 7 emits an empty parallel-safe set with that explanation rather than searching for one. Exclude `NO-DEP` objects from Step 6's effort-hour balancing, Step 7's parallel-safe grouping, and the wave/batch DAG itself in both modes — `NO-DEP` is a holding pen for human triage, not a schedulable batch.
 
+### Step 4d: Readiness waves (only when readiness mode was selected)
+
+Assign every dbt model a readiness class from four inputs, then let the dependency closure sink each model to at least its inputs' wave. The wave ids extend the canonical set per `specs/utils/wave_resolution.md`: `B00` is shipped history, `PEN-<NAME>` ids are holding pens, and the schedulable waves are `B01` onward.
+
+**1. Per-model rule state**, from `tenant_predicate_registry.csv` (vocabulary per `specs/utils/tenant_predicate_registry.md`):
+
+| Registry row | Rule state |
+|---|---|
+| `resolved_by` is `adjudication` or `manual` (a ruling), any of the five mechanisms | **ruled**: batches forward |
+| `mechanism: inherited`, not ruled | **rider**: takes its `resolving_node`'s rule state (follow the chain; it terminates in a resolved row per the registry-wide checks. A chain ending in an unresolved or missing row is a registry defect: pen the model and report it) |
+| Any other mechanism with `resolved_by` in `global_default`, `object_signal`, `alias_resolution`, `row_distribution_probe` | **candidate**: batches behind its approval gate. `verified_date` never promotes a candidate; verification confirms the mechanism against data, not client sign-off |
+| `mechanism: unresolved`, or no registry row | **unresolved**: routes to `PEN-UNRESOLVED` |
+
+An item whose adjudicated ruling in `region_tags_adjudicated.csv` is `defer` or `split` routes to `PEN-EXCLUSION-PENDING` regardless of its registry row: it is ruled out of (or partially out of) the current carve scope pending a rescope. If the adjudicated file is absent, skip this route and say so in the narrative.
+
+**2. Approval groups.** Approvals arrive per rule, not per model: the client approves "filter this feed by `ad_account_id IN (...)`" once, and every model carrying that rule unlocks together. Group candidate rows by the distinct (`mechanism`, `tenant_column`, `expression`) triple. Each group is **one wave of its own**, so a client answer flips a whole wave to shippable without re-partitioning. A group is approved when every row in it is ruled; recording the approval (via `region-tagging-review`, or a hand edit with `resolved_by: manual`) is what moves its models forward on the next run.
+
+**3. Parent-release delivery state.** A model whose parent-release translation is not yet on the client's main parks in the waiting-on-parent wave. Merged means the parent register row's `delivery_stage` is `merged` or `production_verified`; blank or `in_pr` is not merged. Use a live repo read when the client repo is reachable, the register otherwise, and say which. A model with **no parent register row** has no parent translation to wait for (authored in this release): it is not parent-gated, but list it in the narrative under "no parent row" for review.
+
+**4. Shipped history (`B00`).** `B00` is the union of (a) models whose own register row in this release carries `delivery_stage: merged` or `production_verified`, and (b) rows the prior `migration_batching.csv` already carried as `B00`. History survives re-runs: a shipped model is never re-partitioned into a future wave, and a prior `B00` row missing from the current shipped set stays `B00` and is reported as a register discrepancy, never silently demoted. `B00` wins over every other class.
+
+**5. Dependency closure (fixpoint).** For every model outside `B00` and the pens, compute three transitive properties over its upstream closure: `gates` (the union of pending approval groups on its own rule and every upstream's), `parent_blocked` (itself or any upstream waits on parent), `reads_pen` (any upstream sits in a pen). Propagation **stops at `B00`**: a shipped model is a satisfied input, so its own upstreams' states do not pass through it. Assign the band, first match wins:
+
+| Condition | Band |
+|---|---|
+| `reads_pen`, or two or more pending groups in `gates` | **residue** (the sink band: pen readers and mixed-gate closures) |
+| `parent_blocked` | **waiting on parent** |
+| exactly one pending group in `gates` | **gated**, in that group's wave |
+| `gates` empty | **ready** (self-ruled models and riders on ruled rules; report the two separately: approved self-contained vs no-approval riders) |
+
+Because the three properties are transitive, every model lands at or after its inputs' wave; the bands are the fixpoint. A ready model with one gated upstream sinks to that group's wave; one spanning two pending groups sinks to residue.
+
+**6. Wave numbering.** Number the non-empty bands consecutively: `B00` (when non-empty), then the ready band as `B01` onward (one wave, or up to `--target-batches` effort-balanced sub-waves preserving topological order, per the Step 4c coarsening rule), then one wave per approval group in lexicographic order of the group triple, then the waiting-on-parent wave, then the residue wave. Residue is last because it is the dependency sink. Pens are unnumbered and unscheduled. `depends_on_batches` for wave `Bk` is the full prefix of numbered waves including `B00`; empty for `B00`, pens, and `NO-DEP`.
+
+**Non-dbt objects** attach to the lowest-numbered wave among their model consumers, as in Step 4c. An object whose only consumers sit in pens parks in the same pen (in `PEN-UNRESOLVED` if its consumers span both pens, the stronger hold). An object with no model consumer goes to `NO-DEP`, unchanged. Exclude pens from effort balancing, the parallel-safe set (empty in this mode, as in build-ordered mode), and the wave DAG, exactly as `NO-DEP` is excluded.
+
+**Domain tags stay on every row** for client rollup, as in build-ordered mode.
+
 ### Step 5: Fold in the batch-zero macro dependency
 
 Any batch containing a model with a non-empty `platform_macros` value (from `dbt_audit.csv`) has an implicit prerequisite on the dbt-audit **batch-zero macro translation pass** (`audit/batch_zero_plan.json`) completing first. Record this explicitly per affected batch in the narrative's batch summary table and batch-zero callout — do not let it get lost among the domain-to-domain edges. This prerequisite lives in the narrative only; the CSV's `depends_on_batches` column carries domain batch ids, not the batch-zero pass.
@@ -148,7 +193,9 @@ Any batch containing a model with a non-empty `platform_macros` value (from `dbt
 
 **Build-ordered mode.** Balancing already happened inside the Step 4c coarsening — cut the topological order into waves of roughly even effort hours, never reordering across the cut. Note any wave that is a size outlier and why (a dense foundational layer early in the sort often makes wave 1 heavier).
 
-**Both modes.** Exclude `NO-DEP` objects from these hour totals entirely — they aren't in any batch or wave yet, so they can't be balanced into one.
+**Readiness mode.** Only the ready band is balance-cut (Step 4d.6). Every other wave's membership is determined by readiness state, not effort: a gated wave is exactly its approval group, however large. Note the outliers; they tell the client which approvals unblock the most work.
+
+**All modes.** Exclude `NO-DEP` objects, and in readiness mode pen and `B00` objects, from these hour totals entirely. They aren't schedulable work, so they can't be balanced into a wave.
 
 ### Step 7: Identify parallel-safe batch groups
 
@@ -156,7 +203,9 @@ Any batch containing a model with a non-empty `platform_macros` value (from `dbt
 
 **Build-ordered mode.** There are none by construction — every wave depends on the full prefix of earlier waves. Emit an empty parallel-safe set and state that build-ordered waves are strictly sequential (the domain tag, not the wave, is what rolls up for parallel client-facing planning).
 
-**Both modes.** `NO-DEP` is not a batch — exclude it from parallel-safe grouping in either mode. Zero edges to everything is an artifact of having no consumer yet, not evidence it's safe to schedule alongside anything.
+**Readiness mode.** Same as build-ordered mode: the full-prefix dependency makes the set empty by construction.
+
+**All modes.** `NO-DEP` is not a batch — exclude it from parallel-safe grouping in every mode, and exclude readiness-mode pens on the same grounds. Zero edges to everything is an artifact of having no consumer yet, not evidence it's safe to schedule alongside anything.
 
 ### Step 8: Emit the CSV
 
@@ -169,7 +218,9 @@ object_id,object_type,source_audit,domain,batch_id,batch_name,depends_on_batches
 
 One row per migration_inventory object, classified into exactly one batch. `batch_id` is zero-padded (`B01`, `B02`, …). `depends_on_batches` is a semicolon-separated list of `batch_id`s this object's batch depends on (may be empty; identical for every row in the same batch).
 
-The columns are the same in both modes. In **build-ordered mode**, `batch_id` is the wave id, `batch_name` is the wave label (`Wave 1`, `Wave 2`, …), `domain` still carries the object's domain tag (retained for rollup, not used as the build order), and `depends_on_batches` is the full prefix `B01;…;B(k-1)`.
+The columns are the same in all modes. In **build-ordered mode**, `batch_id` is the wave id, `batch_name` is the wave label (`Wave 1`, `Wave 2`, …), `domain` still carries the object's domain tag (retained for rollup, not used as the build order), and `depends_on_batches` is the full prefix `B01;…;B(k-1)`.
+
+In **readiness mode**, `batch_id` is the readiness wave or pen id from Step 4d. `batch_name` states what the wave is waiting on: `Shipped` for `B00`; `Ready` (or `Ready N`) for the ready band; `Awaiting approval: <mechanism> on <tenant_column>` for a gated wave; `Waiting on parent release`; `Residue: mixed gates or pen reads`; `Holding pen: unresolved carve rule` and `Holding pen: exclusion pending` for the pens. Pen rows follow the same completeness rules as `NO-DEP` rows: every column non-empty except `depends_on_batches`, which is empty.
 
 **`NO-DEP` is a valid classification, not an anomaly.** An object routed to `NO-DEP` per Step 3 or Step 4c gets `batch_id: NO-DEP`, `batch_name: "No model dependency — review"`, `depends_on_batches` empty, and its best-effort `domain` tag (structural signal if one exists, otherwise the tag it would have inferred with — never left blank; Check 6 still requires every column non-empty). A `NO-DEP` row satisfies "every object classified exactly once" (validate's Check 1) and "every row complete" (Check 6) exactly as any other row does — it is a deliberate, named holding pen for human triage, not a gap in the partition, and validate must not flag it as one.
 
@@ -180,14 +231,15 @@ The columns are the same in both modes. In **build-ordered mode**, `batch_id` is
 Use the template at `TEMPLATES/migration/migration_batching.md`. Include:
 
 - The CANDIDATES-not-decisions posture statement (from Purpose) at the top
-- **The partition-mode note**: `domain` or `build_ordered_waves`, and — when the fallback fired — the Step 4b evidence (the domains form a single SCC, so no domain grouping can be acyclic *and* declare every cross-batch edge), stated plainly so no reader wonders why the output isn't domain-grouped
+- **The partition-mode note**: `domain`, `build_ordered_waves`, or `readiness_waves`. When the SCC fallback fired: the Step 4b evidence (the domains form a single SCC, so no domain grouping can be acyclic *and* declare every cross-batch edge), stated plainly so no reader wonders why the output isn't domain-grouped. When readiness mode was selected: the selection basis (`migration.scope: tenant_carveout` plus `migration.parent_release`, or the `--partition-mode` override)
+- **Readiness sections** (readiness mode only): the band summary (`B00` / ready / per-group gated / waiting on parent / residue / pens, with counts, and ready split into approved self-contained vs no-approval riders); one row per approval group with the rule text, its models, and what recording the approval unlocks; the waiting-on-parent list with the parent evidence used (live read or register); the "no parent row" list; any prior-`B00` register discrepancies and pen-terminating rider chains from Step 4d; and a note that shipped waves are preserved as `B00` across re-runs
 - The seed-reconciliation note: what was kept from the seed, what changed and why (including every Step 3/4 merge), or "no seed provided"
 - Batch summary table: `batch_id`, name, domain, object count, effort hours, `depends_on_batches`, batch-zero prerequisite (yes/no). In build-ordered mode the `domain` column shows the wave's dominant domain tag(s) for rollup
 - A Mermaid DAG at batch granularity — nodes are batches, edges are dependencies (in build-ordered mode, the prefix chain B01→B02→…→BN)
 - The parallel-safe groupings table (empty, with the by-construction explanation, in build-ordered mode)
 - The batch-zero macro dependency callout: which batches require the batch-zero pass first, and why
 - **The `NO-DEP` callout**: the count of objects routed to `NO-DEP` and the list of them (object_id, object_type, source_audit) — surfaced explicitly as a named section for human triage, never folded into the object-count totals or left implicit in the CSV. Zero is fine and should still be stated ("0 objects with no model consumer"); a non-zero count is the number one thing a reviewer should not have to go digging in the CSV to find
-- **`### Cutover partition (secondary view)`** — build-ordered mode only. The Step 4c.5 domain-grouped rollup: one row per domain, listing which wave(s) its objects landed in. State plainly that **build order and cutover/domain order diverge whenever the SCC fallback has fired** — that's the entire reason the fallback exists — and name specifically which domains end up spread across which waves, so no reader mistakes a wave number for a domain or milestone grouping. Explicitly flag this partition as not required to be acyclic or edge-complete, unlike the wave partition it sits alongside — it's for talking to the client about milestones, not for sequencing builds
+- **`### Cutover partition (secondary view)`** — wave modes only (`build_ordered_waves` and `readiness_waves`). The Step 4c.5 domain-grouped rollup: one row per domain, listing which wave(s) its objects landed in. State plainly that **build order and cutover/domain order diverge** (in build-ordered mode because the SCC fallback fired; in readiness mode because waves are readiness bands, not domains) and name specifically which domains end up spread across which waves, so no reader mistakes a wave number for a domain or milestone grouping. Explicitly flag this partition as not required to be acyclic or edge-complete, unlike the wave partition it sits alongside — it's for talking to the client about milestones, not for sequencing builds
 - A note that this artifact is not authoritative for scheduling or dates until `/wire:migration-batching-review` runs
 
 ### Step 10: Update status
@@ -199,19 +251,21 @@ artifacts:
     file: migration/migration_batching.md
     data_file: migration/migration_batching.csv
     generated_date: "{{TODAY}}"
-    partition_mode: domain | build_ordered_waves
+    partition_mode: domain | build_ordered_waves | readiness_waves
     scc_fallback: true | false          # true when Step 4b forced build-ordered waves
     batch_count: N
     objects_classified: N
     no_dep_count: N                     # objects routed to the NO-DEP bucket — 0 if none
+    shipped_count: N                    # readiness mode only: B00 rows
+    pen_count: N                        # readiness mode only: rows in PEN-* holding pens
     seed_used: true | false
 ```
 
-`partition_mode` is what `/wire:migration-batching-validate` reads to pick the right checks. When `scc_fallback` is true, `partition_mode` is `build_ordered_waves` and `batch_count` is the wave count (from `--target-batches` or the default).
+`partition_mode` is what `/wire:migration-batching-validate` reads to pick the right checks. When `scc_fallback` is true, `partition_mode` is `build_ordered_waves` and `batch_count` is the wave count (from `--target-batches` or the default). In readiness mode, `batch_count` is the numbered-wave count (`B00` included when non-empty; pens excluded), and `shipped_count`/`pen_count` are set (0 when empty); omit both keys in the other modes.
 
 ### Step 11: Output summary
 
-Print: partition mode (and, if the SCC fallback fired, a one-line reason), batch/wave count, object count, `NO-DEP` count (state it even when 0), parallel-safe groupings found (none in build-ordered mode), and next command:
+Print: partition mode (and, if the SCC fallback fired, a one-line reason; if readiness mode, the selection basis), batch/wave count, object count, `NO-DEP` count (state it even when 0), readiness band counts when in readiness mode (shipped / ready / gated groups / waiting on parent / residue / pens), parallel-safe groupings found (none in the wave modes), and next command:
 
 ```
 /wire:migration-batching-validate $ARGUMENTS
@@ -342,7 +396,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

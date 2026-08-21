@@ -47,12 +47,12 @@ The register is maintained **incrementally** by the migration commands (see the 
 
 | Column | Meaning |
 |--------|---------|
-| `model` | dbt model **or snapshot** name (unique key) |
-| `object_type` | `model` (default), `snapshot` (an SCD-2 history object, tracked here so its migration strategy and state travel with everything else), `reverse_etl_sync` (a sync with a real equivalence verdict, `reverse-etl-equivalency-validate`), `metabase_card` (a **native** Metabase card — MBQL cards are repoint-only and carried by the connection, not tracked as rows), or `metabase_dashboard` (state derives from its cards) — #184 |
+| `model` | dbt model **or snapshot** name (unique key); for a `reverse_etl_sync` row, the normalised sync id (see Reverse-ETL sync rows below) |
+| `object_type` | `model` (default), `snapshot` (an SCD-2 history object, tracked here so its migration strategy and state travel with everything else), `reverse_etl_sync` (a reverse-ETL sync, seeded from `audit/reverse_etl_audit.csv` per Reverse-ETL sync rows below, #191; its equivalence verdict comes from `reverse-etl-equivalency-validate`), `metabase_card` (a **native** Metabase card — MBQL cards are repoint-only and carried by the connection, not tracked as rows), or `metabase_dashboard` (state derives from its cards) — #184 |
 | `source_path` | path to the model/snapshot in the source dbt project (e.g. `models/business/orders.sql`, `snapshots/orders_snapshot.sql`) |
 | `source_layer` | source-project layer (e.g. `source_project`, `business_project`, `reporting`) |
 | `last_migrated_commit` | source repo commit SHA the translated model was built from |
-| `bq_target` | the BigQuery target object (`dataset.table`) — for a snapshot, its `target_schema` relation |
+| `bq_target` | the **fully qualified physical target relation** (`project.dataset.table` on BigQuery; `database.schema.table` on Snowflake), resolved from the target-side manifest node's resolved config (`database`/`project`, `schema`, and `alias`; the model name only when no alias is set, dbt's own fallback), never composed from the model name (#201). For a snapshot, the fully qualified `target_schema` relation. For `metabase_card`/`metabase_dashboard` rows, the target connection + database (a reporting-layer reference, not a warehouse relation, exempt from the segment rule below). **Legacy form**: registers written before #201 carry a dbt-relative two-segment value (e.g. `de_source_project.orders`). Consumers distinguish by dot-separated segment count (three segments is a physical path, two is the legacy form) and must never guess a physical path from a legacy value: `/wire:upgrade` Step 6c re-resolves legacy rows from the manifest, and `equivalency-validate` Step 1g defines what a consumer does with a row it cannot resolve exactly (`unresolved_target`, never a guess) |
 | `state` | `pending` \| `migrated` \| `drifted` \| `failed` \| `removed` \| `deferred` |
 | `snapshot_strategy` | for `object_type = snapshot`: `copy_and_continue` (default) or `rebuild_from_T` — blank for models. `rebuild_from_T` is valid only with a sign-off recorded in `notes` (see below) |
 | `last_equivalence_result` | `pass` \| `pass_qualified` \| `diff_vintage` \| `diff_availability` \| `diff_schema_type` \| `fail` \| `null` — the verdict of the last equivalency run for this object, per the verdict taxonomy in `specs/migration/equivalency/validate.md` (legacy registers may still carry `info`; treat it as `pass_qualified`) |
@@ -66,11 +66,14 @@ The register is maintained **incrementally** by the migration commands (see the 
 | `parent_verdict_ref` | Relocated rows only: a reference to the parent verdict that proves the SQL being relocated — the parent register row's `last_equivalence_result` plus its evidence (`<parent_release>:<report_ref>`, e.g. `05-parent-migration:migration/equivalency_report_12.md#orders`). Blank when the parent register was unreachable at relocate time — an evidence gap the relocate-mode comparator treats as unproven (see `equivalency-validate`, Relocate-mode comparison) |
 | `notes` | free text (e.g. reason for `deferred`/`failed`; for a `rebuild_from_T` snapshot, the required data-owner sign-off — name + date) |
 
+**Why `bq_target` is physical, not dbt-relative (#201).** A dbt-relative name forces every consumer to guess the physical `project.dataset.table`, and one wave-1 post-merge verification run (2026-08-20) showed guessing fail three ways: a model whose dbt `schema` + `alias` config produces a prefix-stripped physical name (`salesforce_case` materialises as `salesforce.case`; a name-equality guess finds nothing); the same table name under two datasets, where the wrong-dataset guess produced a false divergence of 70,229 rows that a manual trace showed was an exact match (23,298 = 23,298) in the right dataset; and the reverse case, a comparison against a non-existent table that returned a silent empty result. The command that builds the relation knows the exact physical path at build time: the register records it then, and consumers resolve from the register, never by guessing. This is the physical-side counterpart of the node-identity rule (`model.<package_name>.<model_name>`, `specs/utils/dbt_manifest_parse.md` Step 3): a model name is a join key, never a physical name.
+
 ## Maintenance contract (which command writes which columns)
 
-- **`dbt-migration-generate`** — on a successful per-model migration, upserts the row: `source_path`, `source_layer`, `last_migrated_commit` (the source snapshot SHA, from `migration_sources.dbt.commit`), `bq_target`, `state = migrated` (or `failed` after 5 iterations, `deferred` if its source object isn't built on target). For a **snapshot** (`object_type = snapshot`), it upserts the same way after translating the inner SELECT and running the target `dbt snapshot` adopt-and-continue, leaving `snapshot_strategy` as seeded.
+- **`dbt-migration-generate`** — on a successful per-model migration, upserts the row: `source_path`, `source_layer`, `last_migrated_commit` (the source snapshot SHA, from `migration_sources.dbt.commit`), `bq_target` (the fully qualified relation the build just produced, from the target-side manifest node's resolved `database`/`project` + `schema` + `alias`; never recomposed from the model name, #201), `state = migrated` (or `failed` after 5 iterations, `deferred` if its source object isn't built on target). For a **snapshot** (`object_type = snapshot`), it upserts the same way after translating the inner SELECT and running the target `dbt snapshot` adopt-and-continue, leaving `snapshot_strategy` as seeded.
 - **`migration-strategy-generate` / this command** — sets each snapshot row's `snapshot_strategy` (`copy_and_continue` default; `rebuild_from_T` only with the sign-off recorded in `notes`).
 - **`equivalency-validate`** — on each run, writes `last_equivalence_result` (the taxonomy verdict), `last_equivalence_t` (the baseline `T` when in baseline mode, else `null`), and `last_validated_commit` for each model checked, and appends one row per verdict to the verdict log (below). It never touches `delivery_stage`.
+- **`reverse-etl-equivalency-validate`**: writes `last_equivalence_result` and `last_equivalence_t` on `object_type = reverse_etl_sync` rows and appends each sync verdict to the verdict log, exactly as `equivalency-validate` does for models. It never touches `delivery_stage`. It updates rows; this command is what creates them (#191).
 - **`migration-drift-generate`** — flips `state` to `drifted` (modified upstream) or `removed`, and records the drifting commit in `notes`. It never touches `delivery_stage` — a merged model that drifts keeps its delivery progress and gains a health flag.
 - **`dbt-migration-batch-raise`** — sets `delivery_stage: in_pr` + `pr_url` when a model enters a client PR, advances to `merged` on merge detection, and clears both if the PR closes unmerged.
 - **`equivalency-post-merge-verify`** — advances `delivery_stage` to `production_verified` when the post-merge production comparison returns `pass` or `pass_qualified`.
@@ -87,9 +90,19 @@ The register is **current-state**: one row per object, reconciled in place, so a
 
 **Snapshot rows.** Snapshots are seeded here as `object_type = snapshot` rows from `audit/dbt_snapshots.csv`, and their `snapshot_strategy` is set from the migration strategy's "Snapshot migration" section (`copy_and_continue` by default; `rebuild_from_T` only when the strategy records a data-owner sign-off, which this command copies into `notes`). If the strategy doc has not yet assigned a strategy, seed the snapshot `copy_and_continue` and leave a note — never default a snapshot to `rebuild_from_T`, since that silently discards history.
 
+**Reverse-ETL sync rows (#191).** Where `audit/reverse_etl_audit.csv` exists, seed one `object_type = reverse_etl_sync` row per audit row: every approach, regardless of `include_in_migration`, per the routing table in `specs/utils/reverse_etl_approach.md` (a `decommission` sync is out of scope for migration and in scope for retirement, and its row is how that retirement is tracked rather than forgotten). Before this seeding existed, no command could create the row `reverse-etl-equivalency-validate` updates, and validate's Check 2 rejected any that appeared: on one engagement, 643 in-scope syncs produced 621 branch-copy compliance checks and 8 tier-1 verdicts in one day, none with a register row to land on. Per row:
+
+- `model`: the **normalised sync id**, the audit's `sync_id` normalised per `reverse-etl-twin-generate`'s Step 0 rule (basename, extension stripped, trailing target-warehouse marker `-bq`/`_bq`/`-bigquery`/`_bigquery` stripped, lower-cased). The audit keys on the original id and authored twins carry the marker, which is why the raw string is not the key: a raw-string join matched 6 of 609 on one engagement, the normalised join 575 of 643, with the residual explained (`decommission` syncs never get twins). Where the raw `sync_id` differs from the normalised id, record `sync_id: <raw>` in `notes`. Two audit rows normalising to the same id is an error naming both original ids, never a silent merge into one row.
+- `state`: `migrated` when the twin manifest (`migration/reverse_etl_twin_manifest.csv`, or its wave-labelled variants) records the sync's twin as `authored`, joined on the normalised sync id; `pending` otherwise, which covers every `decommission` and `rebuild` sync, since neither gets a twin.
+- `notes`: `approach: <migration_approach>` exactly as the audit writes it, per the closed vocabulary in `specs/utils/reverse_etl_approach.md` (an approach outside the closed set is an error naming the value and the sync, never seeded); plus `wave: <batch_id>` where `migration/migration_batching.csv` assigns the sync a wave.
+- `source_path`: the sync's source config path from the twin manifest where recorded; blank otherwise.
+- `last_equivalence_result`, `last_equivalence_t`, `last_validated_commit`: `null` at seed. A real verdict comes only from `reverse-etl-equivalency-validate`.
+- `delivery_stage`: blank at seed. Step 2b's `--ingest-merge-state` backfills `in_pr`/`merged` from live PR state for twin files exactly as it does for models, joined back to the sync row via the normalised twin filename.
+
 ## Prerequisites
 
 - `audit/dbt_audit.csv` exists (the in-scope model list); `audit/dbt_snapshots.csv` too if the project defines snapshots — **or**, under `--from region-tagging`, `migration/region_tags_adjudicated.csv` exists instead
+- `audit/reverse_etl_audit.csv`, where the release has reverse-ETL scope: sync rows are seeded from it (#191). Its absence means no sync rows, not an error
 - `migration_sources.dbt` registered (so `last_migrated_commit` can be resolved)
 
 ## Flags (#180)
@@ -101,9 +114,9 @@ The register is **current-state**: one row per object, reconciled in place, so a
 
 ### Step 1: Seed or reconcile
 
-If the register does not exist, create it from `TEMPLATES/migration/migration_register.csv` and seed one row per in-scope model from `dbt_audit.csv` (`object_type = model`), plus one row per snapshot from `dbt_snapshots.csv` (`object_type = snapshot`, `snapshot_strategy` from the strategy doc as above), all with `state = pending` and all migration/validation columns `null`. Under `--from region-tagging`, the seed source is `migration/region_tags_adjudicated.csv` filtered to `carve_in` instead (see Flags) — the seeded set is the adjudicated carve-in set, and each row's `notes` records its predicate-registry mechanism.
+If the register does not exist, create it from `TEMPLATES/migration/migration_register.csv` and seed one row per in-scope model from `dbt_audit.csv` (`object_type = model`), plus one row per snapshot from `dbt_snapshots.csv` (`object_type = snapshot`, `snapshot_strategy` from the strategy doc as above), all with `state = pending` and all migration/validation columns `null`, plus one row per sync from `audit/reverse_etl_audit.csv` where it exists (`object_type = reverse_etl_sync`, per Reverse-ETL sync rows above, #191). Under `--from region-tagging`, the seed source is `migration/region_tags_adjudicated.csv` filtered to `carve_in` instead (see Flags) — the seeded set is the adjudicated carve-in set, and each row's `notes` records its predicate-registry mechanism.
 
-If it exists, **reconcile** rather than overwrite: add rows for any new in-scope models (`state = pending`); never clobber `last_migrated_commit` / `last_equivalence_*` / `last_validated_commit` already recorded; mark rows whose model no longer exists in the dbt audit as `state = removed` (do not delete the row — the history matters).
+If it exists, **reconcile** rather than overwrite: add rows for any new in-scope models or audit syncs (`state = pending`, or `migrated` for a sync already twinned); never clobber `last_migrated_commit` / `last_equivalence_*` / `last_validated_commit` already recorded; mark rows whose model no longer exists in the dbt audit, or whose sync no longer exists in the reverse-ETL audit, as `state = removed` (do not delete the row — the history matters). A register that predates the sync seeding gains its `reverse_etl_sync` rows on the first reconcile after the reverse-ETL audit exists; nothing needs a flag for that. Where a `model` or `snapshot` row carries a legacy two-segment `bq_target` (pre-#201), re-resolve it from the target-side manifest exactly as `/wire:upgrade` Step 6c does. Never overwrite a three-segment value, and never compose a path from the model name when the manifest has no node for it: leave the legacy value and report the row.
 
 ### Step 2: Backfill from existing artifacts (first run)
 
@@ -111,7 +124,7 @@ On first creation, backfill state from what already happened: read the batch acc
 
 ### Step 2b: Retroactive PR ingestion (`--ingest-merge-state`, #180)
 
-For each configured client repo (`migration.client_repos`), read the **live** PR series — `gh pr list --state merged` plus open PRs, filtered to this release's branches/authors — and resolve which register models each PR carried (from the PR's changed files mapped back to model names).
+For each configured client repo (`migration.client_repos`), read the **live** PR series — `gh pr list --state merged` plus open PRs, filtered to this release's branches/authors — and resolve which register models each PR carried (from the PR's changed files mapped back to model names). Where the release has reverse-ETL scope, do the same over the sync config repo's PRs: a PR's twin config files map back to `reverse_etl_sync` rows via the normalised twin filename (the Step 0 rule), and the same delivery-stage mapping below applies to them.
 
 - **`delivery_stage` comes from live repo state, never from the release folder's own status records.** A model whose file is merged to the client's base branch: `delivery_stage: merged` (+ `pr_url`); in an open PR: `in_pr` (+ `pr_url`); in a PR closed unmerged, or nowhere: `delivery_stage` blank. Where the folder's prior notes disagree with `gh`, `gh` wins and the correction is reported — stale local status is exactly the failure this flag exists to repair. Set `state: migrated` for any ingested model still `pending` (its file demonstrably shipped).
 - **PR-body verdicts are evidence, ingested but marked.** A PR body carrying verdict-grade comparison evidence (counts, checksums, windows argued per model) appends one row per model to `migration/migration_verdict_log.csv`: `verdict` as stated, `run_point: standard`, `lane_id: retro-ingest`, `method_class: pr_body_evidence`, `report_ref: <pr_url>`, `written_at` = the PR's merge (or last-update) instant. These rows are dated history, not fresh proof — every ingested model is flagged **re-verify: post_merge** in `notes`, and `equivalency-post-merge-verify` is the command that replaces the prose evidence with a real production comparison. A PR body with no verdict-grade evidence ingests delivery state only, no log row.
@@ -134,6 +147,7 @@ artifacts:
     failed: N
     snapshots_total: N            # object_type = snapshot rows; 0 if none
     snapshots_rebuild_from_t: N   # snapshots assigned rebuild_from_T (each requires a recorded sign-off)
+    reverse_etl_syncs_total: N    # object_type = reverse_etl_sync rows (#191); 0 if none
 ```
 
 ### Step 4: Output next command
@@ -266,7 +280,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 

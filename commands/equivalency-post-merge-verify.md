@@ -39,11 +39,13 @@ Default scope: every register row with `delivery_stage = merged` and no `run_poi
 
 ## Workflow
 
-### Step 1 — Wait for materialisation (target metadata, not the scheduler)
-For each in-scope model, poll the production target's table metadata (BigQuery: `INFORMATION_SCHEMA.TABLES` / `__TABLES__` last-modified; Snowflake: `INFORMATION_SCHEMA.TABLES.LAST_ALTERED`) until the object's last-modified instant is later than its PR merge time (from `gh pr view` on the row's `pr_url`). This is deliberately orchestration-tool-agnostic: no scheduler API, whatever runs the client's DAG. Poll at a low cadence (every 10 minutes, `--wait-timeout` default 240). `--no-wait` skips the wait and compares whatever is materialised now, flagging not-yet-rebuilt models `stale_materialisation` and excluding them from verdicts. On timeout, report the unmaterialised set and proceed with the rest.
+### Step 1 — Resolve physical targets, then wait for materialisation (target metadata, not the scheduler)
+First resolve each in-scope model's production relation exactly, per `equivalency-validate` Step 1g (#201): the register row's fully qualified `bq_target`, the manifest for a legacy two-segment row, and an existence check, never a name-equality or single-candidate guess. A model whose target cannot be resolved exactly is reported **`unresolved_target`** immediately: no wait, no comparison, never a `pass`, never a silent skip. Report it with what failed to resolve and the fix (run `/wire:upgrade` to re-resolve a legacy register; re-run `/wire:dbt-migration-generate` for a model with no register path).
+
+Then, for each resolved model, poll the resolved relation's table metadata (BigQuery: `INFORMATION_SCHEMA.TABLES` / `__TABLES__` last-modified; Snowflake: `INFORMATION_SCHEMA.TABLES.LAST_ALTERED`) until the object's last-modified instant is later than its PR merge time (from `gh pr view` on the row's `pr_url`). This is deliberately orchestration-tool-agnostic: no scheduler API, whatever runs the client's DAG. Poll at a low cadence (every 10 minutes, `--wait-timeout` default 240). `--no-wait` skips the wait and compares whatever is materialised now, flagging not-yet-rebuilt models `stale_materialisation` and excluding them from verdicts. On timeout, report the unmaterialised set and proceed with the rest.
 
 ### Step 2 — Compare in production
-Invoke `equivalency-validate $ARGUMENTS --run-point post_merge_prod --models <materialised set>`. The target side is the **production** dataset (the merged models' real relations), not the scratch dataset; the source side and every check, pin, and taxonomy rule are exactly as that command specifies. The full verdict bar applies — this run point exists to catch what a sandbox cannot (production partitioning, prod-only data, the client's own build), so it is never run at a reduced bar.
+Invoke `equivalency-validate $ARGUMENTS --run-point post_merge_prod --models <materialised set>` (the resolved, materialised models; `unresolved_target` models are already out). The target side is the **production** dataset (the merged models' real relations), not the scratch dataset; the source side and every check, pin, and taxonomy rule are exactly as that command specifies. The full verdict bar applies — this run point exists to catch what a sandbox cannot (production partitioning, prod-only data, the client's own build), so it is never run at a reduced bar.
 
 ### Step 3 — Advance the register
 The merge step of `equivalency-validate` (rules in `specs/migration/equivalency/verdict_schema.md`) records the `post_merge_prod` verdicts in the verdict log and advances `delivery_stage` to `production_verified` for `pass`/`pass_qualified`. Divergent models keep `delivery_stage: merged`; each divergence is drilled to a named mechanism, and any `fail` (a translation defect that reached production) is escalated immediately: report it, reference `equivalency-investigate`, and flag it for the defect-class flywheel (sweep the estate for the same class).
@@ -58,9 +60,10 @@ artifacts:
       models_verified: <n>
       models_divergent: <n>
       models_unmaterialised: <n>
+      models_unresolved_target: <n>
 ```
 
-Output: the verified/divergent/unmaterialised counts, each divergence with its mechanism, and — when divergent or unmaterialised models remain — the re-run line:
+Output: the verified/divergent/unmaterialised/unresolved counts, each divergence with its mechanism, each `unresolved_target` model with what failed to resolve and its fix, and, when divergent, unmaterialised, or unresolved models remain, the re-run line:
 
 ```
 /wire:equivalency-post-merge-verify $ARGUMENTS
@@ -189,7 +192,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 
