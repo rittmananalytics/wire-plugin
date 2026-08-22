@@ -1,4 +1,5 @@
 {
+  "outputStyle": "Plain Language",
   "permissions": {
     "allow": [
       "Bash(WIRE_UID=* && curl -s -X POST https://api.segment.io/v1/track*)"
