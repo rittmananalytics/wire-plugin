@@ -43,3 +43,45 @@
 #     verified_date: "2026-08-01"
 
 known_differences: []
+
+# Declared deviations (wire#219).
+#
+# A different record class from known_differences: not a connector behaviour
+# class, but a proven defect in one named SOURCE model the migration
+# deliberately does not reproduce. The target is right, the source is wrong,
+# and the source-side fix is tracked upstream. Loaded by equivalency-validate
+# (Step 1f2). A divergence matching an entry classifies pass_declared_deviation
+# with mechanism declared_deviation:<id>, but ONLY when the recorded magnitude
+# accounts for the entire delta; a partial match fails with the residual
+# unexplained, same discipline as known_differences. Row-count monitoring
+# excludes declared-deviation models from its alert thresholds and lists them
+# with their expected magnitude instead.
+#
+# Fields, all required:
+#   id:                short unique slug, cited in the verdict mechanism
+#   model:             the object the deviation applies to, exactly
+#   defect:            what is wrong in the source model
+#   evidence_query:    query that isolates the defect's rows and proves the count
+#   upstream_fix_ref:  ticket/PR tracking the source-side fix
+#   direction:         target_surplus | source_surplus — which side has more
+#   expected_magnitude: the row count (or exact rule) the defect accounts for
+#   verdict_treatment: pass_declared_deviation   (the only legal value)
+#   provenance:        where this was proven (PR, report, analysis doc)
+#   verified_date:     ISO date the evidence query last confirmed the magnitude
+#
+# declared_deviations:
+#   - id: source_dedup_discards_tenant_rows
+#     model: int_orders__deduplicated
+#     defect: "source model's cross-market dedup keys on order_id only, discarding tenant rows that share an order_id with another market"
+#     evidence_query: >-
+#       SELECT COUNT(*) FROM <source_upstream> s
+#       LEFT JOIN <source_model> m USING (order_pk)
+#       WHERE m.order_pk IS NULL AND s.tenant_col = '<tenant>'
+#     upstream_fix_ref: "<ticket reference>"
+#     direction: target_surplus
+#     expected_magnitude: "rows returned by evidence_query, exactly"
+#     verdict_treatment: pass_declared_deviation
+#     provenance: "<PR or report reference>"
+#     verified_date: "2026-08-01"
+
+declared_deviations: []

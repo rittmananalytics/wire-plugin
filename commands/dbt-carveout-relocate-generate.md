@@ -144,6 +144,8 @@ For every `shared-row-level` model, classify its SQL shape and then walk the lad
 
 **Rung 0 — strip comments before scanning.** Remove `/* ... */` blocks and `-- ...` line remainders from a working copy of the SQL before looking for tenant-column references, injection points, or set operations. A tenant column name inside a comment is not a column reference. This is a scanner correctness fix, not a heuristic: without it a commented-out `country` filter reads as a live one and the model is confidently mis-shaped. Injection still writes into the original text, comments intact.
 
+**Grain classification — SCD-shaped models take the entity-grain form (#219).** Before any injection rung applies, classify the model against the SCD-shape signals in `specs/utils/tenant_predicate_registry.md` (snapshot materialisation, `dbt_valid_from`/`dbt_valid_to`, a `valid_from`+`valid_to` pair, an `is_current` flag). An SCD/history-shaped model takes the **entity-grain** form of its registry filter: `<entity_key> IN (SELECT DISTINCT <entity_key> FROM <relation> WHERE <expression>)`, never the raw row expression. A row-grain predicate on a history table truncates an entity's version history with no NULL to signal it, and the two forms are row-identical on live data whenever every version happens to carry the tenant value, so nothing downstream catches the swap. The entity key resolves from the model's `unique_key`/snapshot config or the registry row's `notes`; where no entity key resolves, the model is `manual_review_required` with reason `scd_entity_key_unresolved`. Record `grain: entity | row` per injected model in the manifest.
+
 **Rung 1 — always parenthesize the existing `WHERE` body.** When appending the filter to an existing `WHERE`, wrap the original body in parentheses first: `WHERE (<original body>) AND <filter>`. Do this unconditionally, not only when the original contains a top-level `OR`. Parenthesizing is precedence-safe either way, so the unconditional form is strictly safer than detecting the `OR` case, and it removes depth-0 `OR` as a category of failure rather than adding a special case to detect. Record `resolved_by` unchanged (the registry mechanism is what resolved it); note the parenthesization in the manifest.
 
 **Rung 2 — restructure a `WHERE` inside a Jinja conditional.** When the outermost `WHERE` sits inside a Jinja conditional (`{% if is_incremental() %} WHERE ... {% endif %}`), the tenant filter must not inherit that condition — it applies on every run. Emit an unconditional top-level `WHERE <filter>` and re-nest the original conditional body as an `AND (...)` inside its own `{% if %}`:
@@ -183,6 +185,15 @@ Run the count, compare it against registry rows already resolved for the same co
 
 Tests mirror this ladder (`wire/tests/platform_migration/validate_carveout_predicate_resolution.py`).
 
+### Step 1.8b: Tenant predicate semantics check (#219)
+
+For every model the ladder resolved from a **derived** registry row (a row whose `resolved_by` is anything other than `adjudication` or `manual`, with a `tenant_column`), run and record the semantics check defined in `specs/utils/tenant_predicate_registry.md` before injecting: measure the predicate column's value distribution on the source relation (`distinct_values`, `tenant_share`) and classify it under that contract's plausibility rule.
+
+- **`plausible`** — proceed to injection. Record the measured figures and the verdict in the registry row (`provenance`/`notes`, `verified_date`; written back at Step 2c) and in the manifest.
+- **`implausible_zero_share` / `implausible_dispersed`** — do **not** inject. Route the model to `manual_review_required` with reason `predicate_semantics_implausible`, recording the distribution figures as the evidence. A column named like a tenant column can carry something else entirely (one engagement's was the install geography of a global app: 231 distinct ISO codes, tenant share zero), and injecting it silently changes the measure's meaning while every gate stays green.
+
+The check runs once per derived row and re-runs when the row's `expression` or `tenant_column` changes. Rung 4's row-distribution probe already produces the same measurement; where a probe ran, reuse its result rather than querying twice.
+
 ### Step 1.9: Parent verdict gate (#180)
 
 A relocated model inherits the parent release's proof that its SQL is correct — so read that proof before copying anything. Resolve the parent register at `.wire/releases/<migration.parent_release>/migration/migration_register.csv` (skip this step with a note in the manifest if `migration.parent_release` is null or the file is unreachable — every relocated row then carries a blank `parent_verdict_ref`, which the relocate-mode comparator treats as unproven).
@@ -202,6 +213,27 @@ For each model in the Step 1.5 set, read its bucket from `region_tags_adjudicate
 - **Any other `bucket` value** (`global-deferred`, missing, or anything not `confident-region`/`shared-row-level`) that reached this scope despite Step 1.5's filter — this is a resolution bug upstream, not a case to paper over here. **Abort**: `[wire] <model> has bucket "<bucket>" but adjudicated_ruling carve_in — this combination should not exist. Check region-tagging-review's output before re-running.`
 
 Preserve the exact subdirectory structure from the source project for both the `.sql` file and its companion YAML.
+
+### Step 2a: Tenant-Bronze-only source reduction, verified (#219)
+
+A union-then-filter model reads every market's Bronze sources and filters afterwards; the sovereign project discards the foreign-market sources, so the relocated model must read the tenant's sources only. The reduction itself is mechanical (hardcode the tenant source list; seed `all_columns()`-style column-listing macros from the tenant relation instead of the union), but a reduction applied without verification is a rewrite nobody checked. For every model reduced this way, verify **both** of the following before it counts as relocated, and record the evidence in the manifest:
+
+1. **Column-set parity.** Compile the original and the reduced model and compare their output column lists: name-for-name, in the same order. A macro seeded from the tenant relation can emit a different column set than the union it replaced; parity is the proof it did not.
+2. **Compiled-SQL diff limited to the intended reduction.** Diff the two compiled SQLs and confirm every hunk is the reduction and nothing else: a removed foreign-source branch, or the substituted source list. Any hunk outside that scope means the reduction changed logic it should not have touched.
+
+Record per model: the column lists compared (or their matching count), and the diff hunk summary. Either check failing means the model is **not** relocated: flag it `manual_review_required` with reason `reduction_not_verified` and the failing evidence.
+
+### Step 2b: Expected-empty markers (#219)
+
+A zero-row model passes every downstream test vacuously: row counts match at 0 = 0, checksums agree on nothing, dbt tests find no rows to fail on. A model that is legitimately empty for the tenant must therefore say so in a form a later gate can read.
+
+Measure the source-side tenant row count for every relocated model under its resolved registry filter (Step 1.8b's distribution check already returns it for derived rows; run the count for adjudicated rows). When the count is zero:
+
+- Establish the reason: the adjudication note, the registry row's provenance, or the consultant. A reason names why the tenant has no rows in this model (a market-specific feature the tenant never used, a product line the tenant does not sell), with the measured source figures.
+- Stamp a greppable header comment as the first line of the relocated `.sql` file: `-- EXPECTED EMPTY (<tenant>): <reason>, source measured 0 rows on <date>`.
+- Record `expected_empty: true` for the model in the manifest.
+
+When the count is zero and **no reason can be established**, do not stamp and do not ship silently: flag the model `manual_review_required` with reason `expected_empty_unexplained`. The marker is what `equivalency-validate`'s both-sides-empty gate greps for: a marked model earns an explicit verdict there; an unmarked both-sides-empty model is a named failure (`empty_unexplained`), never a vacuous pass. Distinguish this case from Step 1.8b: expected-empty is a plausible tenant column that keeps zero rows in this one model; an implausible distribution questions the column itself.
 
 ### Step 2c: Write resolutions back to the registry (v3.11.3)
 
@@ -231,6 +263,10 @@ Include:
 - **Resolution summary** — a count per rung of how many models each resolved, and the resulting `manual_review_required` count. This is the number a reviewer's queue is measured by, so it belongs at the top of the manifest, not buried per model.
 - **Proposed dispositions** (Rung 4) — each with its evidence query, the result, and the precedent compared against. These need a reviewer's ruling; they are not resolved.
 - **Inheritance resolutions** (Rung 5) — each with its resolving node, and each unresolved model's *uncovered upstream* named, so the reviewer can see which single upstream fix unblocks which descendants.
+- **Semantics checks** (Step 1.8b) — per derived row injected: the measured `distinct_values` and `tenant_share`, and the plausibility verdict. Implausible rows appear in the manual-review-required list with reason `predicate_semantics_implausible`.
+- **Grain per injected model** (`grain: entity | row`), with the entity key used for each entity-grain injection
+- **Source reductions** (Step 2a) — per reduced model: the column-set parity result and the compiled-SQL diff summary
+- **Expected-empty models** (Step 2b) — each with its stamped reason and measured source figures
 - The manual-review-required list, each with its shape, the rung that last examined it, and its specific reason
 - Registry conflicts (a ladder result disagreeing with an `adjudication`/`manual` row)
 - Models skipped because they had no `carve_in` adjudication in this scope
@@ -255,6 +291,8 @@ artifacts:
     inherited_count: N              # Rung 5 — scoped by a covered upstream, no filter of their own
     proposed_disposition_count: N   # Rung 4 — awaiting a reviewer's ruling
     registry_conflict_count: N      # ladder result vs an adjudication/manual row
+    semantics_implausible_count: N  # Step 1.8b — derived predicates routed to manual review (#219)
+    expected_empty_count: N         # Step 2b — models stamped EXPECTED EMPTY (#219)
     predicate_registry: migration/tenant_predicate_registry.csv
     compile: pass | fail
     wave: "B01"          # set only when run with --wave

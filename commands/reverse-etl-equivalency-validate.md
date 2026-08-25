@@ -29,7 +29,7 @@ argument-hint: <release-folder> [--syncs name1,name2] [--tier 1|2]
 
 ## Data Safety — Read Before Proceeding
 
-Tier 1 reads both warehouses, SELECT only. Tier 2 runs syncs against **decoy destinations only** — the decoy ID-mapping table and scoped credential from `reverse-etl-migration`'s validation posture; production destination IDs are never present. If any step would run a sync against a production destination, stop and report.
+Tier 1 reads both warehouses, SELECT only. Tier 2 runs syncs against **decoy destinations only** — the decoy ID-mapping table and scoped credential from `reverse-etl-migration`'s validation posture; production destination IDs are never present — or, for a dedicated-mode sync, against its confirmed dedicated destination, which no existing sync writes to. If any step would run a sync against a live shared destination, stop and report.
 
 ---
 
@@ -63,7 +63,7 @@ This is a real verdict on "would the destination receive the same rows": the des
 
 ### Step 3 — Tier 2: decoy-destination diff (where the destination or its API allows)
 
-Run the twin against the **decoy** destination, export or read back what landed, and compare it to the tier-1 expectation. Tier 2 catches what tier 1 cannot — destination-side transformation, API-level field coercion — and is run where the destination offers a read-back path; where it does not, the verdict rests on tier 1 and the report says so. Tier 2 never runs against a production destination.
+Run the twin against the **decoy** destination, export or read back what landed, and compare it to the tier-1 expectation. Tier 2 catches what tier 1 cannot — destination-side transformation, API-level field coercion — and is run where the destination offers a read-back path; where it does not, the verdict rests on tier 1 and the report says so. Tier 2 never runs against a live shared destination. A dedicated-mode sync (`destination_mode: dedicated` under the `additive_dedicated_destination` topology) has no decoy, so no tier-2 decoy diff exists for it: where its confirmed dedicated destination offers a read-back path, that read-back is the tier-2 comparison — safe because no existing sync writes to the destination; where it does not, the verdict rests on tier 1 and the report says so.
 
 ### Step 4 — Verdicts, register, and log
 

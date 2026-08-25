@@ -52,6 +52,49 @@ A failing expression **blocks**: the consuming validate fails, it does not warn.
 
 Tests implement this check literally (`wire/tests/platform_migration/validate_tenant_predicate_registry.py`).
 
+## Predicate semantics check (#219)
+
+A well-formed expression can still filter on a column that does not mean tenant. On one carve-out, a predicate on a column named like a tenant column actually filtered the install geography of a global app: 231 distinct ISO codes, tenant share zero. It parsed, compiled, passed lint, dbt tests, and the pre-raise equivalency run, because it silently changed the measure's meaning rather than breaking anything. Only the column's value distribution shows the problem.
+
+**Scope.** Every row whose mechanism carries a `tenant_column` (`row_predicate`, `derived_expr`, `account_cascade`) and whose `resolved_by` is anything other than `adjudication` or `manual`. These are the derived rows: no human has confirmed the column means tenant. Adjudicated and manual rows are exempt; the ruling is the confirmation.
+
+**The check.** Before a consumer applies a derived expression for the first time (for `dbt-carveout-relocate-generate`, before injection), measure the predicate column on the source relation:
+
+- `distinct_values` = `COUNT(DISTINCT <tenant_column>)`
+- `tenant_share` = rows the expression keeps, divided by total rows
+
+**Plausibility rule (deterministic; tests mirror it: `wire/tests/platform_migration/validate_carveout_hygiene.py`).**
+
+| Condition | Verdict |
+|---|---|
+| `tenant_share` = 0 (the expression keeps no rows) | `implausible_zero_share` |
+| `distinct_values` >= 100 **and** `tenant_share` < 1% | `implausible_dispersed` |
+| Otherwise | `plausible` |
+
+The thresholds are framework defaults, stated here so every consumer applies the same rule. A column with 100 or more distinct values and under 1% tenant concentration reads as an open domain (a geography, a currency, a category), not a tenant marker. The boundaries are inclusive as written: exactly 100 distinct values at exactly 1% share is `plausible`.
+
+**Recording.** Write the measured figures and the verdict into the row: append `semantics_check: distinct=<N>, tenant_share=<P>%, verdict=<verdict>` to `provenance` (or `notes` where `provenance` already carries a ruling), and set `verified_date` to the check date. Re-run the check whenever the row's `expression` or `tenant_column` changes.
+
+**Routing.** A `plausible` verdict lets the consumer proceed. An implausible verdict blocks: the expression is never applied, and `dbt-carveout-relocate-generate` routes the model to `manual_review_required` with reason `predicate_semantics_implausible`. Do not confuse this with an expected-empty model: `implausible_zero_share` on a dispersed or foreign-domain column questions whether the column means tenant at all; a plausible tenant column that keeps zero rows in one specific model is the expected-empty case (`dbt-carveout-relocate-generate`, expected-empty markers), which ships with a recorded reason rather than a filter doubt.
+
+## Predicate grain: row vs entity (#219)
+
+Two grains, and the registry vocabulary for both:
+
+- **Row grain** — the expression evaluates per row: `WHERE <expression>`. Correct for event and transaction tables, where each row's tenant membership is its own fact.
+- **Entity grain** — tenant membership is decided per entity, and every version of a tenant entity is kept together: `<entity_key> IN (SELECT DISTINCT <entity_key> FROM <relation> WHERE <expression>)`. The entity key comes from the model's `unique_key`/snapshot config, or the registry row's `notes`.
+
+**SCD-shape detection (deterministic; tests mirror it: `wire/tests/platform_migration/validate_carveout_hygiene.py`).** A model is SCD/history-shaped when any of these holds:
+
+1. Materialised as `snapshot`.
+2. Columns include `dbt_valid_from` or `dbt_valid_to`.
+3. Columns include both `valid_from` and `valid_to` (one alone is not the pair).
+4. Columns include an `is_current` flag.
+
+**The rule.** An SCD/history-shaped model takes its predicate at entity grain, never row grain. A row-grain predicate on a history table truncates an entity's version history with no NULL to signal it: on live data where every version happens to carry the tenant value the two forms are row-identical, so no data comparison sees the difference, and the defect is latent until a version differs. Corollary for children: a child model whose predicate relies on a parent's nullable rollup drops rows behind dangling keys, so a predicate on a nullable parent-derived column must handle NULL explicitly (`IS NULL` branch or `COALESCE`), never bare equality.
+
+Consumers: `dbt-carveout-relocate-generate` (the ladder injects the entity-grain form for SCD-shaped models), `dbt-carveout-relocate-validate` (re-derives the shape and the grain from the relocated file), and `dbt-migration-lint` (static rules `SCD_ROW_GRAIN_PREDICATE` and `NULLABLE_ROLLUP_PREDICATE`, which catch the class on any migration, carve-out or not).
+
 ## The five mechanisms
 
 | `mechanism` | What it means | `expression` example | Row filter a consumer applies |

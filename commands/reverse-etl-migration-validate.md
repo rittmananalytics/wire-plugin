@@ -51,7 +51,7 @@ The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_et
 ## Validation Checks
 
 **Check 1 — Topology recorded**
-The runbook states the chosen topology (additive PR-gated repo — the default — or parallel workspace, or in-place API re-point) with a rationale. For the default additive path, it documents the repo branch, the additive target-warehouse source connection, the new decoy-bearing test syncs, and PR A. For the parallel-workspace path, it documents the repo clone, new workspace, GitHub Sync configuration, destination re-authentication, and target-warehouse source connection.
+The runbook states the chosen topology (additive PR-gated repo — the default — or additive to dedicated never-shared destinations, or parallel workspace, or in-place API re-point) with a rationale. For the default additive path, it documents the repo branch, the additive target-warehouse source connection, the new decoy-bearing test syncs, and PR A. For `additive_dedicated_destination`, it documents the per-destination gate evidence (the destination exists on the target side; its id appears in no existing sync's destination set) and the single-PR cutover plan. For the parallel-workspace path, it documents the repo clone, new workspace, GitHub Sync configuration, destination re-authentication, and target-warehouse source connection.
 PASS: Topology and its setup steps present. FAIL: Topology not stated or build steps missing.
 
 **Check 2 — All in-scope syncs covered**
@@ -71,8 +71,8 @@ Every `rebuild` sync has a documented schema mapping and step-by-step rebuild pl
 PASS: All rebuild plans present. FAIL: List missing rebuild plans.
 
 **Check 6 — Validation is preview-based against a frozen baseline, decoy destinations only**
-The validation procedure compares model outputs and audience sizes against a frozen source baseline (not live production) and uses sync previews / record inspection. Test syncs carry decoy destination IDs only — production destination IDs are absent. It does not enable a sync against a production destination to validate.
-PASS: Validation is preview-based against a baseline; test syncs carry decoy IDs only. FAIL: Validation relies on live runs to production destinations, compares against moving production, or test syncs carry production destination IDs.
+The validation procedure compares model outputs and audience sizes against a frozen source baseline (not live production) and uses sync previews / record inspection. Decoy-mode test syncs carry decoy destination IDs only — production destination IDs are absent. A dedicated-mode sync (`destination_mode: dedicated` under `additive_dedicated_destination`) has no decoy: it carries its confirmed dedicated destination id, which appears in no existing sync's destination set, and previews against that. It does not enable a sync against a live shared destination to validate.
+PASS: Validation is preview-based against a baseline; decoy-mode syncs carry decoy IDs only; dedicated-mode syncs carry their confirmed dedicated id. FAIL: Validation relies on live runs to shared production destinations, compares against moving production, or a decoy-mode test sync carries a production destination ID.
 
 **Check 7 — Sync-level transformation logic reviewed**
 The runbook records a per-sync review of sync-level logic — field mappings, computed fields, sync filters, match/identity-resolution rules, and audience inclusion/exclusion — separate from model-output comparison.
@@ -83,16 +83,16 @@ If any Lightning syncs are in scope, the runbook includes the `CREATE SCHEMA` an
 PASS: Present, or no Lightning syncs. FAIL: Missing.
 
 **Check 9 — Rollback procedures present**
-The runbook includes a rollback procedure for the chosen topology and each approach type used (additive: revert PR C — disable target syncs / restore decoy IDs — and revert PR B to re-enable source syncs; parallel: don't enable / disable new-workspace syncs and re-enable the source workspace; in-place: re-apply original `sourceId`).
+The runbook includes a rollback procedure for the chosen topology and each approach type used (additive: revert PR C — disable target syncs / restore decoy IDs — and revert PR B to re-enable source syncs; dedicated: revert the single cutover PR, which re-enables the old source-warehouse syncs and removes the new dedicated-destination syncs; parallel: don't enable / disable new-workspace syncs and re-enable the source workspace; in-place: re-apply original `sourceId`).
 PASS: Rollbacks present. FAIL: List missing rollbacks.
 
 **Check 10 — Source left active until cutover, cutover is two client-merged PRs**
-The runbook does not disable the source syncs (or source workspace) during the migration phase — only at cutover, via a client-merged PR, once confidence is established. For the default additive topology, cutover is two PRs merged together by the client: PR B disables every source-origin sync and PR C enables every target-origin sync (swapping decoy IDs back to production). RA does not enable/disable syncs directly.
-PASS: Source disable / decommission appears only in the cutover/sign-off section, gated behind client-merged PRs; the two-PR cutover is documented (additive topology). FAIL: Source disable appears in the migration or validation steps, or cutover mutates the workspace outside a client-merged PR.
+The runbook does not disable the source syncs (or source workspace) during the migration phase — only at cutover, via a client-merged PR, once confidence is established. For the default additive topology, cutover is two PRs merged together by the client: PR B disables every source-origin sync and PR C enables every target-origin sync (swapping decoy IDs back to production). For `additive_dedicated_destination`, cutover for dedicated-mode syncs is **one** client-merged PR that adds the new dedicated-destination syncs (authored paused) and disables the old source-warehouse syncs together; decoy-mode fallback syncs keep the two-PR cutover. RA does not enable/disable syncs directly.
+PASS: Source disable / decommission appears only in the cutover/sign-off section, gated behind client-merged PRs; the two-PR cutover is documented (additive topology) or the one-PR cutover is documented (dedicated topology). FAIL: Source disable appears in the migration or validation steps, or cutover mutates the workspace outside a client-merged PR.
 
-**Check 11 — Decoy destination mapping present**
-For the additive topology, the runbook includes a decoy mapping table (one row per in-scope sync: production destination ID → decoy ID of the same destination type), references a scoped credential with write access to decoy targets only, and confirms production destination IDs are absent from the test syncs until cutover.
-PASS: Mapping table, scoped credential, and the absent-production-IDs statement present (or topology is parallel/in-place). FAIL: Missing for the additive topology.
+**Check 11 — Destination mapping present**
+For the additive topologies, the runbook includes the destination mapping table (one row per in-scope sync). Decoy-mode rows: production destination ID → decoy ID of the same destination type, a scoped credential with write access to decoy targets only, and confirmation that production destination IDs are absent from the test syncs until cutover. Rows with `destination_mode: dedicated` are exempt from the decoy requirements; for each, the check is instead that both decoy columns are blank and the gate evidence is recorded (the destination exists on the target side; its id appears in no existing sync's destination set).
+PASS: Mapping table present; decoy-mode rows carry decoy, credential, and absent-production-IDs statements; dedicated-mode rows carry gate evidence (or topology is parallel/in-place). FAIL: Missing for an additive topology, or a dedicated-mode row lacks gate evidence.
 
 **Check 12 — Scope gate and approach re-verification recorded**
 The runbook lists any syncs deferred because their source model is not yet built on target ("Deferred — source model not built on target"), and any syncs reclassified from `repoint` to `rewrite_model` by the approach re-verification, with the construct found.
@@ -100,7 +100,7 @@ PASS: Both lists present (empty lists stated explicitly). FAIL: Either omitted.
 
 ---
 
-Checks 13 and 14 read the **twin config files on the branch**, not the runbook. Checks 1–12 validate the plan; these two validate what was actually authored, whether by `reverse-etl-twin-generate` or by hand. Hand-authored twins are the population every known defect of this class came from, so the checks deliberately do not care which produced them.
+Checks 13 and 14 read the **twin config files on the branch**, not the runbook. Checks 1–12 validate the plan; these two validate what was actually authored, whether by `reverse-etl-twin-generate` or by hand. Hand-authored twins are the population every known defect of this class came from, so the checks deliberately do not care which produced them. Check 13 and every other config check apply unchanged to dedicated-mode twins; only Check 14's expectation branches, as stated there.
 
 **Check 13 — `primaryKey` casing (`REVERSE_ETL_PRIMARY_KEY_CASE`, error severity)**
 
@@ -120,6 +120,8 @@ The set is built once and tested against, and per-file lookups are banned, becau
 
 No destination type appears anywhere in this check. If a check ever needs to name a destination type to decide safety, that is the bug this check exists to prevent.
 
+A twin the mapping marks `destination_mode: dedicated` has no decoy, so the expectation branches: its destination id must equal the mapping's confirmed dedicated id **and** — the same set logic — appear in no existing sync's destination set. Set membership fails a dedicated twin exactly as it fails a decoy twin: "dedicated" is a claim this check re-verifies on every run, not a label that exempts the twin from it. A dedicated twin whose destination differs from the confirmed id is also a failure (`dedicated_id_mismatch`).
+
 Also report, as **information** rather than a failure: any destination id shared by two or more twins. Fan-in is legitimate in some designs (several models feeding one audience) and a copy-paste mistake in others, and the check cannot tell which — so it names them and leaves the reading to a person.
 
 PASS: no twin's destination appears in the source-warehouse destination set. FAIL (error severity): list each twin, its destination id, and the source-warehouse sync that also writes there. If the default branch cannot be read, the check is `unverified`, never `pass` — an unreadable branch means the set is unknown, and an unknown set cannot clear a twin.
@@ -137,6 +139,7 @@ artifacts:
     twins_checked: N                     # Checks 13/14 scope
     primary_key_case_failures: N         # REVERSE_ETL_PRIMARY_KEY_CASE, error severity
     production_destination_failures: N   # twin pointing into the live destination set
+    dedicated_id_mismatches: N           # dedicated-mode twin whose destination differs from the mapping's confirmed id
     shared_destination_twins: N          # information only, not a failure
     destination_set_source: default_branch | unverified
     wave_validate:               # set only when run with --wave, keyed by wave id

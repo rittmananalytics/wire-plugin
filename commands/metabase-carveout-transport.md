@@ -1,9 +1,9 @@
 ---
-description: Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance: id-mapped via a confirmed database mapping, dependency-ordered, idempotent by recorded target id
+description: Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance: executes the validated plan (id and SQL-text rewrites), dependency-ordered, idempotent by recorded target id
 argument-hint: <release-folder> [--target-instance-url url] [--collection id] [--dashboard id] [--dry-run]
 ---
 
-# Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance: id-mapped via a confirmed database mapping, dependency-ordered, idempotent by recorded target id
+# Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance: executes the validated plan (id and SQL-text rewrites), dependency-ordered, idempotent by recorded target id
 
 ## User Input
 
@@ -23,7 +23,7 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance, id-mapped through a confirmed database mapping, dependency-ordered, idempotent by recorded target id
+description: Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance, executing the validated transport plan (id-rewrites plus SQL-text rewrites), dependency-ordered, idempotent by recorded target id
 argument-hint: <release-folder> [--target-instance-url <url>] [--collection <id> | --dashboard <id>] [--dry-run]
 ---
 
@@ -64,7 +64,9 @@ If `MB_TARGET_HOST` resolves to the same instance as `MB_HOST`, stop: transport 
 
 The carve-out triad decides what moves and how each card becomes tenant-only; nothing then created those objects on a second Metabase application (#203). `metabase-migration`'s cutover repoints a database connection inside one app, and the carve-out's layer paths (sandboxing, warehouse view, dashboard parameter, card edit) all assume the cards stay where they are. On a live tenant carve-out the target was a brand-new, separately-provisioned Metabase deployment, and no command could put a card there.
 
-This command is the transport mechanic, deliberately separate from the layer decision so the decision and the mechanic stay separately testable: it takes the signed-off manifest from `metabase-carveout-review` as its worklist, exports each object's carved definition from the source instance, rewrites the ids that do not survive an instance boundary, and creates the object on the target instance. It decides nothing about tenant scoping; that was decided at generate and adjudicated at review.
+This command is the transport mechanic, deliberately separate from the layer decision so the decision and the mechanic stay separately testable: it takes the signed-off manifest from `metabase-carveout-review` as its worklist, exports each object's carved definition from the source instance, rewrites the ids that do not survive an instance boundary plus the SQL-text project references the plan maps (#221), and creates the object on the target instance. It decides nothing about tenant scoping; that was decided at generate and adjudicated at review.
+
+From #221 the transport is the write step of a plan/validate/write pipeline: `metabase-carveout-transport-generate` produces the complete rewrite plan as a dry-run artifact, `metabase-carveout-transport-validate` re-derives the SQL scan independently and checks every rewrite, and this command executes only a plan the validate has passed. The rewrite is mechanical once the database mapping is confirmed, so the plan gets deterministic validation, not a second human sign-off: the review approval remains the only write authorisation.
 
 ## Prerequisites
 
@@ -73,18 +75,20 @@ This command is the transport mechanic, deliberately separate from the layer dec
 - `migration/metabase_carveout_manifest.csv` present, with rows at `signed_off` or later
 - Target instance credentials present as environment variables: `MB_TARGET_HOST` and `MB_TARGET_API_KEY` (write-scoped). Source reads use the audit's `MB_HOST` + `MB_API_KEY`. Credentials are never written into any file this command produces.
 - `migration/metabase_db_mapping.csv` confirmed (Step 2)
+- `migration/metabase_carveout_transport_plan.csv` present, with `metabase_carveout_transport_plan validate: pass` in status.md. The command refuses to run against a plan the validate has not passed, a plan changed after its pass (compare the plan's mtime to `validated_date`), or a plan older than the manifest it was generated from (compare the plan's mtime to the manifest's): stop with reason `plan_stale` and re-run `metabase-carveout-transport-generate` then `metabase-carveout-transport-validate`. Nothing is created against an unvalidated or stale plan.
 
 ## Flags
 
 - `--target-instance-url <url>`: must equal `MB_TARGET_HOST` when both are set. A mismatch is a hard stop naming both values: it means the consultant and the environment disagree about which instance receives writes.
 - `--collection <id>` / `--dashboard <id>`: narrows within the signed-off set, resolved the same way as `metabase-carveout-generate` Step 1 (a dashboard resolves to its deduped card set).
-- `--dry-run`: seed or refresh the transport manifest, print the per-object plan (transport action, mapped database id, dependency position), and create nothing.
+- `--dry-run`: seed or refresh the transport manifest, print the per-object plan (transport action, mapped database id, dependency position), and create nothing. The full dry-run artifact, including the SQL-text rewrite mapping, is `metabase-carveout-transport-generate`'s plan; this flag is a quick print of the same worklist.
 
 ## Inputs
 
 - `.wire/releases/$ARGUMENTS/migration/metabase_carveout_manifest.csv`: the signed-off worklist
 - `.wire/releases/$ARGUMENTS/audit/metabase_audit.md`: object graph (snippets, card references), reverse index, collection tree, permission groups
 - `.wire/releases/$ARGUMENTS/migration/metabase_carveout_transport_manifest.csv`: prior transport state, when it exists (idempotency record)
+- `.wire/releases/$ARGUMENTS/migration/metabase_carveout_transport_plan.csv`: the validated rewrite plan from `metabase-carveout-transport-generate`
 - `.wire/releases/$ARGUMENTS/status.md`: scope, tenant project, target instance
 
 ## Workflow
@@ -105,10 +109,11 @@ If the transport manifest is absent but the target instance already holds cards 
 
 ### Step 2: Confirm the database mapping
 
-Every card carries a `dataset_query.database` id that is meaningless on the target instance. Write (or re-read) `migration/metabase_db_mapping.csv`:
+Every card carries a `dataset_query.database` id that is meaningless on the target instance. Re-read `migration/metabase_db_mapping.csv`, normally confirmed at plan time (`metabase-carveout-transport-generate` Step 2), writing it here only if the plan pipeline has not:
 
 ```
-source_database_id, source_database_name, target_database_id, target_database_name, confirmed
+source_database_id, source_database_name, source_project,
+target_database_id, target_database_name, target_project, confirmed
 ```
 
 Populate the source side from the audit and the target side from the target instance's database list, then **present the table to the consultant and require `confirmed: yes` per row** before any card transports. A card whose source database id has no confirmed mapping row is `not_attempted`, reason `missing_db_mapping`. Never map by name: a target database named like the source one is a hint for the consultant, not a mapping.
@@ -130,6 +135,7 @@ For each `duplicate` card, export the **carved definition** (the applied decoy c
 2. **Template tags and field filters**: field ids from the source database do not survive the boundary; remap each against the target database's field metadata, recorded per tag in the transport manifest, the same surface rule as `metabase-migration` Step 3b.
 3. **Snippet and card references**: rewritten to the target ids created in Step 3's ordering.
 4. **Collection id**: the target collection created in Step 3.
+5. **SQL-text rewrites** (#221): apply the plan's `sql_table_reference` rows for this card. Each fully-qualified `project.dataset.table` reference to a source/shared project is rewritten source project to target project exactly as the plan maps it (`rewrite` rows), or left as it is (`no_change_needed` rows, reason recorded at plan time). A reference found at write time that the plan does not carry is a hard stop, reason `plan_stale`, never an improvised rewrite: the plan was validated, an unplanned rewrite was not. Without this rewrite a repointed connection changes nothing, and the transported card keeps reading the source project's data while reporting `transported`.
 
 For each `duplicate` dashboard: create it, add the surviving dashcards by target card id, and remap the dashboard's filter parameter mappings to the target database's field ids; `dashboard_parameter`-layer dashboards carry the tenant parameter and its per-dashcard mappings exactly as signed off.
 

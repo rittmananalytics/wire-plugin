@@ -43,15 +43,18 @@ This command WRITES config files. Three things it never does:
 
   1. It never modifies an existing sync's config file. The existing
      source-warehouse sync is the rollback path until cutover.
-  2. It never writes a production destination id into a twin. Twins carry
-     decoy ids only, and the decoy must be the same destination type.
+  2. It never writes a live shared destination id into a twin. Decoy-mode
+     twins carry decoy ids only, and the decoy must be the same destination
+     type. A sync the plan's mapping marks destination_mode: dedicated is
+     the one exception: its twin carries the confirmed dedicated destination
+     id — a destination the plan's gate proved no existing sync writes to.
   3. It never enables or unpauses a sync. Every twin is authored paused.
      Enabling is the client's decision and is not a command's side effect.
 
 Target warehouse: [migration.target_project]
 ```
 
-If any step would modify an existing sync file, write a production destination id, or set a twin to enabled, stop and report the conflict before writing anything.
+If any step would modify an existing sync file, write a live shared destination id (or, on a decoy-mode sync, any production destination id), or set a twin to enabled, stop and report the conflict before writing anything.
 
 ---
 
@@ -66,9 +69,9 @@ This command authors the twins. It is deliberately narrow: it writes new config 
 ## Prerequisites
 
 - `reverse_etl_migration review: approved` — the plan this command executes against
-- `migration/reverse_etl_decoy_mapping.csv` exists (`_{wave_id}.csv` under `--wave`), with a non-blank `decoy_destination_id` for every sync in scope
+- `migration/reverse_etl_decoy_mapping.csv` exists (`_{wave_id}.csv` under `--wave`), with a non-blank `decoy_destination_id` for every decoy-mode sync in scope (`destination_mode: dedicated` rows carry blank decoy columns by design)
 - The Hightouch config repo is checked out on the working branch `reverse-etl-migration-generate` Step 3 created — twins are committed there, never to the default branch
-- `topology: additive_repo`. Under `parallel_workspace` or `in_place_repoint` there are no additive twin files to author: stop with `[wire] reverse-etl-twin-generate authors additive twin configs; topology is <topology>. Nothing to author.`
+- `topology: additive_repo` or `additive_dedicated_destination`. Under `parallel_workspace` or `in_place_repoint` there are no additive twin files to author: stop with `[wire] reverse-etl-twin-generate authors additive twin configs; topology is <topology>. Nothing to author.`
 
 ## Flags
 
@@ -108,7 +111,7 @@ Route every sync by its `migration_approach`, per the closed vocabulary in `spec
 For each in-scope sync, write a **new** config file alongside the existing one, at the same relative path with the twin id as its basename. Never open the existing file for writing.
 
 1. **Source connection** — the target-warehouse source added by the plan's Step 3. Never the source-warehouse connection.
-2. **Destination** — the `decoy_destination_id` from the decoy mapping, whose `decoy_destination_type` must equal the sync's `production_destination_type`. A blank decoy id, or a type mismatch, is a hard stop for that sync: record it under **Not authored — decoy missing or wrong type** and continue with the rest. Do not substitute a different type, and do not fall back to the production id.
+2. **Destination** — by the mapping row's `destination_mode`. `decoy` (the default): the `decoy_destination_id` from the mapping, whose `decoy_destination_type` must equal the sync's `production_destination_type`. A blank decoy id, or a type mismatch, is a hard stop for that sync: record it under **Not authored — decoy missing or wrong type** and continue with the rest. Do not substitute a different type, and do not fall back to the production id. `dedicated` (under `additive_dedicated_destination` only): the confirmed dedicated destination id from the mapping row — the missing-decoy reason does not apply, because a dedicated row's blank decoy columns are by design, not a defect. Pausing (item 3) is mode-independent: a dedicated twin is authored paused like any other, and no command enables it.
 3. **Paused** — whatever the config format's disabled/paused representation is, the twin is authored in it. This is not a default that a later step flips: no command in Wire enables a reverse-ETL sync.
 4. **Model** — by approach, from the approved plan: `repoint` carries the model SQL unchanged against the target source; `rewrite_model` carries the translated SQL the runbook recorded (do not re-derive it here — the runbook's translation is the reviewed one); `rebuild` is out of scope for this command, since a Customer Studio rebuild is not a file copy. List `rebuild` syncs as **Not authored — rebuild approach** and leave them to the runbook's rebuild steps.
 5. **`primaryKey`** — carry the sync's configured key through, applying the casing rule below.
@@ -131,18 +134,19 @@ Rule id `REVERSE_ETL_PRIMARY_KEY_CASE`, evaluated here at authoring time and aga
 ```
 sync_id,twin_id,twin_path,source_path,source_file_sha,approach,
 target_source_id,decoy_destination_id,decoy_destination_type,
+destination_mode,dedicated_destination_id,
 production_destination_type,primary_key,primary_key_corrected,
 paused,model_translated,tenant_mechanism,authored_date,state,not_authored_reason
 ```
 
-`sync_id` is the normalised original id from Step 0 — the join key to the audit, and to the register's `reverse_etl_sync` rows (wire#191). `state` is `authored | not_authored`. Every `not_authored` row carries its reason; a blank reason on a `not_authored` row is itself a defect.
+`sync_id` is the normalised original id from Step 0 — the join key to the audit, and to the register's `reverse_etl_sync` rows (wire#191). `state` is `authored | not_authored`. Every `not_authored` row carries its reason; a blank reason on a `not_authored` row is itself a defect. `destination_mode` mirrors the mapping row (`decoy | dedicated`); `dedicated_destination_id` is blank unless the mode is `dedicated`, in which case it is the id the twin points at and both decoy columns are blank.
 
 ### Step 4: Summarise and hand off
 
 Print counts: authored, skipped (already twinned / retire approach), not authored by reason. Then:
 
 ```
-Twins authored: <n> (paused, decoy destinations)
+Twins authored: <n> (paused; decoy destinations, or confirmed dedicated destinations for dedicated-mode syncs)
 Validate them before raising anything:
 /wire:reverse-etl-migration-validate $ARGUMENTS
 ```

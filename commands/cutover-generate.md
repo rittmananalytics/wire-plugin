@@ -77,6 +77,7 @@ Assemble from the migration strategy and all approved runbooks:
 - [ ] Fivetran target connectors active and syncing on schedule
 - [ ] Target dbt project tested and passing all tests
 - [ ] Target orchestration jobs created and passing manual test runs
+- [ ] **Grants-first-or-pause** for any new project's DAGs (#219): where the orchestration platform deploys DAGs unpaused on merge, the new project's warehouse grants (DAG service account, datasets, write paths) are verified in place before any unpaused DAG deploys; otherwise the DAG ships paused and is unpaused only after grants are verified. An unpaused DAG deployed before its grants fails or half-builds the new project on its first scheduled tick.
 - [ ] BI tool connection strings identified for update
 - [ ] Client stakeholders notified of maintenance window
 - [ ] **Full cutover rehearsal completed** on staging at production scale (see Step 2a)

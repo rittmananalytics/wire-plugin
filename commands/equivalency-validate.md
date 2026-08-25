@@ -76,6 +76,7 @@ Every object gets one verdict per run, not a bare PASS/FAIL. The classification 
 |---|---|
 | `pass` | No check diverged. |
 | `pass_qualified` | Divergence whose named mechanism is on the pair's benign allow-list (e.g. a type widening in `type_translation_allowlist`). |
+| `pass_declared_deviation` | Divergence fully accounted for by a declared-deviation record (Step 1f2): the target is right, the source is provably wrong, and the upstream fix is tracked. Claimable **only** when the record's direction and magnitude account for the entire delta; a partial match is not this verdict. |
 | `diff_vintage` | Divergence explained by data vintage: the two sides reflect different load instants. Claiming it requires a matched-vintage re-run (pin both sides to the same instant) that passes, or is scheduled and referenced. |
 | `diff_availability` | Divergence explained by source data that has not landed on the target (e.g. history not yet copied). Where the object carries a **declared window** (Step 1e), the verdict binds to it: mechanism `declared_window_availability`, with the window's floor/cap/exclusions as structured fields on the verdict row — and it is claimable **only** when the in-window comparison passes exactly. |
 | `diff_schema_type` | Divergence explained by a type-translation difference beyond the allow-list, drilled to the exact column and cast. |
@@ -83,11 +84,11 @@ Every object gets one verdict per run, not a bare PASS/FAIL. The classification 
 
 **Explanations qualify a fail — they never upgrade it to a pass.** A prose explanation with no named mechanism is still `fail`. A named mechanism earns the matching `diff_*` verdict; only the pair's allow-list earns `pass_qualified`. Verdicts bind to the exact `file_version` (the model's `last_migrated_commit`): re-translating a model voids its verdict.
 
-**How verdicts count.** For `checks_failing` and the cutover gate: `pass` and `pass_qualified` count as passing; `fail` and every `diff_*` count as failing until a formal acceptance is recorded for that object (the existing "accepted differences formally documented" path), after which the object counts as accepted, not passing. For `dbt-migration-batch-raise` eligibility, see that command's gate table — models whose output leaves the warehouse require an exact `pass`.
+**How verdicts count.** For `checks_failing` and the cutover gate: `pass`, `pass_qualified`, and `pass_declared_deviation` count as passing; `fail` and every `diff_*` count as failing until a formal acceptance is recorded for that object (the existing "accepted differences formally documented" path), after which the object counts as accepted, not passing. For `dbt-migration-batch-raise` eligibility, see that command's gate table — models whose output leaves the warehouse require an exact `pass`.
 
 ## Verdict bar
 
-Counts alone are triage, never a verdict. A `pass` requires, per object: row counts at the object's declared grain (distinct-key counts, not bare `COUNT(*)`), schema in source ordinal order, a surrogate-key or row-hash aggregate over the compared window, and a **declared method class** (`full_history`, `windowed_event` for event models compared over a shared exact window, `aggregate_only` where row-level comparison is impracticable — record why). Every divergence is drilled to a named mechanism before the verdict is written; "small diff, looks fine" is not a mechanism.
+Counts alone are triage, never a verdict. A `pass` requires, per object: row counts at the object's declared grain (distinct-key counts, not bare `COUNT(*)`), schema in source ordinal order, a surrogate-key or row-hash aggregate over the compared window, and a **declared method class** (`full_history`, `windowed_event` for event models compared over a shared exact window, `aggregate_only` where row-level comparison is impracticable — record why, `expected_empty` where both sides measured zero rows and the model carries the relocate-stamped expected-empty marker: the both-sides-empty gate in Step 2 governs when this class is claimable). Every divergence is drilled to a named mechanism before the verdict is written; "small diff, looks fine" is not a mechanism.
 
 ## Run points
 
@@ -239,6 +240,21 @@ Load the engagement's known-differences registry from `migration.known_differenc
 
 This is the connector-behaviour analogue of the pair's `type_translation_allowlist`: both qualify a divergence with a named, pre-proven mechanism; neither hides one.
 
+### Step 1f2: Declared deviations — target right, source wrong (#219)
+
+A migration can correctly diverge from a **defective** source model. On one carve-out, a source model's cross-market dedup discarded 47% of the tenant's rows at source; the carve-out fixed it, so the target was right and the source was wrong, with the source fix tracked upstream. `known_differences.yaml` (Step 1f) does not cover this: that registry records connector behaviour classes that recur across tables by design; a declared deviation records a proven defect in one named source model.
+
+**The record.** Declared deviations live in the same file Step 1f loads (`migration/known_differences.yaml`, or `migration.known_differences_path`), under the key `declared_deviations`. Entries carry: `id`, `model` (the object it applies to, exactly), `defect` (what is wrong in the source model), `evidence_query` (the query that isolates the defect's rows and proves the count), `upstream_fix_ref` (the ticket/PR tracking the source-side fix), `direction` (`target_surplus` | `source_surplus`), `expected_magnitude` (the row count, or exact rule, the defect accounts for), `verdict_treatment` (always `pass_declared_deviation`), `provenance`, `verified_date`. No file, or no `declared_deviations` key, means none are declared.
+
+**Classification (deterministic — tests mirror it: `wire/tests/platform_migration/validate_carveout_ship_gates.py`).** When a data-bearing check diverges on an object:
+
+1. Find `declared_deviations` entries whose `model` equals the object and whose `direction` matches the observed surplus side.
+2. Run the entry's `evidence_query`. The entry applies **only when the recorded magnitude accounts for the entire delta**, the same discipline as Step 1f: a partial match is not a match. The residual is an unexplained divergence, classified by the standard rules (`fail` unless another named mechanism applies), with the report recording how much the entry explained.
+3. On a full match: verdict `pass_declared_deviation`, `divergence_mechanism: declared_deviation:<id>`, with the `defect`, `evidence_query` result, and `upstream_fix_ref` cited in the report. The verdict never silently absorbs unrelated deltas: rule 2 enforces that.
+4. No matching entry: the standard rules apply unchanged.
+
+**Monitoring corollary.** Row-count monitoring (the cutover runbook's post-cutover monitoring checklist, and any scheduled row-count alerting) excludes declared-deviation models from its alert thresholds: their counts are expected to differ from source by the recorded magnitude, so an alert threshold tuned to parity fires on them every cycle. List them separately with their expected magnitude instead of alerting on them.
+
 ### Step 1g: Resolve each object's physical target exactly (#201)
 
 Every data-bearing check below reads the target side at a fully qualified physical relation (`project.dataset.table` / `database.schema.table`). Resolve it exactly, per object, before any check runs (deterministic; tests mirror it: `wire/tests/platform_migration/validate_target_resolution.py`):
@@ -256,6 +272,17 @@ Every data-bearing check below reads the target side at a fully qualified physic
 For each in-scope object, run check types 1–6 and check type 8 (governance); for each in-scope snapshot, additionally run check type 9 (the snapshot three-layer gate). Run check type 7 (business invariants) once per release. For each object:
 
 **Under `--snapshots` scope**, run **only check type 9** over the resolved snapshot set — skip check types 1–8 (and the release-level check 7) entirely. Every other scope runs check type 9 over its in-scope snapshots as described above; `--snapshots` simply narrows the run to the snapshot gate alone.
+
+**Both-sides-empty gate (#219).** A zero-row model passes every data-bearing check vacuously: 0 = 0 on counts, hashes agree on nothing, dbt tests find no rows to fail. Before recording any verdict for an object whose row counts (under the object's resolved filter) are zero on **both** sides, read the model's SQL for the expected-empty marker `dbt-carveout-relocate-generate` stamps as a header comment (`-- EXPECTED EMPTY (<tenant>): ...`). The classification is deterministic (tests mirror it: `wire/tests/platform_migration/validate_carveout_ship_gates.py`):
+
+| Source rows | Target rows | Marker | Outcome |
+|---|---|---|---|
+| 0 | 0 | present | Verdict `pass`, method class `expected_empty`, with the marker's reason and measured source figures cited as the evidence: an explicit verdict, never a vacuous one |
+| 0 | 0 | absent | Verdict `fail`, reason `empty_unexplained`: the run refuses to verify a both-sides-empty model that carries no marker; nothing was meaningfully compared |
+| one or both sides > 0 | | present | The gate does not decide the verdict (the standard rules classify the divergence), but the marker is reported stale (`marker_stale`): a marked-empty model that has grown rows contradicts its own marker |
+| one or both sides > 0 | | absent | Gate not engaged; the standard checks run unchanged |
+
+`empty_unexplained` follows the same pattern as `unresolved_predicate` and `unresolved_target`: a named failure reason on verdict `fail`, counting as failing for `checks_failing`, never a `diff_*` (there is no divergence to classify). The fix belongs at relocate: measure the model, establish the reason, stamp the marker (`dbt-carveout-relocate-generate` Step 2b), and re-run.
 
 **Check type 1 — Row count**
 ```sql

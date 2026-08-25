@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.9 — Three carve-out closes from live client review
+
+**Released**: August 2026
+
+Three issues closed, all raised from the same live tenant carve-out engagement in the week after v3.11.8, two of them found by the client's own review rather than Wire's gates.
+
+**The transported card that still read shared data.** The Metabase carve-out transport rewrote four kinds of ids but never the SQL text itself, and a BigQuery card usually names its table in full — `project.dataset.table` — straight in the query. That literal ignores the card's connection, so a transported card kept reading the shared project while the record said `transported`, and equivalency could not see it because both sides read the same literal table. Transport is now a plan, check, write pipeline (#221): `metabase-carveout-transport-generate` writes a complete dry-run plan including a SQL-text rewrite map (each source-project reference mapped to the tenant project, or `no_change_needed` with a recorded reason); `metabase-carveout-transport-validate` re-scans every card independently of the plan and fails on any unaccounted reference; the write step refuses a plan the validate has not passed and applies the SQL rewrites as its fifth rewrite item. One human gate as before — the rewrite is mechanical once the database mapping is confirmed, so it needed deterministic validation, not a second sign-off.
+
+**A topology for destinations that were never shared.** The reverse-ETL migration offered three topologies, all assuming the new sync's destination is either the same live object the old sync writes to (hence the decoy mechanic and a three-PR cutover) or a from-scratch destination needing full re-auth. A carve-out's actual shape — dedicated destinations provisioned by the client before any sync exists — fitted none of them, forcing undocumented overrides. The fourth topology, `additive_dedicated_destination` (#220), points new syncs at the real destination id from the start (still authored paused), skips the decoy mapping outright, and collapses cutover to one PR. Eligibility is gated per destination by the same complete-destination-set machinery the validate already builds: membership in any existing sync's destination set refuses that sync to the decoy path, and an unreadable set refuses everything rather than assuming.
+
+**Seven silent-pass defect classes, encoded.** Wave 1 of the carve-out shipped 88 models through every RA gate — parse, compile, lint, tests, pre-raise equivalency — and the client's reviewer still pushed eight fixing commits before approval. Each fix was a defect class Wire did not encode, and all seven now are (#219): a semantics check on derived tenant predicates (a column can be named like a tenant column and mean something else — one filtered a global app's install geography, tenant share zero); entity-grain predicates on SCD tables, with static lint rules for the two latent forms; a verified-reduction protocol for models that read foreign-market sources the sovereign project discards; `EXPECTED EMPTY` markers so zero-row models pass explicitly rather than vacuously; a `declared_deviations` record and `pass_declared_deviation` verdict for the case where the target is right and the source is provably wrong; project-hygiene checks (unread sources.yml entries, models falling through to the profile-default dataset); and a new-project coverage gate in batch-raise that checks the client's project-enumerating CI gates actually enumerate the new project and every enabled model is reachable from a DAG — the gap that would have merged 86 models as dead code.
+
+---
+
 ## v3.11.8 — Eight field-raised closes: status reconciliation, reference legibility, and the carve-out gaps
 
 **Released**: August 2026

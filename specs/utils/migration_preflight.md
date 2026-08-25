@@ -47,10 +47,10 @@ The target writes must land in the prepared target environment, with the same pr
 
 Only when `caller == reverse_etl_migration`. Checks 1–3 run before runbook generation starts; Check 4 runs once the decoy mapping has been authored (`reverse_etl_migration/generate.md` Step 4b) and again immediately before the cutover PRs are prepared, since the mapping is produced during generation:
 
-- Confirm `migration/reverse_etl_decoy_mapping.csv` exists, with one row per in-scope sync and a decoy of the **same destination type** for each production destination (no blank `decoy_destination_id` rows for in-scope syncs).
-- Confirm **production destination IDs are absent** from the test syncs (scan the generated/draft test sync config against the mapping's `production_destination_id` column).
-- Confirm the **scoped decoy credential** has write access to decoy targets only and **no grant** on production destinations.
-- **FAIL** if the mapping is missing/incomplete, a test sync references a production destination ID, or the credential's production-destination isolation cannot be confirmed.
+- Confirm `migration/reverse_etl_decoy_mapping.csv` exists, with one row per in-scope sync and a decoy of the **same destination type** for each decoy-mode production destination (no blank `decoy_destination_id` rows for in-scope decoy-mode syncs; `destination_mode: dedicated` rows carry blank decoy columns by design).
+- Confirm **production destination IDs are absent** from the decoy-mode test syncs (scan the generated/draft test sync config against the mapping's `production_destination_id` column). For a `destination_mode: dedicated` row, confirm instead that the sync's destination id equals the row's confirmed dedicated id and appears in no existing sync's destination set (the Step 2 gate in `reverse_etl_migration/generate.md`, re-checked).
+- Confirm the **scoped decoy credential** has write access to decoy targets only and **no grant** on production destinations (decoy-mode syncs).
+- **FAIL** if the mapping is missing/incomplete, a decoy-mode test sync references a production destination ID, a dedicated-mode sync's destination fails the dedicated check, or the credential's production-destination isolation cannot be confirmed.
 
 ### Step: Log the result
 

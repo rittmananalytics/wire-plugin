@@ -16,6 +16,7 @@ Complete all items before the maintenance window begins:
 - [ ] All Fivetran target connectors active and syncing on schedule
 - [ ] Target dbt project validated — all tests pass
 - [ ] Target orchestration jobs created and passing manual test runs
+- [ ] Grants-first-or-pause: any new project's warehouse grants verified before an unpaused DAG deploys, or the DAG deployed paused and unpaused only after grants are verified
 - [ ] BI tool connection strings identified (list below)
 - [ ] Application config changes identified (list below)
 - [ ] Maintenance window communicated to all users (template below)
@@ -85,6 +86,7 @@ For the first 48 hours following cutover:
 - [ ] All dbt tests passing on target
 - [ ] Key business reports validated by client analysts
 - [ ] No unexpected data quality alerts
+- [ ] Declared-deviation models excluded from row-count alert thresholds, listed with their expected magnitude (see `declared_deviations` in `known_differences.yaml`)
 - [ ] Source platform stable (kept live for rollback window)
 
 Across the full rollback window (until {{DECOMMISSION_DATE}}):

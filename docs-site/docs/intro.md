@@ -5,7 +5,7 @@ title: What Is Wire?
 
 # The Wire Framework
 
-**Rittman Analytics** | Version 3.11.8
+**Rittman Analytics** | Version 3.11.9
 
 The Wire Framework is Rittman Analytics' AI-accelerated delivery system for data platform engagements. It uses an AI coding agent — either **Claude Code** (Anthropic) or **Gemini CLI** (Google) — as its runtime, and encodes 20+ years of analytics engineering methodology as structured, executable workflow specifications.
 

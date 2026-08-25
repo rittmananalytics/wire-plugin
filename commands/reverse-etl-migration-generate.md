@@ -53,6 +53,10 @@ All changes are staged as PULL REQUESTS for the client to review and merge.
 
 New test syncs carry DECOY destination IDs only (see Step 4b). Production
   destination IDs are ABSENT from the test syncs until the cutover PR.
+  Exception: under the additive_dedicated_destination topology, dedicated-mode
+  syncs carry their confirmed dedicated destination ID from authoring — a
+  destination the Step 2 gate proved no existing sync writes to. Step 4b is
+  skipped for those syncs.
 
 Target writes go to: [data_safety.target_project or migration.target_project]
 
@@ -71,7 +75,7 @@ If any action would modify a source-backed sync, enable/disable a sync outside a
 
 Generates a step-by-step runbook for migrating every in-scope Hightouch sync from the source warehouse to the target warehouse. The default topology is **additive PR-gated syncs in the existing GitHub-Sync repo**: Hightouch's config (models, syncs, destinations) lives in a Git repository, and GitHub Sync carries models and syncs but **not destinations** — so a separate workspace would force re-creating and re-authenticating every destination. Instead, add a new batch of target-warehouse syncs alongside the existing source-warehouse syncs in that same repo, reusing the existing destination definitions in place. Every change is staged as a pull request for the client to review and merge — the PR gate is the safety control, the same model used for dbt and Fivetran migration. RA never executes enable/disable or mutates the workspace directly. Cutover is two client-merged PRs: one disables every source-origin sync, one enables every target-origin sync. The runbook covers model SQL translation (drift-aware), Customer Studio rebuilds, Lightning schema provisioning, sync-level transformation review, a decoy destination mapping that keeps production destination IDs out of the test syncs until cutover, and a preview-based validation procedure run against a frozen source baseline.
 
-Parallel-workspace and in-place API re-point remain documented as alternatives, no longer the default — see Step 2.
+Parallel-workspace and in-place API re-point remain documented as alternatives, no longer the default — see Step 2. A fourth topology, `additive_dedicated_destination`, covers the carve-out shape where every new destination is already provisioned, dedicated to the new syncs, and never shared with an existing sync: no decoys, and cutover collapses to one client-merged PR (Step 2, Step 8).
 
 
 The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_etl_approach.md` (normative): `repoint`, `rewrite_model`, `rebuild`, `decommission`. There is no `retire` value.
@@ -125,11 +129,17 @@ Decide and record which topology the runbook follows. **Default to additive sync
 
 - **In-place API re-point (alternative).** Only when neither GitHub Sync nor a second workspace is available. The existing syncs' source connection is re-pointed from source to target warehouse within the one workspace via the API. Highest risk: there is no parallel environment, no PR gate, and the production config is mutated directly. If this path is chosen, record why in the runbook.
 
+- **Additive syncs to dedicated, never-shared destinations (`additive_dedicated_destination`).** Same additive PR-gated mechanics as the default, selectable when the destinations for the new syncs are confirmed already-provisioned **and** not shared with any existing sync — the tenant carve-out shape, where the client provisions a new tenant-only destination (e.g. a fresh ad-platform audience or messaging workspace) before any sync exists. There is no live shared object for the decoy mechanic to protect, and no re-authentication burden the parallel-workspace path avoids, so neither applies.
+
+  **Selection gate, per destination.** The topology requires per-destination confirmation that (a) the destination object exists on the target side, and (b) no existing sync writes to it. Evidence for (b) reuses Check 14's machinery (`reverse-etl-migration-validate`): build once the complete destination set of every source-warehouse sync on the config repo's default branch; a candidate dedicated destination id appearing in that set **is shared**, and the topology is refused for that sync. Evidence for (a) is a workspace/API read of the destination object, or the client's written confirmation, recorded in the mapping's `notes` (Step 4b). If the default branch cannot be read, the set is unknown and no sync is eligible — the gate refuses, it never assumes; record `gate_unverified` in the sync's notes. When both conditions fail, record the refusal as shared: set membership is the error-severity condition.
+
+  **Per-release topology, per-sync fallback.** Topology is recorded once per release — `topology:` in status.md is a scalar (Step 9), and the twin manifest carries no topology column, so per-release is what the existing structure supports cleanly. The per-sync outcome lives in the destination mapping's `destination_mode` column (Step 4b): a mixed estate is allowed, and a sync whose destination fails the gate falls back to the default decoy path (`destination_mode: decoy`) without changing the release topology. Tests mirror the gate, the PR-sequence selection, and the twin pointing rule: `wire/tests/platform_migration/validate_dedicated_destination.py`.
+
 Confirm the deployment mechanism (GitHub Sync repo present?), the plan tier, and the chosen topology with the user before continuing.
 
 ### Step 3 — Default: prepare the additive PR-gated branch in the existing repo
 
-(Use Step 3-alt-A for the parallel-workspace alternative, or Step 3-alt-B for the in-place API re-point alternative.)
+(Use Step 3-alt-A for the parallel-workspace alternative, Step 3-alt-B for the in-place API re-point alternative, or Step 3-alt-C for the dedicated-destination topology.)
 
 The Hightouch config repo reflects the one production workspace. Work additively inside it — never in a fork or a second workspace:
 
@@ -141,6 +151,15 @@ The Hightouch config repo reflects the one production workspace. Work additively
 6. Proceed to Step 4 — model translation is committed to the same working branch and flows through PRs.
 
 The existing source-warehouse syncs are not modified by any PR until cutover (Step 8 sequence).
+
+### Step 3-alt-C — Dedicated-destination variant of the additive path
+
+(Only if `additive_dedicated_destination` was chosen in Step 2.) Follow the default Step 3 with two differences:
+
+1. **Dedicated-mode syncs point directly at the real dedicated destination id from the start** — no decoy. The Step 2 gate has already proven the id appears in no existing sync's destination set, so there is no live shared object a mistaken enable could reach.
+2. **Step 4b is skipped for dedicated-mode syncs** — the decoy mechanic's own justification is destination reuse, and a dedicated destination is not reused, so there is nothing for a decoy to protect. In a mixed estate the fallback (decoy-mode) syncs follow the default Step 3 and Step 4b unchanged.
+
+The twin rules are unchanged in every other respect: twins are authored paused, and no command enables a sync.
 
 ### Step 3-alt-A — Parallel-workspace alternative: build the target environment
 
@@ -208,30 +227,34 @@ Keep the **reactive downgrade** in the `repoint` bullet below as a backstop — 
 - **rewrite_model** — translate the model SQL using the platform-pair guide (`wire/platform_pairs/<source>_to_<target>/translation_guide.md`) and feature-tag translations, applying the **drift-aware column translation** in Step 4c before the generic mapping. Test the translated SQL on the target warehouse — row count and primary-key integrity match the source model output. Record a before/after SQL diff in the runbook (noting any drift-adjusted columns). Update via PR on the working branch (additive default / parallel) or `PATCH /api/v1/models/<MODEL_ID>` (in-place).
 - **rebuild** — Customer Studio audiences and Journeys are rebuilt against the target-warehouse source: new schema (parent + related models + events) on the target source, recreated audience filters, recreated Journeys, sync destinations re-mapped to the rebuilt audiences. Capture the existing definitions first via the `schemas`, `audiences`, and `journeys` endpoints.
 
-**Every new test sync carries its decoy destination ID only** (Step 4b) — the production destination IDs must be absent from the test syncs until cutover. Keep all new syncs disabled until validated (Step 5).
+**Every new test sync carries its decoy destination ID only** (Step 4b) — the production destination IDs must be absent from the test syncs until cutover. Under `additive_dedicated_destination` this applies to decoy-mode syncs only: dedicated-mode syncs carry their confirmed dedicated destination id from the start and skip Step 4b. Keep all new syncs disabled until validated (Step 5).
 
 ### Step 4b: Decoy destination mapping table
 
 Destinations are reused in place (the existing definitions are not re-created), so safety cannot rely on a "disabled" flag — a single mistaken enable would write to a live downstream system. Use a structural decoy mechanic instead.
 
+**Skipped entirely for dedicated-mode syncs** under `additive_dedicated_destination`: the decoy mechanic exists to protect destinations reused in place, and a dedicated destination is not reused — nothing else writes to it, so there is nothing for a decoy to protect. Dedicated-mode syncs still get a row in the mapping table (it is the per-sync record of `destination_mode` and the Step 2 gate evidence); only the decoy provisioning and decoy-pointing steps are skipped for them. Decoy-mode syncs in a mixed estate go through this step unchanged.
+
 1. **Build the decoy mapping table** — one row per in-scope sync. Generate or consume `migration/reverse_etl_decoy_mapping.csv` (or `_{wave_id}.csv` under `--wave`) with columns:
 
    ```
    sync_id, sync_name, production_destination_id, production_destination_type,
-   decoy_destination_id, decoy_destination_type, notes
+   decoy_destination_id, decoy_destination_type, destination_mode, notes
    ```
 
-   The decoy must be the **same destination type** as production — a decoy Google Sheet for a Google Sheets destination, a decoy Salesforce sandbox for a Salesforce destination, and so on. If a decoy of the right type does not yet exist, list it as a row with `decoy_destination_id` blank and flag it for the client to provision; do not substitute a different type.
+   `destination_mode` is `decoy` (the default, and the only value outside `additive_dedicated_destination`) or `dedicated`. A `dedicated` row leaves both decoy columns blank **by design** (this is not the provisioning flag below), records the Step 2 gate evidence in `notes` (the existence confirmation and the destination-set check result), and its `production_destination_id` is the confirmed dedicated id the sync writes to from authoring.
 
-2. **Point every new test sync at its decoy ID only.** The production destination IDs must be **absent** from the test syncs. A test sync that references a production destination ID is a defect — fail the pre-flight gate (below) rather than ship it.
+   The decoy must be the **same destination type** as production — a decoy Google Sheet for a Google Sheets destination, a decoy Salesforce sandbox for a Salesforce destination, and so on. If a decoy of the right type does not yet exist, list it as a `decoy`-mode row with `decoy_destination_id` blank and flag it for the client to provision; do not substitute a different type. The provisioning flag applies to `decoy`-mode rows only.
+
+2. **Point every new decoy-mode test sync at its decoy ID only.** The production destination IDs must be **absent** from those test syncs. A decoy-mode test sync that references a production destination ID is a defect — fail the pre-flight gate (below) rather than ship it.
 
 3. **Require a scoped destination credential** — a service account with write access to the decoy targets only and **no permission** on production destinations. Record which credential each decoy destination uses. Validation (Step 5) and any preview run use this credential, so even an accidental live run can only reach a decoy.
 
-4. **At cutover, reverse the mapping.** PR C (Step 8) swaps each `decoy_destination_id` back to its `production_destination_id` and enables the sync. The mapping table is the source of truth for that swap — every row must round-trip.
+4. **At cutover, reverse the mapping.** PR C (Step 8) swaps each `decoy_destination_id` back to its `production_destination_id` and enables the sync. The mapping table is the source of truth for that swap — every decoy-mode row must round-trip. Dedicated-mode rows have nothing to swap: their syncs carry the real id already.
 
 **Hard pre-flight gates** (also enforced by `specs/utils/migration_preflight.md`):
-- **Production destination IDs absent from test syncs** — scan every new test sync's config; if any references a `production_destination_id` from the mapping table, stop and report before generating.
-- **Test credential has no grant on production destinations** — confirm the scoped credential cannot write to any production destination. If the grant cannot be confirmed, stop.
+- **Production destination IDs absent from test syncs** — scan every new decoy-mode test sync's config; if any references a `production_destination_id` from the mapping table, stop and report before generating. For a dedicated-mode sync the gate is instead: its destination id equals the row's confirmed dedicated id **and** appears in no existing sync's destination set (the Step 2 gate, re-checked).
+- **Test credential has no grant on production destinations** — confirm the scoped credential cannot write to any production destination. If the grant cannot be confirmed, stop. (Decoy-mode syncs; a dedicated-mode sync's writes can only reach its own dedicated object.)
 
 ### Step 4c: Drift-aware column translation
 
@@ -255,7 +278,7 @@ Validate against a **frozen source baseline**, not moving production — the sou
 
 1. **Model output** — compare row count, primary-key uniqueness, aggregates, and representative samples between the target model and the frozen source baseline.
 2. **Audience sizes** — where Customer Studio is in scope, compare audience membership and segment counts against the baseline (default tolerance ±2%).
-3. **Sync preview** — run the sync in preview / dry-run; the sync carries its decoy destination ID and the scoped decoy credential, so any actual write lands on the decoy, never production. Confirm the planned record count and field-level payload match expectation. No live run against a production destination.
+3. **Sync preview** — run the sync in preview / dry-run; the sync carries its decoy destination ID and the scoped decoy credential, so any actual write lands on the decoy, never production. Confirm the planned record count and field-level payload match expectation. No live run against a production destination. A dedicated-mode sync has no decoy: its preview runs against the confirmed dedicated destination, which no existing sync writes to, so an accidental write can only reach the tenant's own dedicated object.
 
 ### Step 6: Review sync-level transformation logic
 
@@ -284,21 +307,22 @@ Note: Hightouch creates the actual tables in these schemas on the first sync run
 **Output location**: `.wire/releases/$ARGUMENTS/migration/reverse_etl_migration_runbook.md` — or `migration/reverse_etl_migration_runbook_{wave_id}.md` when run with `--wave`.
 
 Structure:
-1. Topology decision (additive PR-gated repo — default — vs parallel workspace vs in-place API re-point) and the rationale
-2. Build steps for the chosen topology (default: branch existing repo, add target source, author decoy test syncs, open PR A — or parallel-workspace build with destination re-auth, or in-place re-point prep)
-3. Pre-flight checklist (target warehouse ready, dbt batches complete, source baseline frozen, Lightning schemas provisioned, decoy mapping table + scoped credential in place, production destination IDs absent from test syncs) — per `specs/utils/migration_preflight.md`
+1. Topology decision (additive PR-gated repo — default — vs additive to dedicated never-shared destinations vs parallel workspace vs in-place API re-point) and the rationale; for `additive_dedicated_destination`, the per-destination gate evidence (exists on the target side; appears in no existing sync's destination set)
+2. Build steps for the chosen topology (default: branch existing repo, add target source, author decoy test syncs, open PR A — or the dedicated-destination variant, or parallel-workspace build with destination re-auth, or in-place re-point prep)
+3. Pre-flight checklist (target warehouse ready, dbt batches complete, source baseline frozen, Lightning schemas provisioned, decoy mapping table + scoped credential in place, production destination IDs absent from decoy-mode test syncs) — per `specs/utils/migration_preflight.md`
 4. Per-sync model translation — repoint / rewrite_model (with SQL diff, drift adjustments noted) / rebuild (schema mapping + steps), with reclassifications from the approach re-verification (Step 4-verify) and exclusions from the scope gate (Step 4-pre)
-5. Decoy destination mapping table (production ID → decoy ID per in-scope sync) and scoped credential definition
-6. Validation procedure — model-output comparison vs frozen baseline, audience-size comparison, sync preview with destinations set to decoy IDs
+5. Destination mapping table (production ID → decoy ID per decoy-mode sync; `destination_mode` and gate evidence per dedicated-mode sync) and scoped credential definition
+6. Validation procedure — model-output comparison vs frozen baseline, audience-size comparison, sync preview with destinations set to decoy IDs (or the confirmed dedicated id for dedicated-mode syncs)
 7. Sync-level transformation review — per sync: field mappings, computed fields, filters, match/identity rules, audience include/exclude
 8. **Sign-off and cutover sequence (two client-merged PRs)**: open PR A (add target-warehouse test syncs with decoy IDs) → client merges PR A → translate/validate model outputs → validate audience sizes + sync previews → review sync-level logic → business sign-off → prepare the cutover PRs:
    - **PR B (disable source)** — disables every sync whose origin is the source warehouse.
    - **PR C (enable target)** — swaps the decoy destination IDs back to production destination IDs on the new target-warehouse syncs and enables them.
    The client merges **PR B and PR C together in one cutover window**. → monitor initial runs → decommission the source-warehouse syncs (a later PR) once confidence is established.
-   (Parallel-workspace / in-place alternatives keep their own enable sequences.)
-9. Rollback procedures for the chosen topology and approach types: **additive (default)** — re-merge a revert of PR C (disable target syncs / restore decoy IDs) and revert PR B (re-enable source syncs), by PR; **parallel** — don't enable / disable new-workspace syncs and re-enable source workspace; **in-place** — re-apply original `sourceId`.
+   **Dedicated-mode syncs collapse to one client-merged PR**: a single cutover PR adds the new target-warehouse syncs — pointed at their confirmed dedicated destination ids, still authored paused per the twin rules — and disables the old source-warehouse syncs together. Enabling the new syncs stays the client's action at merge. The three-PR A/B/C sequence continues to apply to decoy-mode syncs in a mixed estate.
+   (Parallel-workspace / in-place alternatives keep their own enable sequences, untouched.)
+9. Rollback procedures for the chosen topology and approach types: **additive (default)** — re-merge a revert of PR C (disable target syncs / restore decoy IDs) and revert PR B (re-enable source syncs), by PR; **dedicated** — revert the single cutover PR (re-enables the old source-warehouse syncs, removes the new dedicated-destination syncs); **parallel** — don't enable / disable new-workspace syncs and re-enable source workspace; **in-place** — re-apply original `sourceId`.
 
-The existing source-warehouse syncs stay active and untouched as the rollback path until cutover — never disable them outside PR B, and never before PR C is ready to merge alongside it.
+The existing source-warehouse syncs stay active and untouched as the rollback path until cutover — never disable them outside PR B (or, for dedicated-mode syncs, the single cutover PR), and never before PR C is ready to merge alongside it.
 
 ### Step 9: Update status
 
@@ -308,12 +332,14 @@ artifacts:
     generate: complete
     file: migration/reverse_etl_migration_runbook.md
     generated_date: "{{TODAY}}"
-    topology: additive_repo | parallel_workspace | in_place_repoint
+    topology: additive_repo | additive_dedicated_destination | parallel_workspace | in_place_repoint
     repoint_count: N
     rewrite_model_count: N
     rebuild_count: N
     reclassified_count: N         # syncs moved repoint → rewrite_model by Step 4-verify
     deferred_count: N             # syncs excluded by the Step 4-pre scope gate
+    dedicated_destination_count: N   # destination_mode: dedicated syncs (additive_dedicated_destination only)
+    dedicated_fallback_count: N      # syncs refused by the Step 2 gate, fell back to the decoy path
     drift_adjusted_count: N       # syncs with at least one drift-adjusted column (Step 4c)
     decoy_mapping_file: migration/reverse_etl_decoy_mapping.csv
     wave: "B01"                   # set only when run with --wave; the wave id just processed

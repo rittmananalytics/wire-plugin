@@ -1,9 +1,9 @@
 ---
-description: Internal RA review of reverse ETL migration runbook
-argument-hint: <release-folder> [--wave id]
+description: Validate the transport plan: re-derive the SQL scan from each card's own SQL, prove every source-project reference accounted for and every id-rewrite resolves on the target
+argument-hint: <release-folder>
 ---
 
-# Internal RA review of reverse ETL migration runbook
+# Validate the transport plan: re-derive the SQL scan from each card's own SQL, prove every source-project reference accounted for and every id-rewrite resolves on the target
 
 ## User Input
 
@@ -23,83 +23,70 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Internal RA review of reverse ETL migration runbook
-argument-hint: <release-folder> [--wave id]
+description: Validate the Metabase carve-out transport plan, re-deriving the SQL scan independently from each card's own SQL, proving every source-project reference is accounted for and every id-rewrite resolves on the target instance
+argument-hint: <release-folder>
 ---
 
-# Reverse ETL Migration — Review
+# Metabase Carve-out Transport Plan: Validate
 
-## Purpose
+## Validation Checks
 
-Internal RA review of the reverse ETL migration runbook before execution. Confirms SQL translations are correct, rebuild plans are feasible, the destination mapping is sound (decoy rows, and gate evidence for any `destination_mode: dedicated` rows), and the PR-gated cutover sequence is agreed (two client-merged PRs, or one under the `additive_dedicated_destination` topology).
+Ground truth is each card's own SQL (read from the source instance or the audit's serialization export), the confirmed `migration/metabase_db_mapping.csv`, and the target instance's actual database and field metadata. The scan is re-derived here from scratch, never read from the plan: the plan's claims are what is being checked. This mirrors `metabase-carveout-validate`, which re-derives filters from the registry rather than trusting the manifest.
 
+**Check 1: Plan present and current**
+`migration/metabase_carveout_transport_plan.csv` exists and is not older than `migration/metabase_carveout_manifest.csv` (compare mtimes / the recorded `generated_date` against the manifest's last change). A plan older than the manifest it was generated from is FAIL, reason `plan_stale`: re-run `metabase-carveout-transport-generate` first.
 
-The `migration_approach` vocabulary is the closed set in `specs/utils/reverse_etl_approach.md` (normative): `repoint`, `rewrite_model`, `rebuild`, `decommission`. There is no `retire` value.
+**Check 2: Every in-scope SQL reference is accounted for**
+For every in-scope card, re-derive the fully-qualified reference set from the card's own SQL using the scan rules in `specs/migration/metabase_carveout/transport_generate.md` Step 3: comments stripped first, backtick-quoted and unquoted three-part forms matched, two-part references out of scope, only projects in the confirmed mapping's source/shared project set in scope. Every reference so found must have a plan row that is either:
 
-## Flags
+- `rewrite` with a `target_value` equal to the confirmed mapping row's `target_project` for that source project, or
+- `no_change_needed` with a non-blank reason.
 
-- `--wave <id>` — review the wave-labelled runbook (`reverse_etl_migration_runbook_{wave_id}.md`) instead of the unscoped one. Required once more than one wave's runbook exists.
+A reference with no plan row is **unaccounted**: FAIL, listing card and reference. A `rewrite` row whose target project does not come from the confirmed mapping is a guessed mapping: FAIL. A `no_change_needed` row with a blank reason is FAIL. No unaccounted reference, no guessed mapping.
+PASS/FAIL with offending references.
 
-## Prerequisites
+**Check 3: No plan row without a reference**
+Every `sql_table_reference` plan row matches a reference the re-scan actually found in that card's SQL. A row claiming a rewrite the SQL does not contain means the plan and the cards have diverged: FAIL, reason `unmatched_plan_row`, listing the rows.
+PASS/FAIL with offending rows.
 
-- `migration/reverse_etl_migration_runbook.md` (or `_{wave_id}.md` under `--wave`) exists with `validate: pass`
+**Check 4: Id-rewrites resolve on the target instance**
+Every `database_id` target exists in the target instance's database list; every `template_tag_field` target field id exists in the mapped target database's field metadata; every `snippet_ref` / `card_ref` / `collection_id` row with a recorded target id answers a GET on the target; every `pending_create` row names a source object that is itself in the plan's worklist, so transport's dependency ordering will create it.
+PASS/FAIL with offending rows.
 
-## Workflow
+**Check 5: Closed vocabularies**
+`rewrite_type` is one of `database_id | template_tag_field | snippet_ref | card_ref | collection_id | sql_table_reference`; `disposition` is one of `rewrite | pending_create | no_change_needed`; `pending_create` appears only on `snippet_ref` / `card_ref` / `collection_id` rows and `no_change_needed` only on `sql_table_reference` rows. Any other value is FAIL naming the value and the row.
+PASS/FAIL with offending rows.
 
-### Step 1: Load meeting context
+The scan and accounting rules above are deterministic and implemented literally in `wire/tests/platform_migration/validate_transport_sql_rewrite.py`; a change to the rules here changes that test.
 
-Follow `specs/utils/meeting_context.md`. Search for discussions about Hightouch, data activation, destination credentials, or sync cutover timing.
-
-### Step 2: Present runbook for review
-
-Summary to present:
-- Topology (default: additive PR-gated syncs in the existing repo) and the rationale
-- Total syncs in runbook by approach (repoint / rewrite_model / rebuild), plus any reclassified by the approach re-verification and any deferred by the scope gate
-- Any SQL translations with non-trivial changes, and any drift-adjusted columns
-- Customer Studio rebuilds and their estimated effort
-- Lightning schema requirements and service account permissions
-- Destination mapping (production → decoy IDs per decoy-mode sync; gate evidence per dedicated-mode sync) and the scoped credential
-- The cutover plan: two PRs for decoy-mode syncs (PR B disable source-origin, PR C enable target-origin, merged together by the client), or one PR for dedicated-mode syncs (add new paused syncs + disable old, together)
-
-### Step 3: Gather reviewer feedback
-
-1. Are the SQL translations correct and do they preserve business logic — including any drift-adjusted columns?
-2. Are the Customer Studio rebuild plans complete — are there any trait definitions, related models, or Journey steps that are missing?
-3. Is the warehouse service account scoped correctly, and is the decoy-destination credential restricted to decoy targets only (no production-destination grant)?
-4. Is the destination mapping complete — one decoy of the same destination type per in-scope decoy-mode sync, and per dedicated-mode sync the gate evidence that the destination exists and no existing sync writes to it — and are production destination IDs confirmed absent from the decoy-mode test syncs?
-5. Is the cutover sequence agreed (two PRs for decoy-mode syncs: PR B disable source-origin, PR C enable target-origin, merged together; one PR for dedicated-mode syncs), and who on the client side owns the merge?
-
-### Step 4: Apply feedback and record decision
-
-```markdown
-## Review
-
-**Reviewed by**: {{REVIEWER_NAME}}
-**Review date**: {{TODAY}}
-**Decision**: approved | changes_requested
-
-### Reviewer notes
-[Capture corrections, agreed parallel-run period, credential rotation tasks]
-```
-
-### Step 5: Update status
+### Update status
 
 ```yaml
 artifacts:
-  reverse_etl_migration:
-    review: approved | changes_requested
-    reviewed_by: "{{REVIEWER_NAME}}"
-    reviewed_date: "{{TODAY}}"
-    wave_review:                 # set only when run with --wave, keyed by wave id
-      B01: approved | changes_requested
+  metabase_carveout_transport_plan:
+    validate: pass | fail
+    validated_date: "{{TODAY}}"
 ```
 
-### Step 6: Output next command
+### Output next command
 
-If approved:
+On PASS:
+
 ```
-/wire:equivalency-validate $ARGUMENTS
+/wire:metabase-carveout-transport $ARGUMENTS
 ```
+
+On FAIL, fix the plan and re-run: an unaccounted reference usually means the mapping is missing a shared project row (`metabase-carveout-transport-generate` Step 2), and an unmatched plan row means the plan is stale against the cards.
+
+## Post-Execution Hooks
+
+After updating `status.md`, run these in sequence:
+
+1. **Execution log**: Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
+
+2. **Jira sync**: Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_carveout_transport_plan` as artifact, `validate` as action.
+
+3. **Auto-commit**: Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `metabase_carveout_transport_plan` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 
