@@ -54,7 +54,7 @@ Source instance (read-only):  MB_HOST
 Target instance (writes):     MB_TARGET_HOST
 ```
 
-If `MB_TARGET_HOST` resolves to the same instance as `MB_HOST`, stop: transport moves objects between two independently-hosted deployments, and the same-instance cases are already covered by the carve-out's own layer paths. Report the conflict before creating anything.
+If `MB_TARGET_HOST` resolves to the same instance as `MB_HOST`, stop: transport moves objects between two independently-hosted deployments. The same-instance cases are `metabase-carveout-repoint`'s (#255) — duplicating a card into another collection on this instance, or repointing an existing card's warehouse project without moving it — and the two commands are mutually exclusive by design. Report the conflict, name the repoint pipeline, and create nothing.
 
 ---
 

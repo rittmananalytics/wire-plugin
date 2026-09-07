@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v3.11.10 — A same-instance repoint for the Metabase carve-out
+
+**Released**: September 2026
+
+One issue closed (#255), raised while planning a Metabase trial on a live tenant carve-out.
+
+**The case the transport pipeline refuses.** `metabase-carveout-transport` moves cards to a second, separately-hosted Metabase deployment, and it hard-stops when the target resolves to the same instance as the source. That guard is right for transport, but it left two same-instance cases with no supported command: duplicating a card into a different collection on the same instance, and repointing an existing card's underlying warehouse project without moving or duplicating it at all. Both arise when a carve-out's target is a separate BigQuery project reachable from the *same* Metabase instance rather than a separate Metabase deployment — the `warehouse_layer` layer decision, which has always named the tenant view and the repoint but had no mechanic behind it.
+
+**Three new commands, the same shape as transport.** `/wire:metabase-carveout-repoint-generate` plans, per in-scope card, the write mode, the destination and staging collections, the database-id remap, the field-filter tag remaps, and a SQL-text rewrite for every fully-qualified `project.dataset.table` reference to a source or shared project. That last class is the same gap #221 fixed for the cross-instance case, and it applies here unchanged: on BigQuery such a reference is a literal, not resolved through the Metabase connection, so remapping the connection alone leaves the card reading the shared project's data while the record says it was repointed. Being on one instance does not make the literal resolve differently. `/wire:metabase-carveout-repoint-validate` re-derives the scan from each card's own SQL and fails any unaccounted reference, any guessed mapping, any remap that does not resolve on the mapped database, and any in-place row with no staging collection. `/wire:metabase-carveout-repoint` executes only a plan the validate has passed.
+
+**Two write modes, and a staged path for the risky one.** `duplicate` creates a second card in a target collection and never touches the source card. `in_place` replaces an existing card's query while keeping the card id, so dashboards, subscriptions and other cards that already reference it keep working — which is exactly why it never runs in a single step. An in-place repoint stages the rewritten copy in a restricted-access collection first, records the production card's current query verbatim as a rollback baseline, and promotes only once the staged copy has been reviewed and has a passing card-level equivalency verdict. A card missing the staged copy, the baseline, or the verdict is refused, and the production card is left as it was.
+
+**What is deliberately absent.** No id-rewriting for cross-instance references: snippet, card and collection ids do not change on one instance, and nothing here creates a permission group or a sandboxing policy. One same-instance rule is additional instead — a card that reaches a source project only through a snippet body shared with cards outside the carve-out is parked for the consultant rather than rewritten, because that body is the same object every other card uses. The two pipelines are mutually exclusive by design: transport refuses a same-instance target, repoint refuses a cross-instance one, and each names the other in its stop message.
+
+---
+
 ## v3.11.9 — Three carve-out closes from live client review
 
 **Released**: August 2026

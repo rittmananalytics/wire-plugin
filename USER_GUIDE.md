@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.11.9 | **Date**: August 2026
+**Version**: 3.11.10 | **Date**: August 2026
 
 ---
 
@@ -5020,6 +5020,12 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v3.11.10 — A same-instance repoint for the Metabase carve-out (September 2026)
+
+`metabase-carveout-transport` moves cards to a second Metabase deployment and hard-stops when the target resolves to the same instance (#255). That left two cases with no command: duplicating a card into another collection on the same instance, and repointing an existing card's warehouse project without moving or duplicating it. Both arise when the carve-out's target is a separate BigQuery project reachable from the same instance — the `warehouse_layer` layer decision, which named the repoint but had no mechanic behind it. **Three new commands** follow the same plan → validate → write shape: `/wire:metabase-carveout-repoint-generate` plans, per in-scope card, the write mode, the destination and staging collections, the database-id and field-filter remaps, and a SQL-text rewrite for every hardcoded `project.dataset.table` reference to a source or shared project (the same class of gap #221 fixed for the cross-instance case — on BigQuery that reference is a literal, so repointing the connection alone leaves the card reading shared data); `/wire:metabase-carveout-repoint-validate` re-derives the scan from each card's own SQL and fails any unaccounted reference, any remap that does not resolve on the mapped database, and any in-place row with no staging collection; `/wire:metabase-carveout-repoint` writes. **Two write modes**: `duplicate` creates a second card and never touches the source; `in_place` replaces an existing card's query, keeping the card id and everything that already references it. **In place runs in two halves**, never one — stage into a restricted-access collection, review it and prove equivalency, then promote — with the card's pre-change query recorded verbatim as a rollback baseline. Cross-instance machinery is deliberately absent: snippet, card and collection ids do not change on one instance, and a card that reaches a source project only through a shared snippet body is parked for the consultant rather than rewritten, because that body is the same object every other card uses. The two pipelines are mutually exclusive by design: transport refuses a same-instance target, repoint refuses a cross-instance one.
 
 ---
 

@@ -1,9 +1,9 @@
 ---
-description: Card-level equivalence — migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover
-argument-hint: <release-folder> [--cards id1,id2] [--dashboard id]
+description: Validate the same-instance repoint plan: re-derive the SQL scan from each card's own SQL, prove every reference accounted for, every remap resolves on the mapped database, every in-place row staged
+argument-hint: <release-folder>
 ---
 
-# Card-level equivalence — migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover
+# Validate the same-instance repoint plan: re-derive the SQL scan from each card's own SQL, prove every reference accounted for, every remap resolves on the mapped database, every in-place row staged
 
 ## User Input
 
@@ -23,85 +23,82 @@ When following the workflow specification below, resolve paths as follows:
 ## Workflow Specification
 
 ---
-description: Card-level equivalence — prove a migrated or carved Metabase card returns the same rows, in the model verdict taxonomy, gating the connection cutover
-argument-hint: <release-folder> [--cards id1,id2 | --dashboard <id>]
+description: Validate the same-instance repoint plan, re-deriving the SQL scan independently from each card's own SQL, proving every source-project reference is accounted for, every remap resolves on the mapped database, and every in-place row has a staging collection
+argument-hint: <release-folder>
 ---
 
-## Data Safety — Read Before Proceeding
+# Metabase Carve-out Repoint Plan: Validate
 
-All card executions for comparison run against the decoy collection's test copies (or directly as read-only queries against the two warehouse connections). No production card is repointed or edited to compare. Source-platform reads are SELECT only.
+## Validation Checks
 
----
+Ground truth is each card's own SQL (read from the instance or the audit's serialization export), the confirmed `migration/metabase_db_mapping.csv`, and the instance's actual database, field and collection metadata. The scan is re-derived here from scratch, never read from the plan: the plan's claims are what is being checked. This mirrors `metabase-carveout-transport-validate`, and `metabase-carveout-validate` before it, which re-derives filters from the registry rather than trusting the manifest.
 
-# Metabase Equivalency — Validate
+**Check 0: Same instance**
+`MB_TARGET_HOST`, where set, resolves to the same instance as `MB_HOST`. A different host is FAIL, reason `cross_instance_target`, naming both hosts: that is a cross-instance move and belongs to the transport pipeline. The whole point of this pipeline is the same-instance case, so the guard is checked before anything else.
+PASS/FAIL with both host values.
 
-## Purpose
+**Check 1: Plan present and current**
+`migration/metabase_carveout_repoint_plan.csv` exists and is not older than `migration/metabase_carveout_manifest.csv` (compare mtimes / the recorded `generated_date` against the manifest's last change). A plan older than the manifest it was generated from is FAIL, reason `plan_stale`: re-run `metabase-carveout-repoint-generate` first.
 
-`metabase-migration`'s decoy validation confirms cards **run**; nothing proved they return the **same rows** (#184). This command closes that with card-level verdicts in the model taxonomy — the reporting-layer analogue of `reverse-etl-equivalency-validate` — and it is the gate the Stage 2 connection cutover consumes: **every in-scope card must hold `pass` or `pass_qualified` before the production connection repoints.**
+**Check 2: Every in-scope SQL reference is accounted for**
+For every in-scope card, re-derive the fully-qualified reference set from the card's own SQL using the scan rules in `specs/migration/metabase_carveout/transport_generate.md` Step 3, as `specs/migration/metabase_carveout/repoint_generate.md` Step 4 adopts them: comments stripped first, backtick-quoted and unquoted three-part forms matched, two-part references out of scope, only projects in the confirmed mapping's source/shared project set in scope. Every reference so found must have a plan row that is either:
 
-Like `equivalency-validate`, this is a repeatable loop command, not a generate/validate/review artifact.
+- `rewrite` with a `target_value` equal to the confirmed mapping row's `target_project` for that source project, or
+- `no_change_needed` with a non-blank reason.
 
-## Prerequisites
+A reference with no plan row is **unaccounted**: FAIL, listing card and reference. A `rewrite` row whose target project does not come from the confirmed mapping is a guessed mapping: FAIL. A `no_change_needed` row with a blank reason is FAIL. No unaccounted reference, no guessed mapping — a card that reaches the tenant project by connection but still names the shared project in its SQL text reads shared data and reports success, and being on one instance does not change that.
+PASS/FAIL with offending references.
 
-- `metabase_audit review: approved`
-- The migrated (or carved) card versions exist as decoy test copies, or the manifest rows are `applied`
+**Check 3: No plan row without a reference**
+Every `sql_table_reference` plan row matches a reference the re-scan actually found in that card's SQL. A row claiming a rewrite the SQL does not contain means the plan and the cards have diverged: FAIL, reason `unmatched_plan_row`, listing the rows.
+PASS/FAIL with offending rows.
 
-## Workflow
+**Check 4: Remaps resolve on the mapped database**
+Every `database_id` target exists in the instance's database list and matches the confirmed mapping row for that source database id. Every `template_tag_field` target field id exists in the **mapped target database's** field metadata — a field id that resolves only in the source database is FAIL, reason `field_not_in_target_database`, not a pass because the id answers a GET somewhere on the instance. Every card with field-filter template tags has one `template_tag_field` row per tag; a tag with no row is FAIL, reason `tag_not_remapped`.
+PASS/FAIL with offending rows.
 
-### Step 1: Resolve scope and comparison sides
+**Check 5: Destinations exist and in-place rows are staged**
+Every `target_collection_id` and every non-blank `stage_collection_id` resolves to a collection that exists on the instance. Every row with `write_mode: in_place` carries a non-blank `stage_collection_id`: FAIL, reason `in_place_without_stage`, because a production card with existing dependents is never rewritten without a staged copy to review first. Every `in_place` row's `target_collection_id` equals the card's current collection: an in-place repoint never moves a card, and a plan that says otherwise is FAIL, reason `in_place_moves_card`.
+PASS/FAIL with offending rows.
 
-Scope: every in-scope card from the migration manifest (and the carve-out manifest under `tenant_carveout`); `--cards id1,id2` or `--dashboard <id>` (its deduped card set) narrows. Comparison sides are scope-dependent:
+**Check 6: Closed vocabularies**
+`write_mode` is one of `duplicate | in_place`; `rewrite_type` is one of `database_id | template_tag_field | sql_table_reference`; `disposition` is one of `rewrite | no_change_needed`, with `no_change_needed` only on `sql_table_reference` rows. Transport's `snippet_ref`, `card_ref` and `collection_id` types are not valid here — their presence means a cross-instance plan reached this pipeline: FAIL naming the value and the row. Any other value is FAIL naming the value and the row.
+PASS/FAIL with offending rows.
 
-| Scope | Source side | Target side |
-|---|---|---|
-| `full_migration` (or absent) | The card's **source-dialect query** on the **source connection** | The **translated query** on the **target connection** |
-| `tenant_carveout` | The **parent connection's** result with the card's **resolved registry filter** applied (`migration.parent_target_project` connection) | The **tenant connection's** result, unscoped (single-tenant by construction) |
+**Check 7: Parked rows are genuinely parked**
+Every card recorded `blocked_reference` carries reason `shared_snippet_reference` and no rewrite rows; every card recorded `out_of_scope` carries one of `row_not_signed_off | removed_no_tenant_data | layer_not_repointed | layer_requires_opt_in` and no rewrite rows. A parked card with rewrite rows is FAIL: the plan cannot both defer a card and plan a write to it.
+PASS/FAIL with offending rows.
 
-**MBQL cards** compare by executing the same MBQL against both connections — there is no translated SQL to distrust, but the two databases' data still has to match at the card grain. **Native cards** compare the source text against the manifest's proposed/applied text. Under `tenant_carveout`, a card whose registry mechanism is `unresolved` is **verdict `fail`, reason `unresolved_predicate`** — never compared unfiltered (the source side would return every tenant's rows and the comparison would fail for a reason unrelated to the carve). A card whose registry expression is non-empty but fails the well-formedness check in `specs/utils/tenant_predicate_registry.md` is likewise **verdict `fail`, reason `malformed_expression`** (#200): a truncated filter applied to the parent side compares a row set nobody ruled on.
+The scan, accounting and gating rules above are deterministic. The scan and reference accounting are implemented in `wire/tests/platform_migration/validate_transport_sql_rewrite.py` (shared with transport, unchanged); the repoint-specific gating in Checks 0, 5 and 6 is implemented in `wire/tests/platform_migration/validate_metabase_carveout_repoint.py`. A change to the rules here changes those tests.
 
-**Separately-hosted tenant instance (#203).** When the carve-out transported objects onto their own Metabase deployment (`/wire:metabase-carveout-transport`), the target side executes on the target instance: resolve each card's target copy through the transport manifest's recorded `source_id -> target_id` mapping (`migration/metabase_carveout_transport_manifest.csv`), never by name. A card with no recorded target id is verdict `fail`, reason `not_transported`; it blocks the go-live gate like any other fail.
-
-**Same-instance repoint (#255).** When the carve-out repointed a card on the same instance instead (`/wire:metabase-carveout-repoint`), both sides execute on `MB_HOST` and the target copy resolves through the repoint manifest's recorded ids (`migration/metabase_carveout_repoint_manifest.csv`), never by name. For a `duplicate` row the target is the recorded `repointed_id`; for an `in_place` row it is the card's own id, compared against the recorded rollback baseline query as the source side, because the pre-change query is the only surviving definition of what the card used to return. A card recorded `staged` is compared as its `staged_card_id`: the verdict is what `--promote` requires, so a staged card must be checkable before promotion. A card with no recorded id is verdict `fail`, reason `not_repointed`; it blocks the go-live gate like any other fail.
-
-### Step 2: Compare at the card grain
-
-Both sides run under the pinned-vintage discipline (a pinned as-of, or the baseline `T`). Compare the result sets: row count, the row set keyed by the card's grain columns, and column-value hashes over the card's `result_metadata` columns (canonicalised per the equivalency edge-case rules). Parameterised cards (field-filter template tags) compare at a declared parameter binding recorded in the report — an unbound field filter compares the card's unfiltered default.
-
-### Step 3: Verdicts
-
-The model taxonomy applies unchanged: `pass`, `pass_qualified` (the pair type allow-list, or a known-differences entry on the card's underlying tables — the declared-window rules apply where the underlying tables carry them), `diff_*` with a named mechanism, `fail`. Explanations qualify a fail; they never upgrade it.
-
-### Step 4: Verdict log and register
-
-Each card's verdict appends to `migration/migration_verdict_log.csv` (`object_type: metabase_card`, same single-writer merge as every lane — `specs/migration/equivalency/verdict_schema.md`) and updates the card's register row where one exists. Carve-out verdicts carry `scope` and the resolved predicate hash like every other carve-out verdict.
-
-### Step 5: The cutover gate
-
-`metabase-migration`'s Stage 2 (production connection repoint) requires every in-scope card at `pass`/`pass_qualified` from this command; under `tenant_carveout`, so does the tenant instance's go-live. A `fail` or unresolved card blocks the repoint — a dashboard that renders wrong numbers after cutover is discovered by the client, which is the most expensive place to find it.
-
-### Step 6: Report and status
-
-`.wire/releases/$ARGUMENTS/migration/metabase_equivalency_report_{run_number}.md`: per card — query type, comparison sides, parameter bindings, counts both sides, differing keys/columns (named), verdict. Update status:
+### Update status
 
 ```yaml
 artifacts:
-  metabase_equivalency:
-    last_run_date: "{{TODAY}}"
-    cards_checked: N
-    passing: N
-    failing: N
-    unresolved: N          # tenant_carveout only — unresolved predicate, never compared
+  metabase_carveout_repoint_plan:
+    validate: pass | fail
+    validated_date: "{{TODAY}}"
 ```
+
+### Output next command
+
+On PASS:
+
+```
+/wire:metabase-carveout-repoint $ARGUMENTS
+```
+
+On FAIL, fix the plan and re-run. An unaccounted reference usually means the mapping is missing a shared project row (`metabase-carveout-repoint-generate` Step 2); an unmatched plan row means the plan is stale against the cards; `in_place_without_stage` means the consultant has not yet named the restricted-access collection the change is reviewed in.
 
 ## Post-Execution Hooks
 
 After updating `status.md`, run these in sequence:
 
-1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
+1. **Execution log**: Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_equivalency` as artifact, `validate` as action.
+2. **Jira sync**: Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `metabase_carveout_repoint_plan` as artifact, `validate` as action.
 
-3. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `metabase_equivalency` as artifact, `validate` as action.
+3. **Auto-commit**: Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `metabase_carveout_repoint_plan` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 
