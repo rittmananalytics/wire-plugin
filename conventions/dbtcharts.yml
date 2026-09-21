@@ -1,0 +1,230 @@
+schema_version: 1
+domain: dbtcharts
+description: >
+  Rittman Analytics dbt Charts board design conventions: the house style for
+  the dashboards /wire:dbtcharts-generate produces over a warehouse subject
+  area. Settings sections (presentation, windows, board_shape, chart_defaults,
+  formats) are read by the generate command and passed to the scaffold and the
+  design step; rule sections (naming, layout, sql, render) are checked by
+  wire/scripts/lint_conventions.py --domain dbtcharts over charts/*.yml.
+  Narrative rationale and worked examples stay in
+  wire/skills/dbtcharts/SKILL.md and board-design-brief.md. Two-tier
+  resolution as for dbt: .wire/conventions/dbtcharts.yml in the engagement
+  repo wins when present (copy this file there and change values), else this
+  framework default.
+
+# ----------------------------------------------------------------------
+# Presentation — theme, frame, currency, landing page
+# ----------------------------------------------------------------------
+presentation:
+  theme: vivid                    # clarity | paper | stark | vivid | neon; written once to charts/meta.yml
+  frame_width: 1440               # style.frame.width in charts/meta.yml
+  currency: "$"                   # symbol for money measures. "$" uses dct's currency presets; any other
+                                  # symbol becomes a KPI/table prefix and chart axes use plain numbers,
+                                  # because dct 0.8 axis tick formats carry no other symbol
+  landing_page:
+    enabled: true                 # write charts/index.yml (dct serves it at / instead of a file listing)
+    title: null                   # heading; null = the dbt project name, humanised
+    logo: null                    # path to an svg/png/jpg/webp, embedded as a data URI (dct serves no static files)
+    cards_per_row: 3
+
+# ----------------------------------------------------------------------
+# Windows — what period a KPI or trend covers
+# ----------------------------------------------------------------------
+windows:
+  kpi_period_months: 12           # KPI row: last N months vs the N before (by the fact's date column)
+  event_period_days: 30           # for daily event facts (authentication, web events): last N days vs prior N
+  trend_months: 24                # trends show the last N complete months, never the full history
+  stopped_feed_anchor: last_loaded_month   # a feed that no longer loads anchors windows here, and the board notes say so
+
+# ----------------------------------------------------------------------
+# Board shape — one board, one screen
+# ----------------------------------------------------------------------
+board_shape:
+  kpis: { min: 4, max: 6 }
+  charts: { min: 4, max: 6 }      # trends and breakdowns, excluding KPIs and tables
+  tables: { max: 1 }
+  max_visualisations: 8           # charts plus tables; over this, split by fact into tabs or a second board
+  kpi_row_height: 120             # `- height:` on the KPI row
+  section_headings: false         # no `## Table` text rows or row titles on a dashboard; chart titles carry meaning
+  layout_rows:                    # after the KPI row, in order
+    - [60, 40]                    # hero trend beside a side chart
+    - [50, 50]
+    - [100]                       # detail table full width
+
+# ----------------------------------------------------------------------
+# Chart defaults — which shape answers which question
+# ----------------------------------------------------------------------
+chart_defaults:
+  trend:
+    type: bar                     # bar | line for a single measure over months
+    time_unit: yearmonth          # style.axis_x.time_unit
+    axis_y_position: left         # the theme puts the axis on the right when no end-of-line label is drawn
+  composition_over_time:
+    type: bar
+    stack: zero                   # style.stack with color: on the series column
+  mixed_units:
+    layers_right_axis: true       # two measures in different units: layers: with axis_y.position: right, never y: [a, b]
+  ranking:
+    orientation: horizontal
+    limit: 10
+  table:
+    limit: 15
+    pagination: false
+    numbers_right_aligned: true
+  pie_max_slices: 3               # more than this is a bar
+
+# ----------------------------------------------------------------------
+# Formats — the family slot each format lives in
+# ----------------------------------------------------------------------
+formats:
+  kpi_value_slot: style.value.format
+  chart_measure_slot: style.number_format
+  table_column_slot: style.columns.<col>.format
+  count: integer
+  number: number
+  percent_ratio: percent          # a 0-1 ratio; divide 0-100 columns by 100 in SQL first
+  percent_whole: percent_whole
+  delta: percent_delta            # KPI support: current / prior - 1
+  money_dollar: currency_whole    # when presentation.currency is "$"
+  money_other:                    # any other symbol: KPI and table prefix, axes plain
+    kpi: { spec: ",.0f", prefix: "<currency>" }
+    axis: number
+    subtitle_names_currency: true
+
+# ----------------------------------------------------------------------
+# Naming rules — checked by lint_conventions.py where a pattern is given
+# ----------------------------------------------------------------------
+naming:
+  - id: kpi_label_max_words
+    description: "A KPI label is 2 to 4 words; the card truncates at about 40 characters"
+    scope: kpi_label
+    value: 4
+    severity: warning
+
+  - id: kpi_label_no_table_prefix
+    description: "A KPI label does not start with the table name and a colon (the section already names the table; the render truncates it)"
+    scope: kpi_label
+    forbidden_pattern: '^[A-Za-z][A-Za-z0-9 ]+: '
+    severity: warning
+
+  - id: chart_title_required
+    description: "Every non-KPI chart has title:, every KPI has label:"
+    scope: chart
+    severity: error
+
+  - id: notes_required
+    description: "Every query and every chart carries a non-empty notes: line (dbt Charts' AI search reads it)"
+    scope: chart_and_query
+    severity: error
+
+  - id: subtitle_states_unit_and_window
+    description: "A trend or breakdown subtitle names the unit and the window (\"GBP, last 24 months\")"
+    scope: chart
+    severity: warning
+    note: "Advisory — the linter cannot judge wording; the design step applies it."
+
+  - id: money_measure_alias_has_currency_format
+    description: "A chart measure whose name ends _amount, _revenue, _cost, _price, _value or _spend carries a $ format, or is aliased to a neutral name when it is not money (kpi_value -> kpi_reading)"
+    scope: chart_measure
+    severity: warning
+    note: "Advisory — mirrors dct render's WARN-LIKELY-CURRENCY-OR-PERCENT-MISSING-FORMATTER heuristic; validate Check 10 catches it at render time."
+
+# ----------------------------------------------------------------------
+# Layout rules
+# ----------------------------------------------------------------------
+layout:
+  - id: no_section_heading_rows
+    description: "A dashboard has no `- text: \"## ...\"` section rows; chart titles carry the meaning"
+    forbidden_pattern: '^\s*- text:\s*["'']?#{1,3}\s'
+    severity: warning
+
+  - id: no_hidden_endpoint_labels
+    description: "Do not set style.endpoint_labels.visible: false to fix a truncated series label; alias the column in SQL instead (hiding the labels reflows the PNG render badly)"
+    scope: chart_style
+    severity: warning
+
+  - id: kpi_value_format_required
+    description: "Every KPI sets style.value.format (integer for counts)"
+    scope: kpi
+    severity: warning
+
+  - id: trend_time_unit_required
+    description: "A line, bar or area chart whose x is month sets style.axis_x.time_unit"
+    scope: chart
+    severity: warning
+
+  - id: kpi_row_height_set
+    description: "The row holding KPI cards sets height: (see board_shape.kpi_row_height) so the cards stay short above the charts"
+    severity: warning
+    note: "Advisory — the linter does not resolve which row holds KPIs; the design step applies it."
+
+# ----------------------------------------------------------------------
+# SQL rules — forms dct's static checker accepts
+# ----------------------------------------------------------------------
+sql:
+  - id: bigquery_no_date_trunc_month
+    description: "On BigQuery write DATE(EXTRACT(YEAR FROM d), EXTRACT(MONTH FROM d), 1), not DATE_TRUNC(d, MONTH): dct's static column check reads the bare MONTH keyword as a column"
+    dialect: bigquery
+    forbidden_pattern: 'DATE_TRUNC\s*\([^)]*,\s*(MONTH|WEEK\s*\([A-Z]+\)|ISOWEEK)\s*\)'
+    severity: warning
+    note: "Bites only when dct can derive the model's columns (an explicit SELECT list); a model ending in SELECT * passes. Warning, not error, so a board over such models is not failed for it."
+
+  - id: bigquery_no_raw_string_regex
+    description: "No r'...' raw-string literals in board SQL; the static checker rejects them. Use ENDS_WITH, STARTS_WITH or a plain-string regex"
+    dialect: bigquery
+    forbidden_pattern: '\br''[^'']*'''
+    severity: error
+
+  - id: ref_only
+    description: "Queries read models through {{ ref('model') }} (or {{ source(...) }}), never a literal project.dataset.table"
+    severity: error
+    note: "Enforced by /wire:dbtcharts-validate Check 3 with manifest knowledge; documentary here."
+
+  - id: query_name_not_a_column
+    description: "A base query reused as {{ queries.name }} is not named like one of its columns: the reference expands to (...) AS name and the alias shadows the column"
+    severity: warning
+    note: "Advisory — needs the column list; the design step applies it."
+
+# ----------------------------------------------------------------------
+# Anchor and project files
+# ----------------------------------------------------------------------
+project_files:
+  - id: anchor_sources_only
+    description: "dbt_charts.yml holds sources: only; dct 0.8 rejects serve:, theme: and style: there. The theme lives in charts/meta.yml"
+    file: dbt_charts.yml
+    allowed_top_level_keys: [sources]
+    severity: error
+
+  - id: meta_sets_theme
+    description: "charts/meta.yml sets theme: (see presentation.theme) so no board carries its own"
+    file: meta.yml
+    severity: warning
+
+  - id: board_no_own_theme
+    description: "A board file does not set theme:; the project default in meta.yml applies"
+    forbidden_pattern: '^theme:\s'
+    severity: warning
+
+# ----------------------------------------------------------------------
+# Render — what a clean render means
+# ----------------------------------------------------------------------
+render:
+  allowed_warning_codes:
+    - WARN-DBT-MODEL-COLUMNS-UNRESOLVED   # a model ending in SELECT *; the --warehouse run checks its columns
+  must_fix_codes:
+    - WARN-KPI-LABEL-TRUNCATED
+    - WARN-CHART-TITLE-TRUNCATED
+    - WARN-SERIES-LABEL-TRUNCATED
+    - WARN-LIKELY-CURRENCY-OR-PERCENT-MISSING-FORMATTER
+    - WARN-Y-ENCODING-MOSTLY-NULL
+    - WARN-QUERY-RETURNED-ZERO-ROWS
+    - WARN-TEMPORAL-SINGLE-POINT
+
+# ----------------------------------------------------------------------
+# Profiling thresholds — what not to chart
+# ----------------------------------------------------------------------
+profiling:
+  max_null_share: 0.5             # a measure more than half null is not charted as a trend
+  min_trend_points: 3             # fewer distinct periods than this is a KPI or a table, not a trend
+  min_breakdown_values: 2

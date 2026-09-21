@@ -5,7 +5,7 @@ title: "Tutorial: Platform Migration"
 
 # Tutorial: Platform Migration
 
-This walkthrough traces a complete platform migration engagement from audit through cutover, using a fictional B2B data services client moving their analytics stack from Snowflake to BigQuery. It covers every domain in the migration sequence — ingestion (Fivetran), database objects, security, dbt, reverse ETL (Hightouch), and orchestration (Airflow) — shows how the two-zone model keeps the audit phase safe, and demonstrates the equivalency validation loop that gates cutover.
+If you have been asked to move an analytics platform from one warehouse to another against a fixed date, you will know that the translation work is only part of the job. The harder question, at every point in the engagement, is which systems you have written to, which you have left untouched and what you can still roll back if something on the new platform turns out to be wrong. This walkthrough traces a complete platform migration engagement from audit through to cutover, using a fictional B2B data services client moving their analytics stack from Snowflake to BigQuery, and it covers every domain in the migration sequence: ingestion (Fivetran), database objects, security, dbt, reverse ETL (Hightouch) and orchestration (Airflow). Along the way we will see how the "two-zone" model keeps the audit phase safe, as well as how the equivalency validation loop gates cutover, and we will start, after the statement of work, by looking at what makes a Platform Migration release different from the other release types.
 
 ## Statement of Work
 
@@ -72,15 +72,15 @@ Gatwick Data Partners operates a Snowflake-based analytics platform that must mi
 
 ## What is a Platform Migration release?
 
-The Platform Migration release type is built around one structural insight: the moment you start writing to the target platform, the risk profile changes entirely. To reflect this, Wire divides all migration work into two zones.
+So what is it about a Platform Migration release that sets it apart? The release type is built around one structural observation, which is that the moment you start writing to the target platform the risk profile changes entirely, and to reflect this Wire divides all migration work into two "zones".
 
-The **audit zone** is read-only. The audit commands — ingestion, database objects, security, dbt, orchestration, and (where the source platform has reverse ETL) Hightouch — connect to the source platform and produce catalogues. Nothing is created, reconfigured, or modified anywhere. An analyst running these commands on a production Snowflake environment cannot break anything. The zone is designed to be safely executable by someone with read credentials and no write access to either platform.
+The **audit zone** is read-only, which means that an analyst running its commands against a production Snowflake environment cannot break anything, and the zone is designed so that someone holding read credentials and no write access to either platform can run all of it safely. The audit commands (ingestion, database objects, security, dbt, orchestration and, where the source platform has reverse ETL, Hightouch) connect to the source platform and produce catalogues, and nothing is created, reconfigured or modified anywhere.
 
-The **migration zone** writes to the target. It begins with the migration strategy — a pure document, no external writes — and escalates to DDL execution, connector reconfiguration, dbt batch translation, reverse ETL sync deployment, orchestration migration, and finally cutover. Four commands in this zone are **safety-gated**: `target-setup-review`, `ingestion-migration-review`, `orchestration-migration-review`, and `cutover-review`. Each requires explicit confirmation before Wire proceeds. The cutover gate is the point of no return — it requires all equivalency checks passing, written client sign-off on record, and an agreed rollback window.
+The **migration zone**, by contrast, writes to the target. It begins with the migration strategy, which is a pure document with no external writes, and escalates from there through DDL execution, connector reconfiguration, dbt batch translation, reverse ETL sync deployment and orchestration migration to cutover itself. Four commands in this zone are "safety-gated": `target-setup-review`, `ingestion-migration-review`, `orchestration-migration-review` and `cutover-review`, and each requires explicit confirmation before Wire proceeds. The cutover gate is the point of no return, and as such it requires all equivalency checks passing, written client sign-off on record and an agreed rollback window.
 
-The **equivalency validation loop** sits between orchestration migration and cutover. It runs five check types — row count, schema, value, freshness, and dbt tests — against both platforms simultaneously. When checks fail, you run `equivalency-investigate` to diagnose and `equivalency-fix` to repair. `cutover-generate` is blocked until `checks_failing: 0`. There is no way to skip this gate programmatically.
+Between orchestration migration and cutover sits the **equivalency validation loop**, which runs five check types (row count, schema, value, freshness and dbt tests) against both platforms at the same time. When checks fail you run `equivalency-investigate` to diagnose the cause and `equivalency-fix` to repair it, and `cutover-generate` stays blocked until `checks_failing: 0`. There is no way to skip this gate programmatically.
 
-Two domains in this engagement carry their own safety mechanics on top of the zone model. Reverse ETL never writes to a production destination during the build — every test sync points at a **decoy** destination of the same type, written through a scoped credential that has no grant on the real downstream systems. Orchestration runs a **parallel period** where source and target jobs run side by side before the source schedule is paused. Both are covered below.
+Two domains in this engagement carry their own safety mechanics on top of the zone model. Reverse ETL never writes to a production destination during the build, because every test sync points at a "decoy" destination of the same type and writes through a scoped credential that has no grant on the real downstream systems. Orchestration runs a "parallel period" in which source and target jobs run side by side before the source schedule is paused. We will look at both in the walkthrough below, in 5g and 5h respectively.
 
 ### High-Level Process
 
@@ -88,6 +88,18 @@ Two domains in this engagement carry their own safety mechanics on top of the zo
 graph LR
     AUDIT["Audit Zone"] --> INV["Migration Inventory"] --> STRAT["Migration Strategy"] --> MIG["Migration Zone"] --> EQUIV["Equivalency Checks"] --> CUT["Cutover"]
 ```
+
+
+:::info New in 4.0: business rules discovery
+
+This walkthrough does not use it, so the sequence below still reads correctly, but you should know that it exists before you plan a migration of your own.
+
+`/wire:business-rules-generate` is an optional first phase that establishes what the numbers mean before design bakes a definition in. It produces one register per domain, holding every competing definition found in dbt, LookML or an `--import` from a system Wire cannot read, together with what they disagree on, the decision and who approved it, and a rule nobody has decided is recorded as `unknown` rather than left out.
+
+The gate on `migration-inventory-generate` is advisory, which means that it warns, takes a reason, records the skip and proceeds.
+
+Reference: [Business rules discovery](../advanced/business-rules.md).
+:::
 
 ## The scenario
 
@@ -100,13 +112,15 @@ graph LR
 | **Migration pair** | `snowflake_to_bigquery` |
 | **Target duration** | 8 weeks (parallel-run window: weeks 7–8) |
 
-**Scope**: 180 dbt models (mix of dbt Core and dbt Cloud managed), 4 Fivetran connectors (Salesforce, NetSuite, Intercom, SFTP), 26 Hightouch reverse ETL syncs (managed by GitHub Sync, destinations across Salesforce, Braze, Iterable, and Google Sheets), Airflow orchestration with 11 DAGs, Looker semantic layer with 6 explores and 12 dashboards.
+**Scope**: 180 dbt models (mix of dbt Core and dbt Cloud managed), four Fivetran connectors (Salesforce, NetSuite, Intercom, SFTP), 26 Hightouch reverse ETL syncs (managed by GitHub Sync, destinations across Salesforce, Braze, Iterable and Google Sheets), Airflow orchestration with 11 DAGs, Looker semantic layer with six explores and 12 dashboards.
 
-The 8-week deadline is driven by a board-mandated cloud consolidation onto GCP, which means the Snowflake contract renewal window is fixed. Slipping past it means an unplanned renewal. Two elements carry the most operational uncertainty. The Airflow DAGs use `SnowflakeOperator` and a `snowflake_default` connection throughout, so DAG code needs hands-on review rather than a syntax substitution. And the Hightouch syncs write to live customer-facing systems — a single mistaken sync run during validation would push test data into Braze or Salesforce, so the build must keep production destinations out of reach until cutover. The Looker semantic layer must remain intact throughout; disrupting the 12 production dashboards during migration is not acceptable to the client's retail data customers.
+The eight-week deadline is driven by a board-mandated cloud consolidation onto GCP, which means that the Snowflake contract renewal window is fixed and that slipping past it means an unplanned renewal. Two elements carry the most operational uncertainty. The Airflow DAGs use `SnowflakeOperator` and a `snowflake_default` connection throughout, so the DAG code needs hands-on review rather than a syntax substitution, and the Hightouch syncs write to live customer-facing systems, where a single mistaken sync run during validation would push test data into Braze or Salesforce, so the build must keep production destinations out of reach until cutover. Furthermore, the Looker semantic layer must remain intact throughout, as disrupting the 12 production dashboards during migration is not acceptable to the client's retail data customers.
 
 ## What you will produce
 
-**Audit zone** — read-only analysis:
+By the end of the walkthrough the release holds two sets of artifacts, one for each zone, and the tables below show where each one lands.
+
+**Audit zone** (read-only analysis):
 
 | Artifact | Location |
 |---|---|
@@ -118,7 +132,7 @@ The 8-week deadline is driven by a board-mandated cloud consolidation onto GCP, 
 | Orchestration audit (11 Airflow DAGs, schedules, dependencies) | `artifacts/orchestration_audit/` |
 | Migration inventory (unified catalogue, risk matrix, phasing plan) | `artifacts/migration_inventory/` |
 
-**Migration zone** — target platform artifacts:
+**Migration zone** (target platform artifacts):
 
 | Artifact | Location |
 |---|---|
@@ -134,7 +148,7 @@ The 8-week deadline is driven by a board-mandated cloud consolidation onto GCP, 
 
 ## Tutorial Playbook
 
-The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this for you as a Mermaid-format delivery plan, with the dependency order, team assignments and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
@@ -245,13 +259,31 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 ## Walkthrough
 
+At a high level, the walkthrough runs through 11 stages, each of which has its own section below:
+
+1. Setup and the audit zone (5a), including registering the source dbt repository
+2. Migration inventory (5b)
+3. Migration strategy (5c)
+4. Target setup, the first safety gate (5d)
+5. Ingestion migration for the Fivetran connectors, the second safety gate (5e)
+6. dbt migration in batches, with an acceptance pack per batch (5f)
+7. Reverse ETL migration for the Hightouch syncs (5g)
+8. Orchestration migration for the Airflow DAGs, the third safety gate (5h)
+9. The equivalency validation loop (5i)
+10. Cutover, the fourth safety gate (5j)
+11. The migration report (5k)
+
+Let's now take a look at these stages in more detail.
+
 ### 5a. Setup and audit zone
 
 :::info[First release in this repository?]
 
-If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement (naming the client, setting the engagement context and configuring any integrations) before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
 
 :::
+
+Our first step is to create the release. Because the release type is `platform_migration`, `/wire:new` asks a set of migration-specific questions after the usual ones, and the answers set the migration pair and scaffold the 16 artifacts across both zones:
 
 ```
 /wire:new
@@ -276,7 +308,7 @@ Platform Migration — additional questions:
 
 ### Register the source dbt repository (v3.9.9+)
 
-Before running the first dbt migration batch, register the source dbt project location and create a local snapshot:
+Before running the first dbt migration batch, you will need to register the location of the source dbt project and create a local snapshot of it, which is what the two commands below do. As we will see in 5f, the pre-flight gate on each batch checks that this snapshot has been freshly re-synced before any translation begins:
 
 ```
 /wire:migration-source-register 01-gdp-snowflake-to-bq
@@ -304,23 +336,23 @@ Saved to status.md under migration_source. Run /wire:migration-source-refresh to
 
 :::info[Issue tracking and document sync]
 
-Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate and review step completes. With the Jira integration you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses, and Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
 
-Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review, and review commands pull comments and edits made in the document store back as context before gathering sign-off.
 
-Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear) or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
 
 :::
 
 
 :::info[MCP server connections for migration commands]
 
-The audit and migration commands reach beyond Wire's standard integrations — they connect directly to your source platform, target platform, ingestion service, reverse ETL tool, and orchestration layer to read schema, inspect pipeline state, and run equivalency checks. Configure the relevant connections in `.claude/settings.json` before running the first audit command. The Hightouch audit reads via the Hightouch REST API (`HIGHTOUCH_TOKEN`) or a copy of the client's GitHub Sync config at `audit/hightouch_git/`. See [MCP Servers](../reference/mcp-servers) for the full list of supported servers and connection setup.
+The audit and migration commands reach beyond Wire's standard integrations, connecting directly to your source platform, target platform, ingestion service, reverse ETL tool and orchestration layer to read schema, inspect pipeline state and run equivalency checks, so you will need to configure the relevant connections in `.claude/settings.json` before running the first audit command. The Hightouch audit reads via the Hightouch REST API (`HIGHTOUCH_TOKEN`) or a copy of the client's GitHub Sync config at `audit/hightouch_git/`. See [MCP Servers](../reference/mcp-servers) for the full list of supported servers and connection setup.
 
 :::
 
 
-With the release created, run all six audits simultaneously:
+With the release created and the source repository registered, we can run all six audits at the same time, and Wire tells us the estimated token cost and wall-clock time of doing so before it dispatches anything:
 
 ```
 /wire:migration-audit-all 01-gdp-snowflake-to-bq
@@ -343,7 +375,7 @@ Dispatching 6 agents simultaneously:
   → [migration-specialist agent: orchestration-audit-generate]
 ```
 
-The **dbt audit** produces a complexity classification table for all 180 models:
+The **dbt audit** produces a complexity classification table for all 180 models, and it calls out by name the three "blocked" models that use a Snowflake type with no BigQuery equivalent:
 
 ```
 dbt Audit — Model Complexity Classification
@@ -367,7 +399,7 @@ dbt Audit — Model Complexity Classification
         rewrite using JSON_EXTRACT_ARRAY
 ```
 
-The **ingestion audit** finds a split in Fivetran connector compatibility:
+The **ingestion audit** finds a split in Fivetran connector compatibility, with two of the four connectors supporting BigQuery as a native destination and two needing manual reconfiguration:
 
 ```
 Ingestion Audit — Fivetran Connector Analysis
@@ -384,7 +416,7 @@ Ingestion Audit — Fivetran Connector Analysis
   for recommended approach per connector.
 ```
 
-The **DB object and security audits** are read-only inventories. They do not have their own migration commands — instead they feed the target setup. The DB object audit enumerates every database, schema, table, view, and stored procedure on Snowflake; the security audit catalogues roles, grants, users, and service accounts. Both become inputs to `target-setup-generate`, which derives the BigQuery dataset layout and IAM bindings from them (see 5d).
+The **DB object and security audits** are read-only inventories, and unlike the other audits they do not have migration commands of their own; instead, they feed the target setup. The DB object audit enumerates every database, schema, table, view and stored procedure on Snowflake, while the security audit catalogues roles, grants, users and service accounts, and both become inputs to `target-setup-generate`, which derives the BigQuery dataset layout and IAM bindings from them (see 5d).
 
 ```
 DB Object Audit — Snowflake Inventory
@@ -406,7 +438,7 @@ Security Audit — Roles and Grants
     in target_setup before any migration batch runs
 ```
 
-The **reverse ETL audit** catalogues all 26 Hightouch syncs and — new in v3.10.0 — resolves the source object behind every model type, not just raw-SQL models:
+The **reverse ETL audit** catalogues all 26 Hightouch syncs and, new in v3.10.0, resolves the source object behind every model type rather than just the raw-SQL models:
 
 ```
 Reverse ETL Audit — Hightouch Sync Catalogue
@@ -433,11 +465,11 @@ Reverse ETL Audit — Hightouch Sync Catalogue
 
 :::tip[Why source resolution matters]
 
-Before v3.10.0 the reverse ETL audit only parsed `rawSql` models, so `table` and `custom` syncs landed with blank `warehouse_objects` — in a real audit (client anonymized) that left 37% of active syncs with no recorded source object, and no way to know which ones touched a column that would drift between platforms. The audit now resolves all four model types and reports a coverage metric, so unresolved syncs are listed explicitly rather than silently dropped.
+Before v3.10.0 the reverse ETL audit only parsed `rawSql` models, so `table` and `custom` syncs landed with blank `warehouse_objects`. In a real audit (client anonymised) that left 37% of active syncs with no recorded source object, and therefore no way to know which ones touched a column that would drift between platforms. The audit now resolves all four model types and reports a coverage metric, so that unresolved syncs are listed explicitly rather than silently dropped.
 
 :::
 
-The **orchestration audit** catalogues the 11 Airflow DAGs, their schedules, and their dependencies:
+Finally, the **orchestration audit** catalogues the 11 Airflow DAGs together with their schedules and their dependencies, and it is here that the Snowflake coupling the scenario warned about becomes visible:
 
 ```
 Orchestration Audit — Airflow DAG Inventory
@@ -454,7 +486,7 @@ Orchestration Audit — Airflow DAG Inventory
 
 ### 5b. Migration inventory
 
-Once all six audits are approved, the inventory synthesises them:
+Once all six audits are approved, and not before, the inventory synthesises them into a single risk summary and phasing recommendation:
 
 ```
 /wire:migration-inventory-generate 01-gdp-snowflake-to-bq
@@ -505,24 +537,26 @@ Migration Inventory — Risk Summary
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, and there are no extra steps for you to take. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`), however, always stay in the main session and require your direct input.
 
 :::
 
 :::tip[Optional: domain-batch scheduling]
 
-Before moving to strategy, a team scheduling this migration across several sprints or sub-teams would run `/wire:migration-batching-generate 01-gdp-snowflake-to-bq`, `-validate`, then `-review`. It partitions the approved inventory into named, independently-schedulable domain batches — checked against the real dependency graph, not a hand-drawn guess — distinct from the ≤20-model translation batches `dbt_audit` already assigns. Gatwick's migration is small enough to run as a single sequential build, so this tutorial skips straight to strategy; see [Migration batching](../release-types/platform-migration#migration-batching-domain-batches-vs-translation-batches) for the full walkthrough.
+Before moving to strategy, a team scheduling this migration across several sprints or sub-teams would run `/wire:migration-batching-generate 01-gdp-snowflake-to-bq`, then `-validate`, then `-review`. It partitions the approved inventory into named, independently schedulable domain batches, checked against the real dependency graph rather than a hand-drawn guess, and these are distinct from the ≤20-model translation batches that `dbt_audit` already assigns. Gatwick's migration is small enough to run as a single sequential build, so this tutorial skips straight to strategy; see [Migration batching](../release-types/platform-migration#migration-batching-domain-batches-vs-translation-batches) for the full walkthrough.
 
 :::
 
 ### 5c. Migration strategy
+
+With the inventory approved, the strategy turns its risk items into translation decisions. This is the first artifact in the migration zone, although as we noted earlier it is a pure document and writes nothing outside the repository:
 
 ```
 /wire:migration-strategy-generate 01-gdp-snowflake-to-bq
 → [auto-delegated to migration-specialist agent]
 ```
 
-A sample of the translation decisions from the strategy document:
+Here is a sample of the translation decisions from the strategy document, including the drift-aware treatment of VARIANT columns that RISK-03 in the inventory called for:
 
 ```markdown
 ## Snowflake → BigQuery: Key Translation Decisions
@@ -556,7 +590,7 @@ A sample of the translation decisions from the strategy document:
 
 :::info[Batch DAGs generated]
 
-`/wire:migration-strategy-generate` also created one Mermaid progress tracker per batch at `artifacts/migration_strategy/`. Initially all nodes are grey. They update automatically as `dbt-migration-generate` processes each model.
+`/wire:migration-strategy-generate` also created one Mermaid progress tracker per batch at `artifacts/migration_strategy/`. Initially all nodes are grey, and they update automatically as `dbt-migration-generate` processes each model.
 
 ```mermaid
 flowchart TD
@@ -578,7 +612,7 @@ After batch 1 completes all three nodes would show `:::complete` (green).
 
 ### 5d. Target setup (SAFETY GATE)
 
-Target setup is where the DB object and security audits pay off. The dataset layout below mirrors the four Snowflake schemas the DB object audit found, and the IAM bindings map the roles the security audit catalogued — `TRANSFORMER` becomes BigQuery Data Editor, `REPORTER` becomes Data Viewer. The 41 PII columns the security audit flagged get BigQuery policy tags applied here, before any migration batch runs.
+Target setup is the first of the four safety gates, and it is also where the DB object and security audits pay off. The dataset layout below mirrors the four Snowflake schemas the DB object audit found, and the IAM bindings map the roles the security audit catalogued, so that `TRANSFORMER` becomes BigQuery Data Editor and `REPORTER` becomes Data Viewer. The 41 PII columns the security audit flagged get BigQuery policy tags applied here, before any migration batch runs, and the review will not proceed until you have worked through its checklist and typed YES:
 
 ```
 /wire:target-setup-generate 01-gdp-snowflake-to-bq
@@ -619,7 +653,7 @@ Confirm? Type YES to proceed: YES
 
 ### 5e. Ingestion migration — Fivetran (SAFETY GATE)
 
-With the target datasets in place, the Fivetran connectors get new BigQuery destinations. When the Fivetran MCP server is reachable, Wire executes the migration directly through it — creating new connectors and returning setup-card URLs for the client to enter credentials. The rule throughout is **always create new connectors pointing at BigQuery; never re-point or edit an existing Snowflake connector**, so the source pipeline keeps running untouched as the rollback path through the parallel-run window.
+With the target datasets in place, the Fivetran connectors get new BigQuery destinations. When the Fivetran MCP server is reachable, Wire executes the migration directly through it, creating new connectors and returning setup-card URLs for the client to enter credentials. The rule throughout is **always create new connectors pointing at BigQuery; never re-point or edit an existing Snowflake connector**, which means that the source pipeline keeps running untouched as the rollback path through the parallel-run window.
 
 ```
 /wire:ingestion-migration-generate 01-gdp-snowflake-to-bq
@@ -663,11 +697,11 @@ Confirm? Type YES to proceed: YES
 → Connectors stay paused until cutover; Snowflake connectors untouched
 ```
 
-The new connectors are created but left **paused**. They are not activated until cutover — until then, Snowflake remains the live ingestion path. Intercom and SFTP, the two non-native connectors, carry the reconfiguration notes the ingestion audit recommended (HVR for Intercom, a custom connector update for SFTP).
+The new connectors are created but left **paused**, and they are not activated until cutover; until then, Snowflake remains the live ingestion path. Intercom and SFTP, the two non-native connectors, carry the reconfiguration notes the ingestion audit recommended (HVR for Intercom, a custom connector update for SFTP).
 
 ### 5f. dbt migration — batched
 
-With 180 models across 7 batches, Wire processes them wave by wave. A shared **pre-flight gate** (v3.10.0+) runs before each batch starts: it confirms the source dbt project was freshly re-synced for this batch, every source object the batch reads exists and has data on the target, and the target environment is prepared (PII policy tags and target setup applied, not a playground). Any failure stops the command before it generates anything.
+With 180 models across seven batches, Wire processes them wave by wave, and a shared "pre-flight gate" (v3.10.0+) runs before each batch starts. It confirms that the source dbt project was freshly re-synced for this batch, that every source object the batch reads exists and has data on the target and that the target environment is prepared (PII policy tags and target setup applied, not a playground). Any failure stops the command before it generates anything.
 
 ```
 /wire:dbt-migration-generate 01-gdp-snowflake-to-bq --batch 1
@@ -702,7 +736,7 @@ Review and sign off the acceptance pack:
 /wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1
 ```
 
-A guided-translate example from batch 3, flagged for consultant review:
+Not every model passes through untouched. Here is a guided-translate example from batch 3, flagged for consultant review because the argument-order change could hide a difference in business logic:
 
 ```sql
 -- models/staging/stg_salesforce__opportunity_stages.sql
@@ -720,7 +754,7 @@ SELECT
     ...
 ```
 
-One of the three blocked models required a full rewrite. The VARIANT handling for `fct_intercom_event_attributes`:
+One of the three blocked models was `fct_intercom_event_attributes`, which required a full rewrite of its VARIANT handling:
 
 ```sql
 -- models/staging/stg_intercom__event_attributes.sql
@@ -744,7 +778,7 @@ SELECT
 
 #### Acceptance pack sign-off
 
-Each batch generates an acceptance pack — a structured record of every model translated, its iteration count, and its equivalency check results. The pack must be reviewed and signed off before the next batch begins.
+Each batch generates an acceptance pack, which is a structured record of every model translated, its iteration count and its equivalency check results, and the pack must be reviewed and signed off before the next batch begins. The reviewer confirms three statements and gives their name, and the decision is recorded in the pack itself:
 
 ```
 /wire:migration-acceptance-pack-review 01-gdp-snowflake-to-bq --batch 1
@@ -819,7 +853,7 @@ Reviewer name: Alex Caldwell (Senior Analytics Engineer, GDP)
 
 ### 5g. Reverse ETL migration — Hightouch
 
-The Hightouch syncs read from the warehouse models, so this runs once the dbt models the syncs depend on are built on BigQuery. The v3.10.0 reverse ETL migration defaults to an **additive, PR-gated topology**: GitHub Sync carries models and syncs but not destinations, so spinning up a parallel workspace would force re-authenticating every Braze, Salesforce, and Iterable connection. Instead, Wire adds a new batch of target-warehouse syncs alongside the existing source-warehouse ones in the same config repo, reuses the destination definitions in place, and stages every change as a pull request the client reviews and merges. RA never enables or disables a sync directly — the PR gate is the safety control.
+The Hightouch syncs read from the warehouse models, so this step runs once the dbt models the syncs depend on are built on BigQuery. Why not simply stand up a parallel Hightouch workspace? GitHub Sync carries models and syncs but not destinations, so a parallel workspace would force re-authenticating every Braze, Salesforce and Iterable connection. As such, the v3.10.0 reverse ETL migration defaults to an "additive, PR-gated topology": Wire adds a new batch of target-warehouse syncs alongside the existing source-warehouse ones in the same config repo, reuses the destination definitions in place and stages every change as a pull request that the client reviews and merges. RA never enables or disables a sync directly, and the PR gate is the safety control.
 
 ```
 /wire:reverse-etl-migration-generate 01-gdp-snowflake-to-bq
@@ -857,7 +891,7 @@ Step 4c — drift-aware translation
     matching the dbt_migration diff for the underlying model
 ```
 
-The decoy mapping keeps production destinations unreachable during validation. Each in-scope sync gets a decoy of the **same destination type** — a decoy Google Sheet for a Google Sheets destination, a Braze sandbox app for a Braze destination — and a scoped credential that can write to the decoys only:
+The decoy mapping is what keeps production destinations unreachable during validation. Each in-scope sync gets a decoy of the **same destination type** (a decoy Google Sheet for a Google Sheets destination, a Braze sandbox app for a Braze destination) together with a scoped credential that can write to the decoys only:
 
 ```
 Decoy destination mapping — migration/reverse_etl_decoy_mapping.csv
@@ -892,11 +926,11 @@ PR A — "add target-warehouse test syncs" raised for client review.
   → APPROVED
 ```
 
-Validation runs the syncs in preview against the **decoy** destinations only, comparing model output and audience sizes against a frozen source baseline. A test sync physically cannot reach Braze or Salesforce production, because it carries a decoy ID and the credential has no production grant. The two cutover PRs (PR B disables every source-origin sync; PR C swaps the decoy IDs back to production and enables the target-origin syncs) are prepared now but merged by the client at cutover, in one window — covered in 5j.
+Validation runs the syncs in preview against the decoy destinations only, comparing model output and audience sizes against a frozen source baseline. It follows that a test sync physically cannot reach Braze or Salesforce production, because it carries a decoy ID and the credential has no production grant. The two cutover PRs (PR B disables every source-origin sync; PR C swaps the decoy IDs back to production and enables the target-origin syncs) are prepared now but merged by the client at cutover, in one window, and we will see that happen in 5j.
 
 ### 5h. Orchestration migration — Airflow (SAFETY GATE)
 
-The Airflow migration recreates all 11 DAGs against BigQuery. Every `SnowflakeOperator` and `SnowflakeHook` task moves to a BigQuery equivalent, the single `snowflake_default` connection is replaced with `bigquery_default`, and the Snowflake credentials move out of the Airflow metadata DB into a GCP Secret Manager secrets backend.
+The Airflow migration is the third safety gate, and it recreates all 11 DAGs against BigQuery. Every `SnowflakeOperator` and `SnowflakeHook` task moves to a BigQuery equivalent, the single `snowflake_default` connection is replaced with `bigquery_default` and the Snowflake credentials move out of the Airflow metadata DB into a GCP Secret Manager secrets backend, which is what RISK-02 in the inventory called for:
 
 ```
 /wire:orchestration-migration-generate 01-gdp-snowflake-to-bq
@@ -918,7 +952,7 @@ Orchestration Migration — Airflow (11 DAGs)
                 keep their schedules until cutover
 ```
 
-A before/after for one DAG task:
+Here is a before and after for one DAG task:
 
 ```python
 # dags/load_salesforce_warehouse.py
@@ -966,7 +1000,7 @@ Confirm? Type YES to proceed: YES
 
 ### 5i. Equivalency validation loop
 
-With both platforms loaded and the new Airflow DAGs materialising the BigQuery models, the equivalency loop begins. This loop validates the **warehouse models** — the reverse ETL syncs have their own decoy-based validation (5g), and are not part of these five checks.
+With both platforms loaded and the new Airflow DAGs materialising the BigQuery models, the equivalency loop begins. This loop validates the **warehouse models** only; the reverse ETL syncs have their own decoy-based validation, which we saw in 5g, and are not part of these five checks. The first run comes back with `checks_failing: 9`, so cutover stays blocked:
 
 ```
 /wire:equivalency-validate 01-gdp-snowflake-to-bq
@@ -995,7 +1029,7 @@ Equivalency Validation — Run 1 of n
     [3 more dbt test failures...]
 ```
 
-Investigating the largest discrepancy — `fct_netsuite_revenue` with a 3.1% row count delta:
+We start by investigating the largest discrepancy, which is `fct_netsuite_revenue` with a 3.1% row count delta:
 
 ```
 /wire:equivalency-investigate 01-gdp-snowflake-to-bq \
@@ -1031,7 +1065,7 @@ Investigation: fct_netsuite_revenue
 → fct_netsuite_revenue: row count PASS, value PASS
 ```
 
-After three rounds of investigate-fix cycles across all failing objects:
+After three rounds of investigate and fix cycles across all failing objects, the fourth run comes back clean:
 
 ```
 /wire:equivalency-validate 01-gdp-snowflake-to-bq
@@ -1052,7 +1086,7 @@ Equivalency Validation — Run 4 of 4
 
 ### 5j. Cutover (SAFETY GATE)
 
-Cutover now sequences five subsystems: Airflow, dbt, Looker, Fivetran, and the two reverse ETL PRs.
+With the gate unblocked, cutover now sequences five subsystems: Airflow, dbt, Looker, Fivetran and the two reverse ETL PRs. Even here the review works through its pre-flight list before it asks for confirmation, and in our case one item is still outstanding:
 
 ```
 /wire:cutover-generate 01-gdp-snowflake-to-bq
@@ -1080,7 +1114,7 @@ Pre-flight requirements:
   One pre-flight item incomplete. Resolve before confirming.
 ```
 
-After resolving the Airflow task pre-flight item:
+After resolving the Airflow task pre-flight item, the review proceeds to the confirmation:
 
 ```
 Confirm cutover? This will:
@@ -1108,9 +1142,11 @@ Type YES to proceed: YES
 → Cutover complete. Platform is now live on BigQuery.
 ```
 
-The reverse ETL rollback is the same PR mechanism in reverse — revert PR C to restore the decoy IDs and disable the target syncs, then revert PR B to re-enable the source-origin syncs. Until that window closes, the Snowflake-backed syncs remain merge-able as the rollback path.
+The reverse ETL rollback is the same PR mechanism in reverse: revert PR C to restore the decoy IDs and disable the target syncs, then revert PR B to re-enable the source-origin syncs. Until the 72-hour window closes, the Snowflake-backed syncs remain merge-able as the rollback path.
 
 ### 5k. Migration report
+
+Finally, the migration report documents every decision and outcome from the release in one place:
 
 ```
 /wire:migration-report-generate 01-gdp-snowflake-to-bq
@@ -1153,7 +1189,7 @@ Migration Report — 01-gdp-snowflake-to-bq
 
 ## Shipping and verifying the batches — the fleet way (v3.11.0)
 
-Everything above translated and validated the estate. From v3.11.0 the release does not stop at "migrated": the ship-and-verify pipeline carries each model into the client's repo and then proves the production build. The notable thing about this phase is what you do **not** type. You direct; the agent invokes the Wire commands, spawns lane agents, and merges what they report back:
+Everything above translated and validated the estate, but a translated model sitting in the release folder is not yet in the client's hands. From v3.11.0 the release does not stop at "migrated": the "ship-and-verify" pipeline carries each model into the client's repo and then proves the production build. The notable thing about this phase is what you do **not** type. You direct, and the agent invokes the Wire commands, spawns lane agents and merges what they report back:
 
 ```
 You:  batch 4 verdicts are in. ship everything that's ready and update me
@@ -1182,9 +1218,11 @@ Wire: /wire:equivalency-post-merge-verify — waiting on target table
       re-run passes). Register: 30 production_verified.
 ```
 
-Behind that exchange, the commands the orchestrating agent invoked were `/wire:dbt-migration-batch-raise` (which itself ran `/wire:dbt-migration-defer-build` for the smoke build, `/wire:equivalency-validate --run-point pre_raise` for the comparison, and `/wire:utils-ci-parity` before `gh pr create`) and `/wire:equivalency-post-merge-verify` after the merge. Every verdict appended a row to `migration/migration_verdict_log.csv`; every lane wrote its own verdict JSON and the orchestrator merged them as the single register writer. The operating rules the lanes ran under — flat lanes, tree ownership, incremental state with a resume contract, budget lines, and the consolidation pass that re-checks lane claims against the warehouse — are in `specs/utils/migration_fleet.md`.
+Behind that exchange, the commands the orchestrating agent invoked were `/wire:dbt-migration-batch-raise` (which itself ran `/wire:dbt-migration-defer-build` for the smoke build, `/wire:equivalency-validate --run-point pre_raise` for the comparison and `/wire:utils-ci-parity` before `gh pr create`) and `/wire:equivalency-post-merge-verify` after the merge. Every verdict appended a row to `migration/migration_verdict_log.csv`, every lane wrote its own verdict JSON and the orchestrator merged them as the single register writer. The operating rules the lanes ran under (flat lanes, tree ownership, incremental state with a resume contract, budget lines and the consolidation pass that re-checks lane claims against the warehouse) are in `specs/utils/migration_fleet.md`.
 
 ## What was produced
+
+The release ends with every artifact approved and the record complete:
 
 | Artifact | Format | Status |
 |---|---|---|
@@ -1207,4 +1245,4 @@ Behind that exchange, the commands the orchestrating agent invoked were `/wire:d
 | Post-merge production verification | Register `delivery_stage` | 180/180 production_verified |
 | Cutover runbook | `artifacts/cutover/cutover_runbook.md` | Executed |
 | Migration report | `artifacts/migration_report/migration_report.md` | Complete |
-| `decisions.md` | 23 agent decisions across audit and migration zones | — |
+| `decisions.md` | 23 agent decisions across audit and migration zones | n/a |

@@ -29,6 +29,18 @@ const config = {
     mermaid: true,
   },
 
+  // The landing page design's type stacks name 'Google Sans' first, which is
+  // Google-proprietary and not redistributed here. Inter is the next name in
+  // those stacks, and IBM Plex Mono is what the terminal blocks call for, so
+  // both are loaded and the stacks resolve to a designed face rather than to
+  // system-ui.
+  stylesheets: [
+    {
+      href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap',
+      rel: 'stylesheet',
+    },
+  ],
+
   themes: ['@docusaurus/theme-mermaid'],
 
   presets: [
@@ -81,7 +93,7 @@ const config = {
           {
             title: 'Documentation',
             items: [
-              {label: 'Getting Started', to: '/docs/intro'},
+              {label: 'Getting Started', to: '/docs/using-wire/what-is-wire'},
               {label: 'Release Types', to: '/docs/release-types/discovery-shape-up'},
               {label: 'FAQ', to: '/docs/reference/faq'},
             ],

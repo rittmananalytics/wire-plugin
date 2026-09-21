@@ -51,7 +51,22 @@ For full tool surface, run `/help` after connecting or refer to https://mcp.rudd
 
 ## Setup
 
-### Option A — via Claude Code `/mcp` (recommended)
+The Wire plugin does **not** bundle this server. RudderStack's MCP endpoint is reached through the `mcp-remote` stdio bridge, and that bridge opens a browser sign-in every time the server starts, which for a bundled server meant every plugin load. Add it per engagement instead, only where the client uses RudderStack.
+
+### Option A — per engagement, in the repo's `.claude/settings.json` (recommended)
+
+Add to `mcpServers`:
+
+```json
+"rudderstack": {
+  "command": "npx",
+  "args": ["-y", "mcp-remote", "https://mcp.rudderstack.com/mcp"]
+}
+```
+
+Then run `/mcp` and authenticate to RudderStack via OAuth in the browser. The tool prefix is `mcp__rudderstack__`, which is what `/wire:mcp` probes for when `migration.ingestion_tool: rudderstack`.
+
+### Option B — via Claude Code `/mcp`
 
 ```
 /mcp
@@ -61,10 +76,6 @@ Choose **Add server**, enter:
 - Name: `rudderstack`
 - Transport: `stdio` (via mcp-remote)
 - Command: `npx -y mcp-remote https://mcp.rudderstack.com/mcp`
-
-### Option B — via the Wire plugin's bundled `.mcp.json`
-
-The Wire plugin's `.mcp.json` already includes the entry. After installing the plugin and running `/reload-plugins`, run `/mcp` and authenticate to RudderStack via OAuth in the browser.
 
 ### Prerequisite
 

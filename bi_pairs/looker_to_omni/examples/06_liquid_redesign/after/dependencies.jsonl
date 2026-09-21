@@ -1,0 +1,10 @@
+{"from": "looker:lookml:view:inventory", "to": "looker:lookml:field:inventory:dynamic_label", "kind": "contains"}
+{"from": "looker:lookml:view:inventory", "to": "looker:lookml:field:inventory:measure_picker", "kind": "contains"}
+{"from": "looker:lookml:view:inventory", "to": "looker:lookml:field:inventory:sku_id", "kind": "contains"}
+{"from": "looker:lookml:view:inventory", "to": "looker:lookml:field:inventory:sku_link", "kind": "contains"}
+{"from": "looker:lookml:view:inventory", "to": "looker:lookml:field:inventory:units_on_hand", "kind": "contains"}
+{"from": "looker:lookml:view:inventory", "to": "looker:lookml:field:inventory:units_running_total", "kind": "contains"}
+{"from": "looker:lookml:view:inventory", "to": "looker:lookml:field:inventory:warehouse_filter", "kind": "contains"}
+{"from": "looker:lookml:view:inventory_daily_pdt", "to": "looker:lookml:field:inventory_daily_pdt:snapshot_date", "kind": "contains"}
+{"from": "looker:lookml:view:inventory_daily_pdt", "to": "looker:lookml:field:inventory_daily_pdt:units", "kind": "contains"}
+{"from": "looker:lookml:field:inventory:units_running_total", "to": "looker:lookml:field:inventory:units_on_hand", "kind": "references"}

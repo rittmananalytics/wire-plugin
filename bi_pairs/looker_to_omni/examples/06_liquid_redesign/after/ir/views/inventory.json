@@ -1,0 +1,166 @@
+{
+  "identity": "looker:lookml:view:inventory",
+  "name": "inventory",
+  "schema": "analytics",
+  "table_name": "fct_inventory",
+  "emitted": true,
+  "class": "mechanical",
+  "unsupported": [],
+  "source": {
+    "file": "inventory.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:inventory:sku_id",
+      "name": "sku_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.sku_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "primary_key": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "inventory.view.lkml",
+        "view": "inventory"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:inventory:dynamic_label",
+      "name": "dynamic_label",
+      "kind": "dimension",
+      "lookml_type": "string",
+      "source_sql": "{% if _user_attributes['language'] == 'de' %} ${TABLE}.name_de {% else %} ${TABLE}.name_en {% endif %}",
+      "references": [],
+      "class": "redesign",
+      "emitted": false,
+      "omni": null,
+      "unsupported": [
+        {
+          "construct": "liquid",
+          "class": "redesign",
+          "reason": "Liquid in sql; rebuild with Omni templated filters or Mustache"
+        }
+      ],
+      "source": {
+        "file": "inventory.view.lkml",
+        "view": "inventory"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:inventory:sku_link",
+      "name": "sku_link",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.sku_id",
+      "references": [],
+      "class": "assisted",
+      "emitted": true,
+      "omni": {
+        "sql": "${sku_id}"
+      },
+      "unsupported": [
+        {
+          "construct": "html",
+          "class": "redesign",
+          "reason": "html uses Liquid; Omni `markdown` uses Mustache; not emitted"
+        }
+      ],
+      "source": {
+        "file": "inventory.view.lkml",
+        "view": "inventory"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:inventory:units_on_hand",
+      "name": "units_on_hand",
+      "kind": "measure",
+      "lookml_type": "sum",
+      "source_sql": "${TABLE}.units_on_hand",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${units_on_hand}",
+        "aggregate_type": "sum"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "inventory.view.lkml",
+        "view": "inventory"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:inventory:units_running_total",
+      "name": "units_running_total",
+      "kind": "measure",
+      "lookml_type": "running_total",
+      "source_sql": "${units_on_hand}",
+      "references": [
+        "inventory.units_on_hand"
+      ],
+      "class": "redesign",
+      "emitted": false,
+      "omni": null,
+      "unsupported": [
+        {
+          "construct": "measure_type_running_total",
+          "class": "redesign",
+          "reason": "measure type running_total: Omni does this as a table calculation or a query-view measure"
+        }
+      ],
+      "source": {
+        "file": "inventory.view.lkml",
+        "view": "inventory"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:inventory:warehouse_filter",
+      "name": "warehouse_filter",
+      "kind": "filter",
+      "lookml_type": "string",
+      "source_sql": null,
+      "references": [],
+      "class": "redesign",
+      "emitted": false,
+      "omni": null,
+      "unsupported": [
+        {
+          "construct": "filter_field",
+          "class": "redesign",
+          "reason": "Looker filter-only field: rebuild as an Omni dashboard control or templated filter"
+        }
+      ],
+      "source": {
+        "file": "inventory.view.lkml",
+        "view": "inventory"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:inventory:measure_picker",
+      "name": "measure_picker",
+      "kind": "parameter",
+      "lookml_type": "unquoted",
+      "source_sql": null,
+      "references": [],
+      "class": "redesign",
+      "emitted": false,
+      "omni": null,
+      "unsupported": [
+        {
+          "construct": "parameter",
+          "class": "redesign",
+          "reason": "Looker parameter: rebuild as an Omni templated filter or dashboard control"
+        }
+      ],
+      "source": {
+        "file": "inventory.view.lkml",
+        "view": "inventory"
+      }
+    }
+  ]
+}

@@ -1,17 +1,17 @@
 ---
-sidebar_position: 5
+sidebar_position: 6
 title: Issue Tracking
 ---
 
 # Issue Tracking Integration
 
-Wire integrates with Jira and Linear to sync artifact status as the engagement progresses. Each integration is optional — Wire works without either, and both can be active simultaneously.
+If your client's delivery team lives in Jira or Linear, they will want to see the state of each Wire artifact where they already look for it, rather than having to ask you. Wire therefore integrates with Jira and Linear to sync artifact status as the engagement progresses. Each integration is optional, Wire works without either, and both can be active simultaneously. In this page we will look at the Jira integration first, then Linear, and finish with what happens when both are configured.
 
 ## Jira integration
 
 ### Configuration
 
-The Atlassian MCP server must be configured in `.claude/settings.json`:
+To use Jira, the Atlassian MCP server must be configured in `.claude/settings.json`:
 
 ```json
 {
@@ -30,17 +30,17 @@ The Atlassian MCP server must be configured in `.claude/settings.json`:
 
 ### Structure
 
-Wire creates one Jira hierarchy per engagement:
+Wire creates one Jira hierarchy per engagement, with three levels:
 
-- **Epic** — one per project (e.g. "Barton Peveril Full Platform")
-- **Tasks** — one per artifact (e.g. "Problem Definition", "High-Level Design")
-- **Sub-tasks** — one per lifecycle step (Generate, Validate, Review)
+- **Epic**: one per project (e.g. "Barton Peveril Full Platform")
+- **Tasks**: one per artifact (e.g. "Problem Definition", "High-Level Design")
+- **Sub-tasks**: one per lifecycle step (Generate, Validate, Review)
 
-Run `/wire:new` and answer Yes when asked whether to create the Jira hierarchy. If the hierarchy already exists, provide the existing Epic ID and Wire links to it.
+To create it, run `/wire:new` and answer Yes when asked whether to create the Jira hierarchy, and if the hierarchy already exists, provide the existing Epic ID and Wire links to it instead.
 
 ### Syncing
 
-All generate/validate/review commands sync their status to the corresponding Jira sub-task after completing:
+Once the hierarchy exists, how does it stay current? All generate/validate/review commands sync their status to the corresponding Jira sub-task after completing:
 
 - **Generate completes** → sub-task transitions to In Review
 - **Validate fails** → sub-task transitions to Blocked, failure details added as a comment
@@ -49,13 +49,13 @@ All generate/validate/review commands sync their status to the corresponding Jir
 
 ### `/wire:status` reconciliation
 
-Running `/wire:status` performs a full reconciliation between the local execution log and Jira — identifying any gaps, fixing stale statuses, and flagging artifacts where the local and Jira states diverge.
+Running `/wire:status` performs a full reconciliation between the local execution log and Jira, identifying any gaps, fixing stale statuses and flagging artifacts where the local and Jira states diverge.
 
 ## Linear integration
 
 ### Configuration
 
-The Linear MCP server must be configured in `.claude/settings.json`:
+For Linear, the Linear MCP server must be configured in `.claude/settings.json`:
 
 ```json
 {
@@ -73,13 +73,13 @@ The Linear MCP server must be configured in `.claude/settings.json`:
 
 ### Structure
 
-Wire creates a Linear hierarchy per engagement:
+Wire creates a Linear hierarchy per engagement, again with three levels:
 
-- **Project** — one per engagement
-- **Issues** — one per artifact
-- **Sub-issues** — one per lifecycle step (Generate, Validate, Review)
+- **Project**: one per engagement
+- **Issues**: one per artifact
+- **Sub-issues**: one per lifecycle step (Generate, Validate, Review)
 
-Run `/wire:utils-linear-create <release-folder>` to create the hierarchy. If using both Jira and Linear, Wire maintains both in parallel.
+Run `/wire:utils-linear-create <release-folder>` to create the hierarchy, and if you are using both Jira and Linear, Wire maintains both in parallel.
 
 ### Labels and states
 
@@ -93,8 +93,8 @@ Wire maps artifact states to Linear issue states as follows:
 | Awaiting review | In Review |
 | Approved | Done |
 
-Wire creates a `wire-generated` label and applies it to all issues it creates, so you can filter your Linear board by Wire-managed issues.
+Wire also creates a `wire-generated` label and applies it to all issues it creates, so that you can filter your Linear board down to Wire-managed issues.
 
 ## Using both simultaneously
 
-If both Atlassian and Linear are configured, Wire syncs to both after each command. The execution log records both sync results. If one sync fails (e.g. network error), Wire logs the failure but does not block the command — the next `/wire:status` will reconcile.
+If both Atlassian and Linear are configured, Wire syncs to both after each command, and the execution log records both sync results. If one sync fails (e.g. a network error), Wire logs the failure but does not block the command, and the next `/wire:status` will reconcile.

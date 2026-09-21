@@ -4,7 +4,7 @@ description: Auto-delegation protocol for agentic data stack generate commands â
 
 # Agentic Data Stack Developer Auto-Delegation
 
-Before executing any agentic data stack generate command inline, check whether the `wire:agentic-data-stack-developer` agent definition is available.
+Before executing any agentic data stack generate command inline, check whether the `wire:agentic-data-stack-developer` agent definition is available. The `agents_schema` commands follow this protocol on every release type that carries the artifact, not only `agentic_data_stack`.
 
 ## Protocol
 

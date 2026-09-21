@@ -5,15 +5,15 @@ title: MCP Servers
 
 # MCP Servers Reference
 
-Wire integrates with five MCP servers. All are optional — Wire works without any of them. When present, they add meeting context to reviews, sync artifact status to issue trackers, replicate artifacts to document stores, and provide library documentation lookups during development.
+Much of what matters on an engagement happens outside the repository: decisions are taken on client calls, progress is tracked in Jira or Linear and documents are read and commented on in Confluence or Notion, and if Wire could see none of that its record would be a thinner thing. Wire integrates with five MCP (Model Context Protocol) servers to close that gap. All are optional, and Wire works without any of them, but when they are present they add meeting context to reviews, sync artifact status to issue trackers, replicate artifacts to document stores and provide library documentation lookups during development.
 
-MCP servers use OAuth2 authentication managed by Claude Code's built-in auth system. No credentials or tokens live in `settings.json` — only the server URL and transport type.
+The servers use OAuth2 authentication managed by Claude Code's built-in auth system, which means that no credentials or tokens live in `settings.json`, only the server URL and transport type. We will look first at how servers are configured, and then take each of the five in turn.
 
 ---
 
 ## Configuring MCP servers
 
-Add servers to `.claude/settings.json` in your project root (project-scoped) or `~/.claude/settings.json` (all projects):
+Where you add a server depends on how widely you want it available: add it to `.claude/settings.json` in your project root to scope it to that project, or to `~/.claude/settings.json` to make it available across all of your projects. Either way, the entry looks like this:
 
 ```json
 {
@@ -42,7 +42,7 @@ Add servers to `.claude/settings.json` in your project root (project-scoped) or 
 }
 ```
 
-Or use the Wire command interface:
+Alternatively, you can use the Wire command interface:
 ```
 /wire:mcp list              — see which servers are configured
 /wire:mcp auth atlassian    — guided re-authentication walkthrough
@@ -51,14 +51,14 @@ Or use the Wire command interface:
 ### Adding a server via the CLI
 
 ```bash
-# SSE transport (Atlassian, Linear, Fathom, Context7)
+# Streamable HTTP transport (Atlassian, Fathom, Context7); SSE for Linear
 claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/mcp
 
 # HTTP transport (Notion)
 claude mcp add --transport http-sse notion https://mcp.notion.com/mcp
 ```
 
-Restart Claude Code after adding a new server. On first use, Claude Code prompts you to authorise via OAuth2 in your browser.
+Restart Claude Code after adding a new server, and on first use Claude Code prompts you to authorise via OAuth2 in your browser.
 
 ---
 
@@ -71,27 +71,31 @@ Restart Claude Code after adding a new server. On first use, Claude Code prompts
 
 ### What Wire uses it for
 
+If your client tracks work in Jira and reads documents in Confluence, this one server gives Wire both, so that the record in `.wire/` and the record the client sees stay in step without anyone copying between them.
+
 **Issue tracking (Jira)**:
-- `/wire:utils-jira-create` — creates one Jira Epic per engagement, one Task per artifact, one Sub-task per lifecycle step (generate/validate/review)
+- `/wire:utils-jira-create`: creates one Jira Epic per engagement, one Task per artifact, one Sub-task per lifecycle step (generate/validate/review)
 - Every generate/validate/review command syncs its completion status to the corresponding Sub-task
-- `/wire:utils-jira-status-sync` — full reconciliation between local execution log and Jira (called by `/wire:status`)
+- `/wire:utils-jira-status-sync`: full reconciliation between local execution log and Jira (called by `/wire:status`)
 
 **Document store (Confluence)**:
-- `/wire:utils-docstore-setup` — creates a Confluence space or page hierarchy for the engagement
-- `/wire:utils-docstore-sync` — publishes generated artifacts as Confluence pages after each generate command
-- `/wire:utils-docstore-fetch` — retrieves Confluence comments and edits as review context during review commands
-- `/wire:utils-atlassian-search` — searches Confluence for relevant prior work during review commands
+- `/wire:utils-docstore-setup`: creates a Confluence space or page hierarchy for the engagement
+- `/wire:utils-docstore-sync`: publishes generated artifacts as Confluence pages after each generate command
+- `/wire:utils-docstore-fetch`: retrieves Confluence comments and edits as review context during review commands
+- `/wire:utils-atlassian-search`: searches Confluence for relevant prior work during review commands
 
 ### Setup
 
-The Atlassian MCP server is the official Anthropic-hosted server. It requires an Atlassian Cloud account.
+The Atlassian MCP server is Atlassian's own hosted server, and it requires an Atlassian Cloud account.
 
 1. Add the server to `settings.json` with the URL above
 2. On first use, Claude Code prompts for Atlassian OAuth2 authorisation
 3. Grant access to Jira (read/write issues) and Confluence (read/write pages)
-4. Run `/wire:new` — Wire auto-detects your Atlassian Cloud site and asks whether to create the Jira hierarchy
+4. Run `/wire:new`; Wire auto-detects your Atlassian Cloud site and asks whether to create the Jira hierarchy
 
 ### Re-authentication
+
+If you need to re-authenticate, remove the server and add it again:
 
 ```bash
 claude mcp remove atlassian
@@ -111,16 +115,18 @@ Restart Claude Code to complete re-authentication.
 
 ### What Wire uses it for
 
-- `/wire:utils-linear-create` — creates one Linear Project per engagement, one Issue per artifact, one Sub-issue per lifecycle step
-- Generate/validate/review commands sync to Linear in parallel with Jira when both are configured
-- `/wire:utils-linear-status-sync` — full Linear reconciliation (called by `/wire:status`)
+Where the client's team works in Linear rather than Jira, or in both, this server gives you the same tracking in Linear's own hierarchy:
 
-Wire applies a `wire-generated` label to all issues it creates, so you can filter your Linear board by Wire-managed issues.
+- `/wire:utils-linear-create`: creates one Linear Project per engagement, one Issue per artifact, one Sub-issue per lifecycle step
+- Generate/validate/review commands sync to Linear in parallel with Jira when both are configured
+- `/wire:utils-linear-status-sync`: full Linear reconciliation (called by `/wire:status`)
+
+Wire applies a `wire-generated` label to all the issues it creates, so that you can filter your Linear board down to the Wire-managed ones.
 
 ### Setup
 
 1. Add the server to `settings.json`
-2. On first use, Claude Code prompts for Linear OAuth2 authorisation — grant `issues:write` scope
+2. On first use, Claude Code prompts for Linear OAuth2 authorisation; grant `issues:write` scope
 3. Run `/wire:utils-linear-create <release>` to set up the project hierarchy, or answer Yes when prompted during `/wire:new`
 
 ---
@@ -134,13 +140,13 @@ Wire applies a `wire-generated` label to all issues it creates, so you can filte
 
 ### What Wire uses it for
 
-Every review command (`*-review`) calls `/wire:utils-meeting-context` internally, which searches Fathom for meetings in the last 30 days that mention the client name or engagement keywords. Relevant transcript excerpts — decisions made, concerns raised, action items — are surfaced as review context alongside the artifact being reviewed.
+How often has a decision been taken on a call, agreed by everyone present and then never found its way into the document it affects? Every review command (`*-review`) calls `/wire:utils-meeting-context` internally, which searches Fathom for meetings in the last 30 days that mention the client name or engagement keywords, and the relevant transcript excerpts (decisions made, concerns raised, action items) are surfaced as review context alongside the artifact being reviewed.
 
-This is the mechanism that connects Wire's paper trail to what was actually discussed and agreed in client calls.
+This is the mechanism that connects Wire's "paper trail" to what was discussed and agreed in client calls.
 
 ### Setup
 
-Fathom's MCP server URL is organisation-specific. Find it in your Fathom account under Settings → Integrations → MCP. It follows the pattern `https://mcp.fathom.video/organisations/<org-id>/mcp`.
+Fathom's MCP server URL is organisation-specific, so you will need to find yours in your Fathom account under Settings → Integrations → MCP; it follows the pattern `https://mcp.fathom.video/organisations/<org-id>/mcp`.
 
 1. Copy the URL from your Fathom settings
 2. Add it to `settings.json` replacing `https://your-fathom-mcp-server/mcp`
@@ -149,7 +155,7 @@ Fathom's MCP server URL is organisation-specific. Find it in your Fathom account
 ### Notes
 
 - Transcripts take 15–30 minutes to appear after a call ends
-- Only calls recorded in Fathom appear — not all calls are auto-recorded
+- Only calls recorded in Fathom appear, and not all calls are auto-recorded
 - If Fathom is unavailable, review commands proceed normally without meeting context
 
 ---
@@ -163,13 +169,11 @@ Fathom's MCP server URL is organisation-specific. Find it in your Fathom account
 
 ### What Wire uses it for
 
-Context7 is used automatically during development commands — particularly `dbt-generate`, `pipeline-generate`, and `semantic_layer-generate` — when Wire needs to look up current API documentation, check library version compatibility, or verify a framework's conventions.
-
-It resolves a common problem with AI-generated code: models trained on older data giving outdated API calls. Context7 fetches the current official documentation for the library in question before generating code that uses it.
+Anyone who has watched an assistant write code against a library version that no longer exists will recognise the problem Context7 solves: models trained on older data giving outdated API calls. It is used automatically during development commands, particularly `dbt-generate`, `pipeline-generate` and `semantic_layer-generate`, whenever Wire needs to look up current API documentation, check library version compatibility or verify a framework's conventions, and it fetches the current official documentation for the library in question before generating code that uses it.
 
 ### Setup
 
-Context7 is a public MCP server with no authentication required. Add the URL to `settings.json` and it works immediately.
+Context7 is a public MCP server with no authentication required, so you add the URL to `settings.json` and it works immediately.
 
 ```bash
 claude mcp add --transport http-sse context7 https://mcp.context7.com/mcp
@@ -186,7 +190,7 @@ claude mcp add --transport http-sse context7 https://mcp.context7.com/mcp
 
 ### What Wire uses it for
 
-An alternative to Confluence for the document store integration. When configured as the document store during `/wire:new` (or via `/wire:utils-docstore-setup`):
+Notion is the alternative to Confluence for the document store integration, and it suits clients who want to review documents without opening Claude Code themselves. When it is configured as the document store during `/wire:new` (or via `/wire:utils-docstore-setup`):
 
 - Generated artifacts are published as Notion pages to a specified database after each generate command
 - Reviewer comments and page edits made in Notion are surfaced as review context during review commands
@@ -198,7 +202,7 @@ An alternative to Confluence for the document store integration. When configured
 2. Add the integration to the database you want Wire to write to (open the database → ··· → Connections → add your integration)
 3. Add the server to `settings.json`
 4. On first use, Claude Code prompts for Notion OAuth2 authorisation
-5. Run `/wire:utils-docstore-setup <release>` and select Notion — provide the database ID when prompted
+5. Run `/wire:utils-docstore-setup <release>` and select Notion, providing the database ID when prompted
 
 ### Notes
 

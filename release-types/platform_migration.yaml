@@ -1,0 +1,379 @@
+wire_schema: "1.0"
+id: platform_migration
+name: "Platform Migration"
+description: "Full lifecycle for migrating a data platform from a source warehouse to a target warehouse, covering audit, inventory, strategy, execution, equivalency validation, and cutover."
+applicable_when:
+  - "Client is migrating from Snowflake, Databricks, or Redshift to BigQuery (or vice versa)"
+  - "Migration scope includes ingestion, transformation (dbt), BI, and/or reverse ETL layers"
+  - "Client needs a structured, phased approach with rollback procedures"
+
+phases:
+  # Optional. Discover, define and agree what the numbers mean before design
+  # bakes a definition in. Warning-level: the gate on the artifact below asks and
+  # records a skip reason rather than blocking, because a hard gate on a team that
+  # skips gates produces a skipped gate.
+  - id: business_rules
+    name: "Business Rules Discovery"
+    description: "Extract and agree the business rules for the domain in scope, from legacy systems and from the people who own the definitions"
+    required: false
+    requires_phase: null
+    artifacts:
+      - id: business_rules
+        command: business-rules
+        required: false
+        sequence: 1
+        depends_on: []
+
+  - id: audit
+    name: "Audit"
+    description: "Catalog source platform state across all layers — ingestion connectors, database objects, security, dbt models, and orchestration jobs"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: ingestion_audit
+        command: ingestion-audit
+        required: true
+        sequence: 1
+        depends_on: []
+      - id: db_object_audit
+        command: db-object-audit
+        required: true
+        sequence: 2
+        depends_on: []
+      - id: security_audit
+        command: security-audit
+        required: true
+        sequence: 3
+        depends_on: []
+      - id: dbt_audit
+        command: dbt-audit
+        required: true
+        sequence: 4
+        depends_on: []
+      - id: orchestration_audit
+        command: orchestration-audit
+        required: true
+        sequence: 5
+        depends_on: []
+      - id: reverse_etl_audit
+        command: reverse-etl-audit
+        required: false
+        sequence: 6
+        depends_on: []
+      - id: metabase_audit
+        command: metabase-audit
+        required: false
+        sequence: 7
+        depends_on: []
+      - id: omni_audit
+        command: omni-audit
+        required: false
+        sequence: 8
+        depends_on: []
+      - id: oac_audit
+        command: oac-audit
+        required: false
+        sequence: 9
+        depends_on: []
+
+  - id: inventory
+    name: "Inventory"
+    description: "Consolidate audit findings into a unified migration inventory with dependency graph and effort estimates"
+    required: true
+    requires_phase: audit
+    artifacts:
+      - id: migration_inventory
+        command: migration-inventory
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: ingestion_audit
+            action: validate
+            outcome: PASS
+          - artifact: db_object_audit
+            action: validate
+            outcome: PASS
+          - artifact: dbt_audit
+            action: validate
+            outcome: PASS
+          - artifact: business_rules
+            action: review
+            outcome: approved
+            enforcement: advisory
+      - id: region_tagging
+        command: region-tagging
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: dbt_audit
+            action: review
+            outcome: approved
+          - artifact: ingestion_audit
+            action: review
+            outcome: approved
+
+  - id: strategy
+    name: "Strategy"
+    description: "Produce the platform-pair translation guide, migration phases, rollback plan, and equivalency success criteria"
+    required: true
+    requires_phase: inventory
+    artifacts:
+      - id: migration_strategy
+        command: migration-strategy
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: migration_inventory
+            action: review
+            outcome: approved
+      - id: migration_batching
+        command: migration-batching
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: migration_inventory
+            action: review
+            outcome: approved
+      - id: data_residency_assessment
+        command: data-residency-assessment
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: migration_inventory
+            action: review
+            outcome: approved
+          - artifact: region_tagging
+            action: review
+            outcome: approved
+
+  - id: target_setup
+    name: "Target Setup"
+    description: "Create target warehouse DDL, roles, and permissions — safety-gated before any write to the target platform"
+    required: true
+    requires_phase: strategy
+    artifacts:
+      - id: target_setup
+        command: target-setup
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: migration_strategy
+            action: review
+            outcome: approved
+      - id: logical_access_uat
+        command: logical-access-uat
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: target_setup
+            action: review
+            outcome: approved
+
+  - id: ingestion_migration
+    name: "Ingestion Migration"
+    description: "Migrate Fivetran connectors to the target platform and activate parallel ingestion"
+    required: true
+    requires_phase: target_setup
+    artifacts:
+      - id: ingestion_migration
+        command: ingestion-migration
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: target_setup
+            action: review
+            outcome: approved
+      - id: bulk_copy_migration
+        command: bulk-copy-migration
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: target_setup
+            action: review
+            outcome: approved
+
+  - id: dbt_migration
+    name: "dbt Migration"
+    description: "Translate dbt models batch by batch to the target dialect, with lint and equivalency gates per batch"
+    required: true
+    requires_phase: ingestion_migration
+    artifacts:
+      - id: dbt_migration
+        command: dbt-migration
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: ingestion_migration
+            action: review
+            outcome: approved
+      - id: migration_register
+        command: migration-register
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: dbt_audit
+            action: generate
+            outcome: complete
+      - id: migration_drift
+        command: migration-drift
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: migration_register
+            action: generate
+            outcome: complete
+      - id: dbt_carveout_relocate
+        command: dbt-carveout-relocate
+        required: false
+        sequence: 4
+        depends_on:
+          - artifact: target_setup
+            action: review
+            outcome: approved
+          - artifact: region_tagging
+            action: review
+            outcome: approved
+
+  - id: orchestration_migration
+    name: "Orchestration Migration"
+    description: "Recreate orchestration jobs pointing at the target platform"
+    required: true
+    requires_phase: dbt_migration
+    artifacts:
+      - id: orchestration_migration
+        command: orchestration-migration
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: dbt_migration
+            action: review
+            outcome: approved
+      - id: reverse_etl_migration
+        command: reverse-etl-migration
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: reverse_etl_audit
+            action: validate
+            outcome: PASS
+      - id: metabase_migration
+        command: metabase-migration
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: target_setup
+            action: review
+            outcome: approved
+          - artifact: metabase_audit
+            action: review
+            outcome: approved
+      - id: omni_migration
+        command: omni-migration
+        required: false
+        sequence: 4
+        depends_on:
+          - artifact: target_setup
+            action: review
+            outcome: approved
+          - artifact: omni_audit
+            action: review
+            outcome: approved
+      - id: oac_migration
+        command: oac-migration
+        required: false
+        sequence: 5
+        depends_on:
+          - artifact: target_setup
+            action: review
+            outcome: approved
+          - artifact: oac_audit
+            action: review
+            outcome: approved
+      - id: metabase_carveout
+        command: metabase-carveout
+        required: false
+        sequence: 6
+        depends_on:
+          - artifact: metabase_audit
+            action: review
+            outcome: approved
+          - artifact: region_tagging
+            action: review
+            outcome: approved
+      - id: reverse_etl_twin
+        command: reverse-etl-twin
+        required: false
+        sequence: 7
+        depends_on:
+          - artifact: reverse_etl_migration
+            action: review
+            outcome: approved
+
+  - id: equivalency
+    name: "Equivalency Validation"
+    description: "Run parallel equivalency checks until all in-scope tables and models pass, then rehearse cutover on staging"
+    required: true
+    requires_phase: orchestration_migration
+    artifacts:
+      - id: equivalency
+        command: equivalency
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: orchestration_migration
+            action: review
+            outcome: approved
+      - id: metabase_equivalency
+        command: metabase-equivalency
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: metabase_audit
+            action: review
+            outcome: approved
+      - id: reverse_etl_equivalency
+        command: reverse-etl-equivalency
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: reverse_etl_audit
+            action: generate
+            outcome: complete
+
+  - id: cutover
+    name: "Cutover"
+    description: "Execute the cutover runbook — redirect production traffic, retain rollback window before decommission"
+    required: true
+    requires_phase: equivalency
+    artifacts:
+      - id: cutover
+        command: cutover
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: equivalency
+            action: validate
+            outcome: PASS
+      - id: reverse_etl_retire
+        command: reverse-etl-retire
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: reverse_etl_audit
+            action: review
+            outcome: approved
+
+  - id: report
+    name: "Migration Report"
+    description: "Generate and review post-migration report; archive the release"
+    required: true
+    requires_phase: cutover
+    artifacts:
+      - id: migration_report
+        command: migration-report
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: cutover
+            action: review
+            outcome: approved

@@ -1,0 +1,22 @@
+base_view: orders
+label: Sales
+fields:
+- orders.*
+- customers.*
+- reps.*
+- order_lines.*
+- skus.*
+- -customers.email
+always_where_sql: ${orders.customer_id} IS NOT NULL
+joins:
+  customers: {}
+  reps: {}
+  order_lines:
+    skus: {}
+relationships:
+- join_from_view: orders
+  join_to_view: customers
+  join_to_view_as: reps
+  on_sql: ${orders.rep_id} = ${reps.customer_id}
+  relationship_type: many_to_one
+  join_type: always_left

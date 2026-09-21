@@ -7,7 +7,7 @@ title: "Tutorial: Joining Mid-Release"
 
 ## What this tutorial covers
 
-This tutorial shows how to get up to speed on an active Wire engagement that you did not start. It covers reading the release state, surfacing the decision history, recovering meeting context from Fathom transcripts, and planning your first session — using a handover scenario between two consultants on a live wealth management project.
+Sooner or later you will be handed an engagement that somebody else started, with a first client session already in the diary and no time to read every artifact from the beginning, and what you need in that time is a reliable way to find out what has been built, what has been decided and what comes next. This tutorial shows how to get up to speed on an active Wire engagement that you did not start, and it covers reading the release state, surfacing the decision history, recovering meeting context from Fathom transcripts and planning your first session, using a handover scenario between two consultants on a live wealth management project.
 
 ## Scenario
 
@@ -20,9 +20,16 @@ This tutorial shows how to get up to speed on an active Wire engagement that you
 | **Stack** | BigQuery, dbt Cloud, Looker |
 | **Handing over** | Sarah (senior consultant, leaving the engagement) |
 | **Joining** | Marcus (analytics engineer, first session on this project) |
-| **Current state** | Phase 3 — dbt approved, semantic layer not yet started |
+| **Current state** | Phase 3: dbt approved, semantic layer not yet started |
 
-Marcus has 30 minutes before his first session with the client data team. He needs to understand what has been built, what decisions were made, and what the next command is.
+Marcus has 30 minutes before his first session with the client data team, and in that time he needs to understand what has been built, what decisions were made and what the next command is. At a high level, he will do six things, each of which we look at in turn below:
+
+1. Run `/wire:start` and `/wire:status` to see the current state of the release.
+2. Run `/wire:decisions` to read the decisions log.
+3. Run `/wire:execution-log` to see what was run, and when.
+4. Run `/wire:utils-meeting-context` to recover what was said in client calls.
+5. Run `/wire:session-plan` to plan his first session.
+6. Run `/wire:semantic_layer-generate`, the next command in the release.
 
 ## Understanding the current state
 
@@ -55,7 +62,7 @@ Marcus opens his terminal in the engagement repository and runs `/wire:start`:
    Run /wire:status for the full artifact state and open items.
 ```
 
-That gives him the shape of the engagement in ten seconds. He follows it with `/wire:status` for the complete picture — artifact versions, approval dates, reviewer names, and open questions:
+That gives him the shape of the engagement in ten seconds, and he follows it with `/wire:status` for the complete picture, which adds artifact versions, approval dates, reviewer names and open questions:
 
 ```
 /wire:status 02-aldgate-financial-platform
@@ -76,11 +83,11 @@ That gives him the shape of the engagement in ten seconds. He follows it with `/
      OQ-7  FCA reference data refresh cadence — daily or weekly? (owner: James Okafor)
 ```
 
-Priya Shah is the data reviewer; James Okafor handles architecture sign-offs. Marcus notes the two open questions. OQ-3 (CASS 9 retention scope) may affect what fields appear in the semantic layer.
+From this Marcus learns that Priya Shah is the data reviewer and that James Okafor handles architecture sign-offs, and he notes the two open questions, since OQ-3 (CASS 9 retention scope) may affect what fields appear in the semantic layer.
 
 ## Reading the decisions log
 
-Wire agents record non-obvious modelling choices to `decisions.md` as they work. Marcus reads it with `/wire:decisions`:
+Wire agents record non-obvious modelling choices to `decisions.md` as they work, which makes it the first place to look for the reasoning behind what has been built, and Marcus reads it with `/wire:decisions`:
 
 ```
 /wire:decisions 02-aldgate-financial-platform
@@ -103,11 +110,11 @@ Wire agents record non-obvious modelling choices to `decisions.md` as they work.
    ... (5 further entries)
 ```
 
-Three decisions stand out. The daily snapshot grain is a hard constraint — the Temenos system simply does not produce intraday data. The surrogate key choice is standard Wire convention. The `instrument_type_code` exclusion is critical: the field cannot appear in any shared dataset, which means it cannot appear in the Looker semantic layer either.
+Three decisions stand out. The daily snapshot grain is a hard constraint, because the Temenos system simply does not produce intraday data; the surrogate key choice is standard Wire convention; and the `instrument_type_code` exclusion is critical, since the field cannot appear in any shared dataset, which means it cannot appear in the Looker semantic layer either.
 
 ## Reading the execution log
 
-The decisions log shows what was decided. The execution log shows what was run:
+The decisions log shows what was decided, but what was actually run, and when? That is what the execution log shows:
 
 ```
 /wire:execution-log 02-aldgate-financial-platform
@@ -125,11 +132,11 @@ The decisions log shows what was decided. The execution log shows what was run:
    2026-02-12 08:58  /wire:execution-log           viewed
 ```
 
-Sarah closed the session on 11 February after orchestration was approved. The log sequence makes the handover point unambiguous. Marcus can see that nothing has been run since — there is no partial semantic layer work in progress.
+Sarah closed the session on 11 February after orchestration was approved, and the log sequence makes the handover point unambiguous. Marcus can see that nothing has been run since, so there is no partial semantic layer work in progress.
 
 ## Meeting context
 
-The decisions log shows what agents recorded. But analysts and clients discuss things in calls that never make it into formal decisions. Marcus pulls the Fathom transcript context:
+The decisions log shows what agents recorded. But what about the things analysts and clients discuss in calls that never make it into a formal decision? Marcus pulls the Fathom transcript context:
 
 ```
 /wire:utils-meeting-context 02-aldgate-financial-platform
@@ -151,13 +158,17 @@ The decisions log shows what agents recorded. But analysts and clients discuss t
 -> Relevant context written to: .wire/releases/02-aldgate-financial-platform/meeting_context.md
 ```
 
-The data model review transcript surfaces a specific statement from James Okafor about `instrument_type_code`. Marcus checks `decisions.md` again — the field exclusion is recorded there from 2026-01-28, so the agent did capture it. The transcript adds confirmation of who said it and when. If it had been missing from `decisions.md`, Marcus would add it manually before starting any generation work.
+The data model review transcript surfaces a specific statement from James Okafor about `instrument_type_code`, and when Marcus checks `decisions.md` again he finds the field exclusion recorded there from 2026-01-28, so the agent did capture it. The transcript adds confirmation of who said it and when.
 
-This is exactly the kind of institutional knowledge that disappears in a handover. It is not in any Jira ticket, not in any email. The Fathom transcript is the only reliable record.
+:::note
+If a decision surfaced by a transcript is missing from `decisions.md`, add it there manually before starting any generation work, since every Wire agent reads `decisions.md` before it generates.
+:::
+
+This is exactly the kind of institutional knowledge that disappears in a handover, because it is not in any Jira ticket and not in any email, and the Fathom transcript is the only reliable record.
 
 ## Planning the next session
 
-Marcus now knows what was built, what decisions were made, and what constraints apply to the semantic layer. He runs session planning:
+Marcus now knows what was built, what decisions were made and what constraints apply to the semantic layer, so he runs session planning:
 
 ```
 /wire:session-plan 02-aldgate-financial-platform
@@ -198,12 +209,12 @@ Four steps, clearly scoped. Marcus approves the plan and is ready for his first 
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, with no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
 
 :::
 
-The agent reads `decisions.md` before generating — this is standard behaviour for all Wire agents. The compliance decision Marcus found in the Fathom transcript surfaces immediately because it was already in `decisions.md`. The field never appears in any generated LookML view. Marcus did not need to brief the agent explicitly; the decision log did it automatically.
+The agent reads `decisions.md` before generating, which is standard behaviour for all Wire agents, and as a result the compliance decision Marcus found in the Fathom transcript surfaces immediately because it was already in `decisions.md`. The field never appears in any generated LookML view, and Marcus did not need to brief the agent explicitly; the decision log did it automatically.
 
 ## Key lesson
 
-`decisions.md` is the institutional memory of the engagement. Every Wire agent reads it before generating output. Every agent appends to it when it makes a non-obvious choice. When you join a release mid-way, reading `decisions.md` before running any command is the single most important step — it prevents you from generating artifacts that contradict decisions already made and approved. The Fathom meeting context provides the narrative behind those decisions. The decisions file is the primary continuity mechanism.
+`decisions.md` is the institutional memory of the engagement: every Wire agent reads it before generating output and appends to it when it makes a non-obvious choice, so when you join a release mid-way, reading `decisions.md` before running any command is the single most important step, because it prevents you from generating artifacts that contradict decisions already made and approved. The Fathom meeting context provides the narrative behind those decisions, but the decisions file is the primary continuity mechanism, and it is where your next session on any release you inherit should start too.

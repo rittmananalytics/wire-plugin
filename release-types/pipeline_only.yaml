@@ -1,0 +1,112 @@
+wire_schema: "1.0"
+id: pipeline_only
+name: "Pipeline Only"
+description: "Data pipeline development only — ingestion architecture, pipeline implementation, and data quality testing, without a dbt/semantic-layer/BI build."
+applicable_when:
+  - "Client needs a data pipeline built but transformation/BI is out of scope or handled separately"
+  - "Scope is limited to getting data reliably into the warehouse"
+
+phases:
+  # Optional. Discover, define and agree what the numbers mean before design
+  # bakes a definition in. Warning-level: the gate on the artifact below asks and
+  # records a skip reason rather than blocking, because a hard gate on a team that
+  # skips gates produces a skipped gate.
+  - id: business_rules
+    name: "Business Rules Discovery"
+    description: "Extract and agree the business rules for the domain in scope, from legacy systems and from the people who own the definitions"
+    required: false
+    requires_phase: null
+    artifacts:
+      - id: business_rules
+        command: business-rules
+        required: false
+        sequence: 1
+        depends_on: []
+
+  - id: requirements
+    name: "Requirements"
+    description: "Capture and sign off the requirements specification from the SoW and stakeholder input"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: requirements
+        command: requirements
+        required: true
+        sequence: 1
+        depends_on: []
+      # Optional. Runs when requirements carry [NEEDS CLARIFICATION] markers or a
+      # design choice needs a stakeholder decision. It was in 3.11.9's
+      # full_platform sequence and fell out of every release type when the
+      # sequences became YAML (wire#248), so no release type could produce it.
+      - id: workshops
+        command: workshops
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: requirements
+            action: review
+            outcome: approved
+
+  - id: design
+    name: "Design"
+    description: "Design the pipeline architecture"
+    required: true
+    requires_phase: requirements
+    artifacts:
+      - id: pipeline_design
+        command: pipeline_design
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: requirements
+            action: review
+            outcome: approved
+          - artifact: business_rules
+            action: review
+            outcome: approved
+            enforcement: advisory
+
+  - id: development
+    name: "Development"
+    description: "Implement the pipeline"
+    required: true
+    requires_phase: design
+    artifacts:
+      - id: pipeline
+        command: pipeline
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: pipeline_design
+            action: review
+            outcome: approved
+
+  - id: testing
+    name: "Testing"
+    description: "Data quality tests on the pipeline output"
+    required: true
+    requires_phase: development
+    artifacts:
+      - id: data_quality
+        command: data_quality
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: pipeline
+            action: review
+            outcome: approved
+
+  - id: deployment
+    name: "Deployment"
+    description: "Deploy the pipeline to production and sign off"
+    required: true
+    requires_phase: testing
+    artifacts:
+      - id: deployment
+        command: deployment
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: data_quality
+            action: validate
+            outcome: PASS

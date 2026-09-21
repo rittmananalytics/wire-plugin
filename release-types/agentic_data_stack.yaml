@@ -1,0 +1,177 @@
+wire_schema: "1.0"
+id: agentic_data_stack
+name: "Agentic Data Stack"
+description: "Build an AI-queryable data stack — audit existing datasets and metrics, design canonical models and a semantic layer, implement the agent skill with routing logic, and validate with an eval suite before launch."
+applicable_when:
+  - "Client wants to enable natural-language querying of their data warehouse"
+  - "Scope includes canonical model governance, semantic layer build, and an AI agent skill"
+  - "Client has an existing dbt project and Looker (or similar) that needs to be made AI-queryable"
+
+phases:
+  - id: audit
+    name: "Audit"
+    description: "Inventory existing datasets, metric definitions, and query patterns to identify gaps and conflicts"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: dataset_audit
+        command: ads_dataset-audit
+        required: true
+        sequence: 1
+        depends_on: []
+      - id: metric_audit
+        command: ads_metric-audit
+        required: true
+        sequence: 2
+        depends_on: []
+      - id: query_audit
+        command: ads_query-audit
+        required: false
+        sequence: 3
+        depends_on: []
+
+  - id: design
+    name: "Design"
+    description: "Design canonical dataset model, deprecation plan, and semantic layer metric definitions"
+    required: true
+    requires_phase: audit
+    artifacts:
+      - id: governance_design
+        command: ads_governance-design
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: dataset_audit
+            action: review
+            outcome: approved
+          - artifact: metric_audit
+            action: review
+            outcome: approved
+      - id: semantic_layer_design
+        command: ads_semantic-layer-design
+        required: true
+        sequence: 2
+        depends_on:
+          - artifact: governance_design
+            action: review
+            outcome: approved
+
+  - id: implementation
+    name: "Implementation"
+    description: "Implement canonical dbt models, LookML views, semantic layer metrics, and knowledge skill files"
+    required: true
+    requires_phase: design
+    artifacts:
+      - id: canonical_models
+        command: ads_canonical-models
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: governance_design
+            action: review
+            outcome: approved
+      - id: lookml_views
+        command: ads_lookml-views
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: canonical_models
+            action: review
+            outcome: approved
+      - id: semantic_layer
+        command: ads_semantic-layer
+        required: true
+        sequence: 3
+        depends_on:
+          - artifact: semantic_layer_design
+            action: review
+            outcome: approved
+          - artifact: canonical_models
+            action: validate
+            outcome: PASS
+      - id: knowledge_skill
+        command: ads_knowledge-skill
+        required: true
+        sequence: 4
+        depends_on:
+          - artifact: canonical_models
+            action: review
+            outcome: approved
+      # Optional. Publishes the canonical models, the LookML views and the
+      # knowledge skills into the warehouse AGENTS schema, so an agent that
+      # queries the warehouse finds the same context the agent_config routes
+      # to. The knowledge skill and LookML gates are advisory: a dbt-only
+      # publication is a legitimate first step.
+      - id: agents_schema
+        command: agents_schema
+        required: false
+        sequence: 5
+        depends_on:
+          - artifact: canonical_models
+            action: validate
+            outcome: PASS
+          - artifact: knowledge_skill
+            action: validate
+            outcome: PASS
+            enforcement: advisory
+          - artifact: lookml_views
+            action: validate
+            outcome: PASS
+            enforcement: advisory
+
+  - id: agent
+    name: "Agent"
+    description: "Configure the agentic data stack skill, build the eval suite, and set up adversarial review"
+    required: true
+    requires_phase: implementation
+    artifacts:
+      - id: agent_config
+        command: ads_agent-config
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: semantic_layer
+            action: review
+            outcome: approved
+          - artifact: knowledge_skill
+            action: review
+            outcome: approved
+      - id: eval_suite
+        command: ads_eval-suite
+        required: true
+        sequence: 2
+        depends_on:
+          - artifact: agent_config
+            action: review
+            outcome: approved
+      - id: adversarial_config
+        command: ads_adversarial-config
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: agent_config
+            action: review
+            outcome: approved
+
+  - id: launch
+    name: "Launch"
+    description: "Per-domain accuracy gate, user enablement, and platform announcement"
+    required: true
+    requires_phase: agent
+    artifacts:
+      - id: launch_gate
+        command: ads_launch-gate
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: eval_suite
+            action: validate
+            outcome: PASS
+      - id: analytics_enablement
+        command: ads_analytics-enablement
+        required: true
+        sequence: 2
+        depends_on:
+          - artifact: launch_gate
+            action: review
+            outcome: approved

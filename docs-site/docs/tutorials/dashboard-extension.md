@@ -5,6 +5,8 @@ title: "Tutorial: Dashboard Extension"
 
 # Tutorial: Dashboard Extension
 
+In this tutorial we follow a three-day engagement for Foxwood Commerce Ltd, a UK direct-to-consumer fashion brand whose BigQuery, dbt and Looker platform has been in place for 18 months and whose marketing team still downloads reports from Google Ads, Meta Ads, Klaviyo and GA4 separately and reconciles them in spreadsheets. The whole of the work is three new explores, three dashboards and a runbook over data that is already in the warehouse. We start with the statement of work, then look at what the release type is for before walking through the five steps in turn.
+
 ## Statement of Work
 
 ```
@@ -62,9 +64,9 @@ Foxwood Commerce Ltd has a functioning BigQuery + dbt + Looker platform, with Fi
 
 ## What is a Dashboard Extension release?
 
-The `dashboard_extension` release type augments an existing Looker instance with new LookML explores and dashboards. No pipeline connectors, no dbt models, no warehouse changes — the semantic layer and dashboards are the entire scope. The `semantic-layer-developer` agent reads the existing LookML project before generating anything new, establishing what naming conventions, explore patterns, and measure definitions are already in use. New work must be consistent with what is there.
+Suppose the client already has a functioning platform. The dbt models are deployed, the Fivetran connectors are running and the data the business wants to see has already landed in the warehouse, but there is no dashboard coverage over it, and the only gap is LookML and the dashboards on top of it. For that situation the `dashboard_extension` release type augments an existing Looker instance with new LookML explores and dashboards: no pipeline connectors, no dbt models and no warehouse changes, because the semantic layer and dashboards are the entire scope.
 
-Use this release type when the client already has a functioning platform but needs new dashboard coverage over data that has already landed in the warehouse. The existing dbt models are deployed, the Fivetran connectors are running, and the only gap is LookML and the dashboards on top of it. Starting from `semantic_layer-generate` rather than `requirements-generate` reflects that scope precisely.
+The `semantic-layer-developer` agent reads the existing LookML project before generating anything new, establishing what naming conventions, explore patterns and measure definitions are already in use, and new work must be consistent with what is there. Starting from `semantic_layer-generate` rather than `requirements-generate` reflects that scope precisely, as we will see when the release is set up in Step 1.
 
 ### High-Level Process
 
@@ -72,6 +74,24 @@ Use this release type when the client already has a functioning platform but nee
 graph LR
     REQ["Requirements"] --> MK["Mockups"] --> DASH["Dashboard Development"] --> UAT["UAT"]
 ```
+
+
+:::info New in 4.0: business rules discovery
+
+This walkthrough does not use it, so the sequence below still reads correctly, but
+you should know that it exists.
+
+`/wire:business-rules-generate` is an optional first phase that establishes what
+the numbers mean before design bakes a definition in: one register per domain,
+holding every competing definition found in dbt, LookML or an `--import` from a
+system Wire cannot read, what they disagree on, the decision and who approved it.
+A rule nobody has decided is recorded as `unknown` rather than left out.
+
+The gate on `mockups-generate` is advisory: it warns, takes a reason, records the skip and
+proceeds.
+
+Reference: [Business rules discovery](../advanced/business-rules.md).
+:::
 
 ## Engagement overview
 
@@ -84,7 +104,7 @@ graph LR
 | **Release ID** | `01-foxwood-marketing-dashboards` |
 | **Sources in scope** | Google Ads, Meta Ads, Klaviyo, GA4 (all existing Fivetran connectors) |
 
-Foxwood Commerce is a UK direct-to-consumer fashion brand with online-only retail at roughly £15m annual revenue. The analytics team built product and order dashboards in Looker 18 months ago, backed by a dbt + BigQuery stack. Fivetran connectors for Google Ads, Meta Ads, Klaviyo, and GA4 have been running for over a year. The marketing team has been downloading raw reports from each platform separately and reconciling them in spreadsheets. The brief: three new dashboards — paid acquisition performance, email marketing performance, and organic channel performance. No new connectors. No new dbt models. The warehouse data is already there.
+Foxwood Commerce is a UK direct-to-consumer fashion brand with online-only retail at roughly £15m annual revenue. The analytics team built product and order dashboards in Looker 18 months ago, backed by a dbt + BigQuery stack, and Fivetran connectors for Google Ads, Meta Ads, Klaviyo and GA4 have been running for over a year. The marketing team, however, has been downloading raw reports from each platform separately and reconciling them in spreadsheets. The brief is for three new dashboards (paid acquisition performance, email marketing performance and organic channel performance), with no new connectors and no new dbt models, because the warehouse data is already there.
 
 ## Deliverables
 
@@ -95,11 +115,11 @@ Foxwood Commerce is a UK direct-to-consumer fashion brand with online-only retai
 | Dashboard definitions | LookML dashboard format (3 files) | `lookml/dashboards/` |
 | Deployment runbook | Promotion to production branch, share settings | `.wire/releases/01-foxwood-marketing-dashboards/deployment.md` |
 
-dbt models are not in scope. Fivetran connector configuration is not in scope. The release touches only the Looker layer.
+Neither dbt models nor Fivetran connector configuration are in scope, and the release touches only the Looker layer.
 
 ## Tutorial Playbook
 
-The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this for you as a Mermaid-format delivery plan, with the dependency order, team assignments and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
@@ -145,7 +165,7 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 :::info[First release in this repository?]
 
-If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement (naming the client, setting the engagement context and configuring any integrations) before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
 
 :::
 
@@ -163,16 +183,16 @@ If this is the first release created in a git repository, `/wire:new` will first
 
 :::info[Issue tracking and document sync]
 
-Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate and review step completes. With the Jira integration you can choose between one sub-task per lifecycle step, each moving through its own workflow states, or one ticket per artifact that transitions between issue statuses, and Wire can either create the Epic and issue hierarchy for you when you run `/wire:new` or link to an existing one you have already set up.
 
-Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review, in which case review commands pull the comments and edits made in the document store back in as context before gathering sign-off.
 
-Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear) or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
 
 :::
 
 
-Copy the client's existing LookML view and model files into `.wire/releases/01-foxwood-marketing-dashboards/requirements/` before generating. The agent needs these to establish naming conventions and avoid clashing with existing explores. A BigQuery schema export for the four new source datasets is also useful here — it confirms column names before the agent writes any `${TABLE}.column` references.
+Before you generate anything, copy the client's existing LookML view and model files into `.wire/releases/01-foxwood-marketing-dashboards/requirements/`, because the agent needs them to establish the naming conventions and to avoid clashing with existing explores. A BigQuery schema export for the four new source datasets is also useful here, since it confirms column names before the agent writes any `${TABLE}.column` references.
 
 ### Step 2 — Generate the semantic layer
 
@@ -193,15 +213,15 @@ Copy the client's existing LookML view and model files into `.wire/releases/01-f
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, with no extra steps needed on your part. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`), however, always stay in the main session and require your direct input.
 
 :::
 
-The agent's first action is to read the existing LookML, not to write anything. Naming conventions extracted from the existing project are applied to all new work. This is what keeps a dashboard extension coherent with the platform the client already has — a new explore that uses different naming patterns or misses a `value_format_name` stands out immediately in Looker's field picker and creates maintenance confusion downstream.
+Notice that the agent's first action is to read the existing LookML, not to write anything. The naming conventions it extracts from the existing project are applied to all new work, and this is what keeps a dashboard extension coherent with the platform the client already has: a new explore that uses different naming patterns or misses a `value_format_name` stands out immediately in Looker's field picker and creates maintenance confusion downstream.
 
-The three explores generated:
+Let's now take a look at the three explores it generated.
 
-**`paid_acquisition`** — joins Google Ads and Meta Ads spend data into a unified cross-channel view. Key measures include `sum_spend`, `sum_clicks`, `sum_impressions`, `sum_conversions`, and `cross_channel_roas`. The ROAS measure:
+**`paid_acquisition`** joins Google Ads and Meta Ads spend data into a unified cross-channel view, with key measures including `sum_spend`, `sum_clicks`, `sum_impressions`, `sum_conversions` and `cross_channel_roas`. The ROAS measure is defined as follows:
 
 ```lookml
 measure: cross_channel_roas {
@@ -215,9 +235,9 @@ measure: cross_channel_roas {
 }
 ```
 
-The `NULLIF` guard is applied to every division-based measure — a convention the agent picks up from the existing LookML before writing a single line. The `drill_fields` reference uses the explore's own field list, not a hardcoded string array.
+The `NULLIF` guard is applied to every division-based measure, a convention the agent picks up from the existing LookML before writing a single line, and the `drill_fields` reference uses the explore's own field list rather than a hardcoded string array.
 
-A representative date dimension from the same explore:
+Here is a representative date dimension from the same explore:
 
 ```lookml
 dimension_group: ad_date {
@@ -230,9 +250,11 @@ dimension_group: ad_date {
 }
 ```
 
-**`email_performance`** — Klaviyo campaigns and flows. Measures: `open_rate`, `click_rate`, `revenue_per_email`, `unsubscribe_rate`. `revenue_per_email` defined as `sum_attributed_revenue / NULLIF(count_delivered, 0)` with `value_format_name: gbp_2`.
+**`email_performance`** covers Klaviyo campaigns and flows, with the measures `open_rate`, `click_rate`, `revenue_per_email` and `unsubscribe_rate`, of which `revenue_per_email` is defined as `sum_attributed_revenue / NULLIF(count_delivered, 0)` with `value_format_name: gbp_2`.
 
-**`organic_performance`** — GA4 sessions and engagement. Measures: `count_sessions`, `engagement_rate`, `sum_goal_completions`. A `channel_grouping` dimension uses a `case` expression to bucket GA4 source/medium combinations into `Organic Search`, `Direct`, `Referral`, `Social`, and `Other`.
+**`organic_performance`** covers GA4 sessions and engagement, with the measures `count_sessions`, `engagement_rate` and `sum_goal_completions`, together with a `channel_grouping` dimension that uses a `case` expression to bucket GA4 source/medium combinations into `Organic Search`, `Direct`, `Referral`, `Social` and `Other`.
+
+With the three explores written, validation runs the six convention checks against them:
 
 ```
 /wire:semantic_layer-validate 01-foxwood-marketing-dashboards
@@ -262,7 +284,7 @@ dimension_group: ad_date {
   and impression_share_lost_budget measures to paid_acquisition explore.
 ```
 
-The review surfaces one substantive addition — impression share metrics the marketing analyst uses regularly that were not mentioned in the brief. The agent regenerates the `paid_acquisition` explore with the three new fields, validate reruns cleanly, and the reviewer approves the second pass.
+The review surfaces one substantive addition: impression share metrics that the marketing analyst uses regularly but that were not mentioned in the brief. The agent regenerates the `paid_acquisition` explore with the three new fields, validate reruns cleanly and both reviewers approve the second pass.
 
 ```
 → Regenerating paid_acquisition explore with impression share fields...
@@ -279,7 +301,7 @@ The review surfaces one substantive addition — impression share metrics the ma
 → dashboards written to .wire/releases/01-foxwood-marketing-dashboards/dashboards/
 ```
 
-Three dashboard definition files — one per explore. Each contains four to six tiles covering the primary measures, a date filter wired to the explore's `ad_date` or equivalent date dimension, and a channel or campaign filter. Tile references use the explore name and field path, not hardcoded SQL. This means the dashboards travel cleanly with the LookML when promoted to production.
+This gives us three dashboard definition files, one per explore. Each contains four to six tiles covering the primary measures, a date filter wired to the explore's `ad_date` or equivalent date dimension and a channel or campaign filter, and because tile references use the explore name and field path rather than hardcoded SQL, the dashboards travel cleanly with the LookML when promoted to production.
 
 ```
 /wire:dashboards-review 01-foxwood-marketing-dashboards
@@ -288,6 +310,8 @@ Three dashboard definition files — one per explore. Each contains four to six 
 ```
 
 ### Step 5 — Deploy to Looker production
+
+Finally, the deployment runbook sets out the promotion to the Looker production branch and the share settings for the marketing group:
 
 ```
 /wire:deployment-generate 01-foxwood-marketing-dashboards
@@ -316,4 +340,4 @@ Three dashboard definition files — one per explore. Each contains four to six 
 | Dashboard definitions | 3 | LookML format, 4–6 tiles each |
 | Deployment runbook | 1 | Production branch promotion + share settings |
 
-No dbt models were written. No Fivetran connectors were created or modified. The entire scope was LookML — 84 new fields across three explores, three dashboards, and a deployment runbook. All field naming is consistent with the existing Looker project conventions detected at the start of the `semantic_layer-generate` step.
+No dbt models were written and no Fivetran connectors were created or modified: the entire scope was LookML, 78 new fields across three explores, three dashboards and a deployment runbook, with all field naming consistent with the existing Looker project conventions detected at the start of the `semantic_layer-generate` step. Once the pull request merges, the one check left is the last step of the runbook, confirming dashboard load times in production.

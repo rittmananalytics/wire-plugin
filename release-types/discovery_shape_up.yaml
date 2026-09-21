@@ -1,0 +1,67 @@
+wire_schema: "1.0"
+id: discovery_shape_up
+name: "Shape Up Discovery"
+description: "Lightweight discovery sprint using the Shape Up methodology — problem definition, pitch, release brief, and sprint plan — culminating in a scoped, appetite-bounded release plan."
+applicable_when:
+  - "Client needs a structured discovery sprint before committing to delivery"
+  - "Work is unbounded or exploratory — appetite-setting required before scoping"
+  - "Team will run delivery in 6-week Shape Up cycles"
+  - "Client does not yet have a signed-off delivery roadmap"
+
+phases:
+  - id: problem_definition
+    name: "Problem Definition"
+    description: "Define the problem, user pain points, current workarounds, and why it matters now"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: problem_definition
+        command: problem-definition
+        required: true
+        sequence: 1
+        depends_on: []
+
+  - id: pitch
+    name: "Pitch"
+    description: "Shape a bounded solution — fat marker sketch, rabbit holes called out, appetite set"
+    required: true
+    requires_phase: problem_definition
+    artifacts:
+      - id: pitch
+        command: pitch
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: problem_definition
+            action: review
+            outcome: approved
+
+  - id: release_brief
+    name: "Release Brief"
+    description: "Formalise the pitch into a signed-off release brief with scope, non-scope, and success criteria"
+    required: true
+    requires_phase: pitch
+    artifacts:
+      - id: release_brief
+        command: release-brief
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: pitch
+            action: review
+            outcome: approved
+
+  - id: sprint_plan
+    name: "Sprint Plan"
+    description: "Break the release brief into a sprint plan with epics, stories, and point estimates within appetite"
+    required: true
+    requires_phase: release_brief
+    artifacts:
+      - id: sprint_plan
+        command: sprint-plan
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: release_brief
+            action: review
+            outcome: approved

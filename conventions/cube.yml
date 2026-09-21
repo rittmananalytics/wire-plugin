@@ -1,0 +1,100 @@
+schema_version: 1
+domain: cube
+description: >
+  Rittman Analytics Cube.dev modeling conventions — the machine-checkable
+  subset of wire/skills/cube/SKILL.md. Loaded during Cube data model
+  development and enforced by wire/scripts/lint_conventions.py. Modeling
+  judgment (additive vs. non-additive measures, join direction, whether a
+  pre-aggregation is warranted) stays in the skill file.
+
+# ----------------------------------------------------------------------
+# Naming
+# ----------------------------------------------------------------------
+naming:
+  - id: snake_case_throughout
+    description: "snake_case throughout, no camelCase or kebab-case"
+    scope: identifier
+    pattern: '^[a-z][a-z0-9_]*$'
+    severity: error
+
+  - id: view_suffix
+    description: "View names take a _view suffix"
+    scope: view_name
+    pattern: '_view$'
+    example: "orders_view"
+    severity: error
+
+  - id: boolean_dimension_prefix
+    description: "Boolean dimensions read as a yes/no question: is_<state>"
+    scope: dimension_name
+    applies_when_type: boolean
+    pattern: '^is_'
+    severity: warning
+
+  - id: deprecated_relationship_vocabulary
+    description: "Joins use one_to_many / many_to_one / one_to_one, not the deprecated belongsTo / hasMany"
+    scope: file_content
+    forbidden_pattern: '(belongsTo|hasMany|hasOne)'
+    severity: error
+
+# ----------------------------------------------------------------------
+# Required fields
+# ----------------------------------------------------------------------
+required_fields:
+  - id: cube_requires_core_fields
+    description: "Every cube declares name, sql_table, and description"
+    block: cube
+    required_keys: [name, sql_table, description]
+    severity: error
+
+  - id: cube_requires_primary_key
+    description: "Every cube declares at least one dimension with primary_key: true"
+    block: cube
+    check: has_primary_key_dimension
+    severity: error
+
+  - id: dimension_requires_core_fields
+    description: "Every dimension declares name, sql, and type"
+    block: dimension
+    required_keys: [name, sql, type]
+    severity: error
+
+  - id: measure_requires_core_fields
+    description: "Every measure declares name and type"
+    block: measure
+    required_keys: [name, type]
+    severity: error
+
+# ----------------------------------------------------------------------
+# Style
+# ----------------------------------------------------------------------
+style:
+  - id: yaml_indent
+    description: "YAML indented with 2 spaces, no tabs"
+    indent_spaces: 2
+    forbid_tabs: true
+    severity: warning
+
+  - id: prefer_not_equal_operator
+    description: "Use != rather than <>"
+    scope: file_content
+    forbidden_pattern: '<>'
+    severity: warning
+
+  - id: sql_keyword_case
+    description: "SQL keywords and function names in upper case (SELECT, SUM, CASE WHEN)"
+    severity: warning
+    note: "Advisory — reliably distinguishing a SQL keyword from an identifier of the same spelling needs a real SQL tokenizer, not a regex; the agent applies this during authoring/review."
+
+# ----------------------------------------------------------------------
+# Modeling rules the linter can't check (kept here for completeness,
+# fully advisory — see wire/skills/cube/SKILL.md for the reasoning)
+# ----------------------------------------------------------------------
+modeling:
+  - id: additive_measures_only_in_pre_aggregations
+    description: "Only count, count_distinct_approx, min, max, sum are additive — non-additive measures (ratios, averages) must be calculated measures over additive components, never pre-aggregated directly"
+    severity: warning
+
+  - id: ratios_use_nullif_guard
+    description: "Ratios and averages are calculated measures over other measures, with NULLIF guarding the denominator"
+    severity: warning

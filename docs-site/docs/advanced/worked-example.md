@@ -5,9 +5,9 @@ title: Worked Example
 
 # Worked Example: Barton Peveril Live Pastoral Analytics
 
-This walkthrough traces a complete Wire engagement from initial kick-off through delivery handover, using a real-world further education client. It covers every command in the canonical sequence and shows two Wire Agents features in practice: auto-delegation during the design phase, and batch dispatch via `/wire:delegate` at the start of development.
+Reading about commands, gates and agents one page at a time tells you what each piece does, but it does not tell you what a fortnight of real delivery looks like when they are all in play at once: which commands you run on which day, where the specialist agents take the work off your hands, where everything stops for a named person to approve it and what is on disk when you finish. This walkthrough answers that by tracing a complete Wire engagement from initial kick-off through to delivery handover, using a real-world further education client. It covers every command in the canonical sequence and shows two Wire Agents features in practice: auto-delegation during the design phase, and batch dispatch via `/wire:delegate` at the start of development.
 
-The engagement is a `full_platform` release using BigQuery, dbt, Looker, and dbt Cloud for orchestration.
+The engagement is a `full_platform` release using BigQuery, dbt and Looker, together with dbt Cloud for orchestration. We will work through it phase by phase, in the order the release ran, and where an agent did the work rather than the consultant we will say so as we go.
 
 ## Engagement overview
 
@@ -25,6 +25,8 @@ The engagement is a `full_platform` release using BigQuery, dbt, Looker, and dbt
 
 ### Engagement setup
 
+Every engagement starts with `/wire:new`, which records the client, engagement name, release type and release id, then creates the branch and the `status.md` file that will track all 16 artifacts from here on:
+
 ```
 /wire:new
 → Client: Barton Peveril Sixth Form College
@@ -36,19 +38,23 @@ The engagement is a `full_platform` release using BigQuery, dbt, Looker, and dbt
   16 artifacts across 6 phases, all at not_started
 ```
 
-After `/wire:new`, copy the SOW PDF and ProSolution SQL schema examples into `releases/01-barton-peveril-live-pastoral/requirements/`.
+Once `/wire:new` has finished, copy the SOW PDF and the ProSolution SQL schema examples into `releases/01-barton-peveril-live-pastoral/requirements/`, as these are the source materials the requirements step reads.
 
 ### Requirements — auto-delegated to `discovery-analyst`
+
+The first artifact is also the first place you will see auto-delegation at work: rather than drafting the requirements itself, the main session hands the command to the `discovery-analyst` agent.
 
 ```
 /wire:requirements-generate 01-barton-peveril-live-pastoral
 → [auto-delegated to discovery-analyst agent]
 ```
 
-The agent reads the SOW and SQL examples and produces a 13-section requirements specification: FR-1 through FR-9 with acceptance criteria, NFR-1 through NFR-7 (performance, security, freshness SLAs), and a deliverable-to-artifact mapping. It appends two entries to `decisions.md`:
+The agent reads the SOW and the SQL examples and produces a 13-section requirements specification: FR-1 through FR-9 with acceptance criteria, NFR-1 through NFR-7 (performance, security and freshness SLAs) and a deliverable-to-artifact mapping. Along the way it appends two entries to `decisions.md`, which is where each agent records the non-obvious choices it makes:
 
-- Modelled attendance at daily-snapshot grain, not register-level — register-level would require 6× the Fivetran MAR volume
-- Excluded `student_notes.body` from replication scope — free-text pastoral records create a GDPR data minimisation risk
+- Modelled attendance at daily-snapshot grain, not register-level, because register-level would require six times the Fivetran MAR volume
+- Excluded `student_notes.body` from replication scope, because free-text pastoral records create a GDPR data minimisation risk
+
+Validation goes to the same agent, but the review does not, because review gates always stay with the consultant in the main session:
 
 ```
 /wire:requirements-validate 01-barton-peveril-live-pastoral
@@ -63,13 +69,13 @@ The agent reads the SOW and SQL examples and produces a 13-section requirements 
 
 ### Delivery playbook
 
-Before moving into design, generate a playbook for the full release:
+Before moving into design, generate a playbook for the full release, so that everyone shares one view of what comes next and who approves what:
 
 ```
 /wire:playbook-generate 01-barton-peveril-live-pastoral
 ```
 
-The command reads the approved requirements, SOW timeline, and `status.md` and produces a Mermaid control-flow diagram plus a narrative step guide at `planning/live_pastoral_analytics_playbook.md`. The ✅ and 🔄 markers on phase headings update each time you regenerate — the version below was produced mid-engagement after design was complete.
+The command reads the approved requirements, the SOW timeline and `status.md`, and produces a Mermaid control-flow diagram together with a narrative step guide at `planning/live_pastoral_analytics_playbook.md`. The ✅ and 🔄 markers on the phase headings update each time you regenerate it, so the version below, which was produced mid-engagement after design was complete, shows the first two phases done and development in progress.
 
 ```mermaid
 flowchart TD
@@ -239,15 +245,17 @@ classDef decision fill:#5c3a00,stroke:#d98c1a,color:#fff
 classDef event fill:#1a1a1a,stroke:#888,color:#fff
 ```
 
-The narrative guide covers prerequisites, open questions, and offline activities for each step. Two open questions surface at generation time: **PD-2** (confirm the role of `note_type_id = 31` in Focus before the dbt review is approved) and **PD-11** (FSA Stage 2/3 snapshot data — may need to defer to Phase 2 scope).
+The narrative guide covers the prerequisites, open questions and offline activities for each step. Two open questions surface at generation time: **PD-2**, which asks you to confirm the role of `note_type_id = 31` in Focus before the dbt review is approved, and **PD-11**, which concerns FSA Stage 2/3 snapshot data and may need to be deferred to Phase 2 scope.
 
-> **What Wire does and does not do.** Wire writes the artifacts: requirements, pipeline design, data model, dbt SQL models, LookML, UAT scripts, deployment runbooks, training plans, and documentation. It also runs all mechanical validations. Wire does not take decisions on the team's behalf — every `-generate` is followed by a `-validate` and a `-review`, and the review is the human gate where a named stakeholder approves the artifact before the next phase begins.
+> **What Wire does and does not do.** Wire writes the artifacts: requirements, pipeline design, data model, dbt SQL models, LookML, UAT scripts, deployment runbooks, training plans and documentation. It also runs all of the mechanical validations. What Wire does not do is take decisions on the team's behalf: every `-generate` is followed by a `-validate` and a `-review`, and the review is the human gate at which a named stakeholder approves the artifact before the next phase begins.
 
-Each session should start with `/wire:status` to confirm the current artifact state, then scope to advancing one artifact through one gate. For development artifacts, generate + validate typically fit in one session. When a review returns `changes_requested`, re-generate and re-validate before going back to the reviewer. Log open questions immediately with a named owner.
+How should you pace the work? Each session should start with `/wire:status` to confirm the current artifact state, and then scope itself to advancing one artifact through one gate. For development artifacts, generate and validate typically fit in one session. When a review returns `changes_requested`, re-generate and re-validate before going back to the reviewer, and log open questions immediately with a named owner.
 
-This is a planning utility — it creates no tracked artifact and blocks nothing. Regenerate after any significant scope change to refresh the ✅ markers.
+The playbook is a planning utility, which is to say that it creates no tracked artifact and blocks nothing, so regenerate it after any significant scope change to refresh the ✅ markers.
 
 ## Phase 2: Design (Days 2–4)
+
+With the requirements approved, the design phase produces four artifacts, three of them through auto-delegation and one, the mockups, in the main session. Let's take them in the order they ran.
 
 ### Conceptual model — auto-delegated to `data-designer`
 
@@ -256,7 +264,7 @@ This is a planning utility — it creates no tracked artifact and blocks nothing
 → [auto-delegated to data-designer agent]
 ```
 
-Produces a business-level entity model: five domain entities (`Student`, `Attendance`, `PastoralNote`, `SPAAlert`, `Assignment`) with a Mermaid `erDiagram` showing cardinalities.
+This produces a business-level entity model with five domain entities (`Student`, `Attendance`, `PastoralNote`, `SPAAlert` and `Assignment`) and a Mermaid `erDiagram` showing the cardinalities between them. The review records a joint approval together with a modelling decision:
 
 ```
 /wire:conceptual_model-validate 01-barton-peveril-live-pastoral
@@ -275,7 +283,7 @@ Produces a business-level entity model: five domain entities (`Student`, `Attend
 → [auto-delegated to pipeline-engineer agent]
 ```
 
-Produces the full pipeline architecture document: ProSolution source schema analysis, three Fivetran connectors (ProSolution SQL Server CDC, Focus CDC, MIS Applications for risk weights), and 12 design decisions. The design went through five versions before approval. Key decisions: attendance percentage calculated dynamically in Looker (CR-1, never stored); risk scoring from live `Looker_Risk_Score` table via Fivetran rather than a static seed (CR-3); `focus.users` removed from CDC scope (CR-5). Open question **PD-2** carried forward: confirm the role of `note_type_id = 31` before the dbt review is approved.
+This produces the full pipeline architecture document: an analysis of the ProSolution source schema, three Fivetran connectors (ProSolution SQL Server CDC, Focus CDC and MIS Applications for risk weights) and 12 design decisions. The design went through five versions before approval, and the key decisions were that the attendance percentage is calculated dynamically in Looker and never stored (CR-1), that risk scoring comes from the live `Looker_Risk_Score` table via Fivetran rather than from a static seed (CR-3) and that `focus.users` is removed from CDC scope (CR-5). Open question **PD-2** is carried forward: the role of `note_type_id = 31` has to be confirmed before the dbt review is approved.
 
 ```
 /wire:pipeline_design-validate 01-barton-peveril-live-pastoral → PASS
@@ -290,10 +298,11 @@ Produces the full pipeline architecture document: ProSolution source schema anal
 → [auto-delegated to data-designer agent]
 ```
 
-Produces `_sources.yml` for all three Fivetran connectors, a physical ERD, and a full model inventory across six versions:
-- 9 staging models, 1 integration model (`int__student_xref` — cross-system student identity resolution), 7 warehouse models: `attendance_fct`, `pastoral_notes_fct`, `spa_alerts_fct`, `assignment_marks_fct`, `student_risk_score_fct`, `student_risk_summary`, `student_risk_history`
-- 3 seeds: `grade_ordering.csv`, `focus_note_type_mapping.csv`, `tracked_assignment_titles.csv`
-- All facts use incremental (`merge`) materialisation
+This produces `_sources.yml` for all three Fivetran connectors, a physical ERD and a full model inventory, arrived at over six versions:
+
+- nine staging models, one integration model (`int__student_xref`, which resolves student identity across the source systems) and seven warehouse models: `attendance_fct`, `pastoral_notes_fct`, `spa_alerts_fct`, `assignment_marks_fct`, `student_risk_score_fct`, `student_risk_summary` and `student_risk_history`
+- three seeds: `grade_ordering.csv`, `focus_note_type_mapping.csv` and `tracked_assignment_titles.csv`
+- all facts use incremental (`merge`) materialisation
 
 ```
 /wire:data_model-validate 01-barton-peveril-live-pastoral → PASS
@@ -303,6 +312,8 @@ Produces `_sources.yml` for all three Fivetran connectors, a physical ERD, and a
 ```
 
 ### Mockups
+
+The mockups are the one design artifact that stays in the main session:
 
 ```
 /wire:mockups-generate 01-barton-peveril-live-pastoral
@@ -335,9 +346,9 @@ Dashboard Mockups Generated
   switch without page load, filter pills are styled correctly.
 ```
 
-A self-contained interactive HTML prototype — no build step, no server. SPAs and pastoral leads review it in a browser before any Looker work begins.
+What you get is a self-contained interactive HTML prototype, with no build step and no server, which means the SPAs and pastoral leads can review it in a browser before any Looker work begins.
 
-![SPA Operational Dashboard mock — Daily Caseload tab](/img/dashboard_mock.png)
+![SPA Operational Dashboard mock: Daily Caseload tab](/img/dashboard_mock.png)
 
 ```
 /wire:mockups-review 01-barton-peveril-live-pastoral
@@ -347,19 +358,21 @@ A self-contained interactive HTML prototype — no build step, no server. SPAs a
 
 ### End of Week 1 — close the session
 
-All four design artifacts approved. Before switching off:
+All four design artifacts are approved. Before switching off, close the session so that the next one opens with an accurate picture:
 
 ```
 /wire:session:end 01-barton-peveril-live-pastoral
 ```
 
-Wire summarises: 6 artifacts completed, two open items (OQ-2 still open), next session focus is Phase 3 Development, recommends starting with `/wire:delegate`.
+Wire summarises the position: six artifacts completed, two open items (OQ-2 still open) and a next session focused on Phase 3 Development, for which it recommends starting with `/wire:delegate`.
 
 ## Phase 3: Development (Days 5–8)
 
+Development is where the second Wire Agents feature comes in. Rather than running each generate command in turn and waiting for its agent, you can hand the whole phase to `/wire:delegate`, which plans the work and fans it out across specialists while the review gates stay with you.
+
 ### Day 5 morning — resume and plan
 
-New session, two days later:
+The new session opens two days later, and `/wire:start` is the way back in:
 
 ```
 /wire:start
@@ -367,7 +380,7 @@ New session, two days later:
 → Choose: Plan session
 ```
 
-Wire shows the release state (6/16 artifacts done), lists the next four at `not_started`, surfaces the two open items, and recommends `/wire:delegate`.
+Wire shows the release state (6/16 artifacts done), lists the next four artifacts at `not_started`, surfaces the two open items and recommends `/wire:delegate`.
 
 ### Batch dispatch with `/wire:delegate`
 
@@ -375,14 +388,14 @@ Wire shows the release state (6/16 artifacts done), lists the next four at `not_
 /wire:delegate 01-barton-peveril-live-pastoral
 ```
 
-Wire inspects `status.md`, identifies all development artifacts at `not_started`, and presents the delegation plan. With 9 staging models and 7 warehouse models in scope, the dbt step fans out across parallel agents per layer:
+Wire inspects `status.md`, identifies every development artifact at `not_started` and presents the delegation plan. With nine staging models and seven warehouse models in scope, the dbt step fans out across parallel agents, one layer at a time:
 
 ```
 Delegation plan — Barton Peveril Live Pastoral Analytics / 01-barton-peveril-live-pastoral
 ───────────────────────────────────────────────────────────────────────────────────────────
 
 Step 1 (sequential):
-  pipeline-engineer  →  pipeline-generate
+  pipeline-engineer  →  /wire:pipeline-generate 01-barton-peveril-live-pastoral
                         (ProSolution SQL Server CDC + Focus REST API connectors)
 
 Step 2 (multi-wave fan-out, starts after Step 1):
@@ -408,21 +421,27 @@ Step 2 (multi-wave fan-out, starts after Step 1):
   Total dbt-developer agents: 5  (2 + 1 + 2)
 
 Step 3 (parallel, starts after Step 2):
-  3a  orchestration-engineer    →  orchestration-generate  (dbt Cloud job config)
-  3b  semantic-layer-developer  →  semantic_layer-generate  (LookML views + explores)
+  3a  orchestration-engineer    →  /wire:orchestration-generate 01-barton-peveril-live-pastoral  (dbt Cloud job config)
+  3b  semantic-layer-developer  →  /wire:semantic_layer-generate 01-barton-peveril-live-pastoral  (LookML views + explores)
 
 Total: 8 specialist agents across 4 execution stages. Review commands stay in this session.
+
+Proceed? (yes / adjust / cancel)
 ```
+
+Nothing is dispatched until you answer. This is the run plan of the operating model's rule 8: every command is written in full, as you would type it, and `adjust` re-presents the whole plan with your change while `cancel` runs nothing. Here you answer `yes`.
 
 ### What the agents produce
 
-**`pipeline-engineer`** — Fivetran connector config for ProSolution (SQL Server CDC) and Focus (REST API), plus a Cloud Function for Focus auth token refresh. Error handling: dead-letter queue to `pipeline_errors` BigQuery table, Slack alerting on consecutive failures.
+So what came back from each specialist? Taking them in the order the plan ran them:
 
-**`dbt-developer`** — 5 agents ran across 3 sequential waves. Wave 2a (2 staging agents in parallel) ran concurrently with each other. Wave 2b ran the single integration model. Wave 2c ran 2 warehouse agents in parallel. Total: 19 SQL models (9 staging, 1 integration, 7 warehouse, 2 utility) plus 3 seeds and 34 static-analysis tests. Surrogate keys via `dbt_utils.generate_surrogate_key()`; all facts incremental with `merge` strategy. Static analysis PASS with two findings the team must fix before requesting review: `ref()` calls inside transformation CTEs in two models (must move to source CTEs at the top of the file); missing `s_` prefixes on source CTEs across several warehouse models. Both corrected before the review is requested. Adds to `decisions.md`:
+**`pipeline-engineer`** produces the Fivetran connector configuration for ProSolution (SQL Server CDC) and Focus (REST API), together with a Cloud Function for Focus auth token refresh. For error handling it adds a dead-letter queue to a `pipeline_errors` BigQuery table and Slack alerting on consecutive failures.
 
-- `student_risk_summary` materialised as table with `full_refresh=false` — model accumulates historical snapshots; incremental would require a unique_key that changes the grain
+**`dbt-developer`** ran as five agents across three sequential waves. Wave 2a ran two staging agents concurrently with each other, Wave 2b ran the single integration model and Wave 2c ran two warehouse agents in parallel. The total is 19 SQL models (nine staging, one integration, seven warehouse and two utility) plus three seeds and 34 static-analysis tests. Surrogate keys come from `dbt_utils.generate_surrogate_key()`, and all facts are incremental with the `merge` strategy. Static analysis returned PASS with two findings the team must fix before requesting review: `ref()` calls inside transformation CTEs in two models, which must move to source CTEs at the top of the file, and missing `s_` prefixes on source CTEs across several warehouse models. Both were corrected before the review was requested. The agents add to `decisions.md`:
 
-**`orchestration-engineer`** — Generates the dbt Cloud job configuration (`dbt_cloud_config.md`):
+- `student_risk_summary` materialised as a table with `full_refresh=false`, because the model accumulates historical snapshots and an incremental materialisation would require a unique_key that changes the grain
+
+**`orchestration-engineer`** generates the dbt Cloud job configuration (`dbt_cloud_config.md`):
 
 ```markdown
 ## Jobs
@@ -441,13 +460,13 @@ Total: 8 specialist agents across 4 execution stages. Review commands stay in th
 - On completion: GitHub PR status check
 ```
 
-Adds to `decisions.md`: scheduled job runs on cadence regardless of source readiness — downstream freshness tests surface stale data via Slack alert, which is simpler than sensor-based gating at this data volume. CI job uses `state:modified+` to keep PR feedback fast; production job uses full selector to prevent silent exclusions after a merge.
+It adds to `decisions.md` that the scheduled job runs on cadence regardless of source readiness, since downstream freshness tests surface stale data via a Slack alert, which is simpler than sensor-based gating at this data volume, and that the CI job uses `state:modified+` to keep PR feedback fast while the production job uses the full selector to prevent silent exclusions after a merge.
 
-**`semantic-layer-developer`** — LookML views for all 7 warehouse models and 5 explores: `student_risk_summary`, `pastoral_notes`, `attendance`, `assignment_marks`, `student_risk_score`. `attendance_percentage` calculated dynamically as `SUM(sessions_present) / (SUM(sessions_present) + SUM(sessions_absent))` — never stored (CR-1). Risk signal measures: `attendance_deterioration_flag`, `pastoral_note_spike_flag`, `unanswered_alert_flag`, `days_since_last_spa_contact`.
+**`semantic-layer-developer`** produces LookML views for all seven warehouse models and five explores: `student_risk_summary`, `pastoral_notes`, `attendance`, `assignment_marks` and `student_risk_score`. `attendance_percentage` is calculated dynamically as `SUM(sessions_present) / (SUM(sessions_present) + SUM(sessions_absent))` and never stored, in line with CR-1. The risk signal measures are `attendance_deterioration_flag`, `pastoral_note_spike_flag`, `unanswered_alert_flag` and `days_since_last_spa_contact`.
 
 ### Development reviews (Days 6–8)
 
-Review gates stay in the main session:
+The review gates stay in the main session, and each records who approved and what they checked:
 
 ```
 /wire:pipeline-review 01-barton-peveril-live-pastoral → Approved 2026-02-11
@@ -459,7 +478,7 @@ Review gates stay in the main session:
 /wire:semantic_layer-review 01-barton-peveril-live-pastoral → Approved 2026-02-12
 ```
 
-With semantic_layer approved, generate the dashboard:
+With the semantic layer approved, the dashboard can be generated, validated and reviewed:
 
 ```
 /wire:dashboards-generate 01-barton-peveril-live-pastoral
@@ -469,25 +488,27 @@ With semantic_layer approved, generate the dashboard:
 
 ## Phase 4: Testing (Days 9–10)
 
+Testing has two artifacts. The data quality artifact is auto-delegated, and the UAT artifact is where the SPAs and pastoral leads get to try the dashboard for themselves.
+
 ```
 /wire:data_quality-generate 01-barton-peveril-live-pastoral
 → [auto-delegated to data-quality-engineer agent]
 ```
 
-Adds: 30-minute freshness Slack alert, row count reconciliation (ProSolution vs `attendance_fct`, ±2% tolerance), null rate monitoring, FK hit rate check.
+This adds a 30-minute freshness Slack alert, row count reconciliation between ProSolution and `attendance_fct` with a ±2% tolerance, null rate monitoring and an FK hit rate check.
 
 ```
 /wire:data_quality-validate 01-barton-peveril-live-pastoral → PASS
 /wire:data_quality-review 01-barton-peveril-live-pastoral → Approved 2026-02-13
 ```
 
-UAT with SPAs and pastoral leads:
+UAT with the SPAs and pastoral leads follows:
 
 ```
 /wire:uat-generate 01-barton-peveril-live-pastoral
 ```
 
-UAT plan mapped to FR-1 through FR-9. One iteration: "days since last SPA contact" needed rounding to whole days.
+The UAT plan is mapped to FR-1 through FR-9, and it took one iteration: "days since last SPA contact" needed rounding to whole days.
 
 ```
 /wire:uat-review 01-barton-peveril-live-pastoral
@@ -496,11 +517,13 @@ UAT plan mapped to FR-1 through FR-9. One iteration: "days since last SPA contac
 
 ## Phase 5: Deployment (Day 11)
 
+Deployment is where the work leaves the development environment, so the runbook is validated and proved in dev before anything goes to production.
+
 ```
 /wire:deployment-generate 01-barton-peveril-live-pastoral
 ```
 
-Generates: step-by-step deployment runbook (Fivetran → BigQuery datasets → dbt Cloud environment + jobs → Looker publish), monitoring setup, rollback procedures.
+This generates a step-by-step deployment runbook (Fivetran → BigQuery datasets → dbt Cloud environment and jobs → Looker publish), the monitoring setup and the rollback procedures.
 
 ```
 /wire:deployment-validate 01-barton-peveril-live-pastoral → PASS
@@ -524,25 +547,29 @@ Generates: step-by-step deployment runbook (Fivetran → BigQuery datasets → d
 
 ## Phase 6: Enablement (Days 12–13)
 
+The last phase hands the platform over to the people who will run it and the people who will use it, with a session for each audience.
+
 ```
 /wire:training-generate 01-barton-peveril-live-pastoral
 ```
 
-**Data Team Enablement** (Day 12 morning): pipeline architecture, dbt model structure, dbt Cloud job operation, LookML extension, hands-on trace of a data point from ProSolution to Looker.
+**Data Team Enablement** (Day 12 morning) covers the pipeline architecture, the dbt model structure, dbt Cloud job operation, LookML extension and a hands-on trace of a data point from ProSolution to Looker.
 
-**End User Training** (Day 12 afternoon): dashboard navigation, interpreting risk signals, data freshness expectations, how to raise a data quality issue.
+**End User Training** (Day 12 afternoon) covers dashboard navigation, interpreting risk signals, data freshness expectations and how to raise a data quality issue.
 
 ```
 /wire:training-validate 01-barton-peveril-live-pastoral → PASS
 /wire:training-review 01-barton-peveril-live-pastoral → Approved 2026-02-14
 ```
 
+Documentation is the last artifact, and the `delivery-lead` agent writes it from everything that has been approved so far:
+
 ```
 /wire:documentation-generate 01-barton-peveril-live-pastoral
 → [delivery-lead agent reads all approved artifacts and decisions.md]
 ```
 
-Produces: architecture overview, dbt model reference, dbt Cloud job reference (selectors, cadence, how to change), LookML field catalogue, operational runbook.
+This produces an architecture overview, a dbt model reference, a dbt Cloud job reference (selectors, cadence and how to change them), a LookML field catalogue and an operational runbook.
 
 ```
 /wire:documentation-validate 01-barton-peveril-live-pastoral → PASS
@@ -551,6 +578,8 @@ Produces: architecture overview, dbt model reference, dbt Cloud job reference (s
 
 ### Archive
 
+Finally, archiving the release closes it out in Wire and in Jira:
+
 ```
 /wire:archive 01-barton-peveril-live-pastoral
 → 16 artifacts, 48 generate/validate/review actions, 11 decisions.md entries
@@ -558,6 +587,8 @@ Produces: architecture overview, dbt model reference, dbt Cloud job reference (s
 ```
 
 ## What the engagement produced
+
+Here, for reference, is what the two weeks produced and where each item lives:
 
 | Artifact | Format |
 |---|---|
@@ -568,7 +599,7 @@ Produces: architecture overview, dbt model reference, dbt Cloud job reference (s
 | Physical data model | `.wire/releases/.../data_model.md` |
 | Dashboard wireframes | `.wire/releases/.../mockups.md` |
 | dbt project | 19 SQL models, 3 seeds, 34 tests |
-| dbt Cloud config | `dbt_cloud_config.md` — scheduled run + CI/PR job |
+| dbt Cloud config | `dbt_cloud_config.md`: scheduled run + CI/PR job |
 | LookML | 5 explores, SPA Operational Dashboard |
 | Technical documentation | Architecture, dbt Cloud job reference, field catalogue, ops runbook |
 | Training materials | Data team session + end-user session |

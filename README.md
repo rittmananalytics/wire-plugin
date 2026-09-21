@@ -1,6 +1,6 @@
 <img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
-# Wire Framework v3.11.10
+# Wire Framework v4.0.0
 
 Wire is a structured delivery system for data platform engagements, built on top of Claude Code and Gemini CLI. It encodes analytics engineering methodology as workflow specifications that the AI reads before generating anything so that output follows consistent patterns, traces back to requirements and can be validated automatically rather than having to be manually eyeballed.
 
@@ -22,14 +22,23 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 
 ## Key Features
 
-- **304 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
-- **12 release types** matching common engagement shapes: Shape Up discovery, SOP / Canonical discovery (sponsor-facing Findings Playback), full platform builds, pipeline-only, dbt development, dashboard extensions, dashboard-first rapid dev, enablement, platform migration (BigQuery ↔ Snowflake), agentic data stack (governed self-service analytics with eval suite), droughty (schema introspection and base-layer generation from live warehouses), and custom (bespoke deliverables defined from SoW documents)
+- **Direct the work, don't memorise the commands** (v4.0.0) — on Claude Code, say what you want done and Wire works out which command that is from the release type's own definition, runs it, reports what it did in plain words with the command named in the closing line, and stops where a decision is yours. Every step runs the real command, so `status.md`, the execution log, the precondition gate and the artifacts on disk are identical to typing it. Reviews are never run without your ruling; parked decisions are listed at the start of every session; and `orchestration.mode: manual` in the engagement context restores the pre-4.0 behaviour exactly. Three tiers: one human directs, one session orchestrates, and the specialist agents run as flat lanes with their own state files
+- **341 slash commands** covering the full delivery lifecycle: Discovery (Shape Up + RA Canonical SOP), Requirements, Design, Development, Testing, Deployment, Enablement, Platform Migration, Agentic Data Stack
+- **12 release types** matching common engagement shapes: Shape Up discovery, SOP / Canonical discovery (sponsor-facing Findings Playback), full platform builds, pipeline-only, dbt development, dashboard extensions, dashboard-first rapid dev, enablement, platform migration (BigQuery ↔ Snowflake), agentic data stack (governed self-service analytics with eval suite), droughty (schema introspection and base-layer generation from live warehouses), and custom (bespoke deliverables defined from SoW documents) — every release type is now backed by a machine-readable process definition (see Precondition Gate below), not just documentation
 - **Two-tier engagement structure** separating long-running client context from individual scoped releases
 - **Generate / validate / review lifecycle** for every artifact: structured generation, automated checks, stakeholder sign-off
+- **Precondition gate** (v4.0.0) — every command blocks by default on an unmet prerequisite; overriding requires a recorded name and reason, so skipping a step on purpose is always a visible, attributable decision rather than something that silently happened
+- **Process and data model registries** (v4.0.0) — release-type sequencing and command specs are sourced from a private, branch-protected `wire-process-registry`; an optional, automatically-detected canonical data model registry (`wire-data-model-registry`) proposes industry-standard entity structures without ever bundling proprietary content into this public plugin — see [docs.rittmananalytics.com/en/latest/docs/advanced/registries](https://docs.rittmananalytics.com/en/latest/docs/advanced/registries)
+- **Business rules discovery** (v4.0.0) — an optional first step on any development release that establishes what a metric actually means before design starts. One register per business domain, holding every competing definition with the file it came from, what they disagree on, the decision and who approved it. A rule nobody has decided is recorded as `unknown` rather than left out, and each rule with a legacy definition generates a reconciliation query that runs immediately rather than surfacing as a mismatch in testing
+- **Modality models as a design input** (v4.0.0) — where a client already models their data in Modality, `/wire:utils-modality-link` points the release at it and the conceptual model, logical model and pipeline design read entities, sources and cardinality from the existing `.mml` files rather than deriving them. The requirements are still read, and the difference between the two is raised as a finding rather than resolved silently
+- **Modelling-led discovery** (v4.0.0) — `sop_discovery` now offers two routes through the same three pillars. `diagnostic` is the canonical playbook; `modelling_led` replaces the three analyses with a current-state appraisal and a signed-off conceptual and logical model, and produces the roadmap *before* the playback because it is one of the five things the sponsor signs off. Release types can now declare profiles that enable or disable phases and override a gate, so the ordering is enforced rather than requested
+- **Logical model** (v4.0.0) — the step between the conceptual and the physical model that Wire previously skipped: keys, cardinality, identity resolution with attributed precedence, normalisation, and attribution rules with their remainder handling. Those decisions were being made implicitly inside `data_model-generate` and arriving already expressed as dbt models. Optional in `full_platform`, standard in a modelling-led discovery
 - **Plain Language by default**: the plugin ships a `Plain Language` output style that activates automatically while Wire is enabled, so every response is written in simple, concise, jargon-free English. Generated artifacts are unaffected (they follow their own templates and the reference-legibility convention); override per project in `.claude/settings.local.json` or by editing the style
 - **Status reconciliation** (`/wire:status-sync`) for work done outside command runs: diffs recorded state against git history, files on disk, and the execution log, then repairs status files, sprint-plan story states, and session history with consultant confirmation
 - **27 ad-hoc development skills** that activate automatically during coding work (dbt, LookML, Dagster, Python, Fivetran, Airbyte, Coupler.io, RudderStack, Segment, Looker, Snowflake, Hightouch, BigQuery, Cloud Run, gcloud) without any explicit invocation, plus **26 Amplitude product-analytics skills** for working with an Amplitude instance
-- **Wire Agents** — 13 specialist subagents (dbt developer, semantic layer developer, pipeline engineer, migration specialist, and 9 others) dispatched automatically on every generate and validate command. `/wire:delegate` computes a full parallel/sequential execution plan across all pending work, with fan-out parallelism for large model sets (layers stay sequential; agents within each layer run in parallel)
+- **Wire Agents** — 13 specialist subagents (dbt developer, semantic layer developer, pipeline engineer, migration specialist, and 9 others) dispatched automatically on every generate and validate command. `/wire:delegate` computes a full parallel/sequential execution plan across all pending work, with fan-out parallelism for large model sets (layers stay sequential; agents within each layer run in parallel). Under the director model they run as lanes: own tree, own state file rewritten after each completed item, and no writes to `status.md` — the orchestrating session is the single writer of the record
+- **Release claim and parked decisions** (v4.0.0) — a release records who is driving it, so a second session offers to join as reviewer or take over after a 30-minute stall rather than dispatching into work someone else is running. Decisions waiting on you are a list in `status.md`, reported first thing every session
+- **Attribution** (v4.0.0) — execution-log rows carry `By` and `Session` (`typed`, `orchestrator`, a lane label, or `autopilot`), and telemetry carries the same as `invoked_by`. Older four-column log rows stay valid and are never rewritten
 - **Autopilot mode** for autonomous end-to-end delivery
 - **Jira and Linear integration** for issue tracking synced to the artifact lifecycle
 - **Confluence and Notion integration** for client-facing document review
@@ -42,7 +51,7 @@ Wire does not replace consultants or developers. It gives them an AI that works 
 
 Wire is distributed as a Claude Code plugin and a Gemini CLI extension. Installing the plugin embeds every Wire command inline — no framework files need to exist in your project repository.
 
-**Plugins** provide the 265 `/wire:*` commands. Each command file contains its full workflow specification, so the AI receives complete instructions as context at invocation time.
+**Plugins** provide the 261 `/wire:*` commands. Each command file contains its full workflow specification, so the AI receives complete instructions as context at invocation time.
 
 **Skills** sit alongside commands but work differently. They activate automatically during ad-hoc coding work without any explicit invocation. When you start writing a dbt model, the dbt development skill provides naming conventions, SQL style rules, and testing patterns as background context. The following skills are included:
 
@@ -202,6 +211,14 @@ Every Wire engagement uses a two-tier layout in `.wire/`:
 
 The engagement folder holds everything that spans the whole client relationship. Releases are scoped, time-boxed units of delivery, each with its own `status.md` tracking file and `execution_log.md` recording every command run against it.
 
+### Two ways to run it
+
+**Direct it.** Say what you want done — "new engagement from this SOW", "run what's next", "approve it and carry on" — and Wire computes what is runnable from the release type's definition, runs it, tells you what it did (naming the command in the closing line), and stops at every review gate for your decision. This is the default on Claude Code from v4.0.0.
+
+**Type it.** Every command still works exactly as before, and the command name is printed before each directed run so you learn them as you go. Set `orchestration.mode: manual` in `.wire/engagement/context.md` for a whole engagement, or say "you drive" for one session. Gemini CLI stays command-driven throughout.
+
+Either way the same command files run and the record on disk is identical.
+
 ### The Generate / Validate / Review Cycle
 
 Every artifact follows the same three-step lifecycle:
@@ -219,7 +236,7 @@ Each command has a matching validate and review counterpart: `/wire:requirements
 | Type | `release_type` | Scope | Typical duration |
 |---|---|---|---|
 | **Discovery (Shape Up)** | `discovery` | Problem definition, pitch, release brief, sprint plan | 1–2 weeks |
-| **Discovery (SOP / Canonical)** | `sop_discovery` | Stakeholder interviews, three analyses, sponsor Findings Playback | 3–6 weeks |
+| **Discovery (SOP / Canonical)** | `sop_discovery` | Two profiles. `diagnostic`: stakeholder interviews, three analyses, sponsor Findings Playback. `modelling_led`: current-state appraisal plus a signed-off conceptual and logical model in place of the analyses, with the roadmap signed off at the playback | 3–6 weeks |
 | **Full Platform** | `full_platform` | Pipeline through dbt, semantic layer, and dashboards | 2–3 weeks |
 | **Dashboard-First** | `dashboard_first` | Visual mocks drive the data model; seed data enables early dbt work | 1–2 weeks |
 | **Pipeline + dbt** | `pipeline_only` | New data pipeline and transformation layer | 1–2 weeks |
@@ -227,6 +244,8 @@ Each command has a matching validate and review counterpart: `/wire:requirements
 | **Dashboard Extension** | `dashboard_extension` | New dashboards on an existing semantic layer | 3–5 days |
 | **Enablement** | `enablement` | Training and documentation for an existing platform | 2–3 days |
 | **Agentic Data Stack** | `agentic_data_stack` | Overlay for an existing data platform (warehouse + dbt + BI tool) — audits governance maturity, extends the semantic layer, generates per-domain knowledge skills and a CI-wired eval suite, delivers an installable agentic data stack skill. Requires an existing dbt project; not a platform build. | 4–6 weeks |
+| **Platform Migration** | `platform_migration` | Warehouse-to-warehouse migration (BigQuery ↔ Snowflake) with source audits, batched dbt translation, equivalency validation and a gated cutover. Also covers tenant carve-outs. | 6–12 weeks |
+| **Droughty** | `droughty` | Schema introspection against a live warehouse: entity-relationship diagrams, field documentation, data-quality reporting, and base LookML or dbt test generation. Standalone, or an optional phase inside another release. | 2–5 days |
 | **Custom** | `custom` | Bespoke deliverables derived from SoW — Wire generates project-scoped specs | Varies |
 
 ---
@@ -285,7 +304,7 @@ Autopilot runs the full delivery lifecycle without step-by-step prompting.
 /wire:autopilot
 ```
 
-Wire starts with a complete discovery sprint (problem definition, pitch, release brief, sprint plan). From the approved sprint plan it determines which downstream release types are needed, creates them, and executes each in sequence. Every artifact goes through generate, validate, and review before the next begins. Autopilot pauses at review gates for human sign-off, then continues.
+Wire starts with a complete discovery sprint (problem definition, pitch, release brief, sprint plan). From the approved sprint plan it determines which downstream release types are needed, creates them, and executes each in sequence, resolving each release type's artifact order dynamically from its `wire/release-types/*.yaml` rather than a hardcoded sequence. Every artifact goes through generate, validate, and **self-review** — Autopilot doesn't pause for human sign-off at review gates, it reads the artifact's real review criteria and decides itself, recording `reviewed_by: "Wire Autopilot (self-review)"`. It still pauses at safety gates (activating pipelines, running SQL against real databases, deploying) for explicit confirmation, and at any precondition-gate block, since overriding that always requires a real person's name and reason.
 
 It works best on well-scoped engagements where the SOW is clear and the release types are predictable.
 
@@ -301,7 +320,7 @@ A VS Code extension (`wire-vscode/`) is in early development. The intention is t
 
 - [Documentation site](https://docs.rittmananalytics.com) — full documentation with search, covering all release types, commands, skills, and MCP servers
 - [User Guide](USER_GUIDE.md) — full operational guide covering all release types, worked examples, Autopilot, and troubleshooting
-- [Command Registry](wire/COMMANDS.md) — command catalog and conventions (run `/wire:help` for the full, current list of all 299 commands)
+- [Command Reference](docs-site/docs/reference/commands.md) — command catalog and conventions (run `/wire:help` for the full, current list of all 341 commands)
 - [Changelog](CHANGELOG.md)
 - [Release Notes](RELEASE_NOTES.md)
 - [Framework Source README](wire/README.md) — internals, build process, package structure

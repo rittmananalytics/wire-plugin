@@ -5,6 +5,8 @@ title: "Tutorial: Dashboard First"
 
 # Tutorial: Dashboard First
 
+In this tutorial we follow a ten-day engagement for Claybrook Media Group, a UK digital publisher with four titles and no data platform, whose commercial director needs to see and approve the dashboards before the business will authorise any engineering effort. We start with the statement of work, then look at what the release type is for, before walking through the interactive prototype, the artifacts derived from it, the seed data and the build that follows.
+
 ## Statement of Work
 
 ```
@@ -63,11 +65,11 @@ Claybrook Media Group requires campaign performance and audience engagement dash
 
 ## What is a Dashboard First release?
 
-Most data platform engagements build the data layer first — source connectors, staging models, warehouse models — and produce dashboards at the end of the build phase. The risk is obvious in retrospect: the client only discovers that the dashboard layout is wrong, or that they wanted a completely different metric, at the point when changing direction is expensive. A `dashboard_first` release inverts that sequence. Stakeholder approval of the interactive dashboard mockup comes before schema design, before dbt models, before LookML. Nothing in the data layer is written until the visual design is locked.
+Most data platform engagements build the data layer first (source connectors, staging models, warehouse models) and produce dashboards at the end of the build phase. The risk is obvious in retrospect: the client only discovers that the dashboard layout is wrong, or that they wanted a completely different metric, at the point when changing direction is expensive. Wouldn't it be better if the client could approve what they were going to see before anyone designed a schema? A `dashboard_first` release inverts the usual sequence to do exactly that, so that stakeholder approval of the interactive dashboard mockup comes before schema design, before dbt models and before LookML, and nothing in the data layer is written until the visual design is locked.
 
-The mechanism that makes this practical is the `dashboard-mock-developer` agent. Rather than producing static wireframes or a Figma prototype, the agent generates a self-contained, interactive HTML file — Chart.js charts, tab navigation, filter pills, the full Looker visual language — that runs directly in a browser without a build step or a server. The client clicks through it, requests changes, and the agent regenerates. Once the mockup is approved, the agent derives three downstream artifacts atomically: a viz catalog CSV (the machine-readable chart inventory), a dashboard spec, and `data_model_requirements.md`. That last file defines the precise grain, measures, and dimensions the data layer must produce. It is what both the `data-designer` and the `mock-data-developer` agents read.
+The mechanism that makes this practical is the `dashboard-mock-developer` agent. Rather than producing static wireframes or a Figma prototype, the agent generates a self-contained, interactive HTML file (Chart.js charts, tab navigation, filter pills, the full Looker visual language) that runs directly in a browser without a build step or a server, and the client clicks through it, requests changes and the agent regenerates. Once the mockup is approved, the agent derives three downstream artifacts "atomically", that is, all three from the same approved file in one step: a viz catalog CSV (the machine-readable chart inventory), a dashboard spec and `data_model_requirements.md`. That last file defines the precise grain, measures and dimensions the data layer must produce, and it is what both the `data-designer` and the `mock-data-developer` agents read.
 
-The second specialist, `mock-data-developer`, takes `data_model_requirements.md` and generates CSV seed files with referential integrity and domain-realistic values. Those seeds power a working dbt project — `dbt seed && dbt run` succeeds — before the client has provided a single database credential. Real source data arrives later. When it does, `/wire:mock_data-refactor` (handled by the same agent) rewrites the staging layer from `ref('seed')` calls to `source()` calls, producing a written migration plan before touching any code. The seed-based prototype is disposable; it exists to validate the design, not to become the production model.
+The second specialist, `mock-data-developer`, takes `data_model_requirements.md` and generates CSV seed files with referential integrity and domain-realistic values. Good seed data has to get four things right: referential integrity checked rather than assumed, a deliberate shape rather than a flat distribution (a flat one makes every chart prove nothing), a non-zero value for every measure in the catalogue and totals small enough that nobody mistakes them for real. Those seeds power a working dbt project, with `dbt seed && dbt run` succeeding, before the client has provided a single database credential. Real source data arrives later, and when it does `/wire:data_refactor-generate` (handled by the same agent) rewrites the staging layer from `ref('seed')` calls to `source()` calls, producing a written migration plan before touching any code. It follows that the seed-based prototype is disposable; it exists to validate the design, not to become the production model.
 
 ### High-Level Process
 
@@ -101,6 +103,37 @@ flowchart TB
     UAT --> DEP --> TR --> DOC
 ```
 
+
+:::info New in 4.0: business rules discovery
+
+This walkthrough does not use it, so the sequence below still reads correctly, but
+you should know that it exists.
+
+`/wire:business-rules-generate` is an optional first phase that establishes what
+the numbers mean before design bakes a definition in: one register per domain,
+holding every competing definition found in dbt, LookML or an `--import` from a
+system Wire cannot read, what they disagree on, the decision and who approved it.
+A rule nobody has decided is recorded as `unknown` rather than left out.
+
+The gate on `conceptual_model-generate` is advisory: it warns, takes a reason, records the skip and
+proceeds.
+
+Reference: [Business rules discovery](../advanced/business-rules.md).
+:::
+
+
+:::info New in 4.0: reading an existing Modality model
+
+Where the client already models their data in Modality,
+`/wire:utils-modality-link` points the release at it, and `conceptual_model-generate` reads entities,
+sources and cardinality from the `.mml` files rather than deriving them, while still
+reading the requirements so that the difference between the two becomes a finding.
+
+This walkthrough does not use it.
+
+Reference: [Modality models as an input](../advanced/modality-models.md).
+:::
+
 ## Scenario
 
 | | |
@@ -113,9 +146,9 @@ flowchart TB
 | **Stack** | BigQuery, dbt Cloud, Looker, Google Ad Manager (GAM), GA4 |
 | **Duration** | 10 days |
 
-Claybrook's commercial director wants campaign performance and audience engagement dashboards for the advertising sales team — specifically, a view of revenue by campaign, fill rate by format, and page engagement by title. The problem: there is no existing data team. A junior analyst has recently joined but the platform does not exist. The commercial director needs to see and approve the dashboards before the business will authorise the engineering effort. She cannot assess a data model document or a schema diagram. She can assess a browser-based prototype with real-looking numbers.
+Claybrook's commercial director wants campaign performance and audience engagement dashboards for the advertising sales team, specifically a view of revenue by campaign, fill rate by format and page engagement by title. The problem is that there is no existing data team: a junior analyst has recently joined, but the platform does not exist, and the commercial director needs to see and approve the dashboards before the business will authorise the engineering effort. She cannot assess a data model document or a schema diagram. She can assess a browser-based prototype with real-looking numbers.
 
-Rather than building speculatively, the engagement begins with interactive mockups. The data layer — sources, staging, warehouse — is designed from the approved mockup, not from assumptions about what the business might want.
+Rather than building speculatively, therefore, the engagement begins with interactive mockups, and the data layer (sources, staging and warehouse) is designed from the approved mockup rather than from assumptions about what the business might want.
 
 ## Deliverables
 
@@ -125,15 +158,15 @@ Rather than building speculatively, the engagement begins with interactive mocku
 | Viz catalog | `design/dashboard_visualization_catalog.csv` |
 | Dashboard spec | `design/dashboard_spec.md` |
 | Data model requirements | `design/data_model_requirements.md` |
-| CSV seeds | `seeds/` — four files with referential integrity |
+| CSV seeds | `seeds/`: four files with referential integrity |
 | dbt models | Seed-based staging and warehouse models |
 | LookML | Views, explores, Looker dashboards |
 | Looker dashboards | Published to production |
-| Phase 2 refactor plan | `data_refactor_plan.md` — seeds to GAM + GA4 Fivetran sources |
+| Phase 2 refactor plan | `data_refactor_plan.md`: seeds to GAM + GA4 Fivetran sources |
 
 ## Tutorial Playbook
 
-The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this for you as a Mermaid-format delivery plan, with the dependency order, team assignments and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
@@ -159,7 +192,7 @@ subgraph DEV["Development"]
 end
 
 subgraph PHASE2["Phase 2 — Real Data"]
-    REF["mock-data-developer:\nwire:mock_data-refactor\nseeds → GAM + GA4 Fivetran"]:::wireCmd
+    REF["mock-data-developer:\nwire:data_refactor-generate\nseeds → GAM + GA4 Fivetran"]:::wireCmd
 end
 
 END([Dashboards Live]):::event
@@ -190,7 +223,7 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 :::info[First release in this repository?]
 
-If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement (naming the client, setting the engagement context and configuring any integrations) before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
 
 :::
 
@@ -207,16 +240,18 @@ If this is the first release created in a git repository, `/wire:new` will first
 
 :::info[Issue tracking and document sync]
 
-Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate and review step completes. With the Jira integration you can choose between one sub-task per lifecycle step, each moving through its own workflow states, or one ticket per artifact that transitions between issue statuses, and Wire can either create the Epic and issue hierarchy for you when you run `/wire:new` or link to an existing one you have already set up.
 
-Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review, in which case review commands pull the comments and edits made in the document store back in as context before gathering sign-off.
 
-Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear) or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
 
 :::
 
 
 ### Generating the interactive prototype
+
+With the release set up, the first piece of real work is the prototype itself, and it is the mockup command that produces it.
 
 ```
 /wire:mockups-generate 01-claybrook-media-dashboards
@@ -225,11 +260,11 @@ Both integrations are optional. Configure the [Atlassian](../reference/mcp-serve
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, with no extra steps needed on your part. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`), however, always stay in the main session and require your direct input.
 
 :::
 
-The agent reads the requirements and produces an interactive HTML file — `design/mockups/claybrook-campaign-dashboard.html` — on the first pass. No iteration prompt needed to get a working prototype; the first version is complete and navigable.
+The agent reads the requirements and produces an interactive HTML file, `design/mockups/claybrook-campaign-dashboard.html`, on the first pass. No iteration prompt is needed to get a working prototype, because the first version is complete and navigable.
 
 ```
 Dashboard prototype generated — open design/mockups/claybrook-campaign-dashboard.html in any browser
@@ -262,7 +297,7 @@ Dashboard prototype generated — open design/mockups/claybrook-campaign-dashboa
 
 ![Example dashboard mockup generated by the dashboard-mock-developer agent](/img/example_mock_dashboard.png)
 
-The commercial director and two members of the advertising sales team review the prototype. Two change requests come back.
+The commercial director and two members of the advertising sales team review the prototype, and two change requests come back:
 
 - Add a date range filter that applies across all four sections simultaneously
 - Split the Campaign Performance table into two tabs: direct-sold and programmatic
@@ -275,11 +310,11 @@ The commercial director and two members of the advertising sales team review the
 → Regenerated: design/mockups/claybrook-campaign-dashboard-v2.html
 ```
 
-Second version approved by the commercial director.
+The commercial director approves the second version, and the design is now locked.
 
 ### Deriving the downstream artifacts
 
-Approval triggers the agent to produce three artifacts atomically:
+So what happens once the mockup is approved? Approval triggers the agent to produce three artifacts atomically, starting with the viz catalogue:
 
 ```
 /wire:viz_catalog-generate 01-claybrook-media-dashboards
@@ -287,11 +322,11 @@ Approval triggers the agent to produce three artifacts atomically:
 → design/dashboard_visualization_catalog.csv — 11 rows
 ```
 
-Sample rows from the viz catalog:
+Here are some sample rows from the viz catalogue:
 
 | chart_id | chart_type | section | explore | measures | dimensions | filters |
 |---|---|---|---|---|---|---|
-| VIZ-001 | kpi_tile | Campaign Revenue Overview | campaign_performance | total_revenue_gbp | — | date_range, title, format |
+| VIZ-001 | kpi_tile | Campaign Revenue Overview | campaign_performance | total_revenue_gbp | (none) | date_range, title, format |
 | VIZ-004 | line_chart | Campaign Revenue Overview | campaign_performance | weekly_revenue_gbp | week, deal_type | date_range, title |
 | VIZ-007 | stacked_bar | Audience Engagement by Title | page_engagement | total_page_views, avg_engagement_time_seconds | title | date_range |
 
@@ -303,20 +338,22 @@ Sample rows from the viz catalog:
 
 The generated requirements specify two fact tables and three dimensions:
 
-- `campaign_performance_fct` at campaign-day grain — measures: `impressions`, `revenue_gbp`, `fill_rate_pct`, `cpm_gbp`, `clicks`; dimensions: `campaign_dim`, `date_dim`; source: GAM
-- `page_engagement_fct` at article-session grain — measures: `page_views`, `engagement_time_seconds`, `is_bounce`, `is_return_visitor`; dimensions: `content_dim`, `date_dim`; source: GA4
-- `campaign_dim` — campaign name, advertiser, format, deal type (direct/programmatic), start date, end date
-- `content_dim` — article title, section, publishing title (one of the four Claybrook brands), author
-- `date_dim` — standard date spine, fiscal week flag
+- `campaign_performance_fct` at campaign-day grain. Measures: `impressions`, `revenue_gbp`, `fill_rate_pct`, `cpm_gbp`, `clicks`; dimensions: `campaign_dim`, `date_dim`; source: GAM
+- `page_engagement_fct` at article-session grain. Measures: `page_views`, `engagement_time_seconds`, `is_bounce`, `is_return_visitor`; dimensions: `content_dim`, `date_dim`; source: GA4
+- `campaign_dim`: campaign name, advertiser, format, deal type (direct/programmatic), start date, end date
+- `content_dim`: article title, section, publishing title (one of the four Claybrook brands), author
+- `date_dim`: standard date spine, fiscal week flag
 
 ### Generating seed data
+
+Now that the data layer has a precise definition, the second specialist can produce data for it.
 
 ```
 /wire:mock_data-generate 01-claybrook-media-dashboards
 → [auto-delegated to mock-data-developer agent]
 ```
 
-The agent reads `data_model_requirements.md` and the warehouse DDL, then generates four seed files with domain-realistic values and maintained referential integrity across all foreign keys.
+The agent reads `data_model_requirements.md` together with the warehouse DDL, and then generates four seed files with domain-realistic values and referential integrity maintained across all foreign keys.
 
 ```
 Seed data generated
@@ -351,7 +388,7 @@ Seed data generated
 
 ### dbt models and LookML
 
-With the seeds running cleanly, the build continues:
+With the seeds running cleanly, the build continues through the dbt models, the semantic layer and the dashboards:
 
 ```
 /wire:dbt-generate 01-claybrook-media-dashboards
@@ -369,16 +406,31 @@ With the seeds running cleanly, the build continues:
 → cpm_gbp calculated dynamically: revenue_gbp / (impressions / 1000)
 
 /wire:dashboards-generate 01-claybrook-media-dashboards
-→ Claybrook Campaign Performance dashboard — 4 tiles published
-→ Looker dashboard matches approved HTML prototype tile-for-tile
+→ resolved: bi_tool looker · model claybrook · explore campaign_performance
+→ tile source: design/dashboard_visualization_catalog.csv (11 rows)
+→ 11 tiles generated across 2 dashboard pages
+→ unmapped chart types: 0 · unresolved fields: 0
+→ mockup cross-check: PASS (tile count, titles, filters, fields)
+
+/wire:dashboards-validate 01-claybrook-media-dashboards
+→ 9 checks, 11 tiles: PASS
 ```
+
+`dashboards-generate` reads its tile list from the approved catalogue and never invents one. Two counts in that output are the ones to look at, and both are written to `status.md`:
+
+- **`unmapped chart types`**: a `chart_type` the mapping table does not recognise. The tile renders as a table, which shows the underlying values, and is reported. It is never guessed at.
+- **`unresolved fields`**: a measure or dimension with no matching semantic layer field. The field is not invented as LookML.
+
+:::note
+`dashboards-validate` fails while either count is above zero, so a partial dashboard cannot pass for a finished one.
+:::
 
 ### Phase 2: real data migration
 
-Once GAM and GA4 Fivetran connectors are provisioned and access is confirmed, the data refactor replaces the seeds with real sources.
+Once the GAM and GA4 Fivetran connectors are provisioned and access is confirmed, the data refactor replaces the seeds with real sources, and as we noted earlier it writes the plan before it changes any code:
 
 ```
-/wire:mock_data-refactor 01-claybrook-media-dashboards
+/wire:data_refactor-generate 01-claybrook-media-dashboards
 → [mock-data-developer agent]
 → Schema comparison: seed schema vs GAM Fivetran connector schema
 → 3 column renames identified in campaign_performance source
@@ -390,13 +442,17 @@ Once GAM and GA4 Fivetran connectors are provisioned and access is confirmed, th
 
 ## What was produced
 
+Here is everything the release produced, from the approved mockup down to the plan for the switch to real data.
+
 | Artifact | Detail |
 |---|---|
-| Interactive HTML mockup | 4 sections, 7 chart types, 3 filter dimensions — approved after two iterations |
+| Interactive HTML mockup | 4 sections, 7 chart types, 3 filter dimensions, approved after two iterations |
 | Viz catalog | 11 chart definitions in `dashboard_visualization_catalog.csv` |
-| Dashboard spec | `dashboard_spec.md` — section structure, chart types, filter behaviour |
+| Dashboard spec | `dashboard_spec.md`: section structure, chart types, filter behaviour |
 | Data model requirements | 2 facts, 3 dimensions, all measures with grain and calculation notes |
 | CSV seeds | 4 files, 10,440 total rows, referential integrity confirmed |
-| dbt project | 7 models (2 staging, 5 warehouse), 18 tests — all PASS on seed data |
+| dbt project | 7 models (2 staging, 5 warehouse), 18 tests, all PASS on seed data |
 | LookML | 5 views, 2 explores, 2 dashboards |
-| Phase 2 refactor plan | `data_refactor_plan.md` — seeds to GAM + GA4 Fivetran, column mapping documented |
+| Phase 2 refactor plan | `data_refactor_plan.md`: seeds to GAM + GA4 Fivetran, column mapping documented |
+
+Phase 2 begins when Claybrook confirms the GAM and GA4 Fivetran credentials, and the refactor plan written above already records the column mapping for that switch.

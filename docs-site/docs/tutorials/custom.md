@@ -55,9 +55,9 @@ Summit Digital Media operates a subscription VOD service with 150,000 active sub
 
 ## What is a Custom release?
 
-Most Wire engagements map cleanly to a standard release type: `full_platform` for end-to-end data platform builds, `dbt_development` for transformation-only work, `droughty` for schema-first audits. Some do not. When the SoW defines a specific set of deliverables that cuts across those categories — or where the deliverables are fundamentally advisory rather than structural — the `custom` release type gives you the Wire infrastructure without forcing the work into the wrong shape. You define the artifacts. Wire provides status tracking, the `decisions.md` log, agent delegation, Jira/Linear integration, and the standard generate/validate/review lifecycle for each artifact you name.
+Sooner or later a statement of work arrives that does not fit any of the boxes. Most Wire engagements map cleanly to a standard release type, with `full_platform` for end-to-end data platform builds, `dbt_development` for transformation-only work and `droughty` for schema-first audits, but some do not, and when the SoW defines a specific set of deliverables that cuts across those categories, or where the deliverables are fundamentally advisory rather than structural, forcing the work into the wrong shape helps nobody. The `custom` release type is the answer to this situation, because it gives you the Wire infrastructure without dictating what the artifacts are. You define the artifacts, and Wire provides status tracking, the `decisions.md` log, agent delegation, Jira/Linear integration and the standard generate/validate/review lifecycle for each artifact you name.
 
-Every custom artifact passes through the same three-gate sequence as any standard Wire release. A generate step produces the artifact, a validate step runs automated checks against it, and a review step surfaces it to a named stakeholder for approval before work continues downstream. The discipline holds regardless of how bespoke the deliverable is.
+Does "custom" mean the discipline is relaxed? It does not. Every custom artifact passes through the same three-gate sequence as any standard Wire release: a generate step produces the artifact, a validate step runs automated checks against it and a review step surfaces it to a named stakeholder for approval before work continues downstream. The discipline holds regardless of how bespoke the deliverable is.
 
 ### High-Level Process
 
@@ -77,14 +77,14 @@ graph LR
 | **Release type** | `custom` |
 | **Release ID** | `01-summit-content-analytics` |
 
-Summit operates a subscription VOD service with 150,000 active subscribers. Over the past two quarters, monthly churn has crept from 2.1% to 3.4% — meaningful at their scale, and accelerating. The data team has BigQuery and a working dbt Cloud project, but no analytics on which content actually drives retention. Audience segmentation is done manually each month by a BI analyst exporting to Google Sheets. The engagement scope does not fit any single Wire release type: it spans a content audit (closer to `discovery`), a segmentation model design (closer to `data_model`), dbt development, a Vertex AI model, and Looker dashboards. The custom release type is the right vehicle.
+Summit operates a subscription VOD service with 150,000 active subscribers, and over the past two quarters monthly churn has crept from 2.1% to 3.4%, which is meaningful at their scale and, more to the point, accelerating. The data team has BigQuery and a working dbt Cloud project but no analytics on which content actually drives retention, and audience segmentation is done manually each month by a BI analyst exporting to Google Sheets. The engagement scope does not fit any single Wire release type, since it spans a content audit (closer to `discovery`), a segmentation model design (closer to `data_model`), dbt development, a Vertex AI model and Looker dashboards. As such, the custom release type is the right vehicle.
 
 ## Deliverables
 
 | Deliverable | Description |
 |---|---|
-| `content_performance_audit` | Analysis of which titles drive watch completion, retention, and churn — sourced from BigQuery event data and Looker usage logs |
-| `audience_segmentation_design` | RFM-style segmentation design: segment definitions, assignment logic, and acceptance criteria |
+| `content_performance_audit` | Analysis of which titles drive watch completion, retention and churn, sourced from BigQuery event data and Looker usage logs |
+| `audience_segmentation_design` | RFM-style segmentation design: segment definitions, assignment logic and acceptance criteria |
 | `dbt_segmentation_models` | Three dbt models implementing the segmentation design |
 | `churn_prediction_model` | Vertex AI AutoML tabular model trained on 90-day subscriber behaviour, with Braze integration |
 | `looker_dashboards` | Content performance and subscriber health dashboards |
@@ -92,7 +92,7 @@ Summit operates a subscription VOD service with 150,000 active subscribers. Over
 
 ## Tutorial Playbook
 
-The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
+It helps to see the whole route before we set off, and the diagram below is the delivery playbook for this tutorial's scenario. In a live engagement you would not draw this yourself: [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates it as a Mermaid-format delivery plan, with dependency order, team assignments and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
@@ -143,11 +143,22 @@ flowchart TD
 
 ## Walkthrough
 
+At a high level, the six steps we will follow are:
+
+1. Create the release and let Wire define the custom artifacts from the SoW (`/wire:new`).
+2. Generate, validate and review the content performance audit.
+3. Generate, validate and review the audience segmentation design.
+4. Generate, validate and review the dbt segmentation models.
+5. Generate, validate and review the churn prediction model.
+6. Check where the release stands mid-engagement (`/wire:status`).
+
+Let's now take a look at these steps in more detail.
+
 ### Step 1 — Create the release
 
 :::info[First release in this repository?]
 
-If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement (naming the client, setting the engagement context and configuring any integrations) before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
 
 :::
 
@@ -165,16 +176,16 @@ If this is the first release created in a git repository, `/wire:new` will first
 
 :::info[Issue tracking and document sync]
 
-Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
 
-Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review, and review commands pull comments and edits made in the document store back as context before gathering sign-off.
 
-Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear) or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
 
 :::
 
 
-With `release_type: custom`, [`/wire:new`](../reference/commands#session-and-management-commands) immediately invokes `/wire:custom-release-define`. Wire reads the SoW and kick-off notes, extracts six deliverables, and presents a proposal table before writing anything:
+With `release_type: custom`, [`/wire:new`](../reference/commands#session-and-management-commands) immediately invokes `/wire:custom-release-define`, and this is where the shape of the release is decided. Wire reads the SoW and kick-off notes, extracts six deliverables and presents a proposal table before writing anything, so that you see what it intends to track before anything is committed to disk:
 
 ```
 Custom release proposal — 01-summit-content-analytics
@@ -190,7 +201,7 @@ deployment_runbook            Custom 🔧   /wire:custom-generate deployment_run
 Accept this proposal? [Y/n]
 ```
 
-After acceptance, Wire writes fully-specified generate/validate/review workflow specs for each deliverable into `.wire/releases/01-summit-content-analytics/custom-commands/` and scaffolds `status.md` with all six artifacts at `not_started`.
+After acceptance, Wire writes fully-specified generate/validate/review workflow specs for each deliverable into `.wire/releases/01-summit-content-analytics/custom-commands/` and scaffolds `status.md` with all six artifacts at `not_started`, which `/wire:start` then shows you:
 
 ```
 /wire:start
@@ -219,13 +230,13 @@ Artifacts — 6 total, 6 at not_started
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, with no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
 
 :::
 
-The `data-quality-engineer` agent is the best fit for an audit task — its remit covers data investigation, metric validation, and surface-level statistical analysis. It queries the BigQuery events table for watch completion rates, cross-references Looker usage data for dashboard query patterns, and produces a structured audit report.
+Why the `data-quality-engineer` agent for an audit? Its remit covers data investigation, metric validation and surface-level statistical analysis, which makes it the best fit for the task, and it queries the BigQuery events table for watch completion rates, cross-references Looker usage data for dashboard query patterns and produces a structured audit report.
 
-Key findings: 18 titles account for 73% of total watch time across the catalogue. 12 titles have never been completed by more than 2% of viewers who started them — half of those were licensed acquisitions purchased in the last six months. The correlation between completion rate and 30-day subscriber retention is 0.71. Subscribers who complete at least one title in their first seven days have a 14-percentage-point lower 90-day churn rate than those who do not.
+The key findings are as follows. Across the catalogue, 18 titles account for 73% of total watch time, while 12 titles have never been completed by more than 2% of the viewers who started them, and half of those were licensed acquisitions purchased in the last six months. The correlation between completion rate and 30-day subscriber retention is 0.71, and subscribers who complete at least one title in their first seven days have a 14-percentage-point lower 90-day churn rate than those who do not.
 
 ```
 /wire:custom-validate content_performance_audit 01-summit-content-analytics → PASS
@@ -243,17 +254,17 @@ Key findings: 18 titles account for 73% of total watch time across the catalogue
 → audience_segmentation_design.md written
 ```
 
-The `data-designer` agent produces an RFM-style segmentation framework adapted for subscription VOD. The three axes: **Recency** (days since last stream event), **Frequency** (stream events per 30-day rolling window), and **Monetary** (subscription tier multiplied by tenure in months — a proxy for lifetime value accrued to date). Five segments are defined:
+The `data-designer` agent produces an RFM-style segmentation framework adapted for subscription VOD, built on three axes: **Recency** (days since last stream event), **Frequency** (stream events per 30-day rolling window) and **Monetary** (subscription tier multiplied by tenure in months, a proxy for lifetime value accrued to date). From these, five segments are defined:
 
 | Segment | Recency | Frequency | Monetary proxy |
 |---|---|---|---|
 | Champions | < 7 days | ≥ 8 streams/month | High |
 | Loyal | < 14 days | 4–7 streams/month | Medium-High |
 | At-Risk | 15–45 days | 1–3 streams/month | Any |
-| Hibernating | 46–90 days | < 1 stream/month | Any |
-| Lost | > 90 days | 0 | Any |
+| Hibernating | 46–180 days | < 1 stream/month | Any |
+| Lost | > 180 days | 0 | Any |
 
-Segment boundaries are configurable via dbt project variables — the design spec includes a rationale section explaining why hard-coding them into SQL would make tuning painful after the first model run.
+Segment boundaries are configurable via dbt project variables rather than fixed in the SQL, and the design spec includes a rationale section explaining why hard-coding them into SQL would make tuning painful after the first model run.
 
 ```
 /wire:custom-validate audience_segmentation_design 01-summit-content-analytics → PASS
@@ -271,7 +282,7 @@ Segment boundaries are configurable via dbt project variables — the design spe
 → 3 models generated, schema.yml written
 ```
 
-Three models in the `models/subscriber_segments/` directory. The segment assignment logic in `subscriber_segment_current.sql`:
+The three models live in the `models/subscriber_segments/` directory, and the segment assignment logic is in `subscriber_segment_current.sql`:
 
 ```sql
 with rfm_scored as (
@@ -319,9 +330,9 @@ select * from rfm_scored
 → churn_prediction_model.md written (Vertex AI config + Braze integration spec)
 ```
 
-The `agentic-data-stack-developer` agent is the closest fit for a Vertex AI integration — its remit covers model configurations, evaluation suites, and agent-adjacent data stack components. It produces the Vertex AI AutoML tabular model specification: a training dataset view pulling 90-day subscriber behaviour features from the existing dbt warehouse models, a daily batch scoring pipeline writing `churn_probability_score` back to a BigQuery output table, and a Braze integration spec.
+The `agentic-data-stack-developer` agent is the closest fit for a Vertex AI integration, since its remit covers model configurations, evaluation suites and agent-adjacent data stack components. It produces the Vertex AI AutoML tabular model specification, which consists of a training dataset view pulling 90-day subscriber behaviour features from the existing dbt warehouse models, a daily batch scoring pipeline writing `churn_probability_score` back to a BigQuery output table and a Braze integration spec.
 
-The Braze connection: subscribers with `churn_probability_score > 0.70` are added to a "Win-Back" Braze segment via the Braze API each morning after the scoring pipeline completes. The integration uses Braze's REST API `/users/track` endpoint with a daily Cloud Scheduler trigger. The spec includes the feature set used for scoring (17 features, including title completion rate, days since first stream, segment transitions over 60 days, and subscription tier change history) and a model evaluation plan with a held-out test set.
+So how do the scores reach Braze? Subscribers with `churn_probability_score > 0.70` are added to a "Win-Back" Braze segment via the Braze API each morning after the scoring pipeline completes, and the integration uses Braze's REST API `/users/track` endpoint with a daily Cloud Scheduler trigger. The spec also includes the feature set used for scoring (17 features, including title completion rate, days since first stream, segment transitions over 60 days and subscription tier change history) and a model evaluation plan with a held-out test set.
 
 ```
 /wire:custom-validate churn_prediction_model 01-summit-content-analytics → PASS
@@ -334,7 +345,7 @@ The Braze connection: subscribers with `churn_probability_score > 0.70` are adde
 
 ### Step 6 — Status check mid-engagement
 
-With five of six artifacts in progress, [`/wire:status`](../reference/commands#session-and-management-commands) gives a clean picture of where the engagement stands:
+So where does the engagement stand at this point? With five of six artifacts in progress, [`/wire:status`](../reference/commands#session-and-management-commands) gives a clean picture, together with the decisions taken so far and the next action:
 
 ```
 /wire:status 01-summit-content-analytics
@@ -363,12 +374,12 @@ Next action: complete looker_dashboards generate → validate → review, then
 
 | Artefact | Format |
 |---|---|
-| Content performance audit | `artifacts/content_performance_audit.md` — catalogue analysis, retention correlations |
-| Audience segmentation design | `artifacts/audience_segmentation_design.md` — RFM framework, 5 segment definitions |
+| Content performance audit | `artifacts/content_performance_audit.md`: catalogue analysis, retention correlations |
+| Audience segmentation design | `artifacts/audience_segmentation_design.md`: RFM framework, 5 segment definitions |
 | dbt segmentation models | 3 SQL models: `stg_subscriptions__events`, `subscriber_rfm_fct`, `subscriber_segment_current` |
-| Churn prediction model spec | `artifacts/churn_prediction_model.md` — Vertex AI config, feature set, Braze integration |
+| Churn prediction model spec | `artifacts/churn_prediction_model.md`: Vertex AI config, feature set, Braze integration |
 | Looker dashboards | Content performance dashboard + subscriber health dashboard |
 | Deployment runbook | Step-by-step runbook: BigQuery, dbt Cloud, Vertex AI pipeline, Braze sync |
-| `decisions.md` | 3 decisions recorded — onboarding priority, segment boundary, Braze threshold |
+| `decisions.md` | 3 decisions recorded: onboarding priority, segment boundary, Braze threshold |
 
-The custom release type produced a coherent, tracked engagement from a set of deliverables that spans four different technical domains. Wire's infrastructure — status tracking, the decisions log, agent routing, and the review gates — held regardless of how bespoke the artifacts were. The SoW defined the shape of the work; Wire managed the lifecycle.
+Two artifacts remain, `looker_dashboards` and `deployment_runbook`, and each passes through the same generate, validate and review sequence as the four before it, with Wire's status tracking, decisions log, agent routing and review gates holding across all four technical domains the SoW touched, however bespoke the artifact.

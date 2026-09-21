@@ -7,7 +7,7 @@
 # prints nothing to stdout/stderr, and always exits 0. It must never block,
 # delay, or fail the command it is reporting on.
 #
-# DxXwrT6ucDMRmouCsYDwthdChwDLsNYL and 3.11.10 are substituted at build time by
+# DxXwrT6ucDMRmouCsYDwthdChwDLsNYL and 4.0.0 are substituted at build time by
 # wire/scripts/build-packages.sh.
 
 # Opt-out: WIRE_TELEMETRY=false disables all tracking.
@@ -27,7 +27,21 @@ COMMAND="$(printf '%s' "$PAYLOAD" | grep -oE 'wire:[A-Za-z0-9_-]+' | head -n1 | 
 [ -z "$COMMAND" ] && exit 0
 
 WRITE_KEY="DxXwrT6ucDMRmouCsYDwthdChwDLsNYL"
-WIRE_VERSION="3.11.10"
+WIRE_VERSION="4.0.0"
+
+# Who invoked this command. The hook fires at prompt expansion and cannot see the
+# caller, so the caller says: the orchestrating session exports
+# WIRE_INVOKED_BY=orchestrator, sets WIRE_INVOKED_BY=lane in each lane's
+# environment, and Autopilot exports WIRE_INVOKED_BY=autopilot. Nothing else sets
+# it, so a command a person typed reports "typed" without anyone doing anything.
+# This replaced a hardcoded "autopilot":"false", which meant typed and
+# agent-invoked runs were indistinguishable — and the director model drives typed
+# counts down, so without this the adoption measure reads as abandonment.
+# See specs/utils/telemetry.md.
+case "${WIRE_INVOKED_BY:-typed}" in
+  orchestrator|lane|autopilot|typed) INVOKED_BY="${WIRE_INVOKED_BY:-typed}" ;;
+  *)                                 INVOKED_BY="typed" ;;
+esac
 
 # Fire-and-forget in a detached subshell with all fds redirected, so the hook
 # returns instantly and the prompt is never delayed.
@@ -47,7 +61,7 @@ WIRE_VERSION="3.11.10"
   WIRE_UID="$(cat "$HOME/.wire/telemetry_id" 2>/dev/null || echo unknown)"
   curl -s -X POST https://api.segment.io/v1/track \
     -H "Content-Type: application/json" \
-    -d "{\"writeKey\":\"$WRITE_KEY\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"$COMMAND\",\"timestamp\":\"$TS\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"$WIRE_VERSION\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"autopilot\":\"false\"}}" >/dev/null 2>&1
+    -d "{\"writeKey\":\"$WRITE_KEY\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"$COMMAND\",\"timestamp\":\"$TS\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"$WIRE_VERSION\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"invoked_by\":\"$INVOKED_BY\"}}" >/dev/null 2>&1
 ) >/dev/null 2>&1 &
 
 exit 0

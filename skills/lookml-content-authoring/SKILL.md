@@ -10,7 +10,7 @@ description: Activates when creating or modifying LookML views, explores, and da
 Before proceeding, append a one-line entry to `.wire/execution_log.md`:
 
 ```
-| YYYY-MM-DD HH:MM | skill | lookml-authoring | activated | LookML view, explore, or model work triggered this skill |
+| YYYY-MM-DD HH:MM | skill | lookml-content-authoring | activated | LookML view, explore, or model work triggered this skill |
 ```
 
 If `.wire/execution_log.md` does not exist, create it with the standard header first (see `specs/utils/execution_log.md`). If no `.wire/` directory exists in the current repo, skip this step.
@@ -278,6 +278,35 @@ Before creating new files, examine existing LookML in the project to understand:
 - `_calculated` suffix on measures that exist only in the semantic layer
 
 If the project uses the layered architecture (see "RA Layered LookML Architecture" above), place new content in the correct layer. If you are about to add a measure to a staging-layer file, stop — measures belong in the aggregate layer.
+
+**Machine-checkable rules — run the linter, don't re-derive it by eye.**
+The naming and refinement-placement rules above also exist as a
+machine-readable convention file, checked by a script instead of your own
+read of this document. Resolve which one applies (client override wins):
+
+1. `.wire/conventions/lookml.yml` in the client project, if present.
+2. `wire/conventions/lookml.yml` next to this skill's framework installation
+   (synced from the private `wire-process-registry` — see
+   `wire/schemas/convention-schema.md`).
+
+Run it against the `.lkml` file(s) you're about to validate or have just
+written:
+
+```
+python3 wire/scripts/lint_conventions.py --domain lookml \
+  --convention <resolved lookml.yml path> --path <lkml file or dir> \
+  --format json
+```
+
+Treat its findings as ground truth for what it covers — `.layer.lkml` /
+`.model.lkml` filename suffixes, base-layer views never using a `+`
+refinement, staging/aggregate-layer files always using one, warehouse view
+naming (`wh_<group>__<entity>_dim|fact|xa`), required `label`/`description`
+on every explore, and balanced braces. What it can't check (is this the
+right layer for this label, does a join direction make sense, is a second
+refinement in the same layer genuinely warranted) is still yours to judge
+via the rules above. If the linter isn't available in the environment, fall
+back to the manual checks in this section and say so in your output.
 
 ### 4. Validate LookML Syntax
 

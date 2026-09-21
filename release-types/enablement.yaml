@@ -1,0 +1,25 @@
+wire_schema: "1.0"
+id: enablement
+name: "Enablement"
+description: "Training and documentation only, for an already-delivered platform — no new build work."
+applicable_when:
+  - "The platform is already delivered and the client needs a standalone training/documentation engagement"
+  - "Scope is limited to enablement — no pipeline, data model, or dashboard work"
+
+phases:
+  - id: enablement
+    name: "Enablement"
+    description: "Produce training materials and documentation for the existing platform"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: training
+        command: training
+        required: true
+        sequence: 1
+        depends_on: []
+      - id: documentation
+        command: documentation
+        required: true
+        sequence: 2
+        depends_on: []

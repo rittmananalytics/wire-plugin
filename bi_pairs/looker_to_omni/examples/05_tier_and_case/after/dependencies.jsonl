@@ -1,0 +1,7 @@
+{"from": "looker:lookml:view:accounts", "to": "looker:lookml:field:accounts:account_id", "kind": "contains"}
+{"from": "looker:lookml:view:accounts", "to": "looker:lookml:field:accounts:arr", "kind": "contains"}
+{"from": "looker:lookml:view:accounts", "to": "looker:lookml:field:accounts:arr_tier", "kind": "contains"}
+{"from": "looker:lookml:view:accounts", "to": "looker:lookml:field:accounts:health", "kind": "contains"}
+{"from": "looker:lookml:view:accounts", "to": "looker:lookml:field:accounts:plan", "kind": "contains"}
+{"from": "looker:lookml:view:accounts", "to": "looker:lookml:field:accounts:plan_family", "kind": "contains"}
+{"from": "looker:lookml:field:accounts:arr_tier", "to": "looker:lookml:field:accounts:arr", "kind": "references"}

@@ -1,0 +1,6 @@
+{"from": "looker:lookml:view:events", "to": "looker:lookml:field:events:count", "kind": "contains"}
+{"from": "looker:lookml:view:events", "to": "looker:lookml:field:events:event_id", "kind": "contains"}
+{"from": "looker:lookml:view:events", "to": "looker:lookml:field:events:occurred", "kind": "contains"}
+{"from": "looker:lookml:view:events", "to": "looker:lookml:field:events:occurred_month_label", "kind": "contains"}
+{"from": "looker:lookml:view:events", "to": "looker:lookml:field:events:session", "kind": "contains"}
+{"from": "looker:lookml:field:events:occurred_month_label", "to": "looker:lookml:field:events:occurred_month", "kind": "references"}

@@ -1,0 +1,15 @@
+- join_from_view: orders
+  join_to_view: customers
+  on_sql: ${orders.customer_id} = ${customers.customer_id}
+  relationship_type: many_to_one
+  join_type: always_left
+- join_from_view: orders
+  join_to_view: order_lines
+  on_sql: ${orders.order_id} = ${order_lines.order_id}
+  relationship_type: one_to_many
+  join_type: always_left
+- join_from_view: order_lines
+  join_to_view: skus
+  on_sql: ${order_lines.sku_id} = ${skus.sku_id}
+  relationship_type: many_to_one
+  join_type: always_left

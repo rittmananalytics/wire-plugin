@@ -1,0 +1,65 @@
+{
+  "identity": "looker:lookml:view:customers",
+  "name": "customers",
+  "schema": "analytics",
+  "table_name": "dim_customers",
+  "emitted": true,
+  "class": "mechanical",
+  "unsupported": [],
+  "source": {
+    "file": "customers.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:customers:customer_id",
+      "name": "customer_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.customer_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "primary_key": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "customers.view.lkml",
+        "view": "customers"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:customers:region",
+      "name": "region",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.region",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "customers.view.lkml",
+        "view": "customers"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:customers:email",
+      "name": "email",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.email",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "customers.view.lkml",
+        "view": "customers"
+      }
+    }
+  ]
+}

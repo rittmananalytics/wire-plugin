@@ -1,0 +1,176 @@
+wire_schema: "1.0"
+id: bi_migration
+name: "BI Tool Migration"
+description: "Migrate a reporting layer from one BI tool to another on the same warehouse: audit the source estate, decide what moves and how, build the target model on a branch, move the content, prove tile-level parity, cut over. First pair: Looker to Omni."
+applicable_when:
+  - "The client is replacing their BI tool and the warehouse and dbt layer stay where they are"
+  - "The source is Looker (LookML in git plus content via the Looker API) and the target is Omni"
+  - "Content must be proven equivalent before users are switched, and the source is decommissioned after a parallel run"
+
+profile_field: bi_pair
+default_profile: looker_to_omni
+profiles:
+  - id: looker_to_omni
+    name: "Looker to Omni"
+    description: "LookML views and explores become Omni views and topics; dashboards and Looks become Omni dashboards. The only pair in 4.0.0."
+
+phases:
+  - id: business_rules
+    name: "Business Rules Discovery"
+    required: false
+    requires_phase: null
+    artifacts:
+      - id: business_rules
+        command: business-rules
+        required: false
+        sequence: 1
+        depends_on: []
+
+  - id: audit
+    name: "Audit"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: looker_audit
+        command: looker-audit
+        required: true
+        sequence: 1
+        depends_on: []
+      - id: omni_audit          # brownfield target only: the client already has Omni content
+        command: omni-audit
+        required: false
+        sequence: 2
+        depends_on: []
+
+  - id: plan
+    name: "Plan"
+    required: true
+    requires_phase: audit
+    artifacts:
+      - id: bi_migration_plan
+        command: bi-migration-plan
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: looker_audit
+            action: review
+            outcome: approved
+          - artifact: business_rules
+            action: review
+            outcome: approved
+            enforcement: advisory
+          - artifact: omni_audit
+            action: review
+            outcome: approved
+            enforcement: advisory
+      - id: migration_drift        # optional scheduled gate: LookML changed under a translated view, or content edited in Looker
+        command: migration-drift
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: bi_migration_plan
+            action: review
+            outcome: approved
+
+  - id: target
+    name: "Target Setup"
+    required: true
+    requires_phase: plan
+    artifacts:
+      - id: omni_target_setup
+        command: omni-target-setup
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: bi_migration_plan
+            action: review
+            outcome: approved
+
+  - id: model
+    name: "Model Migration"
+    required: true
+    requires_phase: target
+    artifacts:
+      - id: omni_model
+        command: omni-model
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: omni_target_setup
+            action: review
+            outcome: approved
+      # Optional. Publishes the migrated Omni model (views, topics, joins)
+      # into the warehouse AGENTS schema, so agents read the new semantic
+      # surface as soon as it validates.
+      - id: agents_schema
+        command: agents_schema
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: omni_model
+            action: validate
+            outcome: PASS
+
+  - id: content
+    name: "Content Migration"
+    required: true
+    requires_phase: model
+    artifacts:
+      - id: omni_content
+        command: omni-content
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: omni_model
+            action: validate
+            outcome: PASS
+
+  - id: parity
+    name: "Parity"
+    required: true
+    requires_phase: content
+    artifacts:
+      - id: bi_equivalency
+        command: bi-equivalency
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: omni_content
+            action: generate
+            outcome: complete
+
+  - id: cutover
+    name: "Cutover"
+    required: true
+    requires_phase: parity
+    artifacts:
+      - id: cutover
+        command: cutover
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: bi_equivalency
+            action: validate
+            outcome: PASS
+
+  - id: enablement
+    name: "Enablement"
+    required: false
+    requires_phase: cutover
+    artifacts:
+      - id: training
+        command: training
+        required: false
+        sequence: 1
+        depends_on:
+          - artifact: cutover
+            action: review
+            outcome: approved
+      - id: documentation
+        command: documentation
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: cutover
+            action: review
+            outcome: approved

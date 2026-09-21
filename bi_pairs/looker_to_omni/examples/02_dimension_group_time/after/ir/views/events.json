@@ -1,0 +1,138 @@
+{
+  "identity": "looker:lookml:view:events",
+  "name": "events",
+  "schema": "analytics",
+  "table_name": "fct_events",
+  "emitted": true,
+  "class": "mechanical",
+  "unsupported": [],
+  "source": {
+    "file": "events.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:events:event_id",
+      "name": "event_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.event_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "primary_key": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "events.view.lkml",
+        "view": "events"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:events:occurred_month_label",
+      "name": "occurred_month_label",
+      "kind": "dimension",
+      "lookml_type": "string",
+      "source_sql": "FORMAT_DATE('%b %Y', ${occurred_month})",
+      "references": [
+        "events.occurred_month"
+      ],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "FORMAT_DATE('%b %Y', ${occurred[month]})"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "events.view.lkml",
+        "view": "events"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:events:occurred",
+      "name": "occurred",
+      "kind": "dimension_group",
+      "lookml_type": "time",
+      "source_sql": "${TABLE}.occurred_at",
+      "references": [],
+      "class": "assisted",
+      "emitted": true,
+      "omni": {
+        "sql": "${occurred_at}",
+        "timeframes": [
+          "raw",
+          "date",
+          "week",
+          "month",
+          "quarter",
+          "year",
+          "day_of_week_name",
+          "day_of_week_num",
+          "hour_of_day"
+        ],
+        "convert_tz": false
+      },
+      "unsupported": [
+        {
+          "construct": "timeframe",
+          "class": "assisted",
+          "reason": "timeframe 'week_of_year' has no Omni equivalent; dropped from the list"
+        }
+      ],
+      "source": {
+        "file": "events.view.lkml",
+        "view": "events"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:events:session",
+      "name": "session",
+      "kind": "dimension_group",
+      "lookml_type": "duration",
+      "source_sql": "${TABLE}.session_start_at",
+      "references": [],
+      "class": "assisted",
+      "emitted": true,
+      "omni": {
+        "duration": {
+          "start": "${session_start_at}",
+          "end": "${session_end_at}",
+          "intervals": [
+            "minute",
+            "hour"
+          ]
+        }
+      },
+      "unsupported": [
+        {
+          "construct": "dimension_group_duration",
+          "class": "assisted",
+          "reason": "duration group emitted as Omni `duration`; confirm the parameter shape against the Omni docs"
+        }
+      ],
+      "source": {
+        "file": "events.view.lkml",
+        "view": "events"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:events:count",
+      "name": "count",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "aggregate_type": "count"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "events.view.lkml",
+        "view": "events"
+      }
+    }
+  ]
+}

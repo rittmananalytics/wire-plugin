@@ -1,0 +1,30 @@
+schema: analytics
+table_name: fct_events
+dimensions:
+  event_id:
+    primary_key: true
+  occurred_month_label:
+    sql: FORMAT_DATE('%b %Y', ${occurred[month]})
+  occurred:
+    sql: ${occurred_at}
+    timeframes:
+    - raw
+    - date
+    - week
+    - month
+    - quarter
+    - year
+    - day_of_week_name
+    - day_of_week_num
+    - hour_of_day
+    convert_tz: false
+  session:
+    duration:
+      start: ${session_start_at}
+      end: ${session_end_at}
+      intervals:
+      - minute
+      - hour
+measures:
+  count:
+    aggregate_type: count

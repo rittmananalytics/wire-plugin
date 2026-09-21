@@ -3,6 +3,11 @@
 Complete CSS, HTML component patterns, and Chart.js configurations.
 Copy verbatim — do not improvise colours or class names.
 
+**No external image assets.** Every icon and the logo mark are inline SVG, so a generated
+mockup is a single self-contained file that renders correctly wherever it is opened or emailed.
+Do not reintroduce an `<img src="...">` pointing at a file in this folder: the HTML is written
+to the release folder, not here, and the image would 404 for the person you sent it to.
+
 ---
 
 ## 1. CSS Custom Properties
@@ -83,12 +88,28 @@ button { cursor: pointer; background: none; font-family: inherit; }
       </svg>
     </button>
     <div class="looker-logo">
-      <img src="looker_logo.png" alt="Looker" style="width:35px;height:35px;object-fit:contain">
+      <!-- Logo mark: inline SVG, no external asset. Keeps the file self-contained. -->
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="11" cy="9" r="5" stroke="#EA4335" stroke-width="2"/>
+        <circle cx="11" cy="9" r="1.6" fill="#EA4335"/>
+        <path d="M13 14 L23 24" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="22" cy="23" r="5" stroke="#4285F4" stroke-width="2"/>
+      </svg>
       Looker
     </div>
   </div>
   <div class="header-right">
-    <img src="toolbar_icons.png" alt="" style="width:35px;height:35px;object-fit:contain">
+    <button class="icon-btn" aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </button>
+    <button class="icon-btn" aria-label="Help">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </button>
     <!-- Avatar: use initials from user's name -->
     <div class="avatar">AB</div>
   </div>
@@ -116,7 +137,7 @@ Header CSS:
   display: flex; align-items: center; gap: 6px;
   font-size: 17px; font-weight: 500; color: var(--primary); letter-spacing: -0.3px;
 }
-.looker-logo img { width: 35px; height: 35px; }
+.looker-logo svg { width: 26px; height: 26px; }
 .avatar {
   width: 28px; height: 28px; border-radius: 50%;
   background: linear-gradient(135deg, hsl(210,60%,55%), hsl(195,55%,40%));
@@ -131,9 +152,12 @@ Header CSS:
 
 ```html
 <aside class="sidebar" id="sidebar">
-  <!-- Create button image -->
+  <!-- Create button: inline SVG plus label, no external asset -->
   <button class="sidebar-create">
-    <img src="create_button.png" alt="Create" style="width:70%;height:auto;display:block;margin:0 auto">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    Create
   </button>
 
   <!-- Section 1: Core nav -->

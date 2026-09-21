@@ -63,9 +63,9 @@ Vantage Financial Reporting Ltd has three data sources landing in Snowflake via 
 
 ## What is a dbt Development release?
 
-A `dbt_development` release covers the transformation layer only. Data is already landing in the warehouse — via Fivetran, Stitch, a manual load process, or a pipeline that was delivered in an earlier engagement — and the work is building the dbt staging, integration, and warehouse models that turn raw tables into reliable, tested, documented facts and dimensions.
+A common situation, and the one Vantage Financial Reporting Ltd is in, is that the data is already landing in the warehouse (via Fivetran, Stitch, a manual load process or a pipeline that was delivered in an earlier engagement) but nobody can build on it with confidence, because the analysts write ad-hoc SQL against the raw tables with no agreed grain, no tests and no shared definition of what a "customer" is across systems. The ingestion problem is solved; the transformation problem is not.
 
-Choose this release type when the ingestion problem is already solved and the BI team is blocked on clean models. You skip the pipeline design, pipeline implementation, semantic layer, and dashboard phases entirely. The result is a full dbt project — staging models, warehouse models, schema tests, and documentation YAML — that a downstream LookML or Tableau developer can build against with confidence. If you also need to wire up new connectors or author LookML, use a `full_platform` release instead.
+A `dbt_development` release covers that transformation layer only, and the work is building the dbt staging, integration and warehouse models that turn raw tables into reliable, tested, documented facts and dimensions. Choose this release type when the ingestion problem is already solved and the BI team is blocked on clean models, since you skip the pipeline design, pipeline implementation, semantic layer and dashboard phases entirely. The result is a full dbt project (staging models, warehouse models, schema tests and documentation YAML) that a downstream LookML or Tableau developer can build against with confidence. If you also need to wire up new connectors or author LookML, use a `full_platform` release instead.
 
 ### High-Level Process
 
@@ -74,34 +74,67 @@ graph LR
     REQ["Requirements"] --> CM["Conceptual Model"] --> DM["Data Model"] --> DBT["dbt Models"] --> DQ["Data Quality"] --> DEPLOY["Deployment"]
 ```
 
+
+:::info New in 4.0: business rules discovery
+
+This walkthrough does not use it, so the sequence below still reads correctly, but
+you should know that it exists.
+
+`/wire:business-rules-generate` is an optional first phase that establishes what
+the numbers mean before design bakes a definition in: one register per domain,
+holding every competing definition found in dbt, LookML or an `--import` from a
+system Wire cannot read, what they disagree on, the decision and who approved it.
+A rule nobody has decided is recorded as `unknown` rather than left out.
+
+The gate on `data_model-generate` is advisory: it warns, takes a reason, records the skip and
+proceeds.
+
+Reference: [Business rules discovery](../advanced/business-rules.md).
+:::
+
+:::info New in 4.0: reading an existing Modality model
+
+Where the client already models their data in Modality, `/wire:utils-modality-link`
+points the release at it and the design commands read the entities, sources and
+cardinality from the `.mml` files rather than deriving them, still reading the
+requirements so the difference between the two becomes a finding.
+
+The commands that read a model are `conceptual_model`, `logical_model` and
+`pipeline_design`. A `dbt_development` release's design phase is `data_model`,
+which has no Modality path, so this applies here only if you also run the
+conceptual model step.
+
+Reference: [Modality models as an input](../advanced/modality-models.md).
+:::
+
 ## Scenario
 
 | | |
 |-|-|
 | **Client** | Vantage Financial Reporting Ltd |
-| **Sector** | UK FinTech — business expense management SaaS |
+| **Sector** | UK FinTech: business expense management SaaS |
 | **Size** | ~60 employees |
 | **Release** | `01-vantage-dbt-foundation` |
 | **Release type** | `dbt_development` |
 | **Stack** | Snowflake, dbt Cloud, Looker (existing, out of scope) |
 
-Vantage has three data sources landing in Snowflake via Fivetran: Stripe (payments and refunds), Salesforce (accounts and opportunities), and their product PostgreSQL database (users and subscription events). The pipelines run daily and the raw data is there. The problem is that the analytics team writes ad-hoc SQL directly against raw tables — `stripe.charges`, `salesforce.account`, `product_db.users` — with no agreed grain, no tests, and no shared understanding of how a "customer" is defined across systems. The BI team wants to build Looker dashboards on subscription MRR, opportunity conversion, and charge volume, but cannot do so reliably until a transformation layer exists. LookML authoring is out of scope for this release.
+Vantage has three data sources landing in Snowflake via Fivetran: Stripe (payments and refunds), Salesforce (accounts and opportunities) and their product PostgreSQL database (users and subscription events). The pipelines run daily and the raw data is there. The problem is that the analytics team writes ad-hoc SQL directly against the raw tables (`stripe.charges`, `salesforce.account`, `product_db.users`) with no agreed grain, no tests and no shared understanding of how a customer is defined across systems, and as a result the BI team, which wants to build Looker dashboards on subscription MRR, opportunity conversion and charge volume, cannot do so reliably until a transformation layer exists. LookML authoring is out of scope for this release.
 
 ## Deliverables
 
 | Deliverable | Description |
 |---|---|
-| Source definitions | `_sources.yml` for Stripe, Salesforce, and product database raw schemas |
-| Staging models (6) | One model per raw entity — field normalisation, type casting, renamed columns |
-| Integration model (1) | `int__customer_unified` — cross-system customer identity resolution |
+| Source definitions | `_sources.yml` for Stripe, Salesforce and product database raw schemas |
+| Staging models (6) | One model per raw entity: field normalisation, type casting, renamed columns |
+| Integration model (1) | `int__customer_unified`: cross-system customer identity resolution |
 | Warehouse models (4) | `customer_dim`, `opportunity_fct`, `charge_fct`, `subscription_mrr_fct` |
 | Schema tests | 38 tests across all models: `not_null`, `unique`, `relationships`, accepted values |
 | Documentation YAML | `description:` fields for every model and column |
-| `decisions.md` | Agent-recorded grain choices, modelling trade-offs, and rationale |
+| `decisions.md` | Agent-recorded grain choices, modelling trade-offs and rationale |
 
 ## Tutorial Playbook
 
-The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
+The diagram below is the delivery playbook for this tutorial's scenario, and in a live engagement [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates it for you as a Mermaid-format delivery plan, with the dependency order, team assignments and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
@@ -173,7 +206,7 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 :::info[First release in this repository?]
 
-If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement (naming the client, setting the engagement context and configuring any integrations) before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
 
 :::
 
@@ -190,16 +223,16 @@ If this is the first release created in a git repository, `/wire:new` will first
 
 :::info[Issue tracking and document sync]
 
-Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses, and Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
 
-Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review, in which case review commands pull comments and edits made in the document store back as context before gathering sign-off.
 
-Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear) or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
 
 :::
 
 
-Before running any generate commands, drop the Snowflake information schema exports for the three raw schemas — `stripe_raw`, `salesforce_raw`, `product_raw` — into `releases/01-vantage-dbt-foundation/requirements/`. The `data-designer` agent reads these to understand actual column names and types before proposing any model structure.
+Before running any generate commands, drop the Snowflake information schema exports for the three raw schemas (`stripe_raw`, `salesforce_raw` and `product_raw`) into `releases/01-vantage-dbt-foundation/requirements/`, because the `data-designer` agent reads these to understand the actual column names and types before it proposes any model structure.
 
 ### Data model design — auto-delegated to `data-designer`
 
@@ -210,19 +243,19 @@ Before running any generate commands, drop the Snowflake information schema expo
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, with no extra steps needed on your part. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
 
 :::
 
-The agent reads the raw schema exports and the SOW, then produces a full model inventory and `_sources.yml`. Six staging models, one integration model, and four warehouse models:
+The agent reads the raw schema exports and the SOW, then produces a full model inventory and `_sources.yml`, comprising six staging models, one integration model and four warehouse models:
 
 - `stg_stripe__charges`, `stg_stripe__customers`, `stg_stripe__refunds`
 - `stg_salesforce__accounts`, `stg_salesforce__opportunities`
 - `stg_product__users`
-- `int__customer_unified` — joins Stripe customer email to Salesforce account and product user via a deterministic email match, with a fallback surrogate for unmatched records
+- `int__customer_unified`: joins Stripe customer email to Salesforce account and product user via a deterministic email match, with a fallback surrogate for unmatched records
 - `customer_dim`, `opportunity_fct`, `charge_fct`, `subscription_mrr_fct`
 
-The agent appends to `decisions.md`: `subscription_mrr_fct` modelled at monthly snapshot grain per customer (not at individual subscription-event grain) — event grain would require twelve times the row count for the same analytical value, and no current requirement calls for intra-month MRR movement.
+The agent appends to `decisions.md` that `subscription_mrr_fct` is modelled at monthly snapshot grain per customer (not at individual subscription-event grain), because event grain would require twelve times the row count for the same analytical value and no current requirement calls for intra-month MRR movement.
 
 ```
 /wire:data_model-validate 01-vantage-dbt-foundation
@@ -243,7 +276,7 @@ The agent appends to `decisions.md`: `subscription_mrr_fct` modelled at monthly 
 → 11 models generated, 38 tests written
 ```
 
-The agent writes all SQL files and schema YAML. A representative staging model:
+The agent writes all the SQL files and schema YAML, and a representative staging model looks like this:
 
 ```sql
 -- models/staging/stripe/stg_stripe__charges.sql
@@ -270,7 +303,7 @@ renamed as (
 select * from renamed
 ```
 
-The schema entry for this model:
+The schema entry for this model is as follows:
 
 ```yaml
 - name: stg_stripe__charges
@@ -294,9 +327,11 @@ The schema entry for this model:
             values: ['succeeded', 'pending', 'failed']
 ```
 
-The agent also records in `decisions.md`: `subscription_mrr_fct` uses `dbt_utils.generate_surrogate_key(['customer_id', 'snapshot_month'])` as its primary key — the combination of customer and month is the natural grain and provides a stable key for incremental merges without requiring a sequence or UUID from any source system.
+The agent also records in `decisions.md` that `subscription_mrr_fct` uses `dbt_utils.generate_surrogate_key(['customer_id', 'snapshot_month'])` as its primary key, since the combination of customer and month is the natural grain and provides a stable key for incremental merges without requiring a sequence or UUID from any source system.
 
 ### Validation and dbt run
+
+So how do you know that the generated models actually run? Validation happens in two steps, a static check of the project delegated to the QA agent, followed by a real dbt run and dbt test against the warehouse:
 
 ```
 /wire:dbt-validate 01-vantage-dbt-foundation
@@ -325,7 +360,7 @@ The agent also records in `decisions.md`: `subscription_mrr_fct` uses `dbt_utils
 → [auto-delegated to data-quality-engineer agent]
 ```
 
-The agent adds freshness checks on all three sources — Stripe (6h), Salesforce (24h), product database (6h) — and a row count reconciliation between `stg_stripe__charges` and the raw `stripe_raw.charges` table with a ±1% tolerance. Any staleness or count mismatch triggers a Slack alert to `#data-alerts`.
+The agent adds freshness checks on all three sources (Stripe at 6h, Salesforce at 24h and the product database at 6h) together with a row count reconciliation between `stg_stripe__charges` and the raw `stripe_raw.charges` table with a ±1% tolerance, and any staleness or count mismatch triggers a Slack alert to `#data-alerts`.
 
 ```
 /wire:data_quality-validate 01-vantage-dbt-foundation → PASS
@@ -352,9 +387,9 @@ The deployment runbook covers two dbt Cloud jobs:
 
 | Artifact | Detail |
 |---|---|
-| Source definitions | `_sources.yml` — Stripe, Salesforce, product database raw schemas |
+| Source definitions | `_sources.yml`: Stripe, Salesforce, product database raw schemas |
 | Staging models | 6 SQL files with field normalisation and type casting |
-| Integration model | `int__customer_unified` — cross-system identity resolution |
+| Integration model | `int__customer_unified`: cross-system identity resolution |
 | Warehouse models | `customer_dim`, `opportunity_fct`, `charge_fct`, `subscription_mrr_fct` |
 | Schema tests | 38 tests: `not_null`, `unique`, `relationships`, accepted values |
 | Documentation YAML | Description fields for all 11 models and every column |

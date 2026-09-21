@@ -1,26 +1,40 @@
 ---
 sidebar_position: 5
-title: How Wire Works
+title: "How Wire Works: Inside a Command"
 ---
 
-# How Wire Works
+# How Wire Works: Inside a Command
 
-Wire is not a black box. Every `/wire:*` command is a plain Markdown file — open, inspectable, and version-controlled on GitHub. When you run `/wire:dbt-generate`, Claude Code reads that file as a set of natural-language instructions and executes the steps exactly as written. No hidden logic, no compiled binary, no server call. Just structured prose that the model treats as a workflow specification.
+When a tool generates code for you, sooner or later you will want to know exactly what it is going to do and why, and to be able to read the answer rather than take it on trust. Wire is not a black box. Every `/wire:*` command is a plain Markdown file, open, inspectable and version-controlled on GitHub, and when `/wire:dbt-generate` runs, Claude Code reads that file as a set of natural-language instructions and executes the steps exactly as written. There is no hidden logic, no compiled binary and no server call, just structured prose that the model treats as a workflow specification.
 
-This page walks through three real command files to show you exactly what happens when you type a Wire command.
+In this page we will walk through three real command files to show you exactly what happens when a Wire command runs. Part 1 of this guide explains how Wire works from the outside, in plain language; this page is the view from inside one command. We will start with the two ways a command gets run, then look at what a command file is and how it fits into a release type, then take the three dbt commands in turn (generate, validate and review) and finish with how to read a command file yourself and what all of this means in practice.
+
+## Two ways a command gets run
+
+Since 4.0.0, on Claude Code, you rarely type a command. You say what you want done ("run what's next", "approve the data model and carry on") and the orchestrating session works out from the release-type definition which command that is, says in a sentence what it is about to do and runs it, either itself or by handing it to a specialist lane agent. Its report leads with what was produced and ends with a line naming the commands that ran, so the command names on this page are the ones you will see there.
+
+Whichever way a command is invoked, the same file runs, through the same steps, writing the same artifacts and the same record. Three things differ, and none of them is the command file:
+
+| | Typed | Directed |
+|---|---|---|
+| Who invokes the command | You | The orchestrating session, or a lane agent it dispatched |
+| Who writes `status.md` and the execution log | The command itself | The command when the orchestrating session ran it; the orchestrating session, from the lane's state file, when a lane ran it |
+| The `Session` column of the log row | `typed` | `orchestrator [id]`, a lane label such as `dbt-developer [staging 1/2]` or `autopilot` |
+
+The rest of this page reads as if you typed each command, because that is the clearest way to show what a file does. Read "when you type" as "when the command runs". See [The Release Director Model](../advanced/release-director) for the orchestrating session's rules and [Agent Architecture](../advanced/wire-agent-architecture) for the whole picture.
 
 ---
 
 ## What a Claude Code command file is
 
-Claude Code supports a plugin system where `.md` files in a designated `commands/` directory become slash commands. When you type `/wire:dbt-generate 20260216_live_pastoral`, Claude Code:
+So what is a command file, exactly? Claude Code supports a plugin system where `.md` files in a designated `commands/` directory become slash commands. When `/wire:dbt-generate 20260216_live_pastoral` runs, whether you typed it or the orchestrating session invoked it for you, Claude Code:
 
 1. Looks up `commands/dbt-generate.md` in the installed plugin
 2. Loads the full file into its context
 3. Substitutes `$ARGUMENTS` with your argument (`20260216_live_pastoral`)
 4. Reads the file as instructions and executes them step by step
 
-The file is the entire specification. There is no separate code that "implements" the command — the Markdown prose is the implementation, interpreted by the model at runtime.
+The file is the entire specification, and there is no separate code that "implements" the command: the Markdown prose is the implementation, interpreted by the model at runtime.
 
 ```mermaid
 sequenceDiagram
@@ -54,7 +68,7 @@ You can also read the installed copies locally at:
 
 ### How a command fits into a release type
 
-Wire commands are not standalone tools — each one is a step in a release type's prescribed sequence. The `dbt_development` release type, for example, positions `dbt-generate` as the third artifact in a chain that begins with requirements and ends with a deployed semantic layer. The command knows which upstream artifacts it needs (the data model) and which downstream step follows (validate).
+Wire commands are not standalone tools; instead, each one is a step in a release type's prescribed sequence. The `dbt_development` release type, for example, positions `dbt-generate` as the third artifact in a chain that begins with requirements and ends with the data quality tests, and the command knows which upstream artifacts it needs (the data model) and which downstream step follows (validate).
 
 ```mermaid
 flowchart TD
@@ -69,13 +83,13 @@ flowchart TD
     style DBT fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
 ```
 
-`dbt-generate` will not run if `data_model.review` is not `approved` in `status.md`. This prerequisite gate is checked in Step 1 of the command file — not enforced by any framework code, just a conditional check written into the prose.
+`dbt-generate` will not run if `data_model.review` is not `approved` in `status.md`. As of v4.0.0, this is not a bespoke conditional check hand-written into each command's prose; instead, every generate/validate/review command auto-delegates to a shared utility spec, [`precondition_gate.md`](https://github.com/rittmananalytics/wire/blob/main/wire/specs/utils/precondition_gate.md), which reads the command's declared preconditions and blocks by default if they are not met. There is still no compiled binary enforcing it (it is Markdown prose the model follows, the same as everything else in Wire), but it is now one shared mechanism instead of N separately maintained copies, and a block can be overridden only with a recorded name and reason. See [Core Concepts: The precondition gate](./core-concepts#the-precondition-gate) for the full mechanism.
 
 ---
 
 ## Anatomy of a command file
 
-Every Wire command file follows the same structure. Here it is in full, using [`dbt-generate.md`](https://github.com/rittmananalytics/wire-plugin/blob/main/commands/dbt-generate.md) as the example.
+Every Wire command file follows the same structure, and once you have read one you can find your way around any of them. Here it is in full, using [`dbt-generate.md`](https://github.com/rittmananalytics/wire-plugin/blob/main/commands/dbt-generate.md) as the example, with the six sections in the order they appear in the file.
 
 ### 1. YAML frontmatter
 
@@ -86,7 +100,7 @@ argument-hint: <project-folder>
 ---
 ```
 
-`description` is what appears in the Claude Code command picker when you browse available commands. `argument-hint` is the tooltip shown when you type the command — it tells you what argument to pass.
+`description` is what appears in the Claude Code command picker when you browse available commands. `argument-hint` is the tooltip shown when you type the command, and it tells you what argument to pass.
 
 ### 2. User Input
 
@@ -98,7 +112,7 @@ $ARGUMENTS
 ```
 ````
 
-`$ARGUMENTS` is replaced at runtime with whatever you typed after the command name. The command file can reference it anywhere below to know which project folder to operate on.
+`$ARGUMENTS` is replaced at runtime with whatever you typed after the command name, and the command file can reference it anywhere below to know which project folder to operate on.
 
 ### 3. Path configuration
 
@@ -108,11 +122,11 @@ $ARGUMENTS
 - **Projects**: `.wire` (project data and status files)
 ```
 
-This tells the model where project files live. Since Wire stores all project state under `.wire/releases/<folder>/`, this section ensures the model looks in the right place regardless of where you invoke the command from.
+This tells the model where project files live. Since Wire stores all project state under `.wire/releases/<folder>/`, this section ensures that the model looks in the right place regardless of where you invoke the command from.
 
 ### 4. Telemetry
 
-Every command file includes an identical telemetry section before the workflow begins. This runs first, before any project work.
+Every command file includes an identical telemetry section before the workflow begins, and this runs first, before any project work.
 
 ```markdown
 ## Telemetry
@@ -124,13 +138,15 @@ adoption and usage patterns. This runs at the start of every command.
 The section instructs Claude to:
 - Check for a telemetry ID file at `~/.wire/telemetry_id`
 - Create one on first run (a random UUID, no personal data)
-- Fire a background `curl` call to Segment with the command name, plugin version, OS, runtime, and git remote
+- Fire a background `curl` call to Segment with the command name, plugin version, OS, runtime and git remote
 
-**What it sends**: which command was run, when, on which OS, with which plugin version, from which git remote. No code, no project content, no file names. The git remote is included so the team can understand whether Wire is being used on client projects or internal tooling — that's it.
+**What it sends**: which command was run, when, on which OS, with which plugin version, from which git remote and (since v4.0.0) what invoked it. No code, no project content, no file names. The git remote is included so that the team can understand whether Wire is being used on client projects or internal tooling, and that is all.
+
+The `invoked_by` property carries one of `typed`, `orchestrator`, `lane` or `autopilot`, read from the `WIRE_INVOKED_BY` environment variable and defaulting to `typed`. It replaced a property that was hardcoded to `"false"` and so answered nothing. It matters because [the release director model](../advanced/release-director) drives typed-command counts down by design, and typed-prompt counts were the adoption measure, so without it "nobody is using Wire" and "Wire is being driven by an agent" look identical.
 
 **How to opt out**: set `WIRE_TELEMETRY=false` in your shell environment. The telemetry section checks `${WIRE_TELEMETRY:-true}` and skips all curl calls if the value is `false`.
 
-**It never blocks**: the curl runs in a background subshell (`&`) with all output suppressed. If there's no network, no curl, or any other failure, the workflow continues without interruption.
+**It never blocks**: the curl runs in a background subshell (`&`) with all output suppressed. If there is no network, no curl or any other failure, the workflow continues without interruption.
 
 ### 5. Auto-delegation preamble
 
@@ -140,18 +156,20 @@ Generate commands include one additional section that does not appear in validat
 Follow `specs/utils/dbt_developer_delegate.md` before executing the workflow below.
 ```
 
-That single line references a shared utility spec that implements a 4-step protocol:
+That single line references a shared utility spec that implements a four-step protocol:
 
-1. **Check for the agent definition** — look for `agents/dbt-developer/AGENT.md` in the installed plugin
-2. **Re-entrancy guard** — if the current context is already running as a `wire:dbt-developer` subagent, skip delegation to avoid an infinite loop
-3. **Dispatch** — spawn the specialist subagent via Claude Code's Agent tool with the release folder and key input paths; return immediately and let the subagent complete the work
-4. **Inline fallback** — if the agent definition was not found or delegation was skipped, execute the workflow steps directly
+1. **Check for the agent definition**: look for `agents/dbt-developer/AGENT.md` in the installed plugin
+2. **Re-entrancy guard**: if the current context is already running as a `wire:dbt-developer` subagent, skip delegation to avoid an infinite loop
+3. **Dispatch**: spawn the specialist subagent via Claude Code's Agent tool with the release folder and key input paths; return immediately and let the subagent complete the work
+4. **Inline fallback**: if the agent definition was not found or delegation was skipped, execute the workflow steps directly
 
-This means the same command file works in two modes: full agentic delegation when the plugin is installed with agents, and direct inline execution in environments where the agent definitions are not present.
+It follows that the same command file works in two modes: full agentic delegation when the plugin is installed with agents, and direct inline execution in environments where the agent definitions are not present.
+
+**Since v4.0.0** the same specialist runs as a **lane** when the orchestrating session dispatches it. The difference is one rule: a lane writes its own artifact tree and its own state file, and the orchestrating session writes `status.md` and the execution log from that state file. Outside orchestrated mode the subagent updates `status.md` itself, exactly as described above.
 
 ### 6. Workflow Specification
 
-This is the main content — the step-by-step instructions the model executes. For `dbt-generate.md`, the workflow spec begins:
+This is the main content, the step-by-step instructions the model executes, and for `dbt-generate.md` the workflow spec begins:
 
 ```markdown
 ---
@@ -161,13 +179,13 @@ description: Generate dbt models following layered architecture (staging → int
 # Generate dbt models
 ```
 
-Everything that follows is structured prose the model reads as instructions. Steps are numbered. Checks have explicit failure conditions. Output formats are specified. It is, in effect, a runbook written for an LLM instead of a human operator.
+Everything that follows is structured prose that the model reads as instructions: steps are numbered, checks have explicit failure conditions and output formats are specified. It is, in effect, a "runbook" written for an LLM instead of a human operator.
 
 ---
 
 ## dbt-generate: how dbt code is shaped
 
-[`dbt-generate.md`](https://github.com/rittmananalytics/wire-plugin/blob/main/commands/dbt-generate.md) is one of the longer commands in the framework — it specifies exactly how dbt models should be structured, named, and documented. Here is what each section does.
+[`dbt-generate.md`](https://github.com/rittmananalytics/wire-plugin/blob/main/commands/dbt-generate.md) is one of the longer commands in the framework, since it specifies exactly how dbt models should be structured, named and documented. Here is what each section does.
 
 ### Step 1 — Read the upstream artifact
 
@@ -179,7 +197,7 @@ Extract: source systems and tables, entities and relationships,
          required fields and business rules
 ```
 
-This is how the chain of derivation works in practice. The dbt code is not generated from a blank prompt — it is derived from an artifact that was itself derived from requirements, which came from the SOW. By the time the model generates SQL, the entity names, field definitions, and join logic are already decided upstream.
+This is how the chain of derivation works in practice. The dbt code is not generated from a blank prompt; instead, it is derived from an artifact that was itself derived from requirements, which came from the SOW, so that by the time the model generates SQL the entity names, field definitions and join logic are already decided upstream.
 
 ### Step 1.5 — Convention source detection
 
@@ -193,19 +211,19 @@ Priority order:
 4. Embedded conventions in this command file   (fallback)
 ```
 
-If a conventions file exists, its rules override the embedded defaults. This means a client project can deviate from RA standard conventions by dropping a file at the root — the command picks it up automatically, without any modification to the plugin.
+If a conventions file exists, its rules override the embedded defaults, which means that a client project can deviate from RA standard conventions by dropping a file at the root, and the command picks it up automatically, without any modification to the plugin.
 
 ### Steps 3–5 — Layered SQL generation
 
 The command generates models in three passes, one per dbt layer:
 
-**Staging** (`stg_<source>__<object>.sql`): Clean and rename raw source columns. Add a surrogate key. Rename to RA conventions. No joins, no business logic.
+**Staging** (`stg_<source>__<object>.sql`): Clean and rename raw source columns, add a surrogate key and rename to RA conventions, with no joins and no business logic.
 
-**Integration** (`int__<object>.sql`): Business logic, entity merging, cross-source joins. Complex models like contact deduplication and multi-source company merging have their own sub-pattern (Steps 5.5) with specific macro structures the command knows to generate.
+**Integration** (`int__<object>.sql`): Business logic, entity merging and cross-source joins. Complex models such as contact deduplication and multi-source company merging have their own sub-pattern (Steps 5.5) with specific macro structures the command knows to generate.
 
-**Warehouse** (`<object>_dim.sql`, `<object>_fct.sql`): Dimensional model ready for BI. Dimensions get a surrogate key and a full column set. Facts join to dimensions via those keys.
+**Warehouse** (`<object>_dim.sql`, `<object>_fct.sql`): Dimensional model ready for BI, in which dimensions get a surrogate key and a full column set and facts join to dimensions via those keys.
 
-The naming conventions, directory structure, field ordering, and CTE patterns are all specified inline in the command file. The SQL the model writes is constrained by those rules — it cannot invent its own conventions.
+The naming conventions, directory structure, field ordering and CTE patterns are all specified inline in the command file, and the SQL the model writes is constrained by those rules: it cannot invent its own conventions.
 
 ### Step 6 — Documentation generation
 
@@ -225,7 +243,7 @@ After writing the files, the command updates `status.md` to mark `dbt.generate: 
 
 ### Skills used by dbt-generate
 
-Wire commands can activate **skills** — additional instruction sets that extend the model's behaviour for a specific domain. The `wire:dbt-development` skill carries deep dbt conventions, macro patterns, and Snowflake/BigQuery dialect awareness. When that skill is active, the model has access to a richer set of dbt-specific rules than what fits inside the command file itself.
+Wire commands can activate **skills**, which are additional instruction sets that extend the model's behaviour for a specific domain. The `wire:dbt-development` skill carries deep dbt conventions, macro patterns and Snowflake/BigQuery dialect awareness, and when that skill is active the model has access to a richer set of dbt-specific rules than what fits inside the command file itself.
 
 ```mermaid
 flowchart LR
@@ -242,7 +260,7 @@ flowchart LR
     style CMD fill:#e8f4f8,stroke:#2196F3,stroke-width:2px
 ```
 
-The command file specifies the workflow. The skill specifies the craft. Both are Markdown files loaded into the model's context — they combine at runtime to constrain what gets generated.
+The command file specifies the workflow and the skill specifies the "craft", and since both are Markdown files loaded into the model's context they combine at runtime to constrain what gets generated.
 
 Skills are listed in `/wire:help` and documented in the [Skills reference](../reference/skills).
 
@@ -259,13 +277,15 @@ At the bottom of `dbt-generate.md` there is a pre-commit checklist:
 - [ ] Model and columns documented (if staging/warehouse)
 ```
 
-This is not decoration — the validate command reads it as the specification for what to check.
+This is not decoration: the validate command reads it as the specification for what to check.
 
 ---
 
 ## The three-command cycle
 
-The three command files together implement the generate → validate → review lifecycle for dbt. Each one picks up exactly where the last one left off, reading state from `status.md` and writing it back on completion.
+The three command files together implement the generate → validate → review lifecycle for dbt, and each one picks up exactly where the last one left off, reading state from `status.md` and writing it back on completion.
+
+Since v4.0.0 you can drive this cycle by direction rather than by typing each command: Wire reads the same `status.md` and the release-type graph, works out that `dbt-validate` is what comes next and runs it, naming it in the closing line of its report. The files that run and the state they write are identical. See [The Release Director Model](../advanced/release-director).
 
 ```mermaid
 stateDiagram-v2
@@ -291,11 +311,11 @@ stateDiagram-v2
 
 ## dbt-validate: what it checks
 
-[`dbt-validate.md`](https://github.com/rittmananalytics/wire-plugin/blob/main/commands/dbt-validate.md) defines the validation rules explicitly. It does not run a test runner with hardcoded logic — it tells the model exactly what to look for, file by file.
+[`dbt-validate.md`](https://github.com/rittmananalytics/wire-plugin/blob/main/commands/dbt-validate.md) defines the validation rules explicitly, and it does not run a test runner with hardcoded logic; instead, it tells the model exactly what to look for, file by file.
 
 ### The two-tier convention system
 
-Validation uses the same priority check as generation. If a project-specific conventions file exists, validation uses those rules. This means a project that intentionally deviates from RA defaults will validate correctly against its own conventions, not fail against standards that were never relevant.
+Validation uses the same priority check as generation, so if a project-specific conventions file exists validation uses those rules, and a project that intentionally deviates from RA defaults will therefore validate correctly against its own conventions rather than fail against standards that were never relevant.
 
 ### Naming convention checks
 
@@ -312,38 +332,38 @@ The command specifies a detailed rules table with severity ratings:
 | Boolean fields: `is_` or `has_` prefix | Warning |
 | Timestamp fields: `<event>_ts` | Warning |
 
-The model walks every file in the dbt project and flags violations against this table. `Critical` violations block the validate step from passing.
+The model walks every file in the dbt project and flags violations against this table, and `Critical` violations block the validate step from passing.
 
 ### dbt test execution
 
-Step 2 of the validate command asks how to run tests — dbt Cloud API, dbt Core locally, or manual output — then captures results and includes them in the validation report. The report format is specified inline: pass/fail per check, with severity and remediation guidance.
+Step 2 of the validate command asks how to run tests (dbt Cloud API, dbt Core locally or manual output), then captures results and includes them in the validation report. The report format is specified inline: pass/fail per check, with severity and remediation guidance.
 
 ### What validate is not
 
-Validate is not a substitute for running dbt. It catches naming violations, documentation gaps, and test coverage failures before you waste a run. You still need `dbt test` to catch data correctness issues.
+Validate is not a substitute for running dbt: it catches naming violations, documentation gaps and test coverage failures before you waste a run, but you still need `dbt test` to catch data correctness issues.
 
 ---
 
 ## dbt-review: how approval is recorded
 
-[`dbt-review.md`](https://github.com/rittmananalytics/wire-plugin/blob/main/commands/dbt-review.md) is the shortest of the three. Its job is to capture stakeholder sign-off and record it in the status file.
+[`dbt-review.md`](https://github.com/rittmananalytics/wire-plugin/blob/main/commands/dbt-review.md) is the shortest of the three, and its job is to capture stakeholder sign-off and record it in the status file.
 
 ### Prerequisites check
 
-Step 1 reads `status.md` and checks `dbt.validate == pass`. If validation has not passed, it warns you and asks whether to proceed — it does not hard-block, because there are valid reasons to review with outstanding warnings, but it makes the state visible.
+Step 1 reads `status.md` and checks `dbt.validate == pass`, which since 4.0.0 is enforced by the precondition gate: if validation has not passed the review blocks, and the only way past is an override recorded with your name and a reason, so that reviewing with an outstanding failure is a visible decision rather than a quiet one.
 
 ### External context retrieval
 
-Step 2.5 is optional enrichment. Before asking for a decision, the command:
+Step 2.5 is optional enrichment, and before asking for a decision the command does two things:
 
-1. Checks whether the Fathom MCP server is available and searches for recent meeting recordings mentioning the dbt deliverable. If found, it surfaces a meeting summary — you get the client's verbal feedback in context alongside the code you are about to approve.
+1. Checks whether the Fathom MCP server is available and searches for recent meeting recordings mentioning the dbt deliverable. If found, it surfaces a meeting summary, so that you get the client's verbal feedback in context alongside the code you are about to approve.
 2. Checks whether the Atlassian MCP server is available and searches Confluence for related design documents and Jira for any comments on the associated ticket.
 
-This means a review session can incorporate feedback from a call that happened yesterday, a Confluence comment left by a stakeholder last week, and the current dbt files — all in a single command.
+As such, a review session can incorporate feedback from a call that happened yesterday, a Confluence comment left by a stakeholder last week and the current dbt files, all in a single command.
 
 ### Feedback capture
 
-The command uses `AskUserQuestion` to present three options: Approved, Changes Requested, or Needs Discussion. This is the structured question tool built into Claude Code — it renders as an interactive prompt rather than free text.
+The command uses `AskUserQuestion` to present three options: Approved, Changes Requested or Needs Discussion. This is the structured question tool built into Claude Code, and it renders as an interactive prompt rather than free text.
 
 ### Status file update
 
@@ -362,7 +382,7 @@ dbt:
   review_notes: "[feedback text]"
 ```
 
-The execution log gets a corresponding entry. The status change is what the next command in the chain reads — if `review` is not `approved`, downstream artifacts will refuse to generate.
+The execution log gets a corresponding entry, and the status change is what the next command in the chain reads: if `review` is not `approved`, downstream artifacts will refuse to generate.
 
 ---
 
@@ -376,23 +396,23 @@ gh api repos/rittmananalytics/wire-plugin/contents/commands/dbt-generate.md \
   --jq '.content' | base64 -d | less
 
 # From the local plugin cache
-less ~/.claude/plugins/cache/rittman-analytics/wire/3.9.5/commands/dbt-generate.md
+less ~/.claude/plugins/cache/rittman-analytics/wire/<version>/commands/dbt-generate.md
 ```
 
-Every command in the plugin can be read this way. If a command behaves unexpectedly, reading the source is the fastest way to understand why — there is no other layer to dig into.
+Every command in the plugin can be read this way. If a command behaves unexpectedly, reading the source is the fastest way to understand why, because there is no other layer to dig into.
 
 ---
 
 ## What this means in practice
 
-Wire's approach has a few concrete implications:
+So what does all of this mean for you day to day? Wire's approach has four concrete implications.
 
-**The behaviour is pinned to a version.** Plugin version 3.9.5 installs version 3.9.5 of every command file. If RA ships a new naming convention in 3.9.6, your project stays on the 3.9.5 rules until you explicitly upgrade with `/wire:upgrade`.
+**The behaviour is pinned to a version.** Plugin version 4.0.0 installs version 4.0.0 of every command file. If RA ships a new naming convention in 4.0.1, your project stays on the 4.0.0 rules until you explicitly upgrade with `/wire:upgrade`. This is true whether you type the commands or direct Wire: the orchestrating session runs the installed version of each command and nothing else.
 
-**You can override it.** Drop a `.dbt-conventions.md` in your project root and both generate and validate will pick it up. No fork, no plugin modification required.
+**You can override it.** Drop a `.dbt-conventions.md` in your project root and both generate and validate will pick it up, with no fork and no plugin modification required.
 
 **The model's decisions are traceable.** Because the command file specifies exactly what to read and in what order, you can reproduce any generated output by re-running the command with the same upstream artifacts. There is no stochastic behaviour hiding behind an API call.
 
-**You can contribute.** The plugin is open source. If you find a rule that doesn't apply to your context, or a step that should be there but isn't, a PR to the command file is all it takes.
+**You can contribute.** The plugin is open source, so if you find a rule that does not apply to your context, or a step that should be there but is not, a PR to the command file is all it takes.
 
 Next: [Worked Example →](../advanced/worked-example)

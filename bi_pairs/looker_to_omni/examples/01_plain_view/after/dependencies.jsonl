@@ -1,0 +1,5 @@
+{"from": "looker:lookml:view:customers", "to": "looker:lookml:field:customers:count", "kind": "contains"}
+{"from": "looker:lookml:view:customers", "to": "looker:lookml:field:customers:country", "kind": "contains"}
+{"from": "looker:lookml:view:customers", "to": "looker:lookml:field:customers:customer_id", "kind": "contains"}
+{"from": "looker:lookml:view:customers", "to": "looker:lookml:field:customers:full_name", "kind": "contains"}
+{"from": "looker:lookml:view:customers", "to": "looker:lookml:field:customers:total_lifetime_value", "kind": "contains"}

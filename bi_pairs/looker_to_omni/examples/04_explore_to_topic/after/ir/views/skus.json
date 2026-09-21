@@ -1,0 +1,49 @@
+{
+  "identity": "looker:lookml:view:skus",
+  "name": "skus",
+  "schema": "analytics",
+  "table_name": "dim_skus",
+  "emitted": true,
+  "class": "mechanical",
+  "unsupported": [],
+  "source": {
+    "file": "skus.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:skus:sku_id",
+      "name": "sku_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.sku_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "primary_key": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "skus.view.lkml",
+        "view": "skus"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:skus:category",
+      "name": "category",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.category",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "skus.view.lkml",
+        "view": "skus"
+      }
+    }
+  ]
+}

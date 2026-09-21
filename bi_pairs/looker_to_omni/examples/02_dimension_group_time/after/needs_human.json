@@ -1,0 +1,20 @@
+[
+  {
+    "scope": "view",
+    "name": "events",
+    "field": "occurred",
+    "construct": "timeframe",
+    "class": "assisted",
+    "reason": "timeframe 'week_of_year' has no Omni equivalent; dropped from the list",
+    "lkml_file": "events.view.lkml"
+  },
+  {
+    "scope": "view",
+    "name": "events",
+    "field": "session",
+    "construct": "dimension_group_duration",
+    "class": "assisted",
+    "reason": "duration group emitted as Omni `duration`; confirm the parameter shape against the Omni docs",
+    "lkml_file": "events.view.lkml"
+  }
+]

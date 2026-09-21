@@ -68,9 +68,11 @@ Eversholt Brewing Co operates three disconnected data systems — a Shopify DTC 
 
 ## What is a Full Platform release?
 
-The `full_platform` release type is the most comprehensive Wire engagement, spanning all six phases from requirements capture through trained users. Every artifact type is in scope: the requirements specification, conceptual entity model, pipeline design, physical data model, dbt project, dbt Cloud orchestration config, LookML semantic layer, Looker dashboards, data quality tests, UAT plan, deployment runbook, training materials, and technical documentation. Where a narrower release type — `dbt_development`, `semantic_layer`, or `dashboard_first` — starts at a later phase or omits an entire layer, `full_platform` assumes you are building something that does not yet exist: new sources, new models, new analytics.
+Many of the clients who come to you for a "full platform" are in the position Eversholt Brewing Co is in: several operational systems that were bought separately, no automated integration between them and a finance director who spends the first morning of every week exporting from each system and reconciling the results by hand. Nothing exists yet to build on, which means that new sources, new models and new analytics all have to be designed, built, tested and handed over inside a single engagement.
 
-Choose `full_platform` when the client has no functioning analytics stack, or when they have disparate data sources with no reliable single view and the engagement SOW covers the full journey. It is a poor fit when the client already has deployed dbt models and a working warehouse — in that case, reach for `semantic_layer` or `dbt_development` and save the full sequence for a future phase. The typical two-week cadence puts requirements and design in Week 1, development and testing across Days 4–9, and deployment plus enablement in the final two days.
+The `full_platform` release type is Wire's answer to that situation, and it is the most comprehensive engagement Wire runs, spanning all six phases from requirements capture through to trained users. Every artifact type is in scope: the requirements specification, conceptual entity model, pipeline design, physical data model, dbt project, dbt Cloud orchestration config, LookML semantic layer, Looker dashboards, data quality tests, UAT plan, deployment runbook, training materials and technical documentation. Where a narrower release type (`dbt_development`, `semantic_layer` or `dashboard_first`) starts at a later phase or omits an entire layer, `full_platform` assumes you are building something that does not yet exist.
+
+So when should you choose it? Choose `full_platform` when the client has no functioning analytics stack, or when they have disparate data sources with no reliable single view and the engagement SOW covers the full journey. It is a poor fit when the client already has deployed dbt models and a working warehouse; in that case, reach for `semantic_layer` or `dbt_development` and save the full sequence for a future phase. The typical two-week cadence puts requirements and design in Week 1, development and testing across Days 4–9 and deployment plus enablement in the final two days, and the walkthrough later on this page follows that cadence phase by phase.
 
 ### High-Level Process
 
@@ -83,19 +85,59 @@ graph LR
     DEPLOY --> ENABLE["Phase 6<br/>Enablement"]
 ```
 
+
+:::info New in 4.0: business rules discovery
+
+This walkthrough does not use it, so the sequence below still reads correctly, but
+you should know that it exists.
+
+`/wire:business-rules-generate` is an optional first phase that establishes what
+the numbers mean before design bakes a definition in: one register per domain,
+holding every competing definition found in dbt, LookML or an `--import` from a
+system Wire cannot read, what they disagree on, the decision and who approved it.
+A rule nobody has decided is recorded as `unknown` rather than left out.
+
+The gate on `conceptual_model-generate` is advisory: it warns, takes a reason, records the skip and
+proceeds.
+
+Reference: [Business rules discovery](../advanced/business-rules.md).
+:::
+
+:::info New in 4.0: optional logical model
+
+`/wire:logical_model-generate` sits between the conceptual and the physical model
+and holds the decisions that are neither business nor dbt: what an entity's primary
+key actually is, cardinality, which source wins when the same customer exists in
+several systems, how far to normalise and how a conversion is attributed. Those
+were previously decided implicitly inside `data_model-generate`.
+
+It is optional, and worth running when identity resolution or attribution is contested.
+This walkthrough does not use it.
+:::
+
+:::info New in 4.0: reading an existing Modality model
+
+Where the client already models their data in Modality, `/wire:utils-modality-link`
+points the release at it and the design commands read the entities, sources and
+cardinality from the `.mml` files rather than deriving them, still reading the
+requirements so the difference between the two becomes a finding.
+
+Reference: [Modality models as an input](../advanced/modality-models.md).
+:::
+
 ## The scenario
 
 | | |
 |---|---|
 | **Client** | Eversholt Brewing Co |
 | **Sector** | UK craft brewery, ~£8m annual revenue, regional distribution |
-| **Problem** | Sales, production, and distribution data across Shopify (DTC), BrewMan ERP (production batches, stock), and HubSpot CRM (wholesale accounts). Monday morning manual Google Sheet refresh. Finance director cannot see real-time margin by SKU or channel without multiple manual exports. |
+| **Problem** | Sales, production and distribution data across Shopify (DTC), BrewMan ERP (production batches, stock) and HubSpot CRM (wholesale accounts). Monday morning manual Google Sheet refresh. Finance director cannot see real-time margin by SKU or channel without multiple manual exports. |
 | **Stack** | BigQuery, Fivetran, dbt Cloud, Looker |
 | **Release type** | `full_platform` |
 | **Release ID** | `01-eversholt-brewing-platform` |
 | **Duration** | 2 weeks (12 business days) |
 
-Eversholt brews six core SKUs — a pale, a session IPA, a porter, a stout, a wheat beer, and a seasonal — distributed through two channels: DTC via Shopify and wholesale via approximately 40 regional pub groups managed in HubSpot. The ops team knows which SKUs are selling because they check Shopify. The finance director knows margin only after month-end, when the production cost data from BrewMan is reconciled manually. The Google Sheet in between is updated every Monday by whoever has time. This is the problem the platform will solve.
+Eversholt brews six core SKUs (a pale, a session IPA, a porter, a stout, a wheat beer and a seasonal), distributed through two channels: DTC via Shopify and wholesale via approximately 40 regional pub groups managed in HubSpot. The ops team knows which SKUs are selling because they check Shopify, whereas the finance director knows margin only after month-end, when the production cost data from BrewMan is reconciled manually, and the Google Sheet in between is updated every Monday by whoever has time. This is the problem the platform will solve, and it is the thread we will follow through all six phases.
 
 ## What you will produce
 
@@ -108,7 +150,7 @@ Eversholt brews six core SKUs — a pale, a session IPA, a porter, a stout, a wh
 | Data model specification | `design/data_model.md` | `data-designer` |
 | Dashboard mockups | `design/mockups/margin-by-sku-dashboard.html` | Main session |
 | dbt project | 7 staging models, 1 integration model, 5 warehouse models, 41 tests | `dbt-developer` (5 agents) |
-| dbt Cloud config | `development/dbt_cloud_config.md` — daily 6am + CI/PR job | `orchestration-engineer` |
+| dbt Cloud config | `development/dbt_cloud_config.md`, daily 6am + CI/PR job | `orchestration-engineer` |
 | LookML semantic layer | 4 explores, views for all warehouse models | `semantic-layer-developer` |
 | Looker dashboards | Margin by SKU, Channel Revenue, Production Cost | `semantic-layer-developer` |
 | Data quality tests | Freshness, row count reconciliation, cross-system validation | `data-quality-engineer` |
@@ -120,7 +162,7 @@ Eversholt brews six core SKUs — a pale, a session IPA, a porter, a stout, a wh
 
 ## Tutorial Playbook
 
-The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
+The diagram below is the delivery playbook for this tutorial's scenario, and in a live engagement [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates it for you as a Mermaid-format delivery plan, with the dependency order, team assignments and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
@@ -234,11 +276,11 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 ### Phase 1 — Setup and requirements (Day 1)
 
-Start by creating the release. The [`/wire:new`](../reference/commands#session-and-management-commands) command scaffolds the folder structure and status tracker:
+Your first step is to create the release, and the [`/wire:new`](../reference/commands#session-and-management-commands) command scaffolds the folder structure and status tracker for you:
 
 :::info[First release in this repository?]
 
-If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement (naming the client, setting the engagement context and configuring any integrations) before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
 
 :::
 
@@ -256,16 +298,16 @@ If this is the first release created in a git repository, `/wire:new` will first
 
 :::info[Issue tracking and document sync]
 
-Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses, and Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
 
-Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review, in which case review commands pull comments and edits made in the document store back as context before gathering sign-off.
 
-Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear) or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
 
 :::
 
 
-Copy the SOW PDF, Shopify export schema, BrewMan PostgreSQL schema dump, and HubSpot CRM field catalogue into `releases/01-eversholt-brewing-platform/requirements/`. Then generate the requirements specification:
+With the release scaffolded, copy the SOW PDF, Shopify export schema, BrewMan PostgreSQL schema dump and HubSpot CRM field catalogue into `releases/01-eversholt-brewing-platform/requirements/`, so that the agent has its source material to hand, and then generate the requirements specification:
 
 ```
 /wire:requirements-generate 01-eversholt-brewing-platform
@@ -279,14 +321,14 @@ Copy the SOW PDF, Shopify export schema, BrewMan PostgreSQL schema dump, and Hub
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, with no extra steps needed on your part. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
 
 :::
 
-The agent produces a 10-section requirements specification: FR-1 through FR-7 (functional requirements with acceptance criteria), NFR-1 through NFR-4 (freshness SLA of daily by 7am, row-level security by brewery role, sub-3-second dashboard load, 99.5% pipeline uptime), and a deliverable-to-artifact mapping. It writes two entries immediately to `decisions.md`:
+The agent produces a ten-section requirements specification covering FR-1 through FR-7 (functional requirements with acceptance criteria), NFR-1 through NFR-4 (freshness SLA of daily by 7am, row-level security by brewery role, sub-3-second dashboard load, 99.5% pipeline uptime) and a deliverable-to-artifact mapping, and it writes two entries immediately to `decisions.md`:
 
-- Modelled at SKU-day grain for sales, not order-line — order-line grain would require 12× the Fivetran MAR volume with no analytical benefit at the reporting level required
-- Wholesale accounts use HubSpot deal stage as the channel qualifier, not a custom Eversholt field — custom field data quality is inconsistent across reps
+- Modelled at SKU-day grain for sales, not order-line, because order-line grain would require 12× the Fivetran MAR volume with no analytical benefit at the reporting level required
+- Wholesale accounts use HubSpot deal stage as the channel qualifier, not a custom Eversholt field, since custom field data quality is inconsistent across reps
 
 ```
 /wire:requirements-validate 01-eversholt-brewing-platform
@@ -299,7 +341,7 @@ The agent produces a 10-section requirements specification: FR-1 through FR-7 (f
 → Approved by Laura Hennessy (Finance Director), 2026-06-03
 ```
 
-Generate the playbook before moving to design:
+Before we move on to design, generate the playbook, which gives you the delivery plan for the rest of the engagement:
 
 ```
 /wire:playbook-generate 01-eversholt-brewing-platform
@@ -319,7 +361,7 @@ Generate the playbook before moving to design:
 → [auto-delegated to data-designer agent]
 ```
 
-The agent produces a business-level entity model with five domain entities — `Product` (SKU), `ProductionBatch`, `SalesOrder`, `WholesaleAccount`, `Channel` — and a Mermaid `erDiagram` showing that a `ProductionBatch` produces multiple units of one `Product`, and a `SalesOrder` references both `Product` and `Channel`. No columns at this stage. Business stakeholders need to approve the entities before any technical work begins.
+The agent produces a business-level entity model with five domain entities, `Product` (SKU), `ProductionBatch`, `SalesOrder`, `WholesaleAccount` and `Channel`, together with a Mermaid `erDiagram` showing that a `ProductionBatch` produces multiple units of one `Product` and that a `SalesOrder` references both `Product` and `Channel`. There are no columns at this stage, and deliberately so, because business stakeholders need to approve the entities before any technical work begins.
 
 ```
 /wire:conceptual_model-validate 01-eversholt-brewing-platform → PASS
@@ -336,16 +378,16 @@ The agent produces a business-level entity model with five domain entities — `
 → [auto-delegated to pipeline-engineer agent]
 ```
 
-The agent produces the full pipeline architecture document. Three Fivetran connectors:
+The agent produces the full pipeline architecture document, at the heart of which are three Fivetran connectors:
 
-- **Shopify REST API** — orders, order lines, products, customers; full refresh daily with incremental on `updated_at`; estimated MAR ~1.1M rows/month
-- **BrewMan PostgreSQL CDC** — production batches, stock movements, ingredient costs; log-based CDC via Fivetran's PostgreSQL connector; estimated MAR ~0.8M rows/month; Cloud Function required for IAM-scoped connection (BrewMan runs on-prem, tunnel via Cloud SQL Auth Proxy)
-- **HubSpot REST API** — deals, contacts, companies, line items; incremental on `hs_lastmodifieddate`; estimated MAR ~0.2M rows/month
+- **Shopify REST API**: orders, order lines, products, customers; full refresh daily with incremental on `updated_at`; estimated MAR ~1.1M rows/month
+- **BrewMan PostgreSQL CDC**: production batches, stock movements, ingredient costs; log-based CDC via Fivetran's PostgreSQL connector; estimated MAR ~0.8M rows/month; Cloud Function required for IAM-scoped connection (BrewMan runs on-prem, tunnel via Cloud SQL Auth Proxy)
+- **HubSpot REST API**: deals, contacts, companies, line items; incremental on `hs_lastmodifieddate`; estimated MAR ~0.2M rows/month
 
-Total estimated MAR: ~2.1M rows/month. Key decisions written to `decisions.md`:
+The total estimated MAR is ~2.1M rows/month, and two key decisions are written to `decisions.md`:
 
-- Production batch grain set at brew-day, not hourly production run — BrewMan records costs at batch close, not per run; hourly grain would require synthetic cost allocation with no source data to support it (resolves OQ-1)
-- BrewMan connection requires a Cloud Function for auth token management — on-prem PostgreSQL behind VPN, direct Fivetran connector not available; Cloud SQL Auth Proxy with a service account is the supported pattern
+- Production batch grain set at brew-day, not hourly production run, because BrewMan records costs at batch close, not per run, and hourly grain would require synthetic cost allocation with no source data to support it (resolves OQ-1)
+- BrewMan connection requires a Cloud Function for auth token management, since the on-prem PostgreSQL sits behind a VPN and a direct Fivetran connector is not available; Cloud SQL Auth Proxy with a service account is the supported pattern
 
 ```
 /wire:pipeline_design-validate 01-eversholt-brewing-platform → PASS
@@ -361,26 +403,26 @@ Total estimated MAR: ~2.1M rows/month. Key decisions written to `decisions.md`:
 → [auto-delegated to data-designer agent]
 ```
 
-The agent produces `_sources.yml` for all three Fivetran connectors, a physical ERD, and a full model inventory:
+The agent produces `_sources.yml` for all three Fivetran connectors, a physical ERD and a full model inventory, which runs as follows:
 
-**Staging layer (7 models):**
-- `stg_shopify__orders` — order header, `order_pk`, surrogate on `shopify_order_id`
-- `stg_shopify__order_lines` — line items with `order_line_pk`, `product_fk`
-- `stg_shopify__products` — SKU master, `product_pk`
-- `stg_brewman__production_batches` — brew-day grain, `batch_pk`, ingredient cost total
-- `stg_brewman__stock_movements` — stock in/out with `movement_pk`, `batch_fk`
-- `stg_brewman__ingredient_costs` — cost per batch, `cost_pk`, `batch_fk`
-- `stg_hubspot__deals` — wholesale deals with `deal_pk`, `company_fk`
+**Staging layer (seven models):**
+- `stg_shopify__orders`: order header, `order_pk`, surrogate on `shopify_order_id`
+- `stg_shopify__order_lines`: line items with `order_line_pk`, `product_fk`
+- `stg_shopify__products`: SKU master, `product_pk`
+- `stg_brewman__production_batches`: brew-day grain, `batch_pk`, ingredient cost total
+- `stg_brewman__stock_movements`: stock in/out with `movement_pk`, `batch_fk`
+- `stg_brewman__ingredient_costs`: cost per batch, `cost_pk`, `batch_fk`
+- `stg_hubspot__deals`: wholesale deals with `deal_pk`, `company_fk`
 
-**Integration layer (1 model):**
-- `int__product_unified` — resolves product identity across Shopify SKU codes and BrewMan product codes; 6-core-SKU mapping from a seed file (`product_crosswalk.csv`)
+**Integration layer (one model):**
+- `int__product_unified`: resolves product identity across Shopify SKU codes and BrewMan product codes; six-core-SKU mapping from a seed file (`product_crosswalk.csv`)
 
-**Warehouse layer (5 models):**
-- `sku_dim` — product dimension with category, ABV, and format attributes
-- `channel_dim` — DTC vs wholesale with sub-channel hierarchy
-- `sales_fct` — daily SKU-channel sales grain; revenue, volume, Shopify discount
-- `production_cost_fct` — batch-level cost grain; ingredient cost, packaging cost, duty
-- `margin_summary` — daily SKU-channel margin; joins `sales_fct` to `production_cost_fct` via `product_fk`; materialised as table for Looker query performance
+**Warehouse layer (five models):**
+- `sku_dim`: product dimension with category, ABV and format attributes
+- `channel_dim`: DTC vs wholesale with sub-channel hierarchy
+- `sales_fct`: daily SKU-channel sales grain; revenue, volume, Shopify discount
+- `production_cost_fct`: batch-level cost grain; ingredient cost, packaging cost, duty
+- `margin_summary`: daily SKU-channel margin; joins `sales_fct` to `production_cost_fct` via `product_fk`; materialised as table for Looker query performance
 
 ```
 /wire:data_model-validate 01-eversholt-brewing-platform → PASS
@@ -418,6 +460,8 @@ Dashboard Mockups Generated
   All charts are Chart.js 4.4.1, fully interactive. No build step.
 ```
 
+The review of the mockups produces one change request, which we will see the dbt developer pick up in Phase 3:
+
 ```
 /wire:mockups-review 01-eversholt-brewing-platform
 → Approved by Laura Hennessy + James Whitfield, 2026-06-05
@@ -429,13 +473,13 @@ Dashboard Mockups Generated
 
 #### Batch dispatch
 
-With all four design artifacts approved, open a new session and run [`/wire:delegate`](../reference/commands#session-and-management-commands). It reads `status.md`, identifies every pending artifact in the development phase, computes a parallel/sequential execution plan based on Wire's artifact dependency graph, and presents it for your approval before spawning any subagents. Running commands individually is also valid — `/wire:delegate` is most useful when several development artifacts are pending simultaneously and you want a single reviewed plan before agents start. See [Wire Agents — Batch delegation](../advanced/wire-agents#batch-delegation-with-wiredelegate).
+With all four design artifacts approved, the question is how to get several pieces of development work started without running them one at a time. Open a new session and run [`/wire:delegate`](../reference/commands#session-and-management-commands), which reads `status.md`, identifies every pending artifact in the development phase, computes a parallel and sequential execution plan from Wire's artifact dependency graph and presents it for your approval before spawning any subagents. Running the commands individually is also valid; `/wire:delegate` earns its place when several development artifacts are pending at the same time and you want a single reviewed plan before the agents start. See [Wire Agents: Batch delegation](../advanced/wire-agents#batch-delegation-with-wiredelegate) for the details.
 
 ```
 /wire:delegate 01-eversholt-brewing-platform
 ```
 
-Wire inspects `status.md`, identifies all development artifacts at `not_started`, and presents the delegation plan:
+Wire inspects `status.md`, identifies all development artifacts at `not_started` and presents the delegation plan:
 
 ```
 Delegation plan — Eversholt Brewing Co / 01-eversholt-brewing-platform
@@ -476,14 +520,14 @@ Confirm delegation plan? [y/n]
 
 #### What each specialist produces
 
-**`pipeline-engineer`** — Fivetran connector YAML config for all three sources. For the BrewMan connector, produces a Cloud Function (`brewman_auth/main.py`) that manages the IAM-scoped connection via Cloud SQL Auth Proxy, with a service account key stored in Secret Manager. Error handling: failed syncs write to a `pipeline_errors` BigQuery table; three consecutive failures trigger a Slack alert to `#data-alerts`. MAR estimate confirmed at 2.1M rows/month across all three connectors.
+**`pipeline-engineer`** This agent produces the Fivetran connector YAML config for all three sources and, for the BrewMan connector, a Cloud Function (`brewman_auth/main.py`) that manages the IAM-scoped connection via Cloud SQL Auth Proxy, with a service account key stored in Secret Manager. For error handling, failed syncs write to a `pipeline_errors` BigQuery table and three consecutive failures trigger a Slack alert to `#data-alerts`, and the MAR estimate is confirmed at 2.1M rows/month across all three connectors.
 
-**`dbt-developer` (5 agents across 3 waves)** — 7 staging models, 1 integration model, 5 warehouse models; 41 tests total. Surrogate keys via `dbt_utils.generate_surrogate_key()`. `sales_fct` and `production_cost_fct` use incremental materialisation with `merge` strategy on their respective PKs. `margin_summary` is materialised as table with `full_refresh=true`. Static analysis passes for all 5 agents. The `decisions.md` entries from each wave are merged by the orchestrating session after each wave completes:
+**`dbt-developer` (five agents across three "waves")** Between them these agents produce seven staging models, one integration model and five warehouse models, with 41 tests in total. Surrogate keys are generated via `dbt_utils.generate_surrogate_key()`, `sales_fct` and `production_cost_fct` use incremental materialisation with the `merge` strategy on their respective PKs, and `margin_summary` is materialised as a table with `full_refresh=true`. Static analysis passes for all five agents, and the `decisions.md` entries from each wave are merged by the orchestrating session after each wave completes:
 
-- `int__product_unified` uses `coalesce(shopify_sku, brewman_product_code)` for the unified product key — 6 of 6 core SKUs have matching codes; 4 historical SKUs are Shopify-only and treated as inactive
-- Duty cost added as a separate column in `production_cost_fct` — sourced from `stg_brewman__ingredient_costs.duty_amount_gbp`; resolves the FD's change request from mockup review
+- `int__product_unified` uses `coalesce(shopify_sku, brewman_product_code)` for the unified product key, since six of six core SKUs have matching codes; four historical SKUs are Shopify-only and treated as inactive
+- Duty cost added as a separate column in `production_cost_fct`, sourced from `stg_brewman__ingredient_costs.duty_amount_gbp`, which resolves the FD's change request from the mockup review
 
-**`orchestration-engineer`** — dbt Cloud job configuration:
+**`orchestration-engineer`** This agent produces the dbt Cloud job configuration:
 
 ```markdown
 ## Jobs
@@ -502,14 +546,14 @@ Confirm delegation plan? [y/n]
 - On completion: GitHub PR status check
 ```
 
-Decision written to `decisions.md`: daily 06:00 UTC schedule chosen over hourly — Fivetran syncs complete by 05:30; hourly runs would add dbt Cloud job costs with no benefit given the daily data grain of all warehouse models.
+The decision written to `decisions.md` is that the daily 06:00 UTC schedule was chosen over hourly, because Fivetran syncs complete by 05:30 and hourly runs would add dbt Cloud job costs with no benefit given the daily data grain of all warehouse models.
 
-**`semantic-layer-developer`** — LookML views for all 5 warehouse models and 4 explores:
+**`semantic-layer-developer`** This agent produces LookML views for all five warehouse models and four explores:
 
-- `sku_performance` — joins `sales_fct` to `sku_dim` and `channel_dim`; revenue, volume, and margin measures; dimensions for SKU, ABV band, format
-- `channel_revenue` — wholesale vs DTC split; top accounts table via `wholesale_account_dim`; `average_order_value_gbp` as a measure
-- `production_margin` — joins `margin_summary` to `sku_dim`; `gross_margin_pct` calculated as `(revenue - production_cost) / revenue`; separate duty cost measure
-- `wholesale_accounts` — HubSpot deal data; account revenue ranking; deal stage funnel
+- `sku_performance`: joins `sales_fct` to `sku_dim` and `channel_dim`; revenue, volume and margin measures; dimensions for SKU, ABV band, format
+- `channel_revenue`: wholesale vs DTC split; top accounts table via `wholesale_account_dim`; `average_order_value_gbp` as a measure
+- `production_margin`: joins `margin_summary` to `sku_dim`; `gross_margin_pct` calculated as `(revenue - production_cost) / revenue`; separate duty cost measure
+- `wholesale_accounts`: HubSpot deal data; account revenue ranking; deal stage funnel
 
 #### Development reviews
 
@@ -535,13 +579,52 @@ Decision written to `decisions.md`: daily 06:00 UTC schedule chosen over hourly 
 → Approved 2026-06-10
 ```
 
-With the semantic layer approved, generate and review the dashboards:
+With the semantic layer approved, the dashboards can follow, so generate and review them:
 
 ```
 /wire:dashboards-generate 01-eversholt-brewing-platform
 /wire:dashboards-validate 01-eversholt-brewing-platform → PASS
 /wire:dashboards-review 01-eversholt-brewing-platform → Approved 2026-06-10
 ```
+
+#### Optional: publish the metadata for AI agents (Agents Schema)
+
+Eversholt's finance director has started asking questions of the warehouse through Claude Code, and the data team wants those answers grounded in the model definitions rather than in guesses about table names. The `full_platform` graph carries an optional `agents_schema` artifact for this, after `dbt` passes validation; it is not part of the twelve-day plan above, and this section shows what it adds if the release director asks for it ("and publish the warehouse metadata for agents").
+
+[Agents Schema](../advanced/agents-schema) is dbt Labs' standard `AGENTS` schema inside the warehouse. Wire plans the publication; dbt Labs' `agents-schema` tool, run from the repository's GitHub Actions, writes the tables.
+
+```
+/wire:agents_schema-generate 01-eversholt-brewing-platform --provider eversholt
+→ [auto-delegated to agentic-data-stack-developer agent]
+
+Agents Schema publication: agents_schema v0.0.11 → bigquery (eversholt-data), schema agents
+| Provider | Source                | Counts                              | Job                  |
+| dbt      | dbt/                  | 13 models, 61 columns, 19 deps      | agents-schema-dbt    |
+| looker   | looker/               | 9 .lkml files                       | agents-schema-looker |
+| skills   | agents_schema/skills/ | 1 skill (warehouse_guide), 5 uses   | agents-schema-skills |
+Written: .github/workflows/agents-schema.yml, agents.yml, agents_schema/skills/warehouse_guide.md,
+         dev/agents_schema/{plan.json, run.sh, checks.sql}
+needs_human: 1 (skill/warehouse_guide: draft_to_complete)
+```
+
+The plan is a script, so the agent's work is the guide. It fills the two `wire: complete` sections of `agents_schema/skills/warehouse_guide.md` from the release: **Business definitions** takes `gross_margin_pct` as the semantic layer review confirmed it (net revenue less production cost, duty included and treated as additive, approved by Laura Hennessy on 2026-06-10) and the channel definitions from the requirements; **Known caveats** records that BrewMan production cost lands one day after the batch closes, so yesterday's margin is provisional until the 06:00 run. Both decisions go into `dev/agents_schema_generation_report.md`.
+
+Nothing has touched the warehouse yet. The command then notices that the `eversholt` dbt profile holds a BigQuery service-account key and offers to build the two secrets from it: set both and publish now, set both only, or leave both to the repository owner. This is Eversholt's repository, not ours, so the consultant takes the third option and records it; Tom adds `WAREHOUSE_CREDENTIALS` (the BigQuery service-account YAML from the setup guide) and, because the repository does not commit `target/manifest.json`, `DBT_PROFILES_YML` for the managed `dbt parse`. The workflow publishes on the next push to `main`, and `status.md` records `published: pending_ci`. On a repository the consultant owns, the first option does the whole thing in one step.
+
+```
+/wire:agents_schema-validate 01-eversholt-brewing-platform
+→ Checks 1–4 (pinned workflow, sources, skills, no credentials): PASS
+→ Checks 5–9 (warehouse): unverified — published: pending_ci
+→ Check 10 (agents.yml: project_id eversholt-data, location EU): PASS
+→ Verdict: PASS WITH WARNINGS
+
+/wire:agents_schema-review 01-eversholt-brewing-platform
+→ Laura Hennessy + Tom Barnard
+→ Guide definitions read as approved; provider name `eversholt` confirmed; no other publisher in AGENTS
+→ Approved 2026-06-10, on condition the first workflow run is confirmed
+```
+
+After the PR merges and the workflow's first run completes, `/wire:agents_schema-validate` runs again and the warehouse checks confirm what the plan said: three `overview` rows in `AGENTS.ROOT` (`dbt`, `lookml`, `skills`), 13 rows in `AGENTS.DBT_MODEL`, the built-in analyst skill and `skill/warehouse_guide` under provider `eversholt`. From then on an agent with BigQuery access starts at `SELECT provider, key, content FROM \`eversholt-data.agents.root\`` and finds the margin definition before it writes a query.
 
 ### Phase 4 — Testing (Days 8–9)
 
@@ -550,7 +633,7 @@ With the semantic layer approved, generate and review the dashboards:
 → [auto-delegated to data-quality-engineer agent]
 ```
 
-The agent adds tests beyond the embedded dbt layer: a daily freshness check (`sales_fct` must have data for `current_date - 1` by 07:00 UTC), row count reconciliation between Shopify order count and `sales_fct` row count (±5% tolerance), null rate monitoring on `margin_summary.gross_margin_pct`, and a cross-system FK hit rate check confirming that every `product_fk` in `sales_fct` resolves to a row in `sku_dim`.
+The agent adds tests beyond the embedded dbt layer: a daily freshness check (`sales_fct` must have data for `current_date - 1` by 07:00 UTC), row count reconciliation between Shopify order count and `sales_fct` row count (±5% tolerance), null rate monitoring on `margin_summary.gross_margin_pct` and a cross-system FK hit rate check confirming that every `product_fk` in `sales_fct` resolves to a row in `sku_dim`.
 
 ```
 /wire:data_quality-validate 01-eversholt-brewing-platform → PASS
@@ -560,7 +643,7 @@ The agent adds tests beyond the embedded dbt layer: a daily freshness check (`sa
 → Approved 2026-06-10
 ```
 
-UAT plan generation and sessions:
+Next comes the UAT plan, together with the two sessions it drives:
 
 ```
 /wire:uat-generate 01-eversholt-brewing-platform
@@ -570,9 +653,9 @@ UAT plan generation and sessions:
 → Session 2: finance director (Laura Hennessy) — margin by SKU and channel revenue
 ```
 
-Two UAT sessions ran on Days 8 and 9. One finding required remediation:
+The two UAT sessions ran on Days 8 and 9, and one finding required remediation:
 
-> **UAT-F1 (deferred)**: `margin_summary` does not account for duty drawback — the HMRC excise duty refund on exported wholesale volume that reduces the effective duty cost. This affects wholesale SKUs exported outside the UK. The duty amount in BrewMan is the pre-drawback figure. Finance director accepted deferral to Phase 2 scope; a `decisions.md` entry was written noting that `production_cost_fct.duty_amount_gbp` requires a drawback adjustment column in the next release.
+> **UAT-F1 (deferred)**: `margin_summary` does not account for duty drawback, the HMRC excise duty refund on exported wholesale volume that reduces the effective duty cost. This affects wholesale SKUs exported outside the UK. The duty amount in BrewMan is the pre-drawback figure. Finance director accepted deferral to Phase 2 scope; a `decisions.md` entry was written noting that `production_cost_fct.duty_amount_gbp` requires a drawback adjustment column in the next release.
 
 ```
 /wire:uat-review 01-eversholt-brewing-platform
@@ -586,7 +669,7 @@ Two UAT sessions ran on Days 8 and 9. One finding required remediation:
 → [auto-delegated to delivery-lead agent]
 ```
 
-Produces the deployment runbook: Fivetran connector activation sequence, BigQuery dataset creation and IAM binding, dbt Cloud environment and job configuration, Looker connection update and dashboard publish, monitoring and alerting setup, rollback procedures for each layer.
+The agent produces the deployment runbook, covering the Fivetran connector activation sequence, BigQuery dataset creation and IAM binding, dbt Cloud environment and job configuration, Looker connection update and dashboard publish, monitoring and alerting setup and rollback procedures for each layer.
 
 ```
 /wire:deployment-validate 01-eversholt-brewing-platform → PASS
@@ -616,11 +699,11 @@ Produces the deployment runbook: Fivetran connector activation sequence, BigQuer
 → [auto-delegated to delivery-lead agent]
 ```
 
-Two training packages produced:
+Two training packages are produced, one for each audience:
 
-**Data Team Enablement** (Day 11 morning, 2 hours with Tom Barnard): pipeline architecture and Fivetran connector management, Cloud Function maintenance and Secret Manager key rotation, dbt model structure and how to extend the staging layer for new sources, dbt Cloud job operation and how to handle a failed run, LookML extension for new measures, and a live trace of a BrewMan brew batch record from PostgreSQL to `margin_summary` in Looker.
+**Data Team Enablement** (Day 11 morning, two hours with Tom Barnard): pipeline architecture and Fivetran connector management, Cloud Function maintenance and Secret Manager key rotation, dbt model structure and how to extend the staging layer for new sources, dbt Cloud job operation and how to handle a failed run, LookML extension for new measures and a live trace of a BrewMan brew batch record from PostgreSQL to `margin_summary` in Looker.
 
-**End User Training** (Day 11 afternoon, 90 minutes with Laura Hennessy, James Whitfield, and the ops manager): dashboard navigation and filter usage, interpreting margin by SKU, understanding data freshness expectations (data by 07:00 each morning), how to raise a data quality issue, and what the duty drawback deferred item means for the margin figures.
+**End User Training** (Day 11 afternoon, 90 minutes with Laura Hennessy, James Whitfield and the ops manager): dashboard navigation and filter usage, interpreting margin by SKU, understanding data freshness expectations (data by 07:00 each morning), how to raise a data quality issue and what the duty drawback deferred item means for the margin figures.
 
 ```
 /wire:training-validate 01-eversholt-brewing-platform → PASS
@@ -633,7 +716,7 @@ Two training packages produced:
 → [auto-delegated to delivery-lead agent — reads all approved artifacts and decisions.md]
 ```
 
-Produces: architecture overview (source-to-dashboard data flow), dbt model reference (each model's purpose, grain, key fields, and dependencies), dbt Cloud job reference (selectors, cadence, how to change the schedule, how to trigger a manual run), LookML field catalogue (every measure and dimension with calculation notes), operational runbook (what to do when Fivetran fails, when dbt tests fail, when a Looker dashboard shows stale data).
+The agent produces the architecture overview (source-to-dashboard data flow), the dbt model reference (each model's purpose, grain, key fields and dependencies), the dbt Cloud job reference (selectors, cadence, how to change the schedule, how to trigger a manual run), the LookML field catalogue (every measure and dimension with calculation notes) and the operational runbook (what to do when Fivetran fails, when dbt tests fail, when a Looker dashboard shows stale data).
 
 ```
 /wire:documentation-validate 01-eversholt-brewing-platform → PASS
@@ -659,6 +742,6 @@ Produces: architecture overview (source-to-dashboard data flow), dbt model refer
 | LookML explores | 4 |
 | Looker dashboards | 3 |
 | UAT sessions | 2 |
-| Deferred items | 1 (duty drawback — Phase 2 scope) |
+| Deferred items | 1 (duty drawback, Phase 2 scope) |
 | Jira issues closed | EBC-1 (Epic) + 14 Tasks + 42 Sub-tasks |
 | Engagement duration | 12 business days |

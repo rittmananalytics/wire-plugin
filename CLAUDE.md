@@ -451,7 +451,7 @@ Agent definitions live in `wire/agents/<name>/AGENT.md` (bundled into the plugin
 
 **Review gates remain human-in-the-loop**: delegation pauses before every `*-review` step. Run the review command, approve, then re-run `/wire:delegate` to continue.
 
-Full documentation: `wire/docs/AGENTS.md`
+Full documentation: the Wire Agents and Agent Architecture pages of the Wire docs site (`docs-site/docs/advanced/wire-agents.md` and `wire-agent-architecture.md` in the Wire repository).
 
 ## User Guide
 
@@ -506,6 +506,8 @@ This plugin includes contextual skills that activate automatically when working 
 - **dbt Development** (`skills/dbt-development/SKILL.md`): Activates when working with dbt models. Provides naming conventions, SQL style rules, testing patterns, and multi-source framework support.
 - **LookML Content Authoring** (`skills/lookml-content-authoring/SKILL.md`): Activates when creating or modifying LookML views, explores, and dashboards.
 - **LookML Content Authoring (MCP)** (`skills/lookml-content-authoring (local and mcp-server)/SKILL.md`): LookML authoring with Looker MCP server integration for live schema validation.
+- **dbt Charts** (`skills/dbtcharts/SKILL.md`, `skills/dbtcharts/board-design-brief.md`): Activates for dbt Charts boards (dashboards as YAML in the dbt project, rendered by `dct`): the Wire board rules, the deterministic scaffold, the board design brief (KPI row with deltas, hero trend, breakdowns, table), the dct 0.8 gotchas, validation and rendering. Used by `/wire:dbtcharts-generate` (`--auto` designs every subject area at once), `-validate` and `-review`.
+- **Agents Schema** (`skills/agents-schema/SKILL.md`): Activates for dbt Labs' Agents Schema (the `AGENTS` schema inside Snowflake, Databricks or BigQuery that holds what the dbt manifest, the semantic layer and markdown skills say about the warehouse, for AI agents that query it): the table contract, the pinned reusable GitHub workflows and the `uvx` local run, the skill front-matter rules, the consumer side starting from `AGENTS.ROOT`, and the upstream tool's gotchas. Used by `/wire:agents_schema-generate`, `-validate` and `-review`.
 - **Looker Dashboard Mockup** (`skills/looker-dashboard-mockup/SKILL.md`): Activates when the user asks to mock up, prototype, or visualise a Looker dashboard. Generates pixel-accurate, interactive HTML mockups with full Looker UI chrome (teal sidebar, filter pills, KPI tiles), Chart.js charts, and data tables — no external tools required. Used automatically by `/wire:mockups-generate` for dashboard-first projects.
 
 - **Dagster** (`skills/dagster/SKILL.md`): Activates when creating or modifying Dagster assets, schedules, sensors, or components. Covers the assets-first pattern, dagster-dbt integration, CLI usage, and Wire-specific group naming conventions.

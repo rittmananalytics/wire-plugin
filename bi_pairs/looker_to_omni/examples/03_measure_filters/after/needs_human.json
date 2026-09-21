@@ -1,0 +1,29 @@
+[
+  {
+    "scope": "view",
+    "name": "orders",
+    "field": "aov",
+    "construct": "measure_number",
+    "class": "assisted",
+    "reason": "derived measure (type: number) emitted without aggregate_type; validate it resolves on the branch",
+    "lkml_file": "orders.view.lkml"
+  },
+  {
+    "scope": "view",
+    "name": "orders",
+    "field": "mixed_filter",
+    "construct": "measure_filter",
+    "class": "assisted",
+    "reason": "Filter expression 'open,-pending' on status has no mechanical Omni operator; construct not emitted, write the filter by hand",
+    "lkml_file": "orders.view.lkml"
+  },
+  {
+    "scope": "view",
+    "name": "orders",
+    "field": "recent_orders",
+    "construct": "measure_filter",
+    "class": "assisted",
+    "reason": "Filter expression '30 days' on created_date has no mechanical Omni operator; construct not emitted, write the filter by hand",
+    "lkml_file": "orders.view.lkml"
+  }
+]

@@ -1,0 +1,238 @@
+schema_version: 1
+domain: dbt
+description: >
+  Rittman Analytics dbt modeling conventions — the machine-checkable subset
+  of wire/skills/dbt-development/SKILL.md, conventions-reference.md, and
+  testing-reference.md. Loaded by the dbt-development skill and enforced by
+  wire/scripts/lint_conventions.py. Narrative rationale, SQL templates, and
+  judgment calls (grain choice, whether a join is modelled correctly) stay
+  in the skill file — this covers only what a script can check without an
+  AI call.
+
+# ----------------------------------------------------------------------
+# File naming — layer prefix/suffix + entity-group pattern
+# ----------------------------------------------------------------------
+file_naming:
+  - id: staging_model_filename
+    description: "Staging model: stg_<group>__<table>.sql"
+    layer: staging
+    path_glob: "**/staging/**/*.sql"
+    pattern: '^stg_[a-z0-9]+__[a-z0-9_]+\.sql$'
+    example: "stg_core__users.sql"
+    severity: error
+
+  - id: integration_model_filename
+    description: "Integration model: int_<group>__<entity>.sql"
+    layer: integration
+    path_glob: "**/integration/**/*.sql"
+    pattern: '^int_[a-z0-9]+__[a-z0-9_]+\.sql$'
+    example: "int_core__users.sql"
+    severity: error
+
+  - id: warehouse_dim_filename
+    description: "Warehouse dimension: wh_<group>__<entity>_dim.sql"
+    layer: warehouse
+    path_glob: "**/warehouse/**/*.sql"
+    pattern: '^wh_[a-z0-9]+__[a-z0-9_]+_dim\.sql$'
+    example: "wh_core__user_dim.sql"
+    severity: error
+    note: "Applies only to files ending _dim — see warehouse_fact_filename / warehouse_xa_filename for the other warehouse suffixes."
+
+  - id: warehouse_fact_filename
+    description: "Warehouse fact: wh_<group>__<entity>_fact.sql"
+    layer: warehouse
+    path_glob: "**/warehouse/**/*.sql"
+    pattern: '^wh_[a-z0-9]+__[a-z0-9_]+_fact\.sql$'
+    example: "wh_entity_group__entity_name_b_fact.sql"
+    severity: error
+
+  - id: warehouse_xa_filename
+    description: "Warehouse cross-attribute: wh_<group>__<entity>_xa.sql"
+    layer: warehouse
+    path_glob: "**/warehouse/**/*.sql"
+    pattern: '^wh_[a-z0-9]+__[a-z0-9_]+_xa\.sql$'
+    example: "wh_entity_group__entity_name_d_xa.sql"
+    severity: error
+
+  - id: singular_entity_name
+    description: "Entity portion of the filename is singular, not plural"
+    severity: warning
+    note: "Advisory — pluralization can't be reliably regex-checked across arbitrary English nouns; the agent applies this by eye."
+
+# ----------------------------------------------------------------------
+# Column naming
+# ----------------------------------------------------------------------
+naming:
+  - id: primary_key_suffix
+    description: "Primary key columns end in _pk"
+    scope: column_alias
+    pattern: '_pk$'
+    example: "user_pk"
+    severity: error
+    note: "Documentation only — a suffix rule like this can't be enforced against every column without knowing which one is meant to be the key. See surrogate_key_suffix below for the actually-enforced version, which checks the alias of a generate_surrogate_key() call."
+
+  - id: foreign_key_suffix
+    description: "Foreign key columns end in _fk"
+    scope: column_alias
+    pattern: '_fk$'
+    example: "subscription_fk"
+    severity: error
+    note: "Documentation only — see surrogate_key_suffix below for the enforced version."
+
+  - id: surrogate_key_suffix
+    description: "The alias of a dbt_utils.generate_surrogate_key(...) call ends in _pk or _fk"
+    scope: column_alias
+    check: surrogate_key_context
+    pattern: '(_pk|_fk)$'
+    example: "user_pk, account_fk"
+    severity: error
+
+  - id: natural_key_suffix
+    description: "Natural key columns end in _natural_key"
+    scope: column_alias
+    pattern: '_natural_key$'
+    example: "user_natural_key"
+    severity: warning
+
+  - id: date_suffix
+    description: "Date columns end in _dt"
+    scope: column_alias
+    pattern: '_dt$'
+    example: "user_created_dt"
+    severity: warning
+
+  - id: timestamp_suffix
+    description: "UTC timestamp columns end in _ts; non-UTC carries the tz before _ts"
+    scope: column_alias
+    pattern: '(_ts|_[a-z]{2,4}_ts)$'
+    example: "created_ts, created_cet_ts"
+    severity: warning
+
+  - id: boolean_prefix
+    description: "Boolean columns are prefixed is_ / has_ / was_"
+    scope: column_alias
+    pattern: '^(is_|has_|was_)'
+    example: "is_active, has_subscription, was_refunded"
+    severity: error
+
+  - id: money_suffix
+    description: "Revenue / money columns end in _amount"
+    scope: column_alias
+    pattern: '_amount$'
+    example: "subscription_revenue_amount"
+    severity: warning
+
+  - id: snake_case
+    description: "All identifiers are lowercase snake_case"
+    scope: column_alias
+    pattern: '^[a-z][a-z0-9_]*$'
+    severity: error
+
+  - id: surrogate_key_macro
+    description: "Keys generated via dbt_utils.generate_surrogate_key, not the deprecated surrogate_key macro"
+    scope: file_content
+    forbidden_pattern: 'dbt_utils\.surrogate_key\('
+    severity: error
+
+# ----------------------------------------------------------------------
+# SQL style
+# ----------------------------------------------------------------------
+style:
+  - id: indentation
+    description: "4-space indentation, no tabs"
+    indent_spaces: 4
+    forbid_tabs: true
+    severity: warning
+
+  - id: max_line_length
+    description: "SQL lines should not exceed 80 characters"
+    value: 80
+    severity: warning
+
+  - id: explicit_join_type
+    description: "Joins are explicit (inner join / left join / etc.), never a bare join"
+    scope: file_content
+    forbidden_pattern: '(?<!inner )(?<!left )(?<!right )(?<!full )(?<!cross )(?<!outer )\bjoin\b'
+    severity: error
+
+  - id: prefer_union_all
+    description: "Prefer union all over union distinct"
+    scope: file_content
+    forbidden_pattern: '\bunion\s+distinct\b'
+    severity: warning
+
+  - id: raw_type_cast_forbidden
+    description: "Type casts use dbt.type_*() macros, not raw SQL types"
+    scope: file_content
+    forbidden_pattern: '(?i)as\s+(string|int64|float64|numeric|boolean|timestamp|date)\)\s*$'
+    note: "Flags a bare `as <type>)` at end of a cast line not wrapped in a dbt.type_*() macro call — checked line-by-line, so a macro call spanning multiple lines can false-positive; treat a hit as a prompt to check by eye."
+    severity: warning
+
+  - id: final_cte_required
+    description: "Model ends with a `final` CTE and `select * from final`"
+    scope: file_content
+    required_pattern: 'final\s+as\s*\('
+    severity: error
+
+  - id: source_ref_cte_prefix
+    description: "CTEs that select directly from source()/ref() are prefixed s_"
+    scope: file_content
+    severity: warning
+    note: "Advisory — the prefix is on the CTE name at the point of the ref/source call, which requires light SQL-aware parsing beyond a single regex; the agent checks this during review."
+
+# ----------------------------------------------------------------------
+# Layer rules — what each layer is allowed to select from
+# ----------------------------------------------------------------------
+layer_rules:
+  staging:
+    may_select_from: [source]
+    materialization: [view, ephemeral]
+  integration:
+    may_select_from: [ref]
+    materialization: [view, ephemeral, table]
+  warehouse:
+    may_select_from: [ref]
+    materialization: [table]
+
+# ----------------------------------------------------------------------
+# Testing requirements
+# ----------------------------------------------------------------------
+testing:
+  - id: primary_key_tests_required
+    description: "Every primary key has unique + not_null schema tests"
+    required_tests: [unique, not_null]
+    severity: error
+
+  - id: integration_multi_source_uniqueness
+    description: "Integration models sourced from multiple tables use dbt_utils.unique_combination_of_columns"
+    layer: integration
+    severity: warning
+
+# ----------------------------------------------------------------------
+# Documentation requirements
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# Business-rule citation — links a model back to the register that agreed its
+# definition (wire#229). Advisory: only releases that ran business_rules have a
+# register to cite, so this never fails a project that has not opted in.
+# ----------------------------------------------------------------------
+business_rules:
+  - id: business_rule_id_format
+    description: "A model citing a business rule uses meta.wire_business_rule: BR-<n>, matching an id in artifacts/business_rules.yaml"
+    scope: file_content
+    marker_pattern: 'wire_business_rule'
+    required_pattern_if_present: 'wire_business_rule:\s*BR-\d+\s*$'
+    severity: warning
+
+documentation:
+  - id: warehouse_columns_documented
+    description: "Every warehouse-layer column has a description (via field_descriptions.md doc blocks)"
+    layer: warehouse
+    severity: warning
+
+  - id: staging_model_description_required
+    description: "Staging models set description in their config() block"
+    layer: staging
+    scope: file_content
+    required_pattern: 'description\s*='
+    severity: warning

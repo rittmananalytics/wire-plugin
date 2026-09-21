@@ -1,0 +1,210 @@
+/* Wire docs landing page.
+   Ported from the Claude Design handoff "Wire Docs Landing Redesign".
+
+   Every selector below is scoped under .wireLanding. That is not tidiness: the
+   design uses class names Docusaurus also uses (.card, .nav, .stat), and an
+   unscoped .card rule would restyle every card in the docs.
+
+   Type: the design's stacks name 'Google Sans' first, which is Google-proprietary
+   and not shipped here. The stacks are kept verbatim so they fall through to
+   Inter, loaded from Google Fonts in docusaurus.config.js. */
+
+.wireLanding {
+  --ra-indigo:            #4F60FF;
+  --ra-indigo-deep:       #4F5FFE;
+  --ra-indigo-haze:       #EFF0FF;
+  --ra-ink:               #181B25;
+  --ra-ink-40:            #4F5564;
+  --ra-line:              #E1E1E9;
+  --ra-paper-2:           #F7F7FA;
+  --ra-shadow-md:         0 8px 20px rgba(50, 50, 93, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --ra-ease:              cubic-bezier(0.4, 0, 0.2, 1);
+  --ra-font-deck-display: 'Google Sans', 'Product Sans', 'Inter', system-ui, sans-serif;
+  --ra-font-deck-body:    'Google Sans', 'Lato', 'Roboto', 'Inter', system-ui, sans-serif;
+  --ra-font-deck-ui:      'Google Sans', 'Roboto', 'Lato', 'Inter', system-ui, sans-serif;
+  --ra-font-mono:         'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  background: #fff;
+  color: var(--ra-ink);
+  font-family: var(--ra-font-deck-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.wireLanding * { box-sizing: border-box; }
+
+/* The mock leaves <pre> transparent and lets the dark .win behind it show
+   through. Docusaurus styles bare `pre` with a background, a radius and a
+   colour of its own, so inside a terminal window the console rendered on a
+   light ground. The mock's own pre rules set margin, padding, font, colour and
+   overflow but not background, so that one property fell through to
+   Docusaurus's. Neutralised here rather than in each ported rule, so a new
+   terminal block cannot reintroduce it. */
+.wireLanding .win pre,
+.wireLanding pre {
+  background: transparent;
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* The design ships its own nav and footer. Layout is given noFooter, which
+   removes the site footer outright. The navbar has no per-page switch, hence
+   :has(). If :has() is unsupported the page still renders correctly, just with
+   two navs — a visible oddity rather than a broken page. */
+body:has(.wireLanding) .navbar { display: none; }
+body:has(.wireLanding) { scroll-behavior: smooth; }
+
+.wireLanding a { color:var(--ra-indigo); text-decoration:none; }
+.wireLanding a:hover { color:var(--ra-indigo-deep); }
+.wireLanding .wrap { max-width:1180px; margin:0 auto; padding:0 32px; }
+.wireLanding code, .wireLanding .mono { font-family:var(--ra-font-mono); }
+/* nav */
+.wireLanding .nav { position:sticky; top:0; z-index:50; background:rgba(24,27,37,.92); backdrop-filter:blur(12px); border-bottom:1px solid rgba(255,255,255,.08); }
+.wireLanding .nav-in { max-width:1180px; margin:0 auto; padding:0 32px; height:62px; display:flex; align-items:center; gap:36px; }
+.wireLanding .nav-brand { display:flex; align-items:center; gap:12px; }
+.wireLanding .nav-brand img { height:20px; display:block; }
+.wireLanding .nav-brand .ver { font:600 11px/1 var(--ra-font-mono); color:#87A0FF; border:1px solid rgba(135,160,255,.35); padding:4px 8px; border-radius:999px; letter-spacing:0.06em; }
+.wireLanding .nav-links { display:flex; gap:26px; margin-left:auto; align-items:center; }
+.wireLanding .nav-links a { font:500 14.5px/1 var(--ra-font-deck-ui); color:rgba(255,255,255,.75); }
+.wireLanding .nav-links a:hover { color:#fff; }
+.wireLanding .nav-gh { display:inline-flex; align-items:center; gap:8px; font:600 14px/1 var(--ra-font-deck-ui); color:#fff !important;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); padding:9px 16px; border-radius:8px; }
+.wireLanding .nav-gh:hover { background:rgba(255,255,255,.14); }
+.wireLanding .nav-gh svg { width:16px; height:16px; fill:currentColor; }
+/* hero */
+.wireLanding .hero { background:#12141C; color:#fff; position:relative; overflow:hidden; }
+.wireLanding .hero::before { content:""; position:absolute; inset:0;
+    background:
+      radial-gradient(90% 70% at 85% 0%, rgba(79,96,255,.28) 0%, rgba(79,96,255,.06) 45%, transparent 70%),
+      radial-gradient(60% 50% at 0% 100%, rgba(135,213,252,.10) 0%, transparent 60%);
+    pointer-events:none; }
+.wireLanding .hero::after { content:""; position:absolute; inset:0; opacity:.35; pointer-events:none;
+    background-image:linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size:56px 56px;
+    -webkit-mask-image:radial-gradient(80% 80% at 60% 20%, #000 0%, transparent 75%);
+    mask-image:radial-gradient(80% 80% at 60% 20%, #000 0%, transparent 75%); }
+.wireLanding .hero-in { position:relative; z-index:2; display:grid; grid-template-columns:1.05fr 0.95fr; gap:64px; align-items:center; padding:96px 32px 88px; }
+.wireLanding .hero-eyebrow { display:inline-flex; align-items:center; gap:10px; font:600 12.5px/1 var(--ra-font-deck-ui); letter-spacing:0.14em; text-transform:uppercase;
+    color:#87A0FF; background:rgba(79,96,255,.14); border:1px solid rgba(135,160,255,.3); padding:8px 14px; border-radius:999px; margin:0 0 26px; }
+.wireLanding .hero-eyebrow .dot { width:7px; height:7px; border-radius:50%; background:#87E1A8; box-shadow:0 0 8px rgba(135,225,168,.8); }
+.wireLanding .hero h1 { font:700 62px/1.04 var(--ra-font-deck-display); letter-spacing:-0.028em; margin:0 0 20px; }
+.wireLanding .hero h1 .accent { color:#87A0FF; }
+.wireLanding .hero .sub { font:400 20px/1.55 var(--ra-font-deck-body); color:rgba(255,255,255,.72); margin:0 0 34px; max-width:520px; }
+.wireLanding .hero .sub strong { color:#fff; font-weight:600; }
+.wireLanding .cta-row { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+.wireLanding .btn { display:inline-flex; align-items:center; gap:9px; font:600 15.5px/1 var(--ra-font-deck-ui); padding:14px 24px; border-radius:9px; transition:all .15s var(--ra-ease); }
+.wireLanding .btn-pri { background:#4F60FF; color:#fff !important; box-shadow:0 8px 24px rgba(79,96,255,.35); }
+.wireLanding .btn-pri:hover { background:#3D4EF0; transform:translateY(-1px); }
+.wireLanding .btn-sec { background:rgba(255,255,255,.07); color:#fff !important; border:1px solid rgba(255,255,255,.16); }
+.wireLanding .btn-sec:hover { background:rgba(255,255,255,.13); }
+.wireLanding .btn svg { width:16px; height:16px; stroke:currentColor; stroke-width:2.4; fill:none; }
+.wireLanding .hero-install { margin-top:30px; display:inline-flex; align-items:center; gap:14px; font:500 14px/1 var(--ra-font-mono); color:rgba(255,255,255,.6);
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 18px; }
+.wireLanding .hero-install .p { color:#87E1A8; }
+.wireLanding .hero-install .cmd { color:#E6E9F5; }
+/* hero terminal */
+.wireLanding .heroterm { position:relative; }
+.wireLanding .heroterm .win { background:#0C0E15; border:1px solid rgba(255,255,255,.1); border-radius:14px; overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(79,96,255,.08); }
+.wireLanding .heroterm .bar { display:flex; align-items:center; gap:8px; padding:13px 16px; background:rgba(255,255,255,.04); border-bottom:1px solid rgba(255,255,255,.07); }
+.wireLanding .heroterm .bar i { width:11px; height:11px; border-radius:50%; display:block; }
+.wireLanding .heroterm .bar i:nth-child(1) {background:#FF5F57;}
+.wireLanding .heroterm .bar i:nth-child(2) {background:#FEBC2E;}
+.wireLanding .heroterm .bar i:nth-child(3) {background:#28C840;}
+.wireLanding .heroterm .bar span { margin-left:10px; font:500 12px/1 var(--ra-font-mono); color:rgba(255,255,255,.45); }
+.wireLanding .heroterm pre { margin:0; padding:22px 24px; font:400 13.5px/1.8 var(--ra-font-mono); color:#E6E9F5; overflow:hidden; }
+.wireLanding .heroterm .c {color:#87A0FF;}
+.wireLanding .heroterm .g {color:#87E1A8;}
+.wireLanding .heroterm .d {color:#5A6478;}
+.wireLanding .heroterm .y {color:#F5C97B;}
+.wireLanding .heroterm .r {color:#FF8D73;}
+/* stats strip */
+.wireLanding .stats { border-bottom:1px solid var(--ra-line); background:#fff; }
+.wireLanding .stats-in { display:grid; grid-template-columns:1fr 1fr 1fr; }
+.wireLanding .stat { padding:44px 40px; border-left:1px solid var(--ra-line); }
+.wireLanding .stat:first-child { border-left:none; padding-left:0; }
+.wireLanding .stat .n { font:700 44px/1 var(--ra-font-deck-display); letter-spacing:-0.025em; color:var(--ra-ink); margin-bottom:10px; }
+.wireLanding .stat .n em { font-style:normal; color:var(--ra-indigo); }
+.wireLanding .stat h3 { font:600 17px/1.3 var(--ra-font-deck-display); color:var(--ra-ink); margin:0 0 8px; }
+.wireLanding .stat p { font:400 15px/1.55 var(--ra-font-deck-body); color:var(--ra-ink-40); margin:0; }
+/* new in 4.0 */
+.wireLanding .four { background:var(--ra-paper-2); border-bottom:1px solid var(--ra-line); }
+.wireLanding .four-in { padding:88px 32px; }
+.wireLanding .four-head { max-width:720px; margin-bottom:52px; }
+.wireLanding .eyebrow { font:600 12.5px/1 var(--ra-font-deck-ui); letter-spacing:0.14em; text-transform:uppercase; color:var(--ra-indigo); display:block; margin-bottom:14px; }
+.wireLanding .four-head h2 { font:700 40px/1.12 var(--ra-font-deck-display); letter-spacing:-0.022em; margin:0 0 16px; }
+.wireLanding .four-head .lede { font:400 19px/1.55 var(--ra-font-deck-body); color:var(--ra-ink-40); margin:0; }
+.wireLanding .four-head .lede strong { color:var(--ra-ink); font-weight:600; }
+.wireLanding .cards { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.wireLanding .cards .card:last-child:nth-child(odd) { grid-column:1 / -1; }
+.wireLanding .card { background:#fff; border:1px solid var(--ra-line); border-radius:14px; padding:30px 32px; display:flex; flex-direction:column; gap:12px;
+    transition:all .18s var(--ra-ease); position:relative; }
+.wireLanding .card:hover { border-color:#C7CEF6; box-shadow:var(--ra-shadow-md); transform:translateY(-2px); }
+.wireLanding .card .ic { width:42px; height:42px; border-radius:10px; background:var(--ra-indigo-haze); display:grid; place-items:center; margin-bottom:4px; }
+.wireLanding .card .ic svg { width:20px; height:20px; stroke:var(--ra-indigo); stroke-width:2; fill:none; }
+.wireLanding .card h3 { font:700 20px/1.25 var(--ra-font-deck-display); letter-spacing:-0.01em; margin:0; }
+.wireLanding .card p { font:400 15.5px/1.6 var(--ra-font-deck-body); color:var(--ra-ink-40); margin:0; flex:1; }
+.wireLanding .card p strong { color:var(--ra-ink); font-weight:600; }
+.wireLanding .card code { font:500 0.85em/1.4 var(--ra-font-mono); color:var(--ra-indigo-deep); background:var(--ra-indigo-haze); border-radius:5px; padding:1px 6px; }
+.wireLanding .card .lnk { font:600 14.5px/1 var(--ra-font-deck-ui); display:inline-flex; align-items:center; gap:7px; margin-top:4px; }
+.wireLanding .card .lnk svg { width:14px; height:14px; stroke:currentColor; stroke-width:2.4; fill:none; transition:transform .15s var(--ra-ease); }
+.wireLanding .card:hover .lnk svg { transform:translateX(3px); }
+.wireLanding .four-notes { margin-top:36px; }
+.wireLanding .four-notes a { font:600 15.5px/1 var(--ra-font-deck-ui); display:inline-flex; align-items:center; gap:8px; }
+.wireLanding .four-notes a svg { width:15px; height:15px; stroke:currentColor; stroke-width:2.4; fill:none; }
+/* how it runs */
+.wireLanding .how { background:#fff; border-bottom:1px solid var(--ra-line); }
+.wireLanding .how-in { padding:88px 32px; display:grid; grid-template-columns:0.9fr 1.1fr; gap:64px; align-items:center; }
+.wireLanding .how h2 { font:700 34px/1.15 var(--ra-font-deck-display); letter-spacing:-0.02em; margin:0 0 18px; }
+.wireLanding .how .lede { font:400 17.5px/1.6 var(--ra-font-deck-body); color:var(--ra-ink-40); margin:0 0 26px; }
+.wireLanding .how .lede strong { color:var(--ra-ink); font-weight:600; }
+.wireLanding .how ul { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:14px; }
+.wireLanding .how li { display:grid; grid-template-columns:auto 1fr; gap:13px; align-items:start; font:400 16px/1.5 var(--ra-font-deck-body); color:var(--ra-ink-40); }
+.wireLanding .how li strong { color:var(--ra-ink); font-weight:600; }
+.wireLanding .how li .mk { width:24px; height:24px; border-radius:7px; background:var(--ra-indigo-haze); display:grid; place-items:center; margin-top:2px; }
+.wireLanding .how li .mk svg { width:13px; height:13px; stroke:var(--ra-indigo); stroke-width:2.8; fill:none; }
+.wireLanding .how .win { background:#0C0E15; border-radius:14px; overflow:hidden; box-shadow:0 24px 60px rgba(24,27,37,.25); }
+.wireLanding .how .bar { display:flex; align-items:center; gap:8px; padding:13px 16px; background:rgba(255,255,255,.04); border-bottom:1px solid rgba(255,255,255,.07); }
+.wireLanding .how .bar i { width:11px; height:11px; border-radius:50%; display:block; }
+.wireLanding .how .bar i:nth-child(1) {background:#FF5F57;}
+.wireLanding .how .bar i:nth-child(2) {background:#FEBC2E;}
+.wireLanding .how .bar i:nth-child(3) {background:#28C840;}
+.wireLanding .how .bar span { margin-left:10px; font:500 12px/1 var(--ra-font-mono); color:rgba(255,255,255,.45); }
+.wireLanding .how pre { margin:0; padding:22px 26px; font:400 13.5px/1.85 var(--ra-font-mono); color:#E6E9F5; overflow:hidden; }
+.wireLanding .how .c {color:#87A0FF;}
+.wireLanding .how .g {color:#87E1A8;}
+.wireLanding .how .d {color:#5A6478;}
+.wireLanding .how .y {color:#F5C97B;}
+.wireLanding .how .r {color:#FF8D73;}
+/* runtimes */
+.wireLanding .run { background:var(--ra-paper-2); border-bottom:1px solid var(--ra-line); }
+.wireLanding .run-in { padding:64px 32px; display:flex; align-items:center; gap:48px; }
+.wireLanding .run h2 { font:700 24px/1.25 var(--ra-font-deck-display); letter-spacing:-0.015em; margin:0 0 8px; }
+.wireLanding .run p { font:400 15.5px/1.55 var(--ra-font-deck-body); color:var(--ra-ink-40); margin:0; max-width:460px; }
+.wireLanding .run-logos { margin-left:auto; display:flex; gap:18px; }
+.wireLanding .run-chip { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--ra-line); border-radius:12px; padding:16px 24px; }
+.wireLanding .run-chip img { height:28px; width:28px; object-fit:contain; display:block; }
+.wireLanding .run-chip span { font:600 15.5px/1.2 var(--ra-font-deck-display); color:var(--ra-ink); }
+/* footer */
+.wireLanding .foot { background:#12141C; color:rgba(255,255,255,.6); }
+.wireLanding .foot-in { padding:56px 32px 40px; }
+.wireLanding .foot-grid { display:flex; gap:80px; padding-bottom:40px; border-bottom:1px solid rgba(255,255,255,.08); }
+.wireLanding .foot-brand img { height:22px; display:block; margin-bottom:14px; }
+.wireLanding .foot-brand p { font:400 14px/1.55 var(--ra-font-deck-body); margin:0; max-width:300px; }
+.wireLanding .foot-col { margin-left:auto; display:flex; gap:80px; }
+.wireLanding .foot-col h4 { font:600 12.5px/1 var(--ra-font-deck-ui); letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,.4); margin:0 0 16px; }
+.wireLanding .foot-col ul { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:11px; }
+.wireLanding .foot-col a { font:400 14.5px/1.3 var(--ra-font-deck-body); color:rgba(255,255,255,.72); }
+.wireLanding .foot-col a:hover { color:#fff; }
+.wireLanding .foot-base { padding-top:26px; font:400 13px/1.4 var(--ra-font-deck-body); color:rgba(255,255,255,.4); display:flex; justify-content:space-between; }
+@media (max-width: 900px) {
+.wireLanding .hero-in, .wireLanding .how-in { grid-template-columns:1fr; }
+.wireLanding .stats-in { grid-template-columns:1fr; }
+.wireLanding .stat { border-left:none; padding:28px 0; border-top:1px solid var(--ra-line); }
+.wireLanding .cards { grid-template-columns:1fr; }
+.wireLanding .run-in { flex-direction:column; align-items:flex-start; }
+.wireLanding .run-logos { margin-left:0; }
+.wireLanding .hero h1 { font-size:44px; }
+  
+}
+

@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 3.11.10 | **Date**: September 2026
+**Version**: 4.0.0 | **Date**: September 2026
 
 ---
 
@@ -243,6 +243,8 @@ This enters Plan Mode, reads the current release state, and proposes a 3–5 ste
 
 The framework encodes delivery methodology as twelve release types, each defining a different ordered set of in-scope artifacts and the commands that apply to them. When you run `/wire:new` and select a release type, the framework instantiates that process definition into the release's `status.md` file — writing the in-scope artifacts and their gate states as YAML frontmatter. Artifacts that are out of scope for the selected type are marked `not_applicable` and skipped.
 
+**As of v4.0.0**, every release type is backed by a machine-readable `wire/release-types/<type>.yaml` (phases, artifacts, `depends_on`, `sequence`) — not just documentation. This is what the [precondition gate](#the-precondition-gate) and [Autopilot](#21-wire-autopilot-autonomous-execution) both read at runtime to know what depends on what and in which order to run. `pipeline_only`, `dashboard_extension`, and `enablement` — previously conceptual-only in this guide — now have one too, closing a gap where those three release types were documented but not actually schema-backed. See [The Process and Data Model Registries](#the-process-and-data-model-registries) for where these files come from.
+
 | Type | `release_type` | Scope | Typical Duration | Artifacts in Scope |
 |------|----------------|-------|------------------|--------------------|
 | **Discovery (Shape Up)** | `discovery` | Shape Up planning: problem definition → pitch → release brief → sprint plan | 1–2 weeks | problem_definition, pitch, release_brief, sprint_plan |
@@ -275,8 +277,6 @@ The framework encodes delivery methodology as twelve release types, each definin
 - **Engagement with bespoke deliverables — architecture blueprints, advisory reports, decision logs, PoC productionisation plans — that don't fit any standard type**: **Custom**
 
 **Discovery (Shape Up) vs Discovery (SOP / Canonical)**: Use Shape Up when the scope is fuzzy but the problem domain is understood and you can shape a solution in a week or two. Use SOP / Canonical when you genuinely do not yet know what to build, stakeholder alignment is low, or this is the first analytics engagement at the client — it runs a formal structured discovery and culminates in a sponsor-facing Findings Playback slide deck that must be signed off before any delivery work begins.
-
-**Full Platform vs Dashboard-First**: Both produce the same end result (production dashboards with a dbt warehouse). The difference is the *order of operations*. Full Platform follows the traditional flow: requirements → conceptual model → pipeline design → data model → dbt → dashboards. Dashboard-First inverts this: requirements → interactive dashboard mocks → visualization catalog → data model → seed data → dbt → dashboards → data refactor. Choose Dashboard-First when getting visual feedback early is more valuable than following the traditional top-down design sequence — typically when the SOW is well-defined enough to mock dashboards immediately but client data access may take time.
 
 **Full Platform vs Dashboard-First**: Both produce the same end result (production dashboards with a dbt warehouse). The difference is the *order of operations*. Full Platform follows the traditional flow: requirements → conceptual model → pipeline design → data model → dbt → dashboards. Dashboard-First inverts this: requirements → interactive dashboard mocks → visualization catalog → data model → seed data → dbt → dashboards → data refactor. Choose Dashboard-First when getting visual feedback early is more valuable than following the traditional top-down design sequence — typically when the SOW is well-defined enough to mock dashboards immediately but client data access may take time.
 
@@ -352,6 +352,80 @@ Plugin and extension users get updates automatically when a new version is publi
 
 > **Command notation:** Commands in this handbook are shown in Claude Code format (`/wire:*`). If you are using Gemini CLI, drop the `/wire:` prefix and replace colons with spaces — e.g., `/wire:requirements-generate my_project` becomes `/dp requirements generate my_project`.
 
+### Directing the work rather than typing commands
+
+**Since v4.0.0, on Claude Code.** Wire has 313 commands. You do not have to know
+which one comes next. Say what you want done and Wire computes the answer from
+the release type's own definition, runs it, tells you what it did, and stops where a
+decision is yours.
+
+```
+> New engagement for Northwind Retail, store performance dashboards.
+  SOW is in docs/sow.pdf. No warehouse access for two weeks.
+  Two lanes max, nothing against a warehouse, stop at decisions.
+
+  Read the SOW. Proposing dashboard_first / seeded, because the SOW asks for
+  four store dashboards in three weeks with data access unconfirmed.
+
+    Client:      Northwind Retail
+    Lead:        Mark Rittman  (from git config)
+    Release:     01-store-dashboards  (dashboard_first, seeded)
+    Budget:      2 lanes, no warehouse spend, stop at decisions
+
+  Create this engagement and first release?
+
+> Confirm. Skip business rules, agree at kickoff.
+
+  Ruling R-1 recorded.
+  Running /wire:requirements-generate 01-store-dashboards...
+
+  14 requirements, validate PASS, 2 clarification markers.
+  Relevant call: "Northwind kickoff prep", 28 Aug.
+
+  Approve now, request changes, or park for client sign-off?
+```
+
+**Three tiers.** You are the **release director**: you state intent, make
+rulings and approve at gates. The **orchestrating session** turns that into Wire
+command runs. The specialist **lane agents** each do one scoped task in their
+own folder and report once.
+
+**Nothing about the record changes.** Every step runs the real Wire command, so
+`status.md`, `execution_log.md`, the precondition gate, auto-validate, telemetry
+and the artifacts on disk are identical to typing it yourself. What changes is
+who types.
+
+**Four things worth knowing.**
+
+1. **The command name is always printed before it runs.** You learn the
+   catalogue as you go rather than up front, and you can always take over.
+2. **A review is never run without your ruling.** Wire asks for one of approve
+   now, request changes, or park for client sign-off. Parked decisions
+   accumulate in `status.md` and their count is the first line of every session.
+3. **A release records who is driving it.** A second session on the same release
+   offers to join as a reviewer, or to take over if the holder has not written
+   for 30 minutes. It will not dispatch work into a release someone else is
+   running. Two people on one engagement normally means two releases, two
+   branches, two terminals.
+4. **You can turn it off.** Say "you drive" for the rest of a session. Set
+   `orchestration.mode: manual` in `.wire/engagement/context.md` for a whole
+   engagement, which restores the pre-4.0 behaviour exactly, including
+   `/wire:start` printing the next action rather than offering to run it. Gemini
+   CLI is command-driven regardless: it has no skills or agents.
+
+**Budget.** Say it in prose and Wire writes it into `status.md`: how many lanes
+may run at once, whether anything may query a warehouse, and where to stop
+(at the first decision, at the end of the phase, or not at all). A lane refused
+on budget is reported with the setting that refused it, never silently dropped.
+
+**Rulings.** A decision you give is written to `decisions.md` the moment you
+give it, not when it is used, so it survives the session. A ruling can waive an
+**advisory** gate — Wire will not ask you the same question twice — but never a
+**blocking** one: those still need the recorded override, with your name and
+reason given at the time.
+
+Everything else in this section applies unchanged either way.
+
 ### Self-contained command architecture
 
 Every `/wire:*` command is a single, self-contained file — the command file *is* the complete workflow specification. There is no separation between a discovery layer and a logic layer. In Claude Code, these are `.md` files distributed as a plugin; in Gemini CLI, `.toml` files distributed as an extension.
@@ -423,7 +497,50 @@ stateDiagram-v2
     READY --> [*]
 ```
 
-An artifact should not progress until all three gates are passed. Downstream artifacts check upstream readiness before they generate. This enforces phase discipline automatically although you can over-ride if you need to.
+An artifact should not progress until all three gates are passed. Downstream artifacts check upstream readiness before they generate.
+
+### The precondition gate
+
+**As of v4.0.0**, phase discipline isn't a soft convention baked separately into each command's prose — every `-generate`/`-validate`/`-review` command auto-delegates to a shared utility, `specs/utils/precondition_gate.md`, before doing anything else.
+
+The gate reads the command's declared `preconditions` from its own front-matter: a static list (e.g. "`data_model.review` must be `approved`"), or the literal `dynamic` sentinel for the handful of artifacts (`mockups`, `pipeline_design`, `data_model`, `data_quality`, `dashboards`, `deployment`, `training`, `documentation`) whose correct precondition genuinely differs by release type. A `dynamic` precondition resolves at runtime from the current release's `wire/release-types/<type>.yaml` — the same file Autopilot reads to resolve execution order (see [Section 21](#21-wire-autopilot-autonomous-execution)).
+
+If the precondition isn't met, the command **blocks by default**:
+
+```mermaid
+flowchart LR
+    CMD["/wire:dbt-generate"] --> GATE{"precondition_gate\nmet?"}
+    GATE -->|Yes| RUN["Run the workflow"]
+    GATE -->|No| ASK["Block:\noverride, or stop?"]
+    ASK -->|"Override\n(name + reason)"| LOG["Record in status.md +\nexecution_log.md"]
+    LOG --> RUN
+    ASK -->|Stop| END(("Command exits"))
+
+    style GATE fill:#fce4ec,stroke:#c62828
+    style LOG fill:#fff3e0,stroke:#e65100
+```
+
+You can still override it, but only explicitly — the gate asks for your name and a reason, and records both in `status.md`'s `precondition_overrides` and as an `override` result in `execution_log.md`. This makes "I skipped a step on purpose" a visible, attributable decision instead of something that silently happened. Autopilot never answers this prompt on its own behalf — see "Handling a precondition-gate block" in [Section 21](#21-wire-autopilot-autonomous-execution).
+
+### Automatic validation
+
+**As of v4.0.0**, validate is no longer a separate step you have to remember to run between generate and review. Every `generate` command that has a matching `validate` command for the same artifact now runs that validate step automatically once it finishes writing the artifact, and folds the PASS/FAIL result straight into generate's own output.
+
+```mermaid
+flowchart LR
+    GEN["/wire:data_model-generate"] --> WRITE["Artifact written"]
+    WRITE --> AUTO{"auto_validate\nfalse?"}
+    AUTO -->|"No (default)"| RUN["Runs data_model-validate\nautomatically"]
+    RUN --> RESULT["PASS/FAIL folded into\ngenerate's own output"]
+    AUTO -->|Yes| SKIP["States plainly why, and that\nyou must run validate yourself"]
+
+    style RUN fill:#e8f5e9,stroke:#2e7d32
+    style SKIP fill:#fff3e0,stroke:#e65100
+```
+
+A handful of validate steps are expensive because they do real work beyond re-reading local files — `dbt-validate` runs an actual `dbt run`/`dbt test`, some migration and semantic-layer validates query a live warehouse or BI tool directly. Those generate commands declare `auto_validate: false` in front-matter (see `wire/schemas/command-schema.md`) and skip the automatic run, stating plainly why and that you need to trigger `validate` yourself when you're ready to pay that cost, rather than paying it on every draft iteration of generate.
+
+Either way, nothing changes about the gate that actually matters: `review` already requires `validate: PASS` for its own artifact as one of its declared preconditions (see above), enforced by the precondition gate regardless of whether validation happened automatically or manually. An `auto_validate: false` artifact can never reach review unvalidated — the opt-out only changes *when* validate runs, never *whether* it's required. A handful of artifacts have no separate validate step at all (`mockups`, `workshops`, `uat`, `viz_catalog`, `playbook`, Droughty's own umbrella `generate`) and this section doesn't apply to them either way.
 
 ### Git branching
 
@@ -451,14 +568,33 @@ When you run `/wire:start`, the framework reads all `status.md` files across all
 In addition to `status.md`, each project maintains an `execution_log.md` file that records a timestamped entry for every command that changes state. This provides a complete, append-only history of the delivery process — what was run, when, what the result was, and a brief summary.
 
 ```markdown
-| Timestamp | Command | Result | Detail |
-|-----------|---------|--------|--------|
-| 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements spec (3 files) |
-| 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed |
-| 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith |
+| Timestamp | Command | Result | Detail | By | Session | Duration | Tokens | Cost (USD) |
+|-----------|---------|--------|--------|----|---------|----------|--------|------------|
+| 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements spec (3 files) | Jane Smith | typed | 18m 05s | 412876 | $3.18 |
+| 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed | Jane Smith | typed | 6m 22s | 156430 | $1.02 |
+| 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith | Jane Smith | typed | 24m 10s | 98764 | $0.74 |
 ```
 
-The log is useful for handovers (a new team member can see the full history of what was done), for auditing (confirming when artifacts were generated and who approved them), and for debugging (identifying when a failure occurred and what preceded it).
+Each row records who ran the command (`By`, the git user) and what invoked it (`Session`: `typed`, `orchestrator [id]`, a lane label such as `dbt-developer [staging 1/2]`, or `autopilot`), plus what the run took. Duration is measured by the command itself. Token count and estimated cost are backfilled after the turn by the plugin's metrics hook on Claude Code, which reads the measured usage from the session transcript — values are never estimated, so a cell is either measured or `n/a` (always `n/a` on Gemini CLI, which has no hook mechanism). Opt out of the backfill with `WIRE_METRICS=false`.
+
+The log is useful for handovers (a new team member can see the full history of what was done), for auditing (confirming when artifacts were generated, who approved them, and what each step cost), and for debugging (identifying when a failure occurred and what preceded it).
+
+### Detailed execution tracing (opt-in)
+
+**As of v4.0.0.** `execution_log.md`'s one-row-per-command summary can't answer "what actually happened *inside* that command" — which files it read, what it inferred, what it proposed, what you decided and why. For that depth, set:
+
+```bash
+export WIRE_TRACE=true
+```
+
+Every command checks this on every invocation — on by an environment variable, off by default, zero overhead when unset. Once on, each command writes a step-by-step trace to `.wire/releases/<release_folder>/trace.jsonl` (JSON Lines, one event per line: `command_start`, one `step` event per meaningful step, `command_end`) — local only, never sent anywhere, unlike the anonymous Segment telemetry event. Each event's `detail` field has no length limit, unlike `execution_log.md`'s 120-character cap:
+
+```json
+{"ts":"2026-07-05T14:20:11Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.1","step_name":"Resolve the registry location","result":null,"detail":"Checked wire/data-model-registry/ (not found). Checked ~/.wire/data-model-registry/ (found)."}
+{"ts":"2026-07-05T14:20:19Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.2","step_name":"Resolve the vertical","result":null,"detail":"No confident vertical match — no dedicated saas vertical exists. Adjacent match found: subscription-commerce, proposed as an analogue for the MRR/NRR model."}
+```
+
+That's exactly the level of detail that would have made the [data model registry's](#the-process-and-data-model-registries) automatic-detection behavior visible without reconstructing it by hand — was the registry reachable, what did it search, what matched, how was it used downstream. This is additive to `execution_log.md` and Telemetry, not a replacement for either, and applies uniformly across every command — it's injected once at build time (`wire/specs/utils/tracing.md`, via `build-packages.sh`), so no individual command spec needed to change.
 
 ### The chain of derivation
 
@@ -3774,22 +3910,30 @@ For each planned delivery release, Autopilot:
 
 1. Creates the release folder structure (equivalent to `/wire:release-spawn`)
 2. Creates the release `status.md` with the correct artifact scope for the release type
-3. Runs the full artifact sequence for that release type
+3. Resolves the artifact order and runs it
 4. Commits all artifacts after the release is complete before moving to the next
 
-**Artifact sequences by release type:**
+**As of v4.0.0, this order is not hardcoded anywhere in Autopilot's own spec.** It reads `status.md`'s `project_type`, loads `wire/release-types/<type>.yaml`, flattens every phase's artifacts into one list, and topologically sorts by `depends_on` (tie-broken by `sequence`) — the same file the [precondition gate](#the-precondition-gate) reads for every artifact regardless of whether Autopilot or a person is driving. The previous version hardcoded a per-release-type sequence directly in `autopilot.md`, which had silently drifted from reality — most notably, `full_platform`'s hardcoded list omitted the `orchestration` artifact entirely, so a run through Autopilot never generated it even though the release type's own definition required it. That class of bug is now structurally impossible: there is exactly one place execution order comes from, and both the gate and Autopilot read it.
 
-| Type | Artifacts |
+**Illustrative resolved order** for the release types currently defined — treat this as a snapshot of what the YAML currently resolves to, not a contract Autopilot maintains separately:
+
+| Type | Resolved order |
 |------|-----------|
-| `full_platform` | requirements → workshops → conceptual_model → pipeline_design → data_model → mockups → pipeline → dbt → semantic_layer → dashboards → data_quality → uat → deployment → training → documentation |
+| `full_platform` | requirements → conceptual_model → pipeline_design → data_model → mockups → pipeline → dbt → semantic_layer → dashboards → **orchestration** → data_quality → uat → deployment → training → documentation |
 | `pipeline_only` | requirements → pipeline_design → pipeline → data_quality → deployment |
 | `dbt_development` | requirements → data_model → dbt → semantic_layer → data_quality → deployment |
 | `dashboard_extension` | requirements → mockups → dashboards → training |
-| `dashboard_first` | requirements → mockups → viz_catalog → data_model → seed_data → dbt → semantic_layer → dashboards → data_refactor → data_quality → uat → deployment → training → documentation |
+| `dashboard_first` | requirements → conceptual_model → mockups → viz_catalog → data_model → seed_data → dashboards → data_refactor → dbt → semantic_layer → data_quality → uat → deployment |
 | `enablement` | training → documentation |
-| `platform_migration` | ingestion_audit → db_object_audit → security_audit → dbt_audit → orchestration_audit → migration_inventory → lineage_view → migration_strategy → target_setup → ingestion_migration → dbt_migration → orchestration_migration → equivalency_validation → cutover → migration_report |
+| `platform_migration` | ingestion_audit → db_object_audit → security_audit → dbt_audit → orchestration_audit → migration_inventory → migration_strategy → target_setup → ingestion_migration → dbt_migration → orchestration_migration → equivalency_validation → cutover → migration_report |
 
-Each artifact follows the same generate → validate (up to 3 retries) → self-review (up to 2 retries) cycle. After each artifact is generated and again after it is approved, Autopilot syncs to Jira, Linear, and the document store (whichever are configured).
+(`workshops` is an optional, ungated artifact on `full_platform` — it has no `depends_on` edges, so it never blocks or is blocked by anything else in the sequence, and can be run whenever, or never.)
+
+Each artifact follows the same generate → validate (up to 3 retries) → self-review (up to 2 retries) cycle, running the real `/wire:{command}-generate/-validate/-review` commands rather than a paraphrase of their logic. After each artifact is generated and again after it is approved, Autopilot syncs to Jira, Linear, and the document store (whichever are configured).
+
+#### Handling a precondition-gate block
+
+If order resolution worked correctly, every artifact's precondition gate should pass silently by the time Autopilot reaches it — that's what a correct topological sort guarantees. If one blocks anyway, that signals a real structural problem (a resolution bug, a manually-edited `status.md` that regressed something), not routine friction to route around. Autopilot does **not** self-override — the gate's override contract requires a real person's name and reason, which Autopilot cannot supply on someone else's behalf. It pauses with the same three-option pattern as a safety gate below (override now / investigate first / stop here) and logs the block in `autopilot_checkpoint.md` for later diagnosis.
 
 ### Safety gates
 
@@ -4105,7 +4249,65 @@ The entire session — from SOW to complete multi-release deliverables with all 
 
 Wire Agents replaces the single-agent pattern with thirteen named specialist agents, each with a focused skill set, dispatched by the `/wire:delegate` command.
 
+**Since v4.0.0** these agents are the third tier of the release director model
+(see [Directing the work rather than typing commands](#directing-the-work-rather-than-typing-commands)):
+one human directs, one session orchestrates, and the specialists run as **lanes**.
+Everything in this section still applies; five rules apply on top when a lane is
+dispatched by an orchestrating session rather than by a command you typed.
+
+| Rule | Why (the failure it comes from) |
+|---|---|
+| Write progress to your own state file after **each** completed item | Two hard usage-limit outages resumed with near-zero loss only because every lane had incremental state |
+| Write only inside the directories the brief names, and commit exactly those files | A broad commit from one lane swept up another's half-written state file and corrupted both resume points |
+| **Do not write `status.md` or `execution_log.md`** | 46 commits in 24 hours across four people; one merge silently discarded 54 models of completed work |
+| Do not spawn sub-agents below yourself — lanes are flat | Nested fan-out caused two hard usage-limit outages in one day |
+| Report once: complete, stalled, or needs a ruling | Polling chatter burned context and tokens while the state files already held the answer |
+
+The third rule is the change. The orchestrating session is the single writer of
+`status.md` and the execution log: it reads the lane's state file and writes the
+record, then runs a consolidation pass — do the artifact files exist, did
+validate run and does its result match what the lane claimed, did the lane write
+`status.md` when it should not have, and for warehouse work, does the warehouse
+agree rather than just the lane. Outside orchestrated mode, delegation behaves
+exactly as it did in 3.x and the subagent updates `status.md` itself.
+
 The core insight is simple: a single Claude Code agent doing requirements, dbt development, LookML authoring, data quality, and migration audits across a full engagement dilutes context and produces generic output. A specialist with a narrow brief — "your job is dbt models and nothing else" — operates with a much cleaner context and makes better decisions within its domain.
+
+Two delegation patterns cover everything Wire does: a sequential chain when each step's specialist needs the previous one's output, and a parallel fan-out when a batch of work splits into independent items with no relationship to each other.
+
+```mermaid
+flowchart TD
+    MAIN[Main session<br/>/wire:delegate computes the plan]:::main
+    MAIN --> PLAN{Independent items,<br/>no dependency between them?}
+
+    PLAN -->|No — each depends<br/>on the last| SEQ1[data-designer<br/>subagent]:::sub
+    SEQ1 --> SEQ2[dbt-developer<br/>subagent]:::sub
+    SEQ2 --> SEQ3[semantic-layer-developer<br/>subagent]:::sub
+
+    PLAN -->|Yes — parallelisable| SPAWN[Spawn one Migration<br/>Sub-agent per independent item]:::main
+
+    subgraph FANOUT["Parallel Migration Sub-agents"]
+        direction LR
+        S1[Migration Sub-agent 1]:::sub
+        S2[Migration Sub-agent 2]:::sub
+        S3[Migration Sub-agent 3]:::sub
+        SN[Migration Sub-agent N]:::sub
+    end
+
+    SPAWN --> S1 & S2 & S3 & SN
+    S1 & S2 & S3 & SN --> COLLECT[Main session<br/>collects all results]:::main
+    SEQ3 --> COLLECT
+
+    COLLECT --> NEXT{More work,<br/>dependent on this batch?}
+    NEXT -->|Yes| MAIN
+    NEXT -->|No| DONE([All work complete]):::event
+
+    classDef main fill:#1a3a5c,stroke:#4a90d9,color:#fff
+    classDef sub fill:#2d4a1e,stroke:#6abf4b,color:#fff
+    classDef event fill:#1a1a1a,stroke:#888,color:#fff
+```
+
+The sequential branch is the ordinary case across a release: `data-designer` produces the data model before `dbt-developer` can generate anything against it, and `dbt-developer`'s models have to exist before `semantic-layer-developer` can build LookML on top of them — each a different specialist, run in strict order. The parallel branch is `migration-specialist` fanning out across a batch of independently-migratable items (see the Platform Migration release type below) — every sub-agent in the batch runs at once, and the main session only moves on once all of them have returned. The same fan-out shape governs large dbt model sets too, covered next.
 
 ### The thirteen agents
 
@@ -4490,18 +4692,285 @@ Section 4.1 was edited: "Python 3.11" changed to "Python 3.12"
 
 ---
 
+## 25.5. Fathom Call Sync (Automatic by Default, Safeguarded)
+
+**As of v4.0.0.** Wire pulls new Fathom call transcripts for the engagement's client into `.wire/engagement/calls/` automatically, once per session, with a genuine analytical findings write-up per call — no need to remember to run anything, and no separate opt-in question. This is different from `/wire:utils-meeting-context`, which review commands already call for a live, ad-hoc Fathom search scoped to one artifact under review: this persists every new call as a durable, committed file, once, so the whole team has it later (and `utils-meeting-context`'s own searches can find it locally too) without re-querying Fathom.
+
+### On by default, once it's safe to be
+
+`/wire:new` asks for the client's email domain as a normal part of setting up the engagement (right alongside client name). Giving one turns Fathom Sync on automatically:
+
+```yaml
+# .wire/engagement/context.md
+fathom_sync:
+  enabled: true
+  client_domain: "acme.com"   # required — matches calendar invitees on each call
+  last_synced: null           # updated automatically after each sync
+```
+
+Leave the domain blank and it stays off — there's no free-text fallback to a search on the client's name, deliberately: a text search on a company name can't reliably tell "this specific client" apart from any other meeting that happens to mention the same words, and this feature only earns being on by default because the domain filter is narrow enough to trust.
+
+**Safeguard against internal RA engagements.** If the domain given resolves to Rittman Analytics' own domain (`rittmananalytics.com`), or the client name looks self-referential ("Rittman Analytics", "RA"), Wire refuses to enable Fathom Sync — explaining why — regardless of what was typed. The reasoning: RA's own domain is on *every* meeting RA has, internal or client-facing, so it can't narrow anything, and blindly enabling it would pull unrelated internal meetings — potentially confidential ones — into a repo, including a client-facing one under `repo_mode: combined`. This check runs both at `/wire:new` and again every time `/wire:utils-fathom-sync` or the automatic skill actually runs, so a later hand-edit to `context.md` that reintroduces an RA domain gets caught too, not just the initial setup.
+
+### What happens each session
+
+Once enabled, the **Fathom Sync skill** activates once per new conversation (right after the Engagement Context skill loads, using the same "once per session" mechanism) and silently checks for new calls since the last sync — filtered to meetings with at least one calendar invitee actually matching `client_domain`, discarding anything that doesn't. If it finds none — the common case most sessions — nothing happens, no message. If it finds new ones, it writes a call file (transcript, summary, action items) plus a findings file per call to `.wire/engagement/calls/`, updates the sync marker, and reports one brief line before continuing with whatever you actually asked.
+
+**Claude Code only.** Skills are a Claude Code plugin mechanism with no Gemini CLI equivalent — Gemini users get this via the manual command below instead of the automatic per-session pull.
+
+### Running it manually
+
+```bash
+/wire:utils-fathom-sync [--after YYYY-MM-DD] [--before YYYY-MM-DD] [--limit N] [--dry-run] [--no-findings]
+```
+
+Always runs when explicitly invoked, regardless of whether `fathom_sync.enabled` is set — running the command is itself the consent. Useful for a wider backfill than the automatic per-session pull's incremental window, or for Gemini CLI users who have no automatic path. `--dry-run` lists what would be fetched without writing anything; `--no-findings` skips the analytical write-up and just pulls the raw call files.
+
+### Findings quality
+
+The findings step is a genuine analytical pass, not a mechanical extraction — it reads 2–3 of the most recent existing findings files first to match voice, depth, and structure, then synthesises what changed, what was decided, and what it means downstream, rather than restating the Fathom summary. See `wire/specs/utils/fathom_sync.md` for the exact structure and guidelines.
+
+---
+
 ## 26. Extending and Customising the Framework
 
 The framework is designed to be extended. All delivery intelligence lives in plain markdown files. Adding a new capability means writing a new markdown file.
+
+**As of v4.0.0**, `wire/release-types/*.yaml` and `wire/specs/**/*.md` are not edited directly in this repo — they're a synced, pinned mirror of a private, branch-protected `wire-process-registry` repo. See [The Process and Data Model Registries](#the-process-and-data-model-registries) below for why, and for how the (separate, optionally-used) `wire-data-model-registry` fits in.
+
+### Adding a new release type
+
+A release type is a YAML file conforming to `wire/schemas/release-type-schema.md`: a set of phases, each with an ordered list of artifacts (`id`, `command`, `depends_on`, `sequence`, `required`), plus the spec files those commands point to. Both the [precondition gate](#the-precondition-gate) and [Autopilot](#21-wire-autopilot-autonomous-execution) read this file at runtime, so it's not a documentation exercise — getting the `depends_on` graph wrong breaks a real engagement.
+
+To add one for real:
+
+1. **Open a PR against `wire-process-registry`** (not this repo). Add `release-types/<name>.yaml` there, following the schema.
+2. **Write a spec file per artifact** in the same registry repo, at `specs/<domain>/<artifact>/generate.md` (plus `validate.md`/`review.md` where applicable), with `wire_schema` front-matter conforming to `wire/schemas/command-schema.md`.
+3. **Get it reviewed and merged** — one approving review is required; branch protection enforces this even for admins.
+4. **Sync it into this repo**: `wire/scripts/sync-process-registry.sh` mirrors both directories and records the resolved commit in `wire/process_registry/pinned_sha.txt`.
+5. **Rebuild**: `bash wire/scripts/build-packages.sh` bundles the newly-synced YAML and inlines the specs into `commands/*.md`/`.toml`.
+
+Once bundled, nothing else in the framework needs to know the new release type exists — the precondition gate and Autopilot both resolve it automatically from the YAML.
+
+### The Process and Data Model Registries
+
+Wire depends on two different kinds of specialised knowledge to do its job, and as of v4.0.0 both live outside this repo, in their own private GitHub repos.
+
+The first is about *how Wire works*: the exact sequence a release type follows, and what each command actually does. The second is about *what Wire knows*: canonical data models built from RA's collective experience across real client engagements, that a new engagement can optionally draw on for a head start instead of starting from a blank page.
+
+Those two can look alike from the outside — both are private repos, both get pulled into this repo as a local copy — but they exist for opposite reasons, which is exactly why they get treated so differently once they're here.
+
+**[`wire-process-registry`](https://github.com/rittmananalytics/wire-process-registry)** (private repo — RA staff with GitHub org access) is the process knowledge — the source of truth for `wire/release-types/*.yaml` and `wire/specs/**/*.md`. Nothing about it is secret, but now that it can actually *enforce* a release's process rather than just describe it (see [The precondition gate](#the-precondition-gate)), a mistake in it doesn't just look wrong in a doc — it breaks a real engagement. So changing it now goes through a proper review: it's branch-protected (one required approval, admin enforcement on) and never fetched live, with `wire/scripts/sync-process-registry.sh` mirroring it into this repo and pinning the resolved commit in `wire/process_registry/pinned_sha.txt`. Because it's Wire's own public operating procedure — already visible to anyone reading the plugin's command files — this content is bundled straight into the public `wire-plugin`/`wire-extension` packages once synced.
+
+```mermaid
+flowchart TB
+    RT["Private: wire-process-registry<br/>release-types/*.yaml, specs/**/*.md"]
+    SYNC["Reviewed, pinned sync"]
+    CMDS["Public: wire-plugin / wire-extension<br/>commands/*.md (bundled)"]
+
+    RT --> SYNC --> CMDS
+
+    style RT fill:#fce4ec,stroke:#c62828
+    style CMDS fill:#e8f5e9,stroke:#2e7d32
+```
+
+**What a release-type definition actually looks like** — `pipeline_only.yaml` in full, one of the smaller release types and real content from `wire-process-registry`, not illustrative:
+
+```yaml
+wire_schema: "1.0"
+id: pipeline_only
+name: "Pipeline Only"
+description: "Data pipeline development only — ingestion architecture, pipeline implementation, and data quality testing, without a dbt/semantic-layer/BI build."
+applicable_when:
+  - "Client needs a data pipeline built but transformation/BI is out of scope or handled separately"
+  - "Scope is limited to getting data reliably into the warehouse"
+
+phases:
+  - id: requirements
+    name: "Requirements"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: requirements
+        command: requirements
+        required: true
+        sequence: 1
+        depends_on: []
+
+  - id: design
+    name: "Design"
+    required: true
+    requires_phase: requirements
+    artifacts:
+      - id: pipeline_design
+        command: pipeline_design
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: requirements
+            action: review
+            outcome: approved
+
+  - id: development
+    name: "Development"
+    required: true
+    requires_phase: design
+    artifacts:
+      - id: pipeline
+        command: pipeline
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: pipeline_design
+            action: review
+            outcome: approved
+
+  - id: testing
+    name: "Testing"
+    required: true
+    requires_phase: development
+    artifacts:
+      - id: data_quality
+        command: data_quality
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: pipeline
+            action: review
+            outcome: approved
+
+  - id: deployment
+    name: "Deployment"
+    required: true
+    requires_phase: testing
+    artifacts:
+      - id: deployment
+        command: deployment
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: data_quality
+            action: validate
+            outcome: PASS
+```
+
+| Element | Meaning |
+|---|---|
+| `wire_schema` | Which version of the schema this file conforms to — lets the contract evolve without breaking every existing release type at once. |
+| `id` | The identifier used everywhere else — `status.md`'s `project_type`, `/wire:new`'s selector, and the lookup key both the precondition gate and Autopilot use (`wire/release-types/<id>.yaml`). |
+| `name` / `description` | Human-readable label and summary, shown when choosing a release type. |
+| `applicable_when` | Plain-language guidance on when this release type fits — documentation, not machine-enforced. |
+| `phases[]` | The ordered top-level stages. Coarser than artifacts; mainly organisational. |
+| `phases[].requires_phase` | Which phase must fully complete before this one starts — phase-level ordering. |
+| `phases[].artifacts[]` | The actual deliverables in that phase — this is the part with real teeth. |
+| `artifacts[].id` | The artifact's identifier, matching what appears in `status.md`. |
+| `artifacts[].command` | Which command family handles it — resolves to `/wire:{command}-generate/-validate/-review`. |
+| `artifacts[].required` | Whether this artifact must be completed for the release type to be considered done. Some artifacts elsewhere (e.g. `mockups` in `full_platform`) are `false` — optional. |
+| `artifacts[].sequence` | Tie-breaker: when two artifacts in the same phase have no dependency between them, `sequence` decides order. |
+| `artifacts[].depends_on[]` | **The actual dependency graph.** Each entry names an upstream artifact, the gate it must have passed (`action`), and the required state (`outcome`). `pipeline_design` can't start until `requirements`' review is `approved`; `deployment` can't start until `data_quality`'s validate is `PASS`. |
+
+This `depends_on` graph is exactly what the precondition gate checks before letting a command run, and what Autopilot sorts to decide execution order.
+
+**[`wire-data-model-registry`](https://github.com/rittmananalytics/wire-data-model-registry)** (private repo — RA staff with GitHub org access) is the data knowledge, and it's the opposite case. When RA builds a data model for a client in a familiar industry — SaaS, retail, insurance, manufacturing, education, subscription commerce — it's rarely the first time RA has solved this kind of problem: there's a good instinct for what a solid `Customer` entity looks like for a SaaS business, what a `Policy` and `Claim` model needs to capture for insurance, what grain makes sense for subscription revenue. None of that experience used to be available to Wire itself — every new engagement started from a blank page, even when the shape of the answer was already well understood.
+
+This registry is where that experience now lives: a private library, organised by industry, of the entities RA typically expects to see, the structure and grain that's worked well before, and real worked examples of how a similar model was actually built — not code to copy and paste, but a reference to learn the pattern from. The value to a consultant: when you start a data model for a client in one of these industries, Wire recognises the fit and offers this as a starting point — a genuine head start instead of reasoning up the whole thing from nothing. You can take it, adapt it, or ignore it entirely; it's always a suggestion, never applied automatically. This isn't limited to an exact industry match, either — if nothing in the registry is a confident fit (there's no dedicated `saas` vertical yet, for instance), Wire proposes the closest available analogue, explicitly labelled as approximate, and separately checks for relevant cross-industry patterns (contact reconciliation across systems, revenue recognition, and so on) regardless of whether any industry matched at all. Once the model is built, Wire can also flag if something standard for that industry looks like it's missing.
+
+Because this comes from real client work, it's genuinely confidential — part of what makes RA's delivery experience valuable, not something to publish for anyone who installs the Wire plugin. So it's kept out of the public plugin entirely and never bundled in.
+
+**Setup is automatic — you shouldn't need to think about it.** `/wire:new` and Autopilot both attempt this on your behalf, silently, the first time you start an engagement whose release type would actually use it (`full_platform`, `dbt_development`, `dashboard_first`) — at most once per machine. If you have GitHub access, it just works from then on; if you don't, nothing happens and nothing changes about how Wire behaves for you. You can also run `/wire:utils-data-model-registry-setup` yourself any time.
+
+```mermaid
+flowchart TB
+    START["/wire:new or Autopilot starts an engagement\n(release type that uses data_model)"]
+    AUTO["Attempts setup automatically\n(once per machine) — or run\n/wire:utils-data-model-registry-setup yourself, any time"]
+    CHECK{"RA staff with<br/>registry access?"}
+    YES["Clone succeeds →<br/>saved to your machine"]
+    NO["Clone fails —<br/>reported plainly, not an error"]
+    GEN["Any future engagement:<br/>data_model-generate runs"]
+    PROPOSE["Proposes a matching or closest-adjacent<br/>industry model, and/or cross-vertical<br/>patterns — never auto-applied"]
+    SKIP["Skips the proposal —<br/>Wire behaves exactly the same otherwise"]
+
+    START --> AUTO --> CHECK
+    CHECK -->|Yes| YES --> GEN --> PROPOSE
+    CHECK -->|No| NO --> GEN --> SKIP
+
+    style YES fill:#e8f5e9,stroke:#2e7d32
+    style NO fill:#ffebee,stroke:#c62828
+    style PROPOSE fill:#e8f5e9,stroke:#2e7d32
+    style SKIP fill:#f5f5f5,stroke:#999
+```
+
+| | wire-process-registry | wire-data-model-registry |
+|---|---|---|
+| Content | Release-type YAML, command specs | Canonical entity/schema YAML, reference dbt SQL |
+| Confidentiality | Public (Wire's own operating procedure) | Proprietary (real client engagement content) |
+| Bundled into public plugin? | **Yes** | **No — never** |
+| How you get it | Comes with the plugin | Automatic (via `/wire:new`/Autopilot) or `/wire:utils-data-model-registry-setup` yourself, using your own GitHub access |
+
+### Walkthrough: what this actually looks like on a real engagement
+
+Worked example, start to finish — a `full_platform` engagement for **Core Dynamics, Inc.**, a B2B SaaS company selling facility/asset management software. Written to illustrate the harder case — suppose no vertical currently in the registry is a confident match for this client's exact industry — since that's the case the adjacent-match and cross-vertical behavior exists for. (Whether that's true for "B2B SaaS" specifically at any given moment depends on what's actually in the registry when you read this — it grows independently of Wire's own release cycle. The mechanism below is the same either way; a confident match just skips straight to the easier path.)
+
+**1. Enabled, without anyone asking for it.** The consultant running this engagement is RA staff with GitHub access to `wire-data-model-registry`. Nothing about setting up this engagement mentions the registry — no question at `/wire:new`, no flag to remember. The first time a `data_model`-using release (this one, `full_platform`) is reached, Wire quietly attempts the clone in the background; since this consultant already ran `/wire:utils-data-model-registry-setup` on a previous engagement, `~/.wire/data-model-registry/` is already there and nothing needs to happen at all.
+
+**2. The proposal.** Once `conceptual_model` is approved, the consultant runs `/wire:data_model-generate`. Step 1.5 fires automatically and reads the approved requirements: "B2B SaaS," "MRR," "NRR," a subscription-based revenue model. It lists whichever verticals actually exist in the registry right now — suppose, for this example, none is a confident match for B2B SaaS specifically — but judges `subscription-commerce` a plausible **adjacent** match: its entities (`subscriber`, `subscription`, `subscription_event`, `monthly_retention`, `subscription_revenue`) are structurally close to what an MRR/NRR model needs, even though that vertical's own content was built from a pet-product box and a meal-kit business, not software. Separately — and regardless of that vertical match — it also notices the requirements describe a 12% Salesforce/HubSpot contact-mismatch problem from discovery, and flags the cross-vertical `crm_identity_resolution` pattern as relevant. Two proposals appear, not one:
+
+```
+No vertical currently in the registry is an exact industry match for B2B SaaS.
+The closest available entity shape is subscription-commerce — built from a
+pet-product box and a meal-kit subscription business, not software.
+Entities: subscriber, subscription, subscription_event, monthly_retention, subscription_revenue
+
+This may still be a reasonable starting point for Core Dynamics' MRR/NRR model.
+Worth using loosely, or skip entirely? (yes / adapt / no)
+```
+```
+Also potentially relevant: crm_identity_resolution — built for an agency's own CRM
+reconciliation, but the same technique (union multiple CRM sources, resolve identity
+by email/domain matching) applies to Core Dynamics' own Salesforce/HubSpot contact
+records, which show a 12% mismatch rate per discovery findings.
+Worth using loosely, or skip entirely? (yes / adapt / no)
+```
+
+Note what didn't happen here: Wire didn't reject `crm_identity_resolution` just because its own description talks about "an agency's own CRM operations" — Core Dynamics isn't an agency. It looked past that framing and asked whether the underlying entities and technique were still the same problem. They were, so it proposed it anyway, labeled honestly as a reframe rather than an exact fit — the same principle behind the adjacent vertical match above, applied to cross-vertical patterns too.
+
+**3. The decision.** The consultant answers each independently:
+- `subscription-commerce` → **adapt**: keeps the shape but renames to match Core Dynamics' own terminology (`subscriber` → `account`, `subscription_event` → `billing_event`), drops `monthly_retention` as out of scope for this phase, keeps `subscription` and `subscription_revenue` as-is.
+- `crm_identity_resolution` → **yes**: adopted unmodified, since it maps directly onto the actual reconciliation problem.
+
+Wire records both decisions in `.wire/engagement/context.md`:
+```yaml
+data_model_registry:
+  vertical: subscription-commerce
+  cross_vertical_schemas: [crm_identity_resolution]
+```
+
+**4. What it contributes to the release.** The accepted entities become the starting structure for the rest of `data_model-generate`: `account_dim`, `subscription_fct`, `billing_event_fct`, and `subscription_revenue_fct` get modeled with the registry's suggested grain and columns, adjusted to Core Dynamics' real source systems (Salesforce, HubSpot, Stripe). The accepted cross-vertical pattern contributes something requirements alone wouldn't have produced: a `contact_identity_map` integration model, resolving Salesforce/HubSpot contact IDs to one canonical identity — the registry's proposal is what put this model on the plan at all.
+
+For each of these, the entity's `generation_constraints` (rules the model must satisfy — e.g. "`subscription_revenue_fct` must reconcile to the sum of `billing_event_fct` amounts for any given period") and `reference_implementation` pointer (a path into the registry's own worked-example dbt code demonstrating the pattern) carry forward into `data_model_specification.md`. `dbt-generate` needs no changes at all to pick this up — it already reads that file as its primary input, so the constraints and reference pointers are just there when it runs, available to read and adapt, never to copy verbatim.
+
+**5. What it contributes to validation.** Later, `/wire:data_model-validate` reads `data_model_registry.vertical`/`cross_vertical_schemas` back out of `context.md` and diffs the generated model list against what was proposed — in this case, noting that `subscription-commerce`'s canonical schema also usually expects a `churn_event_fct` model that Core Dynamics' actual data model doesn't have yet. This appears in a clearly-labeled, advisory-only "Canonical Vertical Comparison" section of the validation report: worth a look, never a blocker, and never affecting whether `data_model-review` can proceed.
 
 ### Adding a new command
 
 **Step 1: Write the workflow spec**
 
-Create a file at `wire/specs/<phase>/<artifact>/<action>.md`. Use the standard frontmatter and structure:
+Create a file at `wire/specs/<phase>/<artifact>/<action>.md`. Use the `wire_schema` frontmatter contract (`wire/schemas/command-schema.md`):
 
 ```markdown
 ---
+wire_schema: "1.0"
+command: generate               # generate | validate | review | utility | lifecycle
+artifact: my_artifact
+domain: my_domain
+release_types:                  # which release types use this — [] for cross-cutting utilities
+  - full_platform
+action_type: artifact
+logs_execution: true
+preconditions:                  # static list, or the literal string "dynamic" if the correct
+  - artifact: upstream_artifact  # precondition genuinely varies by release type
+    action: review
+    outcome: approved
 description: Brief description of what this command does
 argument-hint: <project-folder>
 ---
@@ -4628,14 +5097,6 @@ The current framework targets BigQuery + dbt + LookML. Adapting for another stac
 3. **Update the pipeline design spec** (`specs/design/pipeline_design/generate.md`): update the replication tool and architecture descriptions
 
 The non-technology artifacts (requirements, data_model, training, documentation) require no changes.
-
-### Adding a new release type
-
-Each release type is a process definition — an ordered set of in-scope artifacts that defines a specific delivery workflow. If you have a recurring engagement pattern not covered by the seven standard types (discovery, full_platform, pipeline_only, dbt_development, dashboard_extension, dashboard_first, enablement):
-
-1. Edit `specs/new.md` to add the new type to the release creation prompts and define which artifacts are in scope (the rest will be set to `not_applicable` when `status.md` is instantiated)
-2. Add a case to the status template in `TEMPLATES/status-template.md` showing the artifact scope for the new type
-3. Document the new type in this handbook
 
 ### Adjusting naming conventions
 
@@ -5020,6 +5481,24 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v4.0.0 — Precondition gate, process/data-model registries, Autopilot rewrite (September 2026)
+
+Wire's release types are process definitions — an ordered graph of artifacts, each depending on specific ones before it — that until this release existed only as prose an agent had to notice and honor on its own. Nothing shared actually checked it, and nothing stopped a step being skipped or a status file being hand-edited around a gate.
+
+This release turns that graph into structured YAML per release type, then builds two things on top of it that weren't possible before: a shared precondition gate that enforces the graph deterministically (block by default, override only with a recorded name and reason), and an Autopilot that reads the same graph at runtime instead of maintaining its own hand-copied, driftable notion of execution order. Because the graph now has real behavioral consequences, it also moves out of this repo into a private, branch-protected registry. See [Section 6: The precondition gate](#the-precondition-gate), [Section 26: The Process and Data Model Registries](#the-process-and-data-model-registries), and [Section 21: Wire Autopilot](#21-wire-autopilot-autonomous-execution) for the full detail.
+
+- **Precondition gate** — every `-generate`/`-validate`/`-review` command now auto-delegates to a shared `precondition_gate` utility that blocks by default on unmet preconditions and requires a recorded name + reason to override.
+- **`wire-process-registry`** — release-type YAML and command specs externalised to a private, branch-protected repo, synced via a pinned-SHA mirror, never fetched live.
+- **`wire-data-model-registry`** (optional, automatic) — canonical entity/schema library for 6 industry verticals; `data_model-generate` detects and proposes a match automatically, with no opt-in flag. Kept out of the public plugin/extension entirely (proprietary content) — RA staff get it via the new `/wire:utils-data-model-registry-setup`.
+- **Autopilot rewrite** — resolves execution order dynamically from each release type's YAML instead of ~700 lines of hardcoded sequences (which had silently omitted `orchestration` from `full_platform`), and now runs the real `/wire:*` commands instead of a parallel copy of their logic.
+- **`pipeline_only`, `dashboard_extension`, `enablement`** gain formal `wire/release-types/*.yaml` definitions, closing a gap where they were documented but not actually schema-backed.
+- **Packaging fix** — `wire/release-types/*.yaml` is now bundled into the distributable plugin/extension; previously it wasn't, so the precondition gate and Autopilot's order resolution only worked inside the Wire source repo.
+- **Data model registry fixes** (found via an Autopilot dry run on an RA staff member's own machine, then confirmed and extended by a follow-up verification dry run) — `/wire:new`, Autopilot, **and now `/wire:release-spawn`** all attempt the registry clone automatically (previously only ever checked for, never fetched, so even genuine GitHub access got silently skipped — and `release-spawn`, the standard discovery-to-delivery path, was still missing this as of the first fix); `data_model-generate` now proposes an adjacent vertical match and independent cross-vertical patterns instead of giving up when no vertical is a confident industry fit, reading the registry's live directory listing rather than assuming a fixed set of verticals (which has already grown once since this was written).
+- **Detailed execution tracing (opt-in)** — `WIRE_TRACE=true` makes every command write a step-by-step, unlimited-detail trace to `.wire/releases/<release>/trace.jsonl`; off by default, local-only, applies uniformly across all ~260 commands via the same build-time injection mechanism Telemetry uses. See [Detailed execution tracing](#detailed-execution-tracing-opt-in).
+- **Fathom Call Sync** (automatic by default, once a client domain is given) — generalises a previously per-client, hand-maintained script into a proper Wire feature: a new `fathom-sync` skill (Claude Code only) pulls new Fathom call transcripts for the engagement's client into `.wire/engagement/calls/` once per session, with an analytical findings write-up per call, using the Fathom MCP server and a client domain `/wire:new` now captures directly. Refuses to enable itself for internal RA engagements (own-domain or self-referential client name), checked both at setup and on every run. `/wire:utils-fathom-sync` provides the same logic manually. See [Section 25.5: Fathom Call Sync](#255-fathom-call-sync-automatic-by-default-safeguarded).
 
 ---
 

@@ -1,0 +1,31 @@
+{
+  "converter_version": "1.1.0",
+  "project": "lookml",
+  "views_emitted": 4,
+  "topics_emitted": 1,
+  "relationships_emitted": 3,
+  "needs_human": 1,
+  "needs_human_by_class": {
+    "assisted": 1
+  },
+  "constructs": {
+    "dimension": {
+      "mechanical": 11
+    },
+    "explore": {
+      "mechanical": 1
+    },
+    "join": {
+      "mechanical": 4
+    },
+    "measure": {
+      "mechanical": 2
+    },
+    "sql_table_name": {
+      "mechanical": 4
+    },
+    "view": {
+      "mechanical": 4
+    }
+  }
+}

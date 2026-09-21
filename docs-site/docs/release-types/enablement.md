@@ -5,11 +5,25 @@ title: Enablement
 
 # Enablement Release
 
-Use this when an existing platform needs training and documentation — either as a standalone release or as the final phase of a delivery that was not originally run through the Wire Framework.
+:::tip[You do not have to type these commands]
+
+Since v4.0.0, on Claude Code, you can direct this release in plain language
+instead: say what you want done and Wire works out which command that is from
+this release type's definition, runs it, tells you what it did and stops at
+every review gate for your decision. The commands, the artifacts and the record
+on disk are identical either way, and typing them still works. See
+[The Release Director Model](../advanced/release-director).
+
+:::
+
+
+Sometimes the platform is already built and running, and what remains is to teach people to use it and to write down how it works. Use this release type when an existing platform needs training and documentation, either as a standalone release or as the final phase of a delivery that was not originally run through the Wire Framework.
 
 **In-scope artifacts**: `training`, `documentation`
 
 ## Workflow
+
+At a high level, the release captures the training audience first and then produces the two artifacts in turn:
 
 ```
 /wire:new                                         # release_type: enablement
@@ -29,11 +43,11 @@ Use this when an existing platform needs training and documentation — either a
 
 :::info[Tutorial available]
 
-A worked example of a Enablement engagement — using a fictional client scenario with realistic command output, agent delegation, and reviewer decisions — is available in the [Tutorial: Enablement](../tutorials/enablement).
+A worked example of an Enablement engagement, using a fictional client scenario with realistic command output, agent delegation and reviewer decisions, is available in the [Tutorial: Enablement](../tutorials/enablement).
 
 :::
 
 
 **Tips**:
-- Add any existing technical documentation, data dictionaries, or architecture diagrams to `requirements/` — the AI will use them as the basis for generated materials
-- Add the client stakeholder list (names, roles, technical levels) so training materials can be calibrated appropriately
+- Add any existing technical documentation, data dictionaries or architecture diagrams to `requirements/`, and the AI will use them as the basis for the generated materials
+- Add the client stakeholder list (names, roles, technical levels) so that the training materials can be calibrated to the people who will attend

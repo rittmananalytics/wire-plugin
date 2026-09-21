@@ -1,0 +1,88 @@
+wire_schema: "1.0"
+id: droughty
+name: "Droughty"
+description: "Schema-introspection release — reads the live warehouse and generates LookML base views, dbt schema tests, DBML entity-relationship diagrams, AI field descriptions, and a data quality report without requiring a pre-existing dbt project."
+applicable_when:
+  - "Client needs a bottom-up audit of their existing warehouse before dbt development begins"
+  - "Scope is schema discovery, field documentation, and base LookML generation from deployed dbt models"
+  - "Used as a standalone discovery mode or as an optional phase within a full_platform or dbt_development release"
+
+phases:
+  - id: setup
+    name: "Setup"
+    description: "Install Droughty, configure profile.yaml and droughty_project.yaml for the target warehouse"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: droughty_setup
+        command: droughty/setup
+        required: true
+        sequence: 1
+        depends_on: []
+
+  - id: discovery
+    name: "Discovery"
+    description: "Introspect the warehouse schema, generate DBML diagrams, AI field descriptions, and a data quality report"
+    required: true
+    requires_phase: setup
+    artifacts:
+      - id: droughty_introspect
+        command: droughty/introspect
+        required: true
+        sequence: 1
+        depends_on: []
+      - id: droughty_dbml
+        command: droughty/dbml
+        required: true
+        sequence: 2
+        depends_on:
+          - artifact: droughty_introspect
+            action: generate
+            outcome: complete
+      - id: droughty_docs
+        command: droughty/docs
+        required: true
+        sequence: 3
+        depends_on:
+          - artifact: droughty_introspect
+            action: generate
+            outcome: complete
+      - id: droughty_qa
+        command: droughty/qa
+        required: false
+        sequence: 4
+        depends_on:
+          - artifact: droughty_introspect
+            action: generate
+            outcome: complete
+
+  - id: generation
+    name: "Generation"
+    description: "Generate staging SQL, dbt schema tests, and base LookML views from the introspected schema"
+    required: false
+    requires_phase: discovery
+    artifacts:
+      - id: droughty_stage
+        command: droughty/stage
+        required: false
+        sequence: 1
+        depends_on:
+          - artifact: droughty_introspect
+            action: generate
+            outcome: complete
+      - id: droughty_dbt_tests
+        command: droughty/dbt-tests
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: droughty_introspect
+            action: generate
+            outcome: complete
+      - id: droughty_lookml
+        command: droughty/lookml
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: droughty_introspect
+            action: generate
+            outcome: complete

@@ -20,11 +20,114 @@ When following the workflow specification below, resolve paths as follows:
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 - `specs/<path>.md` references are shared workflow docs shipped with this plugin — read them from `${CLAUDE_PLUGIN_ROOT}/specs/<path>.md`. If the path matches a Wire command (e.g. `specs/requirements/generate.md`), it means that command (`/wire:requirements-generate`) and its spec is already embedded in the command file.
 
+## Tracing (opt-in, off by default)
+
+---
+description: Internal utility — opt-in step-level execution tracing to .wire/releases/<release>/trace.jsonl when WIRE_TRACE=true
+---
+
+# Tracing — Detailed, Opt-In, Step-Level Execution Trace
+
+## Purpose
+
+`execution_log.md` records one terse row per whole command (timestamp, command, result, a detail string capped at 120 characters). That's enough for a normal audit trail, but it can't answer "what actually happened inside that command, step by step" — which specific files it read, what it inferred, what it proposed, what a consultant decided, why. Tracing exists for engagements that want that depth: a complete, structured, append-only record of every step of every command, scoped to the release and release type it ran under.
+
+**Off by default.** Tracing never runs unless `WIRE_TRACE=true` is set in the shell environment. If it isn't, skip this entire section — do nothing, check nothing further, proceed straight to the Workflow Specification exactly as if this section didn't exist. This is the common case and must add zero overhead.
+
+## Where it writes
+
+`.wire/releases/<release_folder>/trace.jsonl` — one JSON object per line (JSON Lines), append-only, alongside that release's `status.md` and `execution_log.md`.
+
+For commands not scoped to a specific release (cross-cutting utilities with `release_types: []` in their own front-matter, or any command whose argument isn't a release folder), write to `.wire/trace.jsonl` at the engagement level instead, with `release` and `release_type` fields set to `null`.
+
+This file is **local only** — nothing in it is ever sent anywhere, unlike the anonymous Segment telemetry event described elsewhere. It stays on the consultant's machine, inside the engagement's own repo, exactly like `execution_log.md`.
+
+## What to log, and when
+
+If `WIRE_TRACE=true`:
+
+1. **Resolve context once, before anything else**: the release folder (from this command's own argument, if it has one) and `release_type` (read `.wire/releases/<release_folder>/status.md`'s `project_type` or `release_type` field). If this command has no release-folder argument, both are `null`.
+2. **Emit a `command_start` event** before beginning the Workflow Specification below.
+3. **As you work through the Workflow Specification's own numbered steps, emit a `step` event after completing each one** — and where a step itself has meaningfully distinct numbered sub-parts (e.g. "check location A, then location B, then infer a match, then propose it"), treat each of those as its own step event too rather than collapsing them into one. The `detail` field has no length limit and is not a summary — write what actually happened: values found, files read, decisions made and why, what was proposed and what the consultant chose. If this step involved the data model registry or any other external/optional resource, log it explicitly: whether it was reached, what was searched, what matched (or didn't, and why not), and whether/how the result was used downstream.
+4. **Emit a `command_end` event** when the workflow finishes, with the same `result` value this command would write to `execution_log.md` (`complete`, `pass`, `fail`, `approved`, etc.).
+
+## How to emit an event
+
+Use this pattern for every event (adjust the heredoc body and the Python literals per call — this is a template, not a fixed script):
+
+```bash
+[ "${WIRE_TRACE:-false}" = "true" ] && {
+  mkdir -p ".wire/releases/<release_folder>" 2>/dev/null
+  cat > "/tmp/wire_trace_detail_$$.txt" << 'WIRE_TRACE_DETAIL_EOF'
+<the full, untruncated detail text for this event — safe to include quotes,
+newlines, code snippets, anything; this heredoc is not shell-interpreted>
+WIRE_TRACE_DETAIL_EOF
+  python3 -c "
+import json, datetime
+detail = open('/tmp/wire_trace_detail_$$.txt').read().rstrip('\n')
+event = {
+    'ts': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'release': '<release_folder_or_null>',
+    'release_type': '<release_type_or_null>',
+    'command': 'start',
+    'event': '<command_start|step|command_end>',
+    'step': '<step_number_or_null>',
+    'step_name': '<step_heading_or_null>',
+    'result': '<result_value_or_null>',
+    'detail': detail,
+}
+with open('.wire/releases/<release_folder>/trace.jsonl', 'a') as f:
+    f.write(json.dumps(event) + chr(10))
+"
+  rm -f "/tmp/wire_trace_detail_$$.txt"
+}
+```
+
+- `<release_folder_or_null>` / `<release_type_or_null>`: from Step 1 above; write the literal JSON `null` (no quotes) if either doesn't apply, or a quoted string if it does.
+- `event`: `command_start`, `step`, or `command_end`.
+- `step` / `step_name`: `null` for `command_start`/`command_end`; the step's own number (e.g. `"1.5"`) and heading (e.g. `"Check for a Canonical Vertical Match"`) for a `step` event.
+- `result`: `null` except on `command_end`.
+- Adjust the file path in the final `open(...)` call to `.wire/trace.jsonl` for engagement-level (non-release-scoped) commands.
+
+## Rules
+
+1. **Never block or fail the workflow.** If a trace write fails for any reason (disk full, permissions), continue the workflow regardless — trace failures are never surfaced to the user and never stop anything.
+2. **Append only** — never rewrite or delete existing lines in `trace.jsonl`.
+3. **This is additive to `execution_log.md` and Telemetry, not a replacement for either.** All three continue exactly as documented elsewhere; tracing is a separate, optional, much finer-grained record for engagements that opt in.
+4. **Don't summarize into brevity.** The entire point of this mechanism over `execution_log.md` is that it isn't limited to a 120-character line — write the real detail.
+
+## Example
+
+```json
+{"ts":"2026-07-05T14:20:03Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"command_start","step":null,"step_name":null,"result":null,"detail":"Invoked for release 20260705_acme (full_platform)"}
+{"ts":"2026-07-05T14:20:11Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.1","step_name":"Resolve the registry location","result":null,"detail":"Checked wire/data-model-registry/ (not found — not the Wire source repo). Checked ~/.wire/data-model-registry/ (found — cloned via /wire:utils-data-model-registry-setup on 2026-07-01)."}
+{"ts":"2026-07-05T14:20:19Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.2","step_name":"Resolve the vertical","result":null,"detail":"No confident vertical match for Acme (B2B SaaS, no dedicated saas vertical in the registry). Adjacent match found: subscription-commerce — entity shape (subscriber, subscription, subscription_event, monthly_retention, subscription_revenue) proposed as a structural analogue for Acme's MRR/NRR model."}
+{"ts":"2026-07-05T14:20:34Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.3","step_name":"Check cross-vertical patterns","result":null,"detail":"crm_identity_resolution flagged as relevant — requirements FR-12 describes reconciling Salesforce and HubSpot contact records, a 12% mismatch rate noted in discovery. Proposed alongside the subscription-commerce adjacent match."}
+{"ts":"2026-07-05T14:21:02Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.4","step_name":"Propose and record decision","result":null,"detail":"Presented both proposals. Consultant chose 'adapt' on subscription-commerce (kept subscriber/subscription/subscription_revenue, dropped monthly_retention as out of scope for this phase, renamed subscription_event to billing_event to match client terminology) and 'yes' on crm_identity_resolution as-is. Recorded data_model_registry.vertical: subscription-commerce and cross_vertical_schemas: [crm_identity_resolution] in .wire/engagement/context.md."}
+{"ts":"2026-07-05T14:34:47Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"5","step_name":"Carry reference pointers forward","result":null,"detail":"account_dim mapped to subscription-commerce's subscriber entity — generation_constraints and reference_implementation pointer carried into data_model_specification.md. subscription_fct mapped to subscription entity, same treatment. contact_identity_map (new, from crm_identity_resolution) added as its own integration model with that pattern's reference_implementation pointer."}
+{"ts":"2026-07-05T14:41:15Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"command_end","step":null,"step_name":null,"result":"complete","detail":"Generated data_model_specification.md — 14 models (5 staging, 4 integration, 5 warehouse), including 2 informed by the accepted registry proposals above."}
+```
+
 ## Workflow Specification
 
 ---
+wire_schema: "1.0"
+command: lifecycle
+artifact: start
+domain: start
+release_types: []
+action_type: lifecycle
+logs_execution: false
+inputs:
+  required:
+    - name: release_folder
+      description: "Path to the release folder"
 description: Session entry point and Wire co-pilot — orients new users, surfaces the right next action, and helps navigating consultants pick up where they left off
 argument-hint: [new|resume|explain]
+
+delegates_to:
+  - utils/runnable_set
+  - utils/director_operating_model
 ---
 
 # Wire Start
@@ -272,6 +375,25 @@ git log --oneline -1 -- .wire/ 2>/dev/null
 | `.wire/` exists but no `releases/` subfolder | Suggest running `/wire:adopt` first |
 | Wire never used in this repo but Wire is installed | New-user onboarding (aware of Wire, hasn't started) |
 
+**Signal 3 — Orchestration mode**
+
+Resolve it before Phase 3B, per the precedence in
+`specs/utils/director_operating_model.md` ("Co-existence with typed commands"),
+highest first:
+
+1. **Runtime.** Gemini CLI resolves to `manual`. It has no skills or agents, so
+   there is nothing to dispatch to.
+2. **Conversation.** If the user has said "you drive" in this session, `manual`
+   for the rest of it. "I'll drive", or any directive to run something, hands
+   control back.
+3. **Engagement.** `orchestration.mode` in `.wire/engagement/context.md`
+   (`orchestrated` or `manual`). Absent means `orchestrated`.
+4. **Default.** `orchestrated` on Claude Code.
+
+The resolved mode changes one thing about this command: whether it offers to
+run the next action or only prints it. Everything else — the health check, the
+state summary, the catalogue — is identical either way.
+
 **Lightweight session-start mode** (applies in navigational mode): If the user has run `/wire:start` in this repo within the past 48 hours and no new changes have been made to `.wire/` since then, skip the intent questions and go directly to the Phase 4 output block with current state summary and top next action. Users switching between multiple repos multiple times per day need fast reorientation, not a full interactive session.
 
 ---
@@ -414,7 +536,18 @@ Read the following in parallel:
 
 1. `.wire/engagement/context.md` — client name, engagement lead, release structure
 2. All `.wire/releases/*/status.md` files — artifact states per release
-3. The most recently modified `status.md` — treat this as the active release
+3. The active release, resolved in this order — never guessed between two
+   candidates:
+   a. A release named in the command argument.
+   b. The release whose folder matches the current git worktree or branch
+      (compare the branch against each release's
+      `agents.coordinator_session.branch`, then against the release folder
+      name).
+   c. The only release with a `status.md` write in the last 7 days.
+   d. Otherwise, list the candidates and ask which one. Do not fall back to
+      "most recently modified": with two releases in flight, whichever was
+      touched last wins silently, and that is how work lands in the wrong
+      release.
 4. The active release's `planning/*_playbook.md` if present — use as the expected sequence
 5. The active release's `execution_log.md` — last 10 rows (most recent first)
 
@@ -434,6 +567,19 @@ Artifacts:
 ```
 
 **Execution log summary**: If `execution_log.md` exists, read the last 10 rows. Format them as a compact table for display in the Phase 4 output block (see below). If fewer than 10 rows exist, show all of them. If the file does not exist, show "No activity recorded yet."
+
+**Compute the runnable set.** Run `specs/utils/runnable_set.md` for the active
+release. It returns, for every artifact in the release-type graph, one of
+`runnable: generate`, `runnable: validate`, `parked: needs ruling`,
+`blocked: <unmet precondition>`, `not applicable` or `complete`, plus the
+topological order and which runnable artifacts have no dependency between them.
+This is the same computation `/wire:delegate`, the orchestrating session and
+Autopilot use, so all four agree about what comes next.
+
+The heuristics below (last completed / in-progress / blocked / next) remain the
+plain-language framing for the output block. Where they and the runnable set
+disagree, the runnable set is right: it reads the release-type YAML and the
+active profile, and they do not.
 
 Identify:
 - The **last completed artifact** (all three steps done: review = approved)
@@ -749,6 +895,9 @@ Why: [one sentence — WHY this step, not what it does]
 /wire:[next-command] [args]
 ```
 
+[In orchestrated mode only, add:]
+Shall I run it? (yes / no / show me the command)
+
 ---
 
 ### Things to Know
@@ -758,6 +907,36 @@ Why: [one sentence — WHY this step, not what it does]
 - [Staleness note if .wire/ hasn't been touched in >14 days]
 - [Legacy structure note if .dp/ was found]
 ```
+
+**Run-it default** (orchestrated mode, navigational mode only):
+
+After the output block, offer to run the Priority 1 command rather than leaving
+the consultant to type it:
+
+- **yes** — run it, through the normal command path. Its auto-delegation,
+  precondition gate, auto-validate, execution log row and telemetry all fire
+  unchanged; the only difference from a typed run is `WIRE_INVOKED_BY`, which is
+  set to `orchestrator` so the record says who invoked it
+  (`specs/utils/telemetry.md`). If the runnable set shows a second artifact with
+  no dependency on the first, say so and offer both.
+- **no** — end here, exactly as manual mode does.
+- **show me the command** — print it and stop. Some consultants want the muscle
+  memory.
+
+**Keep the command name in the output either way.** The block above always
+prints `/wire:[command] [args]`, in orchestrated mode as much as in manual, so
+a consultant who has never typed a Wire command still learns what the thing
+they just approved is called. Hiding the command name is how a director model
+becomes a black box.
+
+**In manual mode this offer does not appear.** `/wire:start` prints the next
+action and stops, exactly as it does today.
+
+**A review edge is never offered as "run it".** If the next action is
+`<artifact>-review`, present the three-way ruling instead — approve now,
+request changes, or park for client sign-off — per
+`specs/utils/director_operating_model.md` ("Review as a ruling"). Reviews are
+not run without a director's decision.
 
 **Session plan handoff** (navigational mode only — skip for onboarding and explanation modes):
 
@@ -794,17 +973,26 @@ so you can continue with the framework from where the project actually is.
 
 ### Multiple Releases in Flight
 
-If more than one release has in-progress artifacts:
+If more than one release has in-progress artifacts, apply the resolution order
+in Step B1 first: a named release, then a branch or worktree match, then a
+single release written to in the last 7 days. Only when that leaves two or more
+candidates, ask:
 
 ```
 Multiple releases are in progress:
-  [release_1]: [artifact] — [pending step]
-  [release_2]: [artifact] — [pending step]
+  [release_1]: [artifact] — [pending step]  (branch: [branch], last write: [date])
+  [release_2]: [artifact] — [pending step]  (branch: [branch], last write: [date])
 
 Which release are you working on right now? (enter number or name)
 ```
 
 Wait for confirmation before generating next-action output.
+
+Recommended practice, worth saying once to a consultant who hits this often:
+one git worktree and one session per active release. Switching context is
+switching terminal. That makes the branch match in Step B1 resolve every time,
+and it is what the operating model assumes
+(`specs/utils/director_operating_model.md`, contention rules).
 
 ### No Projects Found
 

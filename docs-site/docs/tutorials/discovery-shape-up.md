@@ -60,9 +60,11 @@ Generate appetite document with Phase 1 recommendation and Phase 2 deferrals usi
 
 ## What is a Shape Up discovery release?
 
-A Shape Up discovery release is a structured, time-boxed scoping exercise — typically one to two days of consultant time — that answers a single question before any build commitment is made: what is this engagement actually worth, and what should Phase 1 contain? The output is not code. It is a set of documents: a requirements brief drawn from stakeholder interviews, an appetite and scope recommendation, a risk catalogue, and a clear go/no-go framing that the client sponsor can sign off on. Wire automates the generation of each of these artifacts and surfaces relevant meeting context from Fathom automatically, so the consultant spends their time on judgement rather than document structure.
+Before a client commits budget to a build, someone has to answer a question that no amount of technical design will settle: is this engagement worth doing at all and, if so, how much of it belongs in Phase 1? A sponsor in that position is not asking for a platform proposal. The sponsor wants to know whether building one makes sense, what it would contain and what the risks are, and wants that answer in days rather than weeks.
 
-The appetite document is the centrepiece. Shape Up uses the concept of an appetite — how much time a problem is *worth*, not how long it will *take* — to drive scope decisions rather than letting scope drive time. Wire's `/wire:appetite-generate` command produces a structured recommendation that separates Phase 1 scope from deferred work, tied to a time-and-materials estimate the client can accept or challenge. Everything produced in this release feeds directly into the SOW for a subsequent build engagement: the requirements brief becomes the functional specification, the scope story map becomes the delivery backlog, and the risk catalogue becomes the assumptions and exclusions register.
+A Shape Up discovery release is a structured, time-boxed scoping exercise, typically one to two days of consultant time, that answers that question before any build commitment is made. The output is not code. It is a set of documents: a requirements brief drawn from stakeholder interviews, an appetite and scope recommendation, a risk catalogue and a clear go/no-go framing that the client sponsor can sign off on. Wire automates the generation of each of these artifacts and surfaces relevant meeting context from Fathom automatically, so that you spend your time on judgement rather than on document structure.
+
+The appetite document is the centrepiece. Shape Up uses the concept of an "appetite", how much time a problem is *worth* rather than how long it will *take*, to drive scope decisions instead of letting scope drive time, and Wire's `/wire:appetite-generate` command produces a structured recommendation that separates Phase 1 scope from deferred work, tied to a time-and-materials estimate the client can accept or challenge. Everything produced in this release feeds directly into the SOW for a subsequent build engagement: the requirements brief becomes the functional specification, the scope story map becomes the delivery backlog and the risk catalogue becomes the assumptions and exclusions register.
 
 ### High-Level Process
 
@@ -97,7 +99,7 @@ graph LR
 | **Duration** | 2 days |
 | **CFO framing** | Structured go/no-go recommendation before committing to a platform build |
 
-Hallmark's investment team tracks deal pipeline, asset performance, and portfolio risk across 14 Excel workbooks and two legacy CRM systems. The data exists — it is just fragmented, manually maintained, and impossible to consolidate quickly enough for investment committee meetings. The CFO is not asking for a platform. She is asking whether building one makes sense, what it would contain, and what the risks are. This release answers those three questions.
+Hallmark's investment team tracks deal pipeline, asset performance and portfolio risk across 14 Excel workbooks and two legacy CRM systems. The data exists; it is just fragmented, manually maintained and impossible to consolidate quickly enough for investment committee meetings. The CFO is not asking for a platform. She is asking whether building one makes sense, what it would contain and what the risks are, and this release answers those three questions.
 
 ## Deliverables
 
@@ -111,7 +113,7 @@ Hallmark's investment team tracks deal pipeline, asset performance, and portfoli
 
 ## Tutorial Playbook
 
-The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
+The diagram below is the delivery playbook for this tutorial's scenario, and in a live engagement [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates it for you as a Mermaid-format delivery plan, with the dependency order, team assignments and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
@@ -161,7 +163,7 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 :::info[First release in this repository?]
 
-If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement (naming the client, setting the engagement context and configuring any integrations) before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
 
 :::
 
@@ -178,16 +180,16 @@ If this is the first release created in a git repository, `/wire:new` will first
 
 :::info[Issue tracking and document sync]
 
-Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses, and Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
 
-Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review, in which case review commands pull comments and edits made in the document store back as context before gathering sign-off.
 
-Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear) or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
 
 :::
 
 
-Drop any existing materials into `releases/01-hallmark-shape-up-discovery/requirements/` before running the first generate command — SOW draft, any existing Excel workbook samples, or notes from an initial call.
+Drop any existing materials (the SOW draft, any existing Excel workbook samples or notes from an initial call) into `releases/01-hallmark-shape-up-discovery/requirements/` before running the first generate command.
 
 ### Requirements — auto-delegated to `discovery-analyst`
 
@@ -222,13 +224,15 @@ Drop any existing materials into `releases/01-hallmark-shape-up-discovery/requir
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, with no extra steps needed on your part. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
 
 :::
 
-The agent surfaces four functional and three non-functional requirements directly from the Fathom transcripts, without the consultant having to manually review and extract them. FR-4 — fund-level performance tracking — emerges from the CFO call as a strong constraint: it is the number one pain point and must appear in Phase 1 scope.
+The agent surfaces four functional and three non-functional requirements directly from the Fathom transcripts, without you having to review and extract them by hand, and FR-4 (fund-level performance tracking) emerges from the CFO call as a strong constraint: it is the number one pain point and must appear in Phase 1 scope.
 
 ### Interview guides — workshops-generate
+
+With the requirements drafted, the next step is to prepare for the four stakeholder interviews, and the workshops command produces a guide for each stakeholder with its own objectives, question set and timebox:
 
 ```
 /wire:workshops-generate 01-hallmark-shape-up-discovery
@@ -287,9 +291,11 @@ The agent surfaces four functional and three non-functional requirements directl
   .wire/releases/01-hallmark-shape-up-discovery/artifacts/appetite/appetite.md
 ```
 
-The appetite document makes the Phase 2 deferrals explicit and explains the reasoning — this is what the CFO will use to decide whether to commission the build.
+The appetite document makes the Phase 2 deferrals explicit and explains the reasoning behind each one, and it is this document that the CFO will use to decide whether to commission the build.
 
 ### Story map — scope-generate
+
+So what would Phase 1 consist of, story by story? The scope story map lays it out across three swim lanes:
 
 ```
 /wire:scope-generate 01-hallmark-shape-up-discovery
@@ -321,6 +327,8 @@ The appetite document makes the Phase 2 deferrals explicit and explains the reas
 ```
 
 ### Risk catalogue — risk-generate
+
+The last document to produce before anything goes to the CFO is the risk catalogue, which rates each risk by severity and proposes a mitigation for it:
 
 ```
 /wire:risk-generate 01-hallmark-shape-up-discovery
@@ -373,7 +381,7 @@ The appetite document makes the Phase 2 deferrals explicit and explains the reas
 → Status updated: requirements → approved
 ```
 
-The Fathom context surfaces the follow-up call automatically, and the single scope change — widening FR-4 to cover all three fund vehicles — is incorporated before the requirements document is marked approved. The consultant does not need to search for the transcript or manually extract the feedback.
+The Fathom context surfaces the follow-up call automatically, and the single scope change (widening FR-4 to cover all three fund vehicles) is incorporated before the requirements document is marked approved, so that you do not need to search for the transcript or extract the feedback by hand.
 
 ## What was produced
 
@@ -387,4 +395,4 @@ The Fathom context surfaces the follow-up call automatically, and the single sco
 
 ## Next steps
 
-The outputs from this release feed directly into [`/wire:new`](../reference/commands#session-and-management-commands) for a `full_platform` or `dbt_development` engagement. Copy the approved requirements brief and appetite document into the new release's `requirements/` folder — the requirements generate command in the build engagement will read them automatically as upstream context. The appetite document doubles as the SOW template: the Phase 1 scope recommendation, the six-week estimate, and the Phase 2 deferrals map directly onto the commercial structure of a standard Rittman Analytics T&M statement of work. The risk catalogue becomes the assumptions and exclusions register, which is the section of an SOW that saves the most time when a client later asks "why wasn't X included?"
+The outputs from this release feed directly into [`/wire:new`](../reference/commands#session-and-management-commands) for a `full_platform` or `dbt_development` engagement. Copy the approved requirements brief and appetite document into the new release's `requirements/` folder, and the requirements generate command in the build engagement will read them automatically as upstream context. The appetite document doubles as the SOW template, since the Phase 1 scope recommendation, the six-week estimate and the Phase 2 deferrals map directly onto the commercial structure of a standard Rittman Analytics T&M statement of work, and the risk catalogue becomes the assumptions and exclusions register, which is the section of an SOW that saves the most time when a client later asks "why wasn't X included?"

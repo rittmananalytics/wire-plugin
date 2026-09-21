@@ -1,0 +1,108 @@
+{
+  "identity": "looker:lookml:view:customers",
+  "name": "customers",
+  "schema": "analytics",
+  "table_name": "dim_customers",
+  "emitted": true,
+  "class": "mechanical",
+  "unsupported": [],
+  "source": {
+    "file": "customers.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:customers:customer_id",
+      "name": "customer_id",
+      "kind": "dimension",
+      "lookml_type": "number",
+      "source_sql": "${TABLE}.customer_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "primary_key": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "customers.view.lkml",
+        "view": "customers"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:customers:full_name",
+      "name": "full_name",
+      "kind": "dimension",
+      "lookml_type": "string",
+      "source_sql": "${TABLE}.full_name",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "description": "First and last name"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "customers.view.lkml",
+        "view": "customers"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:customers:country",
+      "name": "country",
+      "kind": "dimension",
+      "lookml_type": "string",
+      "source_sql": "${TABLE}.country_code",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${country_code}",
+        "hidden": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "customers.view.lkml",
+        "view": "customers"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:customers:count",
+      "name": "count",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "aggregate_type": "count"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "customers.view.lkml",
+        "view": "customers"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:customers:total_lifetime_value",
+      "name": "total_lifetime_value",
+      "kind": "measure",
+      "lookml_type": "sum",
+      "source_sql": "${TABLE}.lifetime_value",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${lifetime_value}",
+        "aggregate_type": "sum",
+        "format": "currency_2"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "customers.view.lkml",
+        "view": "customers"
+      }
+    }
+  ]
+}

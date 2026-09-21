@@ -1,0 +1,53 @@
+{
+  "identity": "looker:lookml:view:inventory_daily_pdt",
+  "name": "inventory_daily_pdt",
+  "schema": null,
+  "table_name": null,
+  "emitted": false,
+  "class": "redesign",
+  "unsupported": [
+    {
+      "construct": "pdt",
+      "class": "redesign",
+      "reason": "Persistent derived table: the plan rules dbt model or Omni query view; nothing emitted"
+    }
+  ],
+  "source": {
+    "file": "inventory.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:inventory_daily_pdt:snapshot_date",
+      "name": "snapshot_date",
+      "kind": "dimension",
+      "lookml_type": "date",
+      "source_sql": "${TABLE}.snapshot_date",
+      "references": [],
+      "class": "redesign",
+      "emitted": false,
+      "omni": null,
+      "unsupported": [],
+      "source": {
+        "file": "inventory.view.lkml",
+        "view": "inventory_daily_pdt"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:inventory_daily_pdt:units",
+      "name": "units",
+      "kind": "measure",
+      "lookml_type": "sum",
+      "source_sql": "${TABLE}.units",
+      "references": [],
+      "class": "redesign",
+      "emitted": false,
+      "omni": null,
+      "unsupported": [],
+      "source": {
+        "file": "inventory.view.lkml",
+        "view": "inventory_daily_pdt"
+      }
+    }
+  ]
+}

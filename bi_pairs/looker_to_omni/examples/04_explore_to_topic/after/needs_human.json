@@ -1,0 +1,11 @@
+[
+  {
+    "scope": "explore",
+    "name": "orders",
+    "field": null,
+    "construct": "sql_always_where",
+    "class": "assisted",
+    "reason": "emitted as always_where_sql; confirm field references resolve on the topic",
+    "lkml_file": "sales.model.lkml"
+  }
+]

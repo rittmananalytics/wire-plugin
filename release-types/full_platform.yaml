@@ -1,0 +1,237 @@
+wire_schema: "1.0"
+id: full_platform
+name: "Full Platform"
+description: "End-to-end data platform build — requirements through enablement, covering pipeline design, dbt transformation, semantic layer, dashboards, orchestration, testing, deployment, and user training."
+applicable_when:
+  - "Client is building a new data platform from scratch"
+  - "Scope includes ingestion, transformation, semantic layer, and BI layers"
+  - "Full 6-phase delivery lifecycle (Requirements → Design → Development → Testing → Deployment → Enablement)"
+
+phases:
+  # Optional. Discover, define and agree what the numbers mean before design
+  # bakes a definition in. Warning-level: the gate on the artifact below asks and
+  # records a skip reason rather than blocking, because a hard gate on a team that
+  # skips gates produces a skipped gate.
+  - id: business_rules
+    name: "Business Rules Discovery"
+    description: "Extract and agree the business rules for the domain in scope, from legacy systems and from the people who own the definitions"
+    required: false
+    requires_phase: null
+    artifacts:
+      - id: business_rules
+        command: business-rules
+        required: false
+        sequence: 1
+        depends_on: []
+
+  - id: requirements
+    name: "Requirements"
+    description: "Capture and sign off the requirements specification from the SoW and stakeholder input"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: requirements
+        command: requirements
+        required: true
+        sequence: 1
+        depends_on: []
+      # Optional. Runs when requirements carry [NEEDS CLARIFICATION] markers or a
+      # design choice needs a stakeholder decision. It was in 3.11.9's
+      # full_platform sequence and fell out of every release type when the
+      # sequences became YAML (wire#248), so no release type could produce it.
+      - id: workshops
+        command: workshops
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: requirements
+            action: review
+            outcome: approved
+
+  - id: design
+    name: "Design"
+    description: "Design the conceptual model, pipeline architecture, data model, and dashboard mockups"
+    required: true
+    requires_phase: requirements
+    artifacts:
+      - id: conceptual_model
+        command: conceptual_model
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: requirements
+            action: review
+            outcome: approved
+          - artifact: business_rules
+            action: review
+            outcome: approved
+            enforcement: advisory
+      - id: pipeline_design
+        command: pipeline_design
+        required: true
+        sequence: 2
+        depends_on:
+          - artifact: conceptual_model
+            action: review
+            outcome: approved
+      # Optional. Worth running when identity resolution, cardinality or
+      # attribution is contested, so those decisions get reviewed as decisions
+      # rather than arriving already expressed as dbt models.
+      - id: logical_model
+        command: logical_model
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: conceptual_model
+            action: review
+            outcome: approved
+      - id: data_model
+        command: data_model
+        required: true
+        sequence: 4
+        depends_on:
+          - artifact: conceptual_model
+            action: review
+            outcome: approved
+      - id: mockups
+        command: mockups
+        required: false
+        sequence: 5
+        depends_on:
+          - artifact: data_model
+            action: review
+            outcome: approved
+
+  - id: development
+    name: "Development"
+    description: "Build pipeline code, dbt models, semantic layer, dashboards, and orchestration"
+    required: true
+    requires_phase: design
+    artifacts:
+      - id: pipeline
+        command: pipeline
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: pipeline_design
+            action: review
+            outcome: approved
+      - id: dbt
+        command: dbt
+        required: true
+        sequence: 2
+        depends_on:
+          - artifact: data_model
+            action: review
+            outcome: approved
+      - id: semantic_layer
+        command: semantic_layer
+        required: true
+        sequence: 3
+        depends_on:
+          - artifact: dbt
+            action: validate
+            outcome: PASS
+      - id: dashboards
+        command: dashboards
+        required: true
+        sequence: 4
+        depends_on:
+          - artifact: semantic_layer
+            action: validate
+            outcome: PASS
+      - id: orchestration
+        command: orchestration
+        required: true
+        sequence: 5
+        depends_on:
+          - artifact: pipeline
+            action: validate
+            outcome: PASS
+      - id: dbtcharts
+        command: dbtcharts
+        required: false
+        sequence: 6
+        depends_on:
+          - artifact: dbt
+            action: validate
+            outcome: PASS
+      # Optional. Publishes the release's metadata (dbt manifest, LookML,
+      # skills) into the warehouse AGENTS schema for AI agents. The semantic
+      # layer gate is advisory: a dbt-only publication is a legitimate choice.
+      - id: agents_schema
+        command: agents_schema
+        required: false
+        sequence: 7
+        depends_on:
+          - artifact: dbt
+            action: validate
+            outcome: PASS
+          - artifact: semantic_layer
+            action: validate
+            outcome: PASS
+            enforcement: advisory
+
+  - id: testing
+    name: "Testing"
+    description: "Run data quality tests and UAT with stakeholders"
+    required: true
+    requires_phase: development
+    artifacts:
+      - id: data_quality
+        command: data_quality
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: dbt
+            action: review
+            outcome: approved
+      - id: uat
+        command: uat
+        required: true
+        sequence: 2
+        depends_on:
+          - artifact: dashboards
+            action: review
+            outcome: approved
+
+  - id: deployment
+    name: "Deployment"
+    description: "Generate deployment artifacts, validate pre-deployment, and execute with approval"
+    required: true
+    requires_phase: testing
+    artifacts:
+      - id: deployment
+        command: deployment
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: data_quality
+            action: validate
+            outcome: PASS
+          - artifact: uat
+            action: review
+            outcome: approved
+
+  - id: enablement
+    name: "Enablement"
+    description: "Produce and deliver user training materials and system documentation"
+    required: true
+    requires_phase: deployment
+    artifacts:
+      - id: training
+        command: training
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: deployment
+            action: review
+            outcome: approved
+      - id: documentation
+        command: documentation
+        required: true
+        sequence: 2
+        depends_on:
+          - artifact: deployment
+            action: review
+            outcome: approved

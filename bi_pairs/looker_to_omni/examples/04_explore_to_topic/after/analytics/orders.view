@@ -1,0 +1,10 @@
+schema: analytics
+table_name: fct_orders
+dimensions:
+  order_id:
+    primary_key: true
+  customer_id: {}
+  rep_id: {}
+measures:
+  count:
+    aggregate_type: count

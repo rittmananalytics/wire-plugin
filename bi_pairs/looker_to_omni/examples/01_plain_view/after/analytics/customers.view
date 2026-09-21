@@ -1,0 +1,18 @@
+label: Customers
+schema: analytics
+table_name: dim_customers
+dimensions:
+  customer_id:
+    primary_key: true
+  full_name:
+    description: First and last name
+  country:
+    sql: ${country_code}
+    hidden: true
+measures:
+  count:
+    aggregate_type: count
+  total_lifetime_value:
+    sql: ${lifetime_value}
+    aggregate_type: sum
+    format: currency_2

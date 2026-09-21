@@ -1,0 +1,84 @@
+{
+  "identity": "looker:lookml:view:order_lines",
+  "name": "order_lines",
+  "schema": "analytics",
+  "table_name": "fct_order_lines",
+  "emitted": true,
+  "class": "mechanical",
+  "unsupported": [],
+  "source": {
+    "file": "order_lines.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:order_lines:line_id",
+      "name": "line_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.line_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "primary_key": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "order_lines.view.lkml",
+        "view": "order_lines"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:order_lines:order_id",
+      "name": "order_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.order_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "order_lines.view.lkml",
+        "view": "order_lines"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:order_lines:sku_id",
+      "name": "sku_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.sku_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "order_lines.view.lkml",
+        "view": "order_lines"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:order_lines:units",
+      "name": "units",
+      "kind": "measure",
+      "lookml_type": "sum",
+      "source_sql": "${TABLE}.units",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${units}",
+        "aggregate_type": "sum"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "order_lines.view.lkml",
+        "view": "order_lines"
+      }
+    }
+  ]
+}

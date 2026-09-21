@@ -1,0 +1,159 @@
+{
+  "identity": "looker:lookml:view:accounts",
+  "name": "accounts",
+  "schema": "analytics",
+  "table_name": "dim_accounts",
+  "emitted": true,
+  "class": "mechanical",
+  "unsupported": [],
+  "source": {
+    "file": "accounts.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:accounts:account_id",
+      "name": "account_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.account_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "primary_key": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "accounts.view.lkml",
+        "view": "accounts"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:accounts:arr",
+      "name": "arr",
+      "kind": "dimension",
+      "lookml_type": "number",
+      "source_sql": "${TABLE}.annual_recurring_revenue",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${annual_recurring_revenue}"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "accounts.view.lkml",
+        "view": "accounts"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:accounts:arr_tier",
+      "name": "arr_tier",
+      "kind": "dimension",
+      "lookml_type": "tier",
+      "source_sql": "${arr}",
+      "references": [
+        "accounts.arr"
+      ],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${arr}",
+        "bin_boundaries": [
+          0,
+          10000,
+          50000,
+          250000
+        ]
+      },
+      "unsupported": [],
+      "source": {
+        "file": "accounts.view.lkml",
+        "view": "accounts"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:accounts:plan",
+      "name": "plan",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.plan",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "accounts.view.lkml",
+        "view": "accounts"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:accounts:plan_family",
+      "name": "plan_family",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": null,
+      "references": [],
+      "class": "assisted",
+      "emitted": true,
+      "omni": {
+        "sql": "${plan}",
+        "groups": [
+          {
+            "filter": {
+              "is": [
+                "enterprise"
+              ]
+            },
+            "name": "Enterprise"
+          },
+          {
+            "filter": {
+              "is": [
+                "team",
+                "business"
+              ]
+            },
+            "name": "Mid-market"
+          }
+        ],
+        "else": "Self-serve"
+      },
+      "unsupported": [
+        {
+          "construct": "case",
+          "class": "assisted",
+          "reason": "case dimension emitted as Omni groups; confirm the labels and the else bucket"
+        }
+      ],
+      "source": {
+        "file": "accounts.view.lkml",
+        "view": "accounts"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:accounts:health",
+      "name": "health",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": null,
+      "references": [],
+      "class": "assisted",
+      "emitted": false,
+      "omni": null,
+      "unsupported": [
+        {
+          "construct": "case",
+          "class": "assisted",
+          "reason": "case dimension with non-equality conditions; write the Omni sql or groups by hand"
+        }
+      ],
+      "source": {
+        "file": "accounts.view.lkml",
+        "view": "accounts"
+      }
+    }
+  ]
+}

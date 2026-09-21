@@ -1,0 +1,143 @@
+wire_schema: "1.0"
+id: dbt_development
+name: "dbt Development"
+description: "Focused dbt-only delivery — data model design, dbt build, semantic layer, data quality testing, and deployment — without the full pipeline and BI scope of a full platform release."
+applicable_when:
+  - "Client already has ingestion in place and only needs the transformation layer built or rebuilt"
+  - "Scope is dbt models, semantic layer, and dbt tests — not a full pipeline build"
+  - "Client is migrating from an existing dbt project (non-migration release) or starting a net-new dbt layer"
+
+phases:
+  # Optional. Discover, define and agree what the numbers mean before design
+  # bakes a definition in. Warning-level: the gate on the artifact below asks and
+  # records a skip reason rather than blocking, because a hard gate on a team that
+  # skips gates produces a skipped gate.
+  - id: business_rules
+    name: "Business Rules Discovery"
+    description: "Extract and agree the business rules for the domain in scope, from legacy systems and from the people who own the definitions"
+    required: false
+    requires_phase: null
+    artifacts:
+      - id: business_rules
+        command: business-rules
+        required: false
+        sequence: 1
+        depends_on: []
+
+  - id: requirements
+    name: "Requirements"
+    description: "Capture dbt-specific requirements from the SoW and stakeholder input"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: requirements
+        command: requirements
+        required: true
+        sequence: 1
+        depends_on: []
+      # Optional. Runs when requirements carry [NEEDS CLARIFICATION] markers or a
+      # design choice needs a stakeholder decision. It was in 3.11.9's
+      # full_platform sequence and fell out of every release type when the
+      # sequences became YAML (wire#248), so no release type could produce it.
+      - id: workshops
+        command: workshops
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: requirements
+            action: review
+            outcome: approved
+
+  - id: design
+    name: "Design"
+    description: "Design the dbt data model — staging, integration, and warehouse layers"
+    required: true
+    requires_phase: requirements
+    artifacts:
+      - id: data_model
+        command: data_model
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: requirements
+            action: review
+            outcome: approved
+          - artifact: business_rules
+            action: review
+            outcome: approved
+            enforcement: advisory
+
+  - id: development
+    name: "Development"
+    description: "Build dbt models and semantic layer"
+    required: true
+    requires_phase: design
+    artifacts:
+      - id: dbt
+        command: dbt
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: data_model
+            action: review
+            outcome: approved
+      - id: semantic_layer
+        command: semantic_layer
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: dbt
+            action: validate
+            outcome: PASS
+      - id: dbtcharts
+        command: dbtcharts
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: dbt
+            action: validate
+            outcome: PASS
+      # Optional. Publishes the release's metadata into the warehouse AGENTS
+      # schema for AI agents; the semantic layer gate is advisory.
+      - id: agents_schema
+        command: agents_schema
+        required: false
+        sequence: 4
+        depends_on:
+          - artifact: dbt
+            action: validate
+            outcome: PASS
+          - artifact: semantic_layer
+            action: validate
+            outcome: PASS
+            enforcement: advisory
+
+  - id: testing
+    name: "Testing"
+    description: "Run dbt tests and data quality checks"
+    required: true
+    requires_phase: development
+    artifacts:
+      - id: data_quality
+        command: data_quality
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: dbt
+            action: review
+            outcome: approved
+
+  - id: deployment
+    name: "Deployment"
+    description: "Deploy dbt project to production environment"
+    required: true
+    requires_phase: testing
+    artifacts:
+      - id: deployment
+        command: deployment
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: data_quality
+            action: validate
+            outcome: PASS

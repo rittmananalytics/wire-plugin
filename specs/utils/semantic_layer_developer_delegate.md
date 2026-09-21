@@ -30,6 +30,10 @@ If the agent definition exists and the above skip conditions are not met, spawn 
 
 Then return immediately. The subagent will complete the work and update `status.md`.
 
+### Step 3b: `bi_migration` batches
+
+`omni-model-generate` and `omni-content-generate` on a `bi_migration` release follow this protocol with one addition: when the command is run without `--batch` (or with `--all`) and the plan has more than one pending batch, spawn one `wire:semantic-layer-developer` subagent per pending batch, each receiving `--batch <id>`, all in parallel, each writing only under its own `migration/omni_model/<batch>/` or `migration/omni_content/<batch>/` tree. Under the release director model each subagent is a lane and follows the lane contract in `specs/utils/director_operating_model.md`; the orchestrating session writes `status.md` after reading each lane's state file.
+
 ### Step 4: Inline fallback
 
 If delegation was skipped (agent not found or already in a subagent context), proceed with the workflow steps below as normal.

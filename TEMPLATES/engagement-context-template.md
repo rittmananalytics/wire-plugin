@@ -18,6 +18,37 @@ docstore:
     parent_page_url: null
   notion:
     parent_page_url: null
+
+data_model_registry:
+  vertical: null  # any directory name under the registry's verticals/ (13 at the time
+                  # of writing). Run `ls ~/.wire/data-model-registry/verticals/` for
+                  # the current set, or leave null.
+                  # May be a confident match, or the closest adjacent match when no vertical is an
+                  # exact industry fit (e.g. subscription-commerce for a SaaS client's MRR/NRR model).
+                  # Advisory only — see wire/schemas/data-model-registry.md. null (the default)
+                  # means data_model-generate/validate behave exactly as if this didn't exist.
+  cross_vertical_schemas: []  # e.g. [crm_identity_resolution, finance_revenue_recognition] — accepted independently
+                  # of any vertical match; a client can need these whether or not `vertical` above is set.
+
+# How Wire is driven on this engagement (specs/utils/director_operating_model.md).
+#   orchestrated — the release-director skill turns your direction into Wire
+#                  command runs, dispatches lanes, and stops at decisions. The
+#                  default on Claude Code. Typed commands keep working.
+#   manual       — today's behaviour: /wire:start prints the next action and
+#                  stops, you type the commands. Use it for client-side teams
+#                  and regulated engagements.
+# Per-session override: say "you drive" to hand control back for that session.
+# Gemini CLI resolves to manual regardless: it has no skills or agents.
+orchestration:
+  mode: orchestrated  # orchestrated | manual
+
+fathom_sync:
+  enabled: {{FATHOM_SYNC_ENABLED}}  # true | false — resolved at /wire:new Step 2 from the client domain given;
+                  # false if no domain was given, or if the domain/client_name looked like an internal RA
+                  # engagement (Fathom Sync refuses to enable itself in that case — see fathom_sync.md).
+  client_domain: {{FATHOM_SYNC_CLIENT_DOMAIN}}  # required for enabled: true — matches calendar invitees on each
+                  # call, so only meetings this specific client attended get pulled in. Never rittmananalytics.com.
+  last_synced: null    # ISO date; updated automatically after each sync, drives the incremental --after window
 ---
 
 # Engagement Context: {{ENGAGEMENT_NAME}}

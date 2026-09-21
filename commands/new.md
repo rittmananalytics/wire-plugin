@@ -1,6 +1,7 @@
 ---
 description: Create a new Wire engagement or add a release to an existing engagement
 argument-hint: (no arguments - interactive)
+model: claude-fable-5
 ---
 
 # Create a new Wire engagement or add a release to an existing engagement
@@ -20,10 +21,109 @@ When following the workflow specification below, resolve paths as follows:
 - `TEMPLATES/` references refer to the templates section embedded at the end of this command
 - `specs/<path>.md` references are shared workflow docs shipped with this plugin — read them from `${CLAUDE_PLUGIN_ROOT}/specs/<path>.md`. If the path matches a Wire command (e.g. `specs/requirements/generate.md`), it means that command (`/wire:requirements-generate`) and its spec is already embedded in the command file.
 
+## Tracing (opt-in, off by default)
+
+---
+description: Internal utility — opt-in step-level execution tracing to .wire/releases/<release>/trace.jsonl when WIRE_TRACE=true
+---
+
+# Tracing — Detailed, Opt-In, Step-Level Execution Trace
+
+## Purpose
+
+`execution_log.md` records one terse row per whole command (timestamp, command, result, a detail string capped at 120 characters). That's enough for a normal audit trail, but it can't answer "what actually happened inside that command, step by step" — which specific files it read, what it inferred, what it proposed, what a consultant decided, why. Tracing exists for engagements that want that depth: a complete, structured, append-only record of every step of every command, scoped to the release and release type it ran under.
+
+**Off by default.** Tracing never runs unless `WIRE_TRACE=true` is set in the shell environment. If it isn't, skip this entire section — do nothing, check nothing further, proceed straight to the Workflow Specification exactly as if this section didn't exist. This is the common case and must add zero overhead.
+
+## Where it writes
+
+`.wire/releases/<release_folder>/trace.jsonl` — one JSON object per line (JSON Lines), append-only, alongside that release's `status.md` and `execution_log.md`.
+
+For commands not scoped to a specific release (cross-cutting utilities with `release_types: []` in their own front-matter, or any command whose argument isn't a release folder), write to `.wire/trace.jsonl` at the engagement level instead, with `release` and `release_type` fields set to `null`.
+
+This file is **local only** — nothing in it is ever sent anywhere, unlike the anonymous Segment telemetry event described elsewhere. It stays on the consultant's machine, inside the engagement's own repo, exactly like `execution_log.md`.
+
+## What to log, and when
+
+If `WIRE_TRACE=true`:
+
+1. **Resolve context once, before anything else**: the release folder (from this command's own argument, if it has one) and `release_type` (read `.wire/releases/<release_folder>/status.md`'s `project_type` or `release_type` field). If this command has no release-folder argument, both are `null`.
+2. **Emit a `command_start` event** before beginning the Workflow Specification below.
+3. **As you work through the Workflow Specification's own numbered steps, emit a `step` event after completing each one** — and where a step itself has meaningfully distinct numbered sub-parts (e.g. "check location A, then location B, then infer a match, then propose it"), treat each of those as its own step event too rather than collapsing them into one. The `detail` field has no length limit and is not a summary — write what actually happened: values found, files read, decisions made and why, what was proposed and what the consultant chose. If this step involved the data model registry or any other external/optional resource, log it explicitly: whether it was reached, what was searched, what matched (or didn't, and why not), and whether/how the result was used downstream.
+4. **Emit a `command_end` event** when the workflow finishes, with the same `result` value this command would write to `execution_log.md` (`complete`, `pass`, `fail`, `approved`, etc.).
+
+## How to emit an event
+
+Use this pattern for every event (adjust the heredoc body and the Python literals per call — this is a template, not a fixed script):
+
+```bash
+[ "${WIRE_TRACE:-false}" = "true" ] && {
+  mkdir -p ".wire/releases/<release_folder>" 2>/dev/null
+  cat > "/tmp/wire_trace_detail_$$.txt" << 'WIRE_TRACE_DETAIL_EOF'
+<the full, untruncated detail text for this event — safe to include quotes,
+newlines, code snippets, anything; this heredoc is not shell-interpreted>
+WIRE_TRACE_DETAIL_EOF
+  python3 -c "
+import json, datetime
+detail = open('/tmp/wire_trace_detail_$$.txt').read().rstrip('\n')
+event = {
+    'ts': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'release': '<release_folder_or_null>',
+    'release_type': '<release_type_or_null>',
+    'command': 'new',
+    'event': '<command_start|step|command_end>',
+    'step': '<step_number_or_null>',
+    'step_name': '<step_heading_or_null>',
+    'result': '<result_value_or_null>',
+    'detail': detail,
+}
+with open('.wire/releases/<release_folder>/trace.jsonl', 'a') as f:
+    f.write(json.dumps(event) + chr(10))
+"
+  rm -f "/tmp/wire_trace_detail_$$.txt"
+}
+```
+
+- `<release_folder_or_null>` / `<release_type_or_null>`: from Step 1 above; write the literal JSON `null` (no quotes) if either doesn't apply, or a quoted string if it does.
+- `event`: `command_start`, `step`, or `command_end`.
+- `step` / `step_name`: `null` for `command_start`/`command_end`; the step's own number (e.g. `"1.5"`) and heading (e.g. `"Check for a Canonical Vertical Match"`) for a `step` event.
+- `result`: `null` except on `command_end`.
+- Adjust the file path in the final `open(...)` call to `.wire/trace.jsonl` for engagement-level (non-release-scoped) commands.
+
+## Rules
+
+1. **Never block or fail the workflow.** If a trace write fails for any reason (disk full, permissions), continue the workflow regardless — trace failures are never surfaced to the user and never stop anything.
+2. **Append only** — never rewrite or delete existing lines in `trace.jsonl`.
+3. **This is additive to `execution_log.md` and Telemetry, not a replacement for either.** All three continue exactly as documented elsewhere; tracing is a separate, optional, much finer-grained record for engagements that opt in.
+4. **Don't summarize into brevity.** The entire point of this mechanism over `execution_log.md` is that it isn't limited to a 120-character line — write the real detail.
+
+## Example
+
+```json
+{"ts":"2026-07-05T14:20:03Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"command_start","step":null,"step_name":null,"result":null,"detail":"Invoked for release 20260705_acme (full_platform)"}
+{"ts":"2026-07-05T14:20:11Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.1","step_name":"Resolve the registry location","result":null,"detail":"Checked wire/data-model-registry/ (not found — not the Wire source repo). Checked ~/.wire/data-model-registry/ (found — cloned via /wire:utils-data-model-registry-setup on 2026-07-01)."}
+{"ts":"2026-07-05T14:20:19Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.2","step_name":"Resolve the vertical","result":null,"detail":"No confident vertical match for Acme (B2B SaaS, no dedicated saas vertical in the registry). Adjacent match found: subscription-commerce — entity shape (subscriber, subscription, subscription_event, monthly_retention, subscription_revenue) proposed as a structural analogue for Acme's MRR/NRR model."}
+{"ts":"2026-07-05T14:20:34Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.3","step_name":"Check cross-vertical patterns","result":null,"detail":"crm_identity_resolution flagged as relevant — requirements FR-12 describes reconciling Salesforce and HubSpot contact records, a 12% mismatch rate noted in discovery. Proposed alongside the subscription-commerce adjacent match."}
+{"ts":"2026-07-05T14:21:02Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"1.5.4","step_name":"Propose and record decision","result":null,"detail":"Presented both proposals. Consultant chose 'adapt' on subscription-commerce (kept subscriber/subscription/subscription_revenue, dropped monthly_retention as out of scope for this phase, renamed subscription_event to billing_event to match client terminology) and 'yes' on crm_identity_resolution as-is. Recorded data_model_registry.vertical: subscription-commerce and cross_vertical_schemas: [crm_identity_resolution] in .wire/engagement/context.md."}
+{"ts":"2026-07-05T14:34:47Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"step","step":"5","step_name":"Carry reference pointers forward","result":null,"detail":"account_dim mapped to subscription-commerce's subscriber entity — generation_constraints and reference_implementation pointer carried into data_model_specification.md. subscription_fct mapped to subscription entity, same treatment. contact_identity_map (new, from crm_identity_resolution) added as its own integration model with that pattern's reference_implementation pointer."}
+{"ts":"2026-07-05T14:41:15Z","release":"20260705_acme","release_type":"full_platform","command":"data_model-generate","event":"command_end","step":null,"step_name":null,"result":"complete","detail":"Generated data_model_specification.md — 14 models (5 staging, 4 integration, 5 warehouse), including 2 informed by the accepted registry proposals above."}
+```
+
 ## Workflow Specification
 
 ---
+wire_schema: "1.0"
+command: lifecycle
+artifact: new
+domain: new
+release_types: []
+action_type: lifecycle
+logs_execution: true
 description: Create a new Wire engagement or add a release to an existing engagement
+
+delegates_to:
+  - utils/director_operating_model
+workload: planning
 ---
 
 # Wire New Command
@@ -92,6 +192,34 @@ This guard prevents a second consultant from accidentally running `/wire:new` on
 
 ---
 
+### Step 0b: Invoked by the orchestrating session
+
+When the orchestrating session invokes this command
+(`specs/utils/director_operating_model.md`), it has already read the SOW and
+the director's directive and derived every answer Steps 1 to 6 would ask for.
+It passes them in. In that case:
+
+1. Do not ask Steps 1 to 6. Take the values as given:
+   `client_name`, `engagement_name`, `engagement_lead` (from `git config
+   user.name`), client domain (from the SOW's contact details, for Fathom
+   Sync), `repo_mode`, `sow_path`, `release_type`, `release_name`, and the
+   profile where the release type declares one (Step 6b).
+2. **Every derived value carries its reason.** The release type in particular:
+   the confirmation block says why that type was chosen, in one line, from the
+   SOW. A derived value the director cannot check is a guess wearing a
+   confirmation prompt.
+3. **Anything not derivable is asked, one question at a time, before the
+   confirmation block.** The orchestrator does not invent a client name or a
+   release name.
+4. Go straight to Step 7's confirmation block. It is the one confirmation, and
+   it is not optional: nothing is created until the director confirms it.
+5. On "Change settings", fall back to the interactive path from Step 2 as
+   normal.
+
+Everything after Step 7 runs identically whether the answers were typed or
+derived. The engagement structure, `status.md`, the context file and the log
+rows are the same either way.
+
 ### Step 1: New Engagement or Additional Release?
 
 Check whether `.wire/engagement/context.md` already exists:
@@ -136,10 +264,36 @@ What is your name (engagement lead)?
 
 Wait for user response.
 
+```
+What is the client's email domain? (e.g. "acme.com")
+Used to automatically sync Fathom call transcripts for this engagement into
+.wire/engagement/calls/, matched against calendar invitees on each call — so
+only calls this client actually attended get pulled in, not unrelated meetings.
+Leave blank to skip automatic Fathom sync for this engagement.
+```
+
+Wait for user response — this may be blank.
+
 **Derive**:
 - `client_name`: Display name as provided
 - `engagement_name`: Lowercase, underscores for spaces, no special chars
 - `engagement_lead`: As provided
+- `client_domain_input`: the domain as provided, or blank
+
+**Resolve `fathom_sync` — enabled by default whenever it's safe to be:**
+
+1. If `client_domain_input` is blank, set `fathom_sync.enabled: false` and `fathom_sync.client_domain: null`. There's nothing safe to filter on without a domain — do **not** fall back to matching on `client_name` as free text; a text search has no way to distinguish "this specific client" from any other meeting that happens to mention the same words.
+2. If `client_domain_input` is RA's own domain (`rittmananalytics.com`, case-insensitive, or a subdomain of it) — **or** `client_name` is self-referential (matches "Rittman Analytics", "RA", or similar close variants) — this is an internal engagement, not a client one. Refuse automatic sync regardless of what was typed:
+   ```
+   This looks like an internal Rittman Analytics engagement, not a client one.
+   Fathom Sync matches by calendar-invitee domain — and your own domain is on
+   every meeting your team has, internal or client-facing, so it can't safely
+   narrow anything here. Skipping automatic Fathom sync for this engagement;
+   you can still pull specific calls manually with /wire:utils-meeting-context
+   if needed.
+   ```
+   Set `fathom_sync.enabled: false`, `fathom_sync.client_domain: null` (don't store the RA domain — it should never end up as an active filter, even accidentally, if this field gets read elsewhere later).
+3. Otherwise, a real, external, non-RA domain was given: set `fathom_sync.enabled: true`, `fathom_sync.client_domain: <client_domain_input>`. This is the default outcome for a normal client engagement — no separate opt-in question, no extra step; giving a client domain is already part of setting up the engagement.
 
 ### Step 3: Repo Mode
 
@@ -209,6 +363,7 @@ Use `AskUserQuestion`:
       {"label": "Platform Migration", "description": "Full lifecycle migration of a data platform from one warehouse stack to another. Covers ingestion audit, db object audit, security audit, dbt audit, orchestration audit → migration inventory → strategy → target setup → parallel ingestion → batched dbt translation (models and snapshots, with SCD-2 snapshot history preserved) → orchestration migration → equivalency validation loop → cutover."},
       {"label": "Agentic Data Stack", "description": "Build a governed self-service agentic data stack — dataset governance, semantic layer expansion, per-domain knowledge skills, and an eval suite with per-domain accuracy gates. Delivers an installable Claude agentic data stack skill and maintenance infrastructure."},
       {"label": "Droughty", "description": "Schema introspection and base-layer generation using Droughty. Use for discovery sprints on existing warehouses (ERD, field docs, QA) or as a post-dbt phase to generate staging SQL, schema tests, and base LookML views. Can also be added as an optional phase to any delivery release."},
+      {"label": "BI tool migration (Looker to Omni)", "description": "Migrate a reporting layer from Looker to Omni on the same warehouse: audit the Looker estate, decide what moves, build the Omni model on a branch, move the content, prove tile-level parity, cut over."},
       {"label": "Custom", "description": "Bespoke scope not covered by a standard release type. Wire analyses your SoW or plan and proposes a tailored release structure — mapping deliverables to existing commands where possible, generating new project-scoped specs for the rest."}
     ],
     "multiSelect": false
@@ -231,6 +386,7 @@ Map selection to `release_type`:
 | Platform Migration | `platform_migration` |
 | Agentic Data Stack | `agentic_data_stack` |
 | Droughty | `droughty` |
+| BI tool migration (Looker to Omni) | `bi_migration` |
 | Custom | `custom` |
 
 ### Step 6: Determine Release ID
@@ -245,6 +401,38 @@ Map selection to `release_type`:
    ```
 4. `release_folder = "[release_number]-[release_name]"` (e.g. `01-discovery`)
 5. Today's date as `release_id` = `YYYYMMDD` (for status file ID, distinct from folder name)
+
+### Step 6b: Ask the Profile, Where the Release Type Has One
+
+Some release types offer more than one route through the same phases, and
+record the choice in `status.md`. Read
+`wire/release-types/<release_type>.yaml`: if it declares a `profiles:` block,
+ask which one, and write the answer to the front-matter field named by
+`profile_field`.
+
+| Release type | `profile_field` | Options | Default |
+|---|---|---|---|
+| `dashboard_first` | `build_profile` | `seeded`, `live_data` | `seeded` |
+| `sop_discovery` | `discovery_profile` | `diagnostic`, `modelling_led` | `diagnostic` |
+
+Ask it with `AskUserQuestion`, using each profile's own `name` and
+`description` from the YAML as the option label and description, and marking
+the `default_profile` as recommended. Do not hardcode the list here: a release
+type that gains a profile in a registry PR must get its question without this
+spec being touched.
+
+If the release type declares no `profiles:` block, skip this step and write no
+profile field.
+
+**Why this is asked at all.** Until now nothing asked, and the profile field
+was left unwritten, so `default_profile` applied silently. `live_data` on a
+`dashboard_first` release was only reachable by hand-editing `status.md` after
+creation — a route nobody found, on a choice that changes which phases exist.
+The default is still the default; it is now a decision rather than an
+accident.
+
+Record the answer in the confirmation block below, and in `decisions.md` as a
+ruling when the orchestrating session invoked this command.
 
 ### Step 7: Confirm Settings
 
@@ -263,8 +451,13 @@ Engagement:
 
 First Release:
   Type:           [release_type]
+  [If the type declares profiles:] Profile: [profile_id] — [profile name]
   Folder:         .wire/releases/[release_folder]/
   Release ID:     [release_id]
+
+[When invoked by the orchestrating session, add:]
+  Chosen because:  [one line, from the SOW]
+  Budget:          [lanes_max] lanes, warehouse spend [none|estimate_required|cap:N], stop at [decisions|phase_end|never]
 ```
 
 Use `AskUserQuestion` to confirm:
@@ -493,7 +686,20 @@ Store `notion_parent_page_id` (extract ID from URL if a full URL was given).
 
 If any document store is selected, follow the workflow in `specs/utils/docstore_setup.md`. Pass the engagement name, release folder, provider choice, `confluence_space_key` (if set), and `notion_parent_page_id` (if set) — the utility should skip re-asking for these when they are already supplied.
 
-If skipped, continue to Step 10.
+If skipped, continue to Step 9.6.
+
+### Step 9.6: Data Model Registry — Automatic Setup Attempt (Conditional, Silent)
+
+This step exists to close a gap: `data_model-generate`'s canonical-vertical matching (see `wire/schemas/data-model-registry.md`) only ever *checks* for a local registry copy, it never *fetches* one — so even an RA consultant with real access to `wire-data-model-registry` would get the feature silently skipped forever unless they happened to know about and manually run `/wire:utils-data-model-registry-setup` first, unprompted. The actual gate should be GitHub repo access, not "did you separately remember to run a setup command." This step makes that true, without adding noise or unnecessary network calls for engagements that will never use the registry.
+
+1. **Check relevance first.** Read `wire/release-types/<release_type>.yaml` for the `release_type` selected in Step 5 (skip this check entirely for `custom` — its scope isn't known yet). If no `phases[].artifacts[]` entry has `id: data_model`, this release type will never call `data_model-generate` — **skip this whole step silently**, nothing to set up. (`pipeline_only`, `dashboard_extension`, `enablement`, `platform_migration`, `agentic_data_stack`, `droughty`, and both discovery types never need this; `full_platform`, `dbt_development`, and `dashboard_first` do.)
+2. **Check whether setup was already attempted.** `ls ~/.wire/data_model_registry_setup_attempted 2>/dev/null`. If it exists, skip this step silently — already handled on a prior engagement on this machine, don't re-attempt every time a new engagement is created.
+3. **Attempt it.** If the release type needs it and no attempted-marker exists, follow `specs/utils/data_model_registry_setup.md` as an automated (non-interactive) caller — see that spec's Step 1.5 for what changes in that mode. It writes the attempted marker itself; nothing further to do here.
+4. **Report minimally.** On success, the setup spec's own automated-mode output (one unobtrusive line) is enough — don't add anything else. On failure, say nothing at all; continue to Step 10 exactly as if this step didn't exist.
+
+If skipped for any reason above, continue to Step 10.
+
+`fathom_sync.enabled`/`client_domain` were already resolved in Step 2 — nothing further to ask here. (Requires the Fathom MCP server to be configured to actually do anything; if it isn't set up yet, `fathom_sync.enabled: true` just means nothing happens until it's reachable — see `skills/fathom-sync/SKILL.md`.)
 
 ### Step 10: Create Engagement Folder Structure
 
@@ -526,6 +732,8 @@ Read `TEMPLATES/engagement-context-template.md` and populate:
 - `{{CREATED_DATE}}` → today's date (YYYY-MM-DD)
 - `{{ENGAGEMENT_LEAD}}` → engagement_lead
 - `{{REPO_MODE}}` → `combined` or `dedicated_delivery`
+- `{{FATHOM_SYNC_ENABLED}}` → `true` or `false`, resolved in Step 2
+- `{{FATHOM_SYNC_CLIENT_DOMAIN}}` → the client domain as a quoted string, or `null` (literal, unquoted) if not set — resolved in Step 2
 
 If repo mode is `dedicated_delivery`, populate the `client_repo` section with the provided URL, local path, and branch.
 
@@ -568,6 +776,12 @@ touch .wire/releases/[release_folder]/artifacts/.gitkeep
 mkdir -p .wire/releases/[release_folder]/artifacts/droughty
 mkdir -p .wire/releases/[release_folder]/artifacts/droughty/field_descriptions
 touch .wire/releases/[release_folder]/artifacts/droughty/.gitkeep
+```
+
+**For `bi_migration` release type**:
+```bash
+mkdir -p .wire/releases/[release_folder]/{audit,migration,migration/omni_model,migration/omni_content}
+touch .wire/releases/[release_folder]/audit/.gitkeep
 ```
 
 **For all other release types**:
@@ -722,11 +936,65 @@ Store `warehouse` and `droughty_context`.
 3. Write to `.wire/releases/[release_folder]/status.md`
 4. **Invoke `wire/specs/custom/define.md`** to handle document ingestion, deliverable mapping, custom spec generation, and `.claude/commands/` wrapper creation. The `define` command handles all remaining scaffolding — do not write a standard deliverables section to status.md; `define` does this after the user confirms the proposed structure.
 
+**For `bi_migration` release type**:
+
+Ask the following additional questions (one at a time):
+
+1. "Where is the **LookML repo** checked out locally?" (Default: `./lookml`. Accept if the user presses Enter. The path must exist.)
+2. "What is the **Looker base URL**?" (e.g. `https://client.looker.com`)
+3. "What is the **Omni base URL**?" (e.g. `https://client.omniapp.co`)
+4. "What is the **Omni model id** the migrated model will be built in?" (From the Omni model IDE URL. The model must already exist; `/wire:omni-target-setup-generate` creates the branch, not the model.)
+5. "Which **Omni CLI profile** should Wire use?" (Optional. Press Enter to use the active profile from `omni config show`.)
+"Is the LookML project in a **git repository Wire can clone**? Give the GitHub URL (repo root, or `/tree/<branch>/<subfolder>`), or press Enter to use the local path only." Storing a URL registers the `lookml` source so the audit reads a refreshed snapshot and every row carries a commit; the local path alone cannot support `migration-drift-generate`.
+"Is the **Omni model git-connected**? Give the model repo URL, or press Enter for none." Storing a URL registers the `omni_model` source and a `bi_target_model` client repo so `omni-model-reverse-port` can read what client modellers change in Omni.
+6. "How many days will Looker and Omni **run in parallel** before cutover?" (Default: 60)
+
+Store `lookml_repo_path`, `looker_base_url`, `omni_base_url`, `omni_model_id`, `omni_profile`, `parallel_run_days`.
+
+1. Read `TEMPLATES/bi-migration-status-template.md`
+2. Replace placeholders:
+   - `{{PROJECT_ID}}` → release_id
+   - `{{PROJECT_NAME}}` → release_folder
+   - `{{CLIENT_NAME}}` → client_name
+   - `{{ENGAGEMENT_NAME}}` → engagement_name
+   - `{{CREATED_DATE}}` → today's date
+   - `{{LAST_UPDATED}}` → today's date
+   - `{{LOOKML_REPO_PATH}}` → lookml_repo_path
+   - `{{LOOKER_BASE_URL}}` → looker_base_url
+   - `{{OMNI_BASE_URL}}` → omni_base_url
+   - `{{OMNI_MODEL_ID}}` → omni_model_id
+   - `{{PARALLEL_RUN_DAYS}}` → parallel_run_days
+   - `bi_migration.omni_profile` → omni_profile if given; otherwise leave the template default `null`
+   - `migration_sources.lookml` → when a LookML repo git URL was given, the block `migration-source-register` would write (`specs/migration/migration_source/register.md` Step 4: `git_repo`, `branch`, `subfolder`, `local_snapshot_path` `.wire/releases/[release_folder]/migration/source_snapshot/lookml/`, `last_refreshed: null`, `last_commit: null`); otherwise leave `null` and rely on `bi_migration.lookml_repo_path`
+   - `migration_sources.omni_model` and `migration.client_repos[]` (`role: bi_target_model`) → when an Omni model git repo URL was given; otherwise leave `null` and `[]`
+3. Write to `.wire/releases/[release_folder]/status.md`
+
+The `bi_pair` field is written by the profile step below (the release type declares one profile, `looker_to_omni`, which is also its default). When the orchestrating session runs this command from a directive, it derives these answers from the directive and the SOW where it can and asks only for what is missing, per `specs/utils/director_operating_model.md`.
+
 **For all other release types**:
 1. Read `TEMPLATES/status-template.md`
 2. Replace placeholders (same pattern, using `{{PROJECT_ID}}` → release_id etc.)
 3. Set artifact scope based on release type (same logic as prior `new.md` Step 8)
 4. Write to `.wire/releases/[release_folder]/status.md`
+
+**Applies to every release type — after the template is written:**
+
+1. **Profile.** If Step 6b asked a profile question, write the answer to the
+   front-matter field named by the release type's `profile_field`. Where the
+   release type declares profiles and the field is absent from the template,
+   add it.
+2. **Budget.** If the director gave budget instructions in prose ("two lanes,
+   nothing against a warehouse, stop at decisions"), write the `budget:` block
+   from `specs/utils/director_operating_model.md`, with `set_by` as the
+   director's name and `set_at` as today. If they gave none, omit the block —
+   the defaults apply (4 lanes, no warehouse restriction, stop at decisions)
+   and an absent block is how a release says "no budget was set".
+3. **Claim.** When the orchestrating session created the release, it claims it:
+   write `agents.mode: orchestrated` and the `coordinator_session` block (user,
+   session id, current branch, `claimed_at`, `last_write`). When a person
+   created it by hand, leave `agents.mode` null. A claim is written by whatever
+   is going to dispatch, not by creation itself.
+4. **Parked decisions.** `parked_decisions: []`. A new release has none.
 
 ### Step 15: Set Up Issue Tracker(s) (if opted in)
 
@@ -882,14 +1150,14 @@ If the file does not exist, create it with the header:
 ```markdown
 # Execution Log
 
-| Timestamp | Command | Result | Detail |
-|-----------|---------|--------|--------|
+| Timestamp | Command | Result | Detail | By | Session | Duration | Tokens | Cost (USD) |
+|-----------|---------|--------|--------|----|---------|----------|--------|------------|
 ```
 
 Then append one row per execution:
 
 ```markdown
-| YYYY-MM-DD HH:MM | /wire:<command> | <result> | <detail> |
+| YYYY-MM-DD HH:MM | /wire:<command> | <result> | <detail> | <by> | <session> | <duration> | n/a | n/a |
 ```
 
 ### Field Definitions
@@ -906,6 +1174,8 @@ Then append one row per execution:
   - `archived` — `/wire:archive` archived a project
   - `removed` — `/wire:remove` deleted a project
   - `activated` — a skill was auto-activated (used with `skill` in the Command column)
+  - `override` — `specs/utils/precondition_gate.md` recorded a consultant overriding an unmet precondition, or an advisory gate satisfied by a director's ruling
+  - `mode` — the director handed control over or took it back ("you drive" / "I'll drive"), per `specs/utils/director_operating_model.md`
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
@@ -913,13 +1183,43 @@ Then append one row per execution:
   - For new: project type and client name
   - For archive/remove: project name
   - For skill activations: brief description of what triggered the skill
+  - For override: the unmet precondition, who overrode it, and their reason
+  - For a ruling-satisfied advisory gate: the precondition and the ruling id
+- **By**: the git user (`git config user.name`), or `unknown` if git has no
+  user configured. Who the run is attributable to, regardless of what typed it.
+- **Session**: what invoked the run. One of:
+  - `typed` — a person typed the command
+  - `orchestrator` — the orchestrating session dispatched it, followed by its
+    session id in brackets where one is available: `orchestrator [a1b2c3]`
+  - a lane label — the lane that ran it, e.g. `dbt-developer [staging 1/2]`
+  - `autopilot` — `/wire:autopilot` ran it
+
+  This is the same value the `invoked_by` telemetry property carries
+  (`specs/utils/telemetry.md`), read from `WIRE_INVOKED_BY` and defaulting to
+  `typed`. The log records it per row so the record on disk answers the same
+  question telemetry answers in aggregate.
+- **Duration**: Wall-clock time the workflow took. As the first action of the
+  workflow, run `date +%s` and note the value as the start time. When
+  appending the log row, run `date +%s` again and format the difference as
+  `42s`, `4m 12s`, or `1h 03m`. If the start time was not captured, write
+  `n/a`. Skill activation entries write `n/a`.
+- **Tokens**: Total model tokens the run consumed (input + output, including
+  cache reads and writes). Write the literal `n/a` — a model cannot measure
+  its own token usage, and an estimated figure must never be written. On
+  Claude Code, the Wire plugin's metrics hook backfills this cell with the
+  measured value from the session transcript after the turn ends (see
+  Metrics Backfill below). On runtimes without the hook (e.g. Gemini CLI)
+  the cell stays `n/a`.
+- **Cost (USD)**: Estimated cost of the measured tokens, e.g. `$0.42`. Same
+  rule as Tokens: write `n/a`; the metrics hook backfills it where token
+  usage can be measured. Never compute or guess this yourself.
 
 ## Skill Activation Entries
 
-When a skill activates, it appends a row in the same format as commands, using `skill` in the Command column and the skill identifier in the Result column:
+When a skill activates, it appends a row in the same format as commands, using `skill` in the Command column and the skill identifier in the Result column, with `n/a` in all three metric columns:
 
 ```markdown
-| YYYY-MM-DD HH:MM | skill | <skill-identifier> | activated | <brief trigger description> |
+| YYYY-MM-DD HH:MM | skill | <skill-identifier> | activated | <brief trigger description> | <by> | <session> | n/a | n/a | n/a |
 ```
 
 Skill identifiers:
@@ -968,30 +1268,83 @@ This check is self-contained within this utility, so every caller gets it automa
 
 ## Rules
 
-1. **Append only** — never modify or delete existing log entries
+1. **Append only** — never modify or delete existing log entries, and never
+   re-order them. A row is appended at the bottom, always. Rewriting the file
+   to insert a row in timestamp order is a modification, not an append. One
+   exception: the metrics hook (see Metrics Backfill below) may rewrite the
+   Duration, Tokens, and Cost cells of the most recent row, and nothing else.
 2. **One row per command execution** — even if a command is re-run, add a new row (this creates the revision history)
 3. **Always log after status.md is updated** — the log entry should reflect the final state
 4. **Pipe characters in detail** — if the detail text contains `|`, replace with `—` to preserve table formatting
 5. **Keep detail under 120 characters** — be concise
+6. **Timestamps must not go backwards.** Because rows are appended in the order
+   things happened, each row's timestamp is greater than or equal to the row
+   above it. A row whose timestamp precedes its predecessor's means either the
+   clock moved or a row was inserted out of order; both are record defects.
+   `/wire:status-sync` flags them, naming both rows. This does not block any
+   command — the log is written either way, and the flag is a repair prompt.
+7. **Single writer in orchestrated mode.** When
+   `specs/utils/director_operating_model.md`'s operating model is in force,
+   only the orchestrating session appends to this file. Lanes write their own
+   state files and the orchestrator writes the log rows from them (rule 6 of
+   the operating model). Outside orchestrated mode, every command writes its
+   own row as it always has.
+8. **Never fabricate metrics.** Tokens and Cost are written as `n/a` and only
+   ever filled by tooling that measured them. A best guess is worse than
+   `n/a` in a client-facing audit trail.
+
+## Metrics Backfill (Claude Code)
+
+The Wire Claude Code plugin registers a `Stop` hook (`hooks/wire-metrics.sh`)
+that runs after each turn ends. It reads the session transcript, sums the
+measured token usage from the most recent `/wire:*` command invocation to the
+end of the turn, estimates its cost from a built-in price table, and rewrites
+the Duration (only if still `n/a`), Tokens, and Cost cells of the log's most
+recent row — only when that row's Command matches the command found in the
+transcript and the row already has the metric columns. It never touches any
+other cell or row. Commands that span several turns (e.g. a review waiting on
+feedback) are re-summed on each turn's hook run, so the final backfill covers
+the whole command. If the cost table does not recognise the model, Tokens is
+still filled and Cost stays `n/a`. On runtimes without this hook, the metric
+cells keep the values the workflow wrote.
+
+## Legacy five-column rows
+
+Logs written before the `By` and `Session` columns existed have four data
+columns, and logs written before the `Duration`, `Tokens`, and `Cost (USD)`
+columns existed have four or six. They stay valid and are never rewritten:
+
+- A reader parses columns positionally and treats a missing `By`, `Session`,
+  or metric column as unknown. It does not treat a shorter row as malformed
+  and does not backfill it.
+- Missing columns are added on the next write. A file whose header still has
+  the older shape gets the new header written once, at the point the first
+  nine-column row is appended; existing rows are left as they are, so a log
+  can legitimately hold several shapes.
+- Nothing derives meaning from the absence of the columns. An old row is not
+  "typed"; it is unknown. A row without metric cells is unmeasured, not free
+  or instant — and the metrics hook skips rows that lack the metric columns.
 
 ## Example
 
 ```markdown
 # Execution Log
 
-| Timestamp | Command | Result | Detail |
-|-----------|---------|--------|--------|
-| 2026-02-22 14:30 | skill | engagement-context | activated | Context loaded for new conversation |
-| 2026-02-22 14:35 | /wire:new | created | Project created (type: full_platform, client: Acme Corp) |
-| 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements specification (3 files) |
-| 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed |
-| 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith |
-| 2026-02-23 09:15 | /wire:conceptual_model-generate | complete | Generated entity model with 8 entities |
-| 2026-02-23 10:30 | /wire:conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity |
-| 2026-02-23 11:00 | /wire:conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) |
-| 2026-02-23 11:15 | /wire:conceptual_model-validate | pass | 12 checks passed, 0 failed |
-| 2026-02-23 14:00 | /wire:conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity |
-| 2026-02-23 15:30 | /wire:conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) |
-| 2026-02-23 15:45 | /wire:conceptual_model-validate | pass | 14 checks passed, 0 failed |
-| 2026-02-23 16:00 | /wire:conceptual_model-review | approved | Reviewed by John Doe |
+| Timestamp | Command | Result | Detail | By | Session | Duration | Tokens | Cost (USD) |
+|-----------|---------|--------|--------|----|---------|----------|--------|------------|
+| 2026-02-22 14:30 | skill | engagement-context | activated | Context loaded for new conversation | Jane Smith | typed | n/a | n/a | n/a |
+| 2026-02-22 14:35 | /wire:new | created | Project created (type: full_platform, client: Acme Corp) | Jane Smith | typed | 3m 40s | 84210 | $0.61 |
+| 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements specification (3 files) | Jane Smith | orchestrator [a1b2c3] | 18m 05s | 412876 | $3.18 |
+| 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed | Jane Smith | orchestrator [a1b2c3] | 6m 22s | 156430 | $1.02 |
+| 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith | Jane Smith | typed | 24m 10s | 98764 | $0.74 |
+| 2026-02-23 09:15 | /wire:conceptual_model-generate | complete | Generated entity model with 8 entities | Jane Smith | data-designer | 11m 48s | n/a | n/a |
+| 2026-02-23 10:30 | /wire:conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity | Jane Smith | data-designer | 5m 02s | n/a | n/a |
+| 2026-02-23 11:00 | /wire:conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) | Jane Smith | data-designer | 9m 31s | n/a | n/a |
+| 2026-02-23 11:15 | /wire:conceptual_model-validate | pass | 12 checks passed, 0 failed | Jane Smith | data-designer | 4m 47s | n/a | n/a |
+| 2026-02-23 14:00 | /wire:conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity | Jane Smith | typed | 31m 20s | 122504 | $0.95 |
+| 2026-02-23 15:30 | /wire:conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) | Jane Smith | data-designer | 8m 56s | n/a | n/a |
+| 2026-02-23 15:45 | /wire:conceptual_model-validate | pass | 14 checks passed, 0 failed | Jane Smith | data-designer | 4m 12s | n/a | n/a |
+| 2026-02-23 16:00 | /wire:conceptual_model-review | approved | Reviewed by John Doe | Jane Smith | typed | 12m 33s | 74902 | $0.58 |
+| 2026-02-24 09:05 | /wire:migration-strategy-generate | override | migration_inventory.review required approved, was not_started — overridden by Jane Smith: client demo tomorrow, inventory sign-off deferred to Monday | Jane Smith | typed | 2m 08s | 41207 | $0.33 |
+| 2026-02-24 10:20 | /wire:conceptual_model-generate | override | business_rules.review required approved, was not_started — ruling R-1 (Jane Smith): agree definitions at kickoff | Jane Smith | orchestrator [a1b2c3] | 7m 14s | 188341 | $1.44 |
 ```

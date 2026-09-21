@@ -32,7 +32,7 @@ TITLE="Wire Framework Documentation"
 
 # Section reading order; any section dir not listed here is appended after,
 # sorted by name, so a newly-added section still gets included.
-PREFERRED_SECTIONS="getting-started tutorials release-types advanced reference"
+PREFERRED_SECTIONS="using-wire getting-started release-types tutorials advanced reference"
 
 WORK="$(mktemp -d)"
 COMBINED="$WORK/wire-framework.md"

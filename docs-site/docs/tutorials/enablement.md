@@ -5,6 +5,8 @@ title: "Tutorial: Enablement"
 
 # Tutorial: Enablement
 
+In this tutorial we follow a five-day enablement engagement for Hargreave Insurance Ltd, a UK specialist insurance broker whose data platform went live six weeks earlier and whose data engineering and analyst teams still bring every operational question back to Rittman Analytics. We start with the statement of work, look at what the release type is for, then walk through the two things it produces: the training materials and the technical documentation pack.
+
 ## Statement of Work
 
 ```
@@ -63,9 +65,9 @@ Hargreave Insurance Ltd's data platform — delivered under engagement `01-hargr
 
 ## What is an Enablement release?
 
-A `full_platform` engagement ends when the dashboards are live and the data quality tests pass. The platform is working. What is often not working is the client team's ability to operate it independently. Data engineers who watched the dbt project being built do not necessarily know how to triage a failed job, extend an explore, or interpret a freshness alert at 7am before anyone else is online. An `enablement` release addresses that gap directly — structured training for two distinct audiences, plus the reference documentation that makes the training durable.
+A `full_platform` engagement ends when the dashboards are live and the data quality tests pass, and at that point the platform is working. What is often not working is the client team's ability to operate it independently: data engineers who watched the dbt project being built do not necessarily know how to triage a failed job, extend an explore or interpret a freshness alert at 7am before anyone else is online. An `enablement` release addresses that gap directly, with structured training for two distinct audiences together with the reference documentation that makes the training durable.
 
-The release can follow a `full_platform` engagement (the most common case) or be commissioned independently against a platform built by another team. In either case the `delivery-lead` agent owns the entire release — reading the approved build-phase artifacts and `decisions.md` to extract the knowledge the training materials need, then producing an agenda and supporting materials calibrated to the audience's technical level. Two sessions are standard: a two-hour technical session for the data engineering and analytics team, and a 90-minute business session for end users. Both are generated, reviewed, and approved before delivery. The documentation package — architecture overview, model reference, job reference, field catalogue, operational runbook — follows the same generate-validate-review cycle and is handed over at engagement close.
+The release can follow a `full_platform` engagement, which is the most common case, or be commissioned independently against a platform built by another team. In either case the `delivery-lead` agent owns the entire release, reading the approved build-phase artifacts and `decisions.md` to extract the knowledge the training materials need and then producing an agenda and supporting materials calibrated to the audience's technical level. Two sessions are standard, a two-hour technical session for the data engineering and analytics team and a 90-minute business session for end users, and both are generated, reviewed and approved before delivery. The documentation package (architecture overview, model reference, job reference, field catalogue and operational runbook) follows the same generate-validate-review cycle and is handed over at engagement close, and we will look at both halves of the release in turn below.
 
 ### High-Level Process
 
@@ -86,7 +88,7 @@ graph LR
 | **Prior release** | `01-hargreave-platform` (`full_platform`, completed 6 weeks prior) |
 | **Duration** | 5 days |
 
-Hargreave's platform was delivered six weeks ago: Fivetran connectors from Policy Centre and Acturis, a 19-model dbt project, a Looker semantic layer covering risk metrics, policy performance, and claims analysis. The data engineering team (two people) and the analyst team (three people) have been using it, but every non-trivial operational question — why did this job fail, how do I add a dimension to this explore, what does this timestamp mean — comes back to the Rittman Analytics team. That dependency is unsustainable as the engagement closes. The technical handover documentation also needs to be written before the RA team disengages.
+Hargreave's platform was delivered six weeks ago: Fivetran connectors from Policy Centre and Acturis, a 19-model dbt project and a Looker semantic layer covering risk metrics, policy performance and claims analysis. The data engineering team (two people) and the analyst team (three people) have been using it, but every non-trivial operational question (why did this job fail, how do I add a dimension to this explore, what does this timestamp mean) comes back to the Rittman Analytics team. That dependency is unsustainable as the engagement closes, and the technical handover documentation also needs to be written before the RA team disengages.
 
 ## Deliverables
 
@@ -102,7 +104,7 @@ Hargreave's platform was delivered six weeks ago: Fivetran connectors from Polic
 
 ## Tutorial Playbook
 
-The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this for you as a Mermaid-format delivery plan, with the dependency order, team assignments and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
@@ -154,7 +156,7 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 :::info[First release in this repository?]
 
-If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement (naming the client, setting the engagement context and configuring any integrations) before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
 
 :::
 
@@ -172,16 +174,16 @@ If this is the first release created in a git repository, `/wire:new` will first
 
 :::info[Issue tracking and document sync]
 
-Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate and review step completes. With the Jira integration you can choose between one sub-task per lifecycle step, each moving through its own workflow states, or one ticket per artifact that transitions between issue statuses, and Wire can either create the Epic and issue hierarchy for you when you run `/wire:new` or link to an existing one you have already set up.
 
-Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review, in which case review commands pull the comments and edits made in the document store back in as context before gathering sign-off.
 
-Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear) or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
 
 :::
 
 
-The prior release reference tells Wire where to find the approved build-phase artifacts. Before generating anything, copy the `decisions.md` from `01-hargreave-platform` into `01-hargreave-enablement/requirements/` — the agent uses the 9 logged decisions to explain rationale in the training materials.
+The prior release reference tells Wire where to find the approved build-phase artifacts. Before you generate anything, copy the `decisions.md` from `01-hargreave-platform` into `01-hargreave-enablement/requirements/`, because the agent uses the nine logged decisions to explain the rationale in the training materials.
 
 ### Generating training materials
 
@@ -195,13 +197,13 @@ The prior release reference tells Wire where to find the approved build-phase ar
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, with no extra steps needed on your part. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`), however, always stay in the main session and require your direct input.
 
 :::
 
-The agent reads the full build-phase artifact set and produces two distinct training packs calibrated to their respective audiences.
+The agent reads the full build-phase artifact set and produces two distinct training packs, each calibrated to its audience, and we will look at the agendas for both, starting with the data team.
 
-**Data team enablement — session agenda (2 hours)**
+**Data team enablement: session agenda (2 hours)**
 
 ```
 Hargreave Insurance — Data Team Enablement
@@ -236,7 +238,7 @@ Duration: 2 hours
 5. Open Q&A (25 min)
 ```
 
-**End-user training — session agenda (90 minutes)**
+**End-user training: session agenda (90 minutes)**
 
 ```
 Hargreave Insurance — Dashboard User Training
@@ -272,6 +274,8 @@ Duration: 90 minutes
 6. Q&A (10 min)
 ```
 
+Both packs are then validated and reviewed in the main session, where each reviewer brings one change:
+
 ```
 /wire:training-validate 01-hargreave-enablement → PASS
 
@@ -285,6 +289,8 @@ Duration: 90 minutes
 
 ### Generating technical documentation
 
+With the training approved, the same agent turns to the documentation pack, and this time it reads the dbt project and the LookML files themselves as well as the approved artifacts:
+
 ```
 /wire:documentation-generate 01-hargreave-enablement
 → [auto-delegated to delivery-lead agent]
@@ -294,17 +300,17 @@ Duration: 90 minutes
 → Reading LookML: 5 view files, 3 explore files
 ```
 
-The agent reads the full artifact set and produces five documents under `documentation/`:
+The agent reads the full artifact set and produces five documents under `documentation/`, which we describe in turn.
 
-**Architecture overview** — narrative data flow from Policy Centre and Acturis through Fivetran into BigQuery, through the three dbt layers (staging, integration, warehouse), into the Looker semantic layer and dashboards. Includes a Mermaid diagram of the full stack with system boundaries marked.
+**Architecture overview** A narrative data flow from Policy Centre and Acturis through Fivetran into BigQuery, through the three dbt layers (staging, integration and warehouse) and into the Looker semantic layer and dashboards, including a Mermaid diagram of the full stack with system boundaries marked.
 
-**dbt model reference** — all 19 models in alphabetical order, each with: materialisation type, grain, primary key definition, upstream dependencies (via `ref()` or `source()`), key measures or transformations, and the design decision reference where relevant. Example entry: `int__policy_risk_unified` — incremental, unique_key `policy_risk_sk`, merges lapse history from `stg_policy_centre__lapses` with claims frequency from `stg_acturis__claims`, decision-7 explains the risk scoring weight methodology.
+**dbt model reference** All 19 models in alphabetical order, each with its materialisation type, grain, primary key definition, upstream dependencies (via `ref()` or `source()`), key measures or transformations and the design decision reference where relevant. For example, the entry for `int__policy_risk_unified` records that it is incremental with unique_key `policy_risk_sk` and merges lapse history from `stg_policy_centre__lapses` with claims frequency from `stg_acturis__claims`, with decision-7 explaining the risk scoring weight methodology.
 
-**dbt Cloud job reference** — two jobs documented in full: `hargreave_scheduled_run` (4-hour cadence, selectors, what `dbt test --select` covers, Slack alert configuration, how to trigger a manual run, what to do on consecutive failure) and `hargreave_ci` (PR trigger, `state:modified+` selector, how to read the PR status check, how to re-run a failed CI build).
+**dbt Cloud job reference** Two jobs documented in full: `hargreave_scheduled_run` (four-hour cadence, selectors, what `dbt test --select` covers, Slack alert configuration, how to trigger a manual run, what to do on consecutive failure) and `hargreave_ci` (PR trigger, `state:modified+` selector, how to read the PR status check, how to re-run a failed CI build).
 
-**LookML field catalogue** — all 87 measures and dimensions across 5 views, in alphabetical order per view. Each entry: field name, type, SQL definition or formula, label as displayed in Looker, which explores it appears in. The dynamic calculations (risk score components, loss ratio) include a note referencing the design decision that keeps them in Looker rather than stored in dbt.
+**LookML field catalogue** All 87 measures and dimensions across five views, in alphabetical order per view, each entry giving the field name, type, SQL definition or formula, label as displayed in Looker and the explores it appears in. The dynamic calculations (risk score components, loss ratio) include a note referencing the design decision that keeps them in Looker rather than stored in dbt.
 
-**Operational runbook** — four sections: monitoring alerts (what each dbt Cloud alert and Looker content health alert means, and the response procedure), on-call steps (who to contact for data engineering issues vs platform access issues), rollback procedure (how to revert a failed dbt deployment using the previous manifest), and the scheduled maintenance window for Fivetran connector upgrades.
+**Operational runbook** Four sections: monitoring alerts (what each dbt Cloud alert and Looker content health alert means and the response procedure), on-call steps (who to contact for data engineering issues vs platform access issues), rollback procedure (how to revert a failed dbt deployment using the previous manifest) and the scheduled maintenance window for Fivetran connector upgrades.
 
 ```
 /wire:documentation-validate 01-hargreave-enablement → PASS
@@ -316,17 +322,21 @@ The agent reads the full artifact set and produces five documents under `documen
 → Incorporated and approved, 2026-05-30
 ```
 
-The approved documentation package is published to the client's Confluence space via the Atlassian MCP connector before the final session.
+Finally, the approved documentation package is published to the client's Confluence space via the Atlassian MCP connector before the final session.
 
 ## What was produced
+
+Here is everything the release produced, across the two training packs and the five handover documents.
 
 | Artifact | Detail |
 |---|---|
 | Data team training pack | 2-hour agenda covering architecture, dbt Cloud operations, LookML extension, documentation system |
 | End-user training pack | 90-minute agenda covering navigation, risk interpretation, freshness, change requests |
 | Architecture overview | Data flow diagram, source-to-dashboard narrative, system boundary diagram |
-| dbt model reference | All 19 models documented with grain, key, dependencies, and decision references |
-| dbt Cloud job reference | Two jobs: scheduled run and CI — selectors, cadence, failure procedure, manual run steps |
+| dbt model reference | All 19 models documented with grain, key, dependencies and decision references |
+| dbt Cloud job reference | Two jobs (scheduled run and CI): selectors, cadence, failure procedure, manual run steps |
 | LookML field catalogue | 87 measures and dimensions, alphabetical per view, with SQL definitions |
 | Operational runbook | Monitoring alerts, on-call contacts, rollback procedure, maintenance schedule |
 | decisions.md | 9 decisions from the build phase carried forward into training context |
+
+With both sessions delivered and the documentation pack signed off, the engagement closes, and any ongoing support falls under the separate support agreement that the statement of work recommends.

@@ -1,0 +1,28 @@
+schema: analytics
+table_name: dim_accounts
+dimensions:
+  account_id:
+    primary_key: true
+  arr:
+    sql: ${annual_recurring_revenue}
+  arr_tier:
+    sql: ${arr}
+    bin_boundaries:
+    - 0
+    - 10000
+    - 50000
+    - 250000
+  plan: {}
+  plan_family:
+    sql: ${plan}
+    groups:
+    - filter:
+        is:
+        - enterprise
+      name: Enterprise
+    - filter:
+        is:
+        - team
+        - business
+      name: Mid-market
+    else: Self-serve

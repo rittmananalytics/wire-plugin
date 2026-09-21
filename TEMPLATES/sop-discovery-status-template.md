@@ -2,12 +2,37 @@
 release_id: "{{RELEASE_ID}}"
 release_name: "{{RELEASE_NAME}}"
 release_type: "sop_discovery"
+project_type: "sop_discovery"   # the release-type YAML this release resolves against
 client_name: "{{CLIENT_NAME}}"
 engagement_name: "{{ENGAGEMENT_NAME}}"
 created_date: "{{CREATED_DATE}}"
 last_updated: "{{LAST_UPDATED}}"
 current_phase: "discovery"
 spawned_from: null
+
+# Which route through the discovery pillars this engagement takes.
+#   diagnostic    - three analyses (Hierarchy of Needs, People-Process-Technology,
+#                   Maturity Curve), playback, then the roadmap.
+#   modelling_led - current state appraisal plus a signed-off enterprise data model
+#                   in place of the analyses; the roadmap is signed off AT the
+#                   playback, so it is generated before it.
+# Defined in wire/release-types/sop_discovery.yaml. Read by precondition_gate.md
+# Step 0, which applies the profile's phase and gate overrides.
+discovery_profile: diagnostic
+
+# Optional artifacts explicitly enabled beyond what the active profile enables.
+# An optional artifact that is neither profile-enabled nor listed here is reported
+# by /wire:status as not applicable, not as not started.
+optional_artifacts: []
+
+# Where the data model comes from. `derived` builds it from requirements and the
+# appraisal. Any other value names an external model that already holds entities,
+# keys and cardinality, which logical_model reads rather than restates.
+model_source: derived
+# Set by /wire:utils-modality-link when model_source is modality. The directory
+# holding modality_project.yaml, relative to the repo root, or absolute for a
+# client-owned repository.
+modality_path: null
 
 # SOP Discovery focus fields (set as the engagement progresses)
 in_scope_domains: []
@@ -35,7 +60,27 @@ jira:
       generate_key: null
       validate_key: null
       review_key: null
+    current_state_appraisal:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
     requirements_matrix:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    conceptual_model:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    logical_model:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
+    pipeline_design:
       task_key: null
       generate_key: null
       validate_key: null
@@ -62,7 +107,11 @@ linear:
     engagement_brief: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
     stakeholder_map: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
     stakeholder_interview: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
+    current_state_appraisal: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
     requirements_matrix: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
+    conceptual_model: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
+    logical_model: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
+    pipeline_design: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
     discovery_analyses: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
     findings_playback: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
     delivery_roadmap: { issue_id: null, generate_id: null, validate_id: null, review_id: null }
@@ -91,6 +140,13 @@ artifacts:
     validate: not_started     # = every generated interview passes four-tag validation
     review: not_started       # = every generated interview has internal RA review complete
     revision_history: []
+  current_state_appraisal:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    # modelling_led profile only. Not applicable under diagnostic.
   requirements_matrix:
     generate: not_started
     validate: not_started
@@ -99,6 +155,27 @@ artifacts:
     generated_date: null
     generated_files: []
     revision_history: []
+  conceptual_model:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    # modelling_led profile only - pillar 2, target state.
+  logical_model:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    # modelling_led profile only. Optional in full_platform too.
+  pipeline_design:
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null
+    generated_date: null
+    # modelling_led profile only. Run at --depth discovery.
   discovery_analyses:
     generate: not_started
     validate: not_started
@@ -174,6 +251,44 @@ notes:
   - "SOP Discovery release created: {{CREATED_DATE}}"
 
 blockers: []
+
+# Release budget — what an agent may spend on this release
+# (specs/utils/director_operating_model.md, "Budget"). Absent/null means the
+# defaults: lanes_max 4, no warehouse restriction, stop at decisions. The release
+# director sets it in prose ("two lanes, nothing against a warehouse, stop at
+# decisions") and the orchestrating session writes the block. /wire:upgrade never
+# writes one: an absent block means no budget was set, not a budget of defaults.
+budget: null
+#   lanes_max: 2                 # concurrent lanes; default 4
+#   model_tier: default          # default | economy
+#   warehouse_spend: none        # none | estimate_required | cap:<amount>
+#   stop_at: decisions           # decisions | phase_end | never
+#   set_by: "..."
+#   set_at: "YYYY-MM-DD"
+
+# Decisions waiting on the release director. Replaces the single agents.paused_at
+# value below: a release can be waiting on more than one thing at once. Each
+# entry carries id, artifact, kind (review | ruling | registry_proposal | budget |
+# safety_gate), question, parked_at, and optionally awaiting. The first line of
+# every orchestrated session is the count of these and their questions.
+parked_decisions: []
+
+agents:
+  mode: null              # null | local | managed | orchestrated
+  # The release claim. Written by whatever is going to dispatch (the orchestrating
+  # session, or /wire:delegate), never by /wire:new or /wire:upgrade. A second
+  # session that reads a live claim offers join / take-over / move instead of
+  # dispatching. See specs/utils/director_operating_model.md, "The release claim".
+  coordinator_session: null
+  #   user: "Jane Smith"
+  #   session_id: "<claude session id>"
+  #   branch: "feat/03-store-dashboards"
+  #   claimed_at: "YYYY-MM-DD HH:MM"
+  #   last_write: "YYYY-MM-DD HH:MM"    # the 30-minute stall rule reads this
+  last_orchestrated: null
+  paused_at: null         # superseded by parked_decisions; kept so older readers still resolve
+  active_sessions: []
+  completed_sessions: []
 ---
 
 # Release Status: {{RELEASE_NAME}}

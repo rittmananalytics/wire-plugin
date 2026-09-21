@@ -1,0 +1,11 @@
+schema: analytics
+table_name: fct_inventory
+dimensions:
+  sku_id:
+    primary_key: true
+  sku_link:
+    sql: ${sku_id}
+measures:
+  units_on_hand:
+    sql: ${units_on_hand}
+    aggregate_type: sum

@@ -1,0 +1,66 @@
+{
+  "identity": "looker:lookml:topic:orders",
+  "name": "orders",
+  "base_view": "orders",
+  "emitted": true,
+  "fields": [
+    "orders.*",
+    "customers.*",
+    "reps.*",
+    "order_lines.*",
+    "skus.*",
+    "-customers.email"
+  ],
+  "joins": [
+    {
+      "name": "customers",
+      "view": "customers",
+      "alias": null,
+      "relationship": "many_to_one",
+      "type": "left_outer",
+      "on_sql": "${orders.customer_id} = ${customers.customer_id}",
+      "emitted": true,
+      "unsupported": []
+    },
+    {
+      "name": "reps",
+      "view": "customers",
+      "alias": "reps",
+      "relationship": "many_to_one",
+      "type": "left_outer",
+      "on_sql": "${orders.rep_id} = ${reps.customer_id}",
+      "emitted": true,
+      "unsupported": []
+    },
+    {
+      "name": "order_lines",
+      "view": "order_lines",
+      "alias": null,
+      "relationship": "one_to_many",
+      "type": "left_outer",
+      "on_sql": "${orders.order_id} = ${order_lines.order_id}",
+      "emitted": true,
+      "unsupported": []
+    },
+    {
+      "name": "skus",
+      "view": "skus",
+      "alias": null,
+      "relationship": "many_to_one",
+      "type": "left_outer",
+      "on_sql": "${order_lines.sku_id} = ${skus.sku_id}",
+      "emitted": true,
+      "unsupported": []
+    }
+  ],
+  "unsupported": [
+    {
+      "construct": "sql_always_where",
+      "class": "assisted",
+      "reason": "emitted as always_where_sql; confirm field references resolve on the topic"
+    }
+  ],
+  "source": {
+    "file": "sales.model.lkml"
+  }
+}

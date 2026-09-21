@@ -1,0 +1,83 @@
+{
+  "identity": "looker:lookml:view:orders",
+  "name": "orders",
+  "schema": "analytics",
+  "table_name": "fct_orders",
+  "emitted": true,
+  "class": "mechanical",
+  "unsupported": [],
+  "source": {
+    "file": "orders.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:orders:order_id",
+      "name": "order_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.order_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "primary_key": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:customer_id",
+      "name": "customer_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.customer_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:rep_id",
+      "name": "rep_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.rep_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:count",
+      "name": "count",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "aggregate_type": "count"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    }
+  ]
+}

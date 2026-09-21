@@ -1,0 +1,58 @@
+schema: analytics
+table_name: fct_orders
+dimensions:
+  order_id:
+    primary_key: true
+  status: {}
+  amount: {}
+  is_gift: {}
+measures:
+  completed_orders:
+    aggregate_type: count
+    filters:
+      status:
+        is: complete
+  large_orders:
+    aggregate_type: count
+    filters:
+      amount:
+        greater_than_or_equal_to: 100
+  gift_orders:
+    aggregate_type: count
+    filters:
+      is_gift:
+        is: true
+  open_or_pending:
+    aggregate_type: count
+    filters:
+      status:
+        is:
+        - open
+        - pending
+  not_cancelled_amount:
+    sql: ${amount}
+    aggregate_type: sum
+    filters:
+      status:
+        is_not: cancelled
+  amount_with_status:
+    sql: ${amount}
+    aggregate_type: sum
+    filters:
+      status:
+        not: null
+  uk_orders:
+    aggregate_type: count
+    filters:
+      status:
+        contains: pend
+  p90_amount:
+    sql: ${amount}
+    aggregate_type: percentile
+    percentile: 90
+  average_amount:
+    sql: ${amount}
+    aggregate_type: average
+    format: number_2
+  aov:
+    sql: ${amount_with_status} / NULLIF(${completed_orders}, 0)

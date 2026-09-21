@@ -1,0 +1,231 @@
+wire_schema: "1.0"
+id: sop_discovery
+name: "SOP / Canonical Discovery"
+description: "Full Rittman Analytics discovery methodology. Two profiles: `diagnostic` runs the three-analysis synthesis (Hierarchy of Needs, People–Process–Technology, Maturity Curve) and gates the roadmap on a findings playback; `modelling_led` replaces the analyses with a current-state appraisal and a signed-off enterprise data model (conceptual, logical, data flow), and signs off the roadmap at the playback rather than after it."
+applicable_when:
+  - "Client needs a full structured discovery before delivery planning"
+  - "Multiple stakeholders whose requirements must be reconciled"
+  - "RA is producing a Findings Playback deck for sponsor sign-off"
+  - "Discovery will feed into a multi-release delivery roadmap"
+
+# Discovery has three pillars: map the current state, map the target state,
+# agree the roadmap. Around them sits the driving layer — stakeholders,
+# business questions, workshops, the playback and its sign-off, the deck.
+# The two profiles differ in how the target state is established, not in the
+# pillars themselves.
+#
+# `diagnostic` (default) — target state comes from the three analyses and the
+#   Vision / Solution Initiatives sections they carry. Roadmap follows the
+#   playback.
+# `modelling_led` — target state comes from a signed-off enterprise data model
+#   plus a target platform design. The analyses are off. The roadmap is part of
+#   what the playback signs off, so it is generated before it.
+# The status.md front-matter field a release records its profile choice in.
+# precondition_gate.md Step 0 reads this field, falling back to default_profile
+# when it is absent or blank.
+profile_field: discovery_profile
+default_profile: diagnostic
+
+profiles:
+  - id: diagnostic
+    name: "Diagnostic"
+    description: "The canonical playbook: three analyses, findings playback, then the roadmap."
+    # Nothing overridden — the phase list below is the diagnostic graph.
+
+  - id: modelling_led
+    name: "Modelling-led"
+    description: "Current-state appraisal plus a signed-off enterprise data model in place of the three analyses. Roadmap is signed off at the playback."
+    enable_phases:
+      - current_state_appraisal
+      - target_state_design
+    disable_phases:
+      - discovery_analyses
+    phase_overrides:
+      # The analyses are off, so the matrix review is what releases the design
+      # work, and the roadmap is signed off at the playback rather than after it.
+      - id: delivery_roadmap
+        requires_phase: target_state_design
+        artifacts:
+          - id: delivery_roadmap
+            depends_on:
+              - artifact: requirements_matrix
+                action: review
+                outcome: approved
+              - artifact: conceptual_model
+                action: review
+                outcome: approved
+      - id: findings_playback
+        requires_phase: delivery_roadmap
+        artifacts:
+          - id: findings_playback
+            depends_on:
+              - artifact: delivery_roadmap
+                action: review
+                outcome: approved
+
+phases:
+  - id: engagement_brief
+    name: "Engagement Brief"
+    description: "Establish the engagement context, objectives, and stakeholder list from the SoW and deal context"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: engagement_brief
+        command: engagement-brief
+        required: true
+        sequence: 1
+        depends_on: []
+
+  - id: stakeholder_map
+    name: "Stakeholder Map"
+    description: "Map all stakeholders with roles, priorities, and interview booking owners"
+    required: true
+    requires_phase: engagement_brief
+    artifacts:
+      - id: stakeholder_map
+        command: stakeholder-map
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: engagement_brief
+            action: review
+            outcome: approved
+
+  - id: stakeholder_interviews
+    name: "Stakeholder Interviews"
+    description: "Conduct and document stakeholder interviews using the mandatory four-tag template (PAIN / GOAL / CONSTRAINT / OPPORTUNITY). Group workshops are written up through the same command's --workshop mode."
+    required: true
+    requires_phase: stakeholder_map
+    artifacts:
+      - id: stakeholder_interview
+        command: stakeholder-interview
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: stakeholder_map
+            action: review
+            outcome: approved
+
+  # Pillar 1 — current state. Off in the diagnostic profile, where the
+  # Hierarchy of Needs and PPT analyses carry the current-state diagnosis.
+  - id: current_state_appraisal
+    name: "Current State Appraisal"
+    description: "Appraise the existing platform, sources, replication, tooling, documentation, governance and data quality, from documentation and interviews rather than system access"
+    required: false
+    requires_phase: stakeholder_interviews
+    artifacts:
+      - id: current_state_appraisal
+        command: current-state-appraisal
+        required: false
+        sequence: 1
+        depends_on:
+          - artifact: stakeholder_interview
+            action: validate
+            outcome: PASS
+
+  - id: requirements_matrix
+    name: "Requirements Matrix"
+    description: "Synthesise tagged interview findings into a cross-stakeholder requirements matrix, optionally carrying business value and ROI measure per row"
+    required: true
+    requires_phase: stakeholder_interviews
+    artifacts:
+      - id: requirements_matrix
+        command: requirements-matrix
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: stakeholder_interview
+            action: validate
+            outcome: PASS
+
+  - id: discovery_analyses
+    name: "Discovery Analyses"
+    description: "Generate the three diagnostic analyses: Hierarchy of Needs, People–Process–Technology, and Maturity Curve"
+    required: true
+    requires_phase: requirements_matrix
+    artifacts:
+      - id: discovery_analyses
+        command: discovery-analyses
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: requirements_matrix
+            action: review
+            outcome: approved
+
+  # Pillar 2 — target state. Off in the diagnostic profile. The conceptual and
+  # logical models plus the data flow are the modelling-led deliverables the
+  # sponsor signs off; the target platform design is a section on
+  # pipeline_design, reached with --depth discovery.
+  - id: target_state_design
+    name: "Target State Design"
+    description: "Enterprise data model and target platform design: conceptual model, logical model, and the discovery-depth data flow with its target platform architecture section"
+    required: false
+    requires_phase: requirements_matrix
+    artifacts:
+      - id: conceptual_model
+        command: conceptual_model
+        required: false
+        sequence: 1
+        depends_on:
+          - artifact: requirements_matrix
+            action: review
+            outcome: approved
+      - id: logical_model
+        command: logical_model
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: conceptual_model
+            action: review
+            outcome: approved
+      - id: pipeline_design
+        command: pipeline_design
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: conceptual_model
+            action: review
+            outcome: approved
+
+  - id: findings_playback
+    name: "Findings Playback"
+    description: "Generate and present the Findings Playback deck — the sponsor sign-off gate. The deck and its sign-off checklist are written in the active profile's own deliverables."
+    required: true
+    requires_phase: discovery_analyses
+    artifacts:
+      - id: findings_playback
+        command: findings-playback
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: discovery_analyses
+            action: review
+            outcome: approved
+
+  # Pillar 3 — roadmap.
+  - id: delivery_roadmap
+    name: "Delivery Roadmap"
+    description: "Generate the delivery roadmap with Build / Pair / Coach options, per-deliverable owner and priority, and Release 1 scope for sponsor sign-off"
+    required: true
+    requires_phase: findings_playback
+    artifacts:
+      - id: delivery_roadmap
+        command: delivery-roadmap
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: findings_playback
+            action: review
+            outcome: approved
+      # The build plan: roadmap deliverables sized into dated releases with
+      # capacity, for the client's own tracker. Optional because not every
+      # discovery is bought with a build plan attached.
+      - id: sprint_plan
+        command: sprint-plan
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: delivery_roadmap
+            action: review
+            outcome: approved

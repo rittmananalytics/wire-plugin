@@ -7,13 +7,19 @@ title: "Tutorial: Installing and Upgrading"
 
 ## What this tutorial covers
 
-This tutorial walks through installing Wire in Claude Code and Gemini CLI, configuring MCP servers that extend Wire's capabilities, verifying the installation works correctly, and keeping the plugin current across engagements. It covers all the mechanics you need before running your first `/wire:new`.
+Before Wire can help with an engagement it has to be installed, activated and kept at a version you trust, and whether you are setting up a new machine or joining a team that already uses Wire, that mechanical work stands between you and your first release. This tutorial walks through installing Wire in Claude Code and Gemini CLI, configuring the MCP servers that extend what Wire can do, verifying that the installation works correctly and keeping the plugin current across engagements, which together cover all the mechanics you need before running your first `/wire:new`.
 
 ## Installing Wire in Claude Code
 
-Installation takes three commands. Each must complete before you run the next.
+Installation takes three commands, and each must complete before you run the next. At a high level, the three steps are:
 
-**Step 1 — Register the marketplace**
+1. Register the Rittman Analytics marketplace with Claude Code.
+2. Install the `wire` plugin from it.
+3. Activate the plugin in your current session.
+
+Let's now take a look at each of these in turn.
+
+**Step 1: Register the marketplace**
 
 ```
 /plugin marketplace add rittmananalytics/wire-plugin
@@ -21,7 +27,7 @@ Installation takes three commands. Each must complete before you run the next.
 -> Registry updated. 1 new source available.
 ```
 
-**Step 2 — Install the plugin**
+**Step 2: Install the plugin**
 
 ```
 /plugin install wire@rittman-analytics
@@ -59,7 +65,7 @@ Installation takes three commands. Each must complete before you run the next.
 -> Installation complete. Run /reload-plugins to activate in this session.
 ```
 
-**Step 3 — Activate in the current session**
+**Step 3: Activate in the current session**
 
 ```
 /reload-plugins
@@ -68,11 +74,11 @@ Installation takes three commands. Each must complete before you run the next.
 -> No Claude Code restart required.
 ```
 
-When prompted during install for scope, select "Install for you (user scope)" to make Wire available across every repository on the machine, not just the current one.
+When prompted during install for scope, select "Install for you (user scope)", which makes Wire available across every repository on the machine rather than just the current one.
 
 ## Verifying the installation
 
-Run `/wire:start` to confirm Wire is active. On first run in a repository with no existing engagement:
+So how do you know it worked? Run `/wire:start` to confirm Wire is active, and on first run in a repository with no existing engagement you should see the following:
 
 ```
 /wire:start
@@ -95,23 +101,23 @@ Run `/wire:start` to confirm Wire is active. On first run in a repository with n
    Run /wire:new to create a release and set the engagement type.
 ```
 
-This output confirms the plugin loaded correctly and Wire can see the repository. If `/wire:start` is not recognised as a command, the `/reload-plugins` step did not complete — run it again.
+This output confirms that the plugin loaded correctly and that Wire can see the repository. If `/wire:start` is not recognised as a command, the `/reload-plugins` step did not complete, so run it again.
 
 ## Installing for Gemini CLI
 
-Wire is also available as a Gemini CLI extension:
+If your team works in Gemini CLI rather than Claude Code, Wire is also available as a Gemini CLI extension:
 
 ```bash
 gemini extensions install https://github.com/rittmananalytics/wire-extension
 ```
 
-The Gemini CLI uses a different command syntax. Where Claude Code uses `/wire:requirements-generate my_project`, Gemini CLI uses `wire requirements generate my_project` — a space-separated form with no slash prefix. All 265 commands are available under both runtimes; the workflow specs are shared between them and produce identical artifacts.
+The Gemini CLI uses a different command syntax, however. Where Claude Code uses `/wire:requirements-generate my_project`, Gemini CLI uses `wire requirements generate my_project`, a space-separated form with no slash prefix. All 265 commands are available under both runtimes, and the workflow specs are shared between them and produce identical artifacts.
 
 ## Configuring MCP servers
 
-Wire works without MCP servers from the moment you install it — all generate, validate, and review commands function with local context alone. MCP servers extend what Wire can do automatically, and the gains are material.
+Wire works without MCP servers from the moment you install it, and all generate, validate and review commands function with local context alone. Why configure them, then? MCP servers extend what Wire can do automatically, and the gains are material, as we will see for each of the three below.
 
-The three most useful servers are Fathom, Atlassian, and Linear. Add them to `.claude/settings.json` in the project root:
+The three most useful servers are Fathom, Atlassian and Linear. Add them to `.claude/settings.json` in the project root:
 
 ```json
 {
@@ -135,13 +141,13 @@ The three most useful servers are Fathom, Atlassian, and Linear. Add them to `.c
 }
 ```
 
-**Fathom** — every review command (`/wire:requirements-review`, `/wire:data_model-review`, and so on) automatically searches Fathom transcripts for calls during the engagement period. It surfaces relevant decisions, concerns, and action items before you gather stakeholder feedback. A requirements review that would otherwise miss a client caveat from the kick-off call will find it automatically if the call was recorded in Fathom.
+**Fathom** Every review command (`/wire:requirements-review`, `/wire:data_model-review` and so on) automatically searches Fathom transcripts for calls during the engagement period, surfacing relevant decisions, concerns and action items before you gather stakeholder feedback. As such, a requirements review that would otherwise miss a client caveat from the kick-off call will find it automatically if the call was recorded in Fathom.
 
-**Atlassian** — enables one-click Jira hierarchy creation when you run `/wire:new`. Wire creates one Epic for the engagement and Tasks for each artifact, with Sub-tasks for generate, validate, and review steps. Every subsequent command syncs its status back to Jira. `/wire:status` performs a full reconciliation across the Jira hierarchy and the local `status.md`.
+**Atlassian** This server enables one-click Jira hierarchy creation when you run `/wire:new`: Wire creates one Epic for the engagement and Tasks for each artifact, with Sub-tasks for the generate, validate and review steps, and every subsequent command syncs its status back to Jira. `/wire:status` performs a full reconciliation across the Jira hierarchy and the local `status.md`.
 
-**Linear** — same as Atlassian but mapped to Linear Projects and Issues. Use either Atlassian or Linear depending on which tracker your team uses; both can run in parallel if your client uses one and your team uses the other. If neither is configured, Wire tracks everything locally in `status.md` and `decisions.md`.
+**Linear** This is the same as Atlassian but mapped to Linear Projects and Issues. Use either Atlassian or Linear depending on which tracker your team uses, and both can run in parallel if your client uses one and your team uses the other. If neither is configured, Wire tracks everything locally in `status.md` and `decisions.md`.
 
-All three servers are optional — Wire degrades gracefully when they are absent and notes in command output that context from that source was unavailable.
+All three servers are optional, and Wire carries on without them when they are absent, noting in command output that context from that source was unavailable.
 
 ## Upgrading to a new version
 
@@ -154,9 +160,7 @@ All three servers are optional — Wire degrades gracefully when they are absent
 -> Run /reload-plugins to activate the new version in this session.
 ```
 
-Run `/reload-plugins` after any update. No Claude Code restart needed.
-
-To check what version is currently installed and active:
+Run `/reload-plugins` after any update; no Claude Code restart is needed. To check what version is currently installed and active:
 
 ```
 /wire:utils-version
@@ -166,18 +170,18 @@ To check what version is currently installed and active:
 -> Plugin source:      rittmananalytics/wire-plugin
 ```
 
-If the installed version and the active version differ, `/reload-plugins` was not run after the last update.
+:::note
+If the installed version and the active version differ, `/reload-plugins` was not run after the last update. Run it before continuing.
+:::
 
 ## Pinning a version
 
-For an active engagement, consider pinning the Wire version to avoid mid-engagement behaviour changes. A generate command that behaves slightly differently in a new release can produce an artifact that is inconsistent with earlier approved artifacts in the same project.
-
-Pin by specifying the version explicitly in the install command:
+For an active engagement, consider pinning the Wire version to avoid mid-engagement behaviour changes, because a generate command that behaves slightly differently in a new release can produce an artifact that is inconsistent with earlier approved artifacts in the same project. Pin by specifying the version explicitly in the install command:
 
 ```
 /plugin install wire@rittman-analytics==3.9.4
 ```
 
-Wire will not auto-update while pinned. Unpin by running `/plugin install wire@rittman-analytics` without a version specifier.
+Wire will not auto-update while pinned, and you unpin by running `/plugin install wire@rittman-analytics` without a version specifier.
 
-Pinning is a version control mechanism — it controls which plugin code runs. It is distinct from `/wire:upgrade`, which is a schema migration command. `/wire:upgrade` updates the `status.md` file inside an existing release folder to match the current plugin's schema. Pinning first, then selectively upgrading when you are ready to adopt new schema fields, gives you full control over when a dormant engagement inherits new Wire features.
+Pinning is a version control mechanism, in that it controls which plugin code runs, and it is distinct from `/wire:upgrade`, which is a schema migration command that updates the `status.md` file inside an existing release folder to match the current plugin's schema. Pinning first, then selectively upgrading when you are ready to adopt new schema fields, gives you full control over when a dormant engagement inherits new Wire features.

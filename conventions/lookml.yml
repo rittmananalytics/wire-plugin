@@ -1,0 +1,104 @@
+schema_version: 1
+domain: lookml
+description: >
+  Rittman Analytics LookML conventions for the RA layered architecture
+  (base / staging / aggregate / int / model) — the machine-checkable subset
+  of wire/skills/lookml-content-authoring/SKILL.md. Loaded by the
+  semantic-layer-developer agent and enforced by
+  wire/scripts/lint_conventions.py. Layer placement judgment (does this
+  measure belong in the aggregate layer, does this join direction make
+  sense) stays in the skill file.
+
+# ----------------------------------------------------------------------
+# File naming
+# ----------------------------------------------------------------------
+file_naming:
+  - id: layer_file_suffix
+    description: "Files in base/, staging/, aggregate/, int/ use the .layer.lkml suffix"
+    layer: [base, staging, aggregate, int]
+    pattern: '\.layer\.lkml$'
+    severity: error
+
+  - id: model_file_suffix
+    description: "Files in model/ use the .model.lkml suffix"
+    layer: model
+    pattern: '\.model\.lkml$'
+    severity: error
+
+# ----------------------------------------------------------------------
+# Naming
+# ----------------------------------------------------------------------
+naming:
+  - id: warehouse_view_name
+    description: "Base-layer view names match the warehouse table exactly: wh_<group>__<entity>_(dim|fact|xa)"
+    scope: view_name
+    layer: base
+    pattern: '^wh_[a-z0-9]+__[a-z0-9_]+_(dim|fact|xa)$'
+    example: "wh_core__user_dim"
+    severity: error
+
+  - id: calculated_measure_suffix
+    description: "Measures that exist only in the semantic layer (no dbt equivalent) carry a _calculated suffix"
+    scope: measure_name
+    severity: warning
+    note: "Advisory — requires knowing whether a dbt column of the same name exists, which the linter doesn't have visibility into; the agent checks this against the dbt schema."
+
+# ----------------------------------------------------------------------
+# Refinement pattern — base views vs. + refinements
+# ----------------------------------------------------------------------
+refinement_rules:
+  - id: base_layer_no_refinement
+    description: "base/ files declare plain `view: <name> {`, never a refinement"
+    layer: base
+    forbidden_pattern: 'view:\s*\+'
+    severity: error
+
+  - id: staging_aggregate_uses_refinement
+    description: "staging/ and aggregate/ files modify views via `view: +<name> {`, never redeclare the base view"
+    layer: [staging, aggregate]
+    required_pattern: 'view:\s*\+'
+    severity: error
+
+  - id: single_refinement_per_view_per_layer
+    description: "A given view is refined at most once per layer (staging: once for dimensions, aggregate: once for measures) — multiple refinements of the same view in the same layer create version drift"
+    severity: warning
+    note: "Advisory — counting refinements of the same view name across files in a layer is a straightforward file-content scan; treated as advisory for now because it needs multi-file context lint_conventions.py doesn't yet aggregate across a directory tree in a single pass. Revisit once the linter gains cross-file state."
+
+# ----------------------------------------------------------------------
+# Required fields
+# ----------------------------------------------------------------------
+required_fields:
+  - id: explore_requires_label_and_description
+    description: "Every explore: block has label: and description:"
+    block: explore
+    required_keys: [label, description]
+    severity: error
+
+# ----------------------------------------------------------------------
+# Business-rule citation — links a measure back to the register that agreed its
+# definition (wire#229). Advisory: only releases that ran business_rules have a
+# register to cite.
+# ----------------------------------------------------------------------
+business_rules:
+  - id: business_rule_id_format
+    description: "A measure citing a business rule uses the form BR-<n>, matching an id in artifacts/business_rules.yaml"
+    block: measure
+    marker_pattern: 'wire_business_rule|BR-'
+    required_pattern_if_present: 'BR-\d+'
+    severity: warning
+
+# ----------------------------------------------------------------------
+# Style
+# ----------------------------------------------------------------------
+style:
+  - id: balanced_braces
+    description: "Every { has a matching }"
+    scope: file_content
+    check: balanced_braces
+    severity: error
+
+  - id: sql_block_terminator
+    description: "sql: blocks end with the double-semicolon terminator ;;"
+    scope: file_content
+    severity: warning
+    note: "Advisory in the general case (sql: blocks can span many lines); the linter checks balanced braces and leaves terminator placement to the agent's syntax validation pass."

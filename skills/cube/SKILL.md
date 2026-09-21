@@ -76,6 +76,36 @@ cube_project
 - Date/time dimensions carry the grain in the name only where more than one grain of the same event exists on the same cube: `created_at` is fine alone; if a truncated version is also exposed, `created_month` is clearer than a second `created_at`.
 - Foreign keys used only for joins, never exposed as dimensions, don't need public names — mark them `public: false`.
 
+**Machine-checkable rules — run the linter, don't re-derive it by eye.**
+The naming and required-field rules in this section (and in Cube/Dimension/
+Measure/View standards below) also exist as a machine-readable convention
+file, checked by a script instead of your own read of this document.
+Resolve which one applies (client override wins):
+
+1. `.wire/conventions/cube.yml` in the client project, if present.
+2. `wire/conventions/cube.yml` next to this skill's framework installation
+   (synced from the private `wire-process-registry` — see
+   `wire/schemas/convention-schema.md`).
+
+Run it against the cube/view YAML file(s) you're about to validate or have
+just written:
+
+```
+python3 wire/scripts/lint_conventions.py --domain cube \
+  --convention <resolved cube.yml path> --path <cube model dir or file> \
+  --format json
+```
+
+Treat its findings as ground truth for what it covers — snake_case naming,
+the `_view` suffix, boolean-dimension phrasing, the deprecated
+`belongsTo`/`hasMany` join vocabulary, and required fields on every cube
+(`name`, `sql_table`, `description`, a `primary_key` dimension), dimension
+(`name`, `sql`, `type`), and measure (`name`, `type`). Additive-measure
+correctness, join direction, and pre-aggregation judgment calls stay yours —
+see Measure standards and Pre-aggregations below. If the linter isn't
+available in the environment, fall back to a manual read of this section and
+say so in your output.
+
 ### Cube standards
 
 Point every cube at a single dbt mart with `sql_table`, using the fully-qualified table reference:

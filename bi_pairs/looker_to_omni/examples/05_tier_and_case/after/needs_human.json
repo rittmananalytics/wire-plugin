@@ -1,0 +1,20 @@
+[
+  {
+    "scope": "view",
+    "name": "accounts",
+    "field": "health",
+    "construct": "case",
+    "class": "assisted",
+    "reason": "case dimension with non-equality conditions; write the Omni sql or groups by hand",
+    "lkml_file": "accounts.view.lkml"
+  },
+  {
+    "scope": "view",
+    "name": "accounts",
+    "field": "plan_family",
+    "construct": "case",
+    "class": "assisted",
+    "reason": "case dimension emitted as Omni groups; confirm the labels and the else bucket",
+    "lkml_file": "accounts.view.lkml"
+  }
+]

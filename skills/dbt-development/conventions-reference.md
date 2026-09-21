@@ -2,6 +2,13 @@
 
 This is embedded reference documentation used by the dbt development skill to guide validation logic. For the authoritative convention source, see the PKM or project-specific conventions as configured in the skill's 2-tier system.
 
+The naming patterns, forbidden constructs, and testing/documentation
+requirements below also exist as a machine-checked YAML file —
+`wire/conventions/dbt.yml` (see `wire/schemas/convention-schema.md`), run via
+`wire/scripts/lint_conventions.py`. That file is the ground truth for the
+mechanical subset of what's below; this document stays authoritative for the
+narrative, the SQL templates, and the judgment calls a regex can't make.
+
 ---
 
 ## Model Naming

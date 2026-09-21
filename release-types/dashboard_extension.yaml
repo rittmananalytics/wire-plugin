@@ -1,0 +1,97 @@
+wire_schema: "1.0"
+id: dashboard_extension
+name: "Dashboard Extension"
+description: "New dashboards on an existing platform — requirements, mockups, dashboards, and training, without a pipeline or data-model build."
+applicable_when:
+  - "Client already has a working data platform and needs new dashboards built on it"
+  - "Scope is limited to the BI/reporting layer — no new ingestion or dbt work"
+
+phases:
+  # Optional. Discover, define and agree what the numbers mean before design
+  # bakes a definition in. Warning-level: the gate on the artifact below asks and
+  # records a skip reason rather than blocking, because a hard gate on a team that
+  # skips gates produces a skipped gate.
+  - id: business_rules
+    name: "Business Rules Discovery"
+    description: "Extract and agree the business rules for the domain in scope, from legacy systems and from the people who own the definitions"
+    required: false
+    requires_phase: null
+    artifacts:
+      - id: business_rules
+        command: business-rules
+        required: false
+        sequence: 1
+        depends_on: []
+
+  - id: requirements
+    name: "Requirements"
+    description: "Capture and sign off the requirements specification from the SoW and stakeholder input"
+    required: true
+    requires_phase: null
+    artifacts:
+      - id: requirements
+        command: requirements
+        required: true
+        sequence: 1
+        depends_on: []
+      # Optional. Runs when requirements carry [NEEDS CLARIFICATION] markers or a
+      # design choice needs a stakeholder decision. It was in 3.11.9's
+      # full_platform sequence and fell out of every release type when the
+      # sequences became YAML (wire#248), so no release type could produce it.
+      - id: workshops
+        command: workshops
+        required: false
+        sequence: 2
+        depends_on:
+          - artifact: requirements
+            action: review
+            outcome: approved
+
+  - id: design
+    name: "Design"
+    description: "Mock up the new dashboards"
+    required: true
+    requires_phase: requirements
+    artifacts:
+      - id: mockups
+        command: mockups
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: requirements
+            action: review
+            outcome: approved
+          - artifact: business_rules
+            action: review
+            outcome: approved
+            enforcement: advisory
+
+  - id: development
+    name: "Development"
+    description: "Build the dashboards against the existing platform"
+    required: true
+    requires_phase: design
+    artifacts:
+      - id: dashboards
+        command: dashboards
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: mockups
+            action: review
+            outcome: approved
+
+  - id: enablement
+    name: "Enablement"
+    description: "Train stakeholders on the new dashboards"
+    required: true
+    requires_phase: development
+    artifacts:
+      - id: training
+        command: training
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: dashboards
+            action: review
+            outcome: approved

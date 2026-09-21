@@ -1,0 +1,56 @@
+[
+  {
+    "scope": "view",
+    "name": "inventory",
+    "field": "dynamic_label",
+    "construct": "liquid",
+    "class": "redesign",
+    "reason": "Liquid in sql; rebuild with Omni templated filters or Mustache",
+    "lkml_file": "inventory.view.lkml"
+  },
+  {
+    "scope": "view",
+    "name": "inventory",
+    "field": "measure_picker",
+    "construct": "parameter",
+    "class": "redesign",
+    "reason": "Looker parameter: rebuild as an Omni templated filter or dashboard control",
+    "lkml_file": "inventory.view.lkml"
+  },
+  {
+    "scope": "view",
+    "name": "inventory",
+    "field": "sku_link",
+    "construct": "html",
+    "class": "redesign",
+    "reason": "html uses Liquid; Omni `markdown` uses Mustache; not emitted",
+    "lkml_file": "inventory.view.lkml"
+  },
+  {
+    "scope": "view",
+    "name": "inventory",
+    "field": "units_running_total",
+    "construct": "measure_type_running_total",
+    "class": "redesign",
+    "reason": "measure type running_total: Omni does this as a table calculation or a query-view measure",
+    "lkml_file": "inventory.view.lkml"
+  },
+  {
+    "scope": "view",
+    "name": "inventory",
+    "field": "warehouse_filter",
+    "construct": "filter_field",
+    "class": "redesign",
+    "reason": "Looker filter-only field: rebuild as an Omni dashboard control or templated filter",
+    "lkml_file": "inventory.view.lkml"
+  },
+  {
+    "scope": "view",
+    "name": "inventory_daily_pdt",
+    "field": null,
+    "construct": "pdt",
+    "class": "redesign",
+    "reason": "Persistent derived table: the plan rules dbt model or Omni query view; nothing emitted",
+    "lkml_file": "inventory.view.lkml"
+  }
+]

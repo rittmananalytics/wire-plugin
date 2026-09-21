@@ -5,13 +5,13 @@ title: Engagements and Releases
 
 # Engagements and Releases
 
-Wire uses a two-tier structure with precise terminology. Understanding these two concepts is essential before using the framework.
+A client relationship rarely consists of a single piece of work. A discovery phase leads to a data foundation, which leads to reporting and then to training, and along the way the team gathers a Statement of Work, call transcripts, org charts and a picture of the client's current systems that every later piece of work needs to see. Wire therefore uses a two-tier structure, with precise terminology, to keep the two apart: the engagement holds what spans the whole relationship, and each release holds one scoped piece of delivery inside it. Understanding these two concepts is essential before using the framework, so we will define them first, then look at the folder structure they produce, at how you set one up and at what happens when a session starts.
 
-**Engagement** — a complete client engagement from start to finish. The engagement holds all context that spans the whole relationship with that client: the Statement of Work, call transcripts and meeting notes, org charts, stakeholder lists, and the current-state architecture of their systems.
+**Engagement** An engagement is a complete client engagement from start to finish, and it holds all the context that spans the whole relationship with that client: the Statement of Work, call transcripts and meeting notes, org charts, stakeholder lists and the current-state architecture of their systems.
 
-**Release** — a scoped, time-boxed unit of delivery within an engagement. Every piece of work the team does for a client is a release. Releases have a type (discovery, full_platform, pipeline_only, etc.), a defined scope, a planned start and end date, and their own `status.md` tracking file.
+**Release** A release is a scoped, time-boxed unit of delivery within an engagement, and every piece of work the team does for a client is a release. Releases have a type (discovery, full_platform, pipeline_only, etc.), a defined scope, a planned start and end date and their own `status.md` tracking file.
 
-An engagement typically contains several releases in sequence:
+An engagement typically contains several releases in sequence, as in this example:
 
 ```
 01-discovery       ← Shape Up planning: what do we build and why?
@@ -22,7 +22,7 @@ An engagement typically contains several releases in sequence:
 
 ## The two-tier folder structure
 
-Every Wire engagement uses this structure in the `.wire/` directory:
+So where does all of this live? Every Wire engagement uses this structure in the `.wire/` directory, with the engagement-wide context at the top, one folder per release beneath it and a research area alongside:
 
 ```
 .wire/
@@ -47,9 +47,12 @@ Every Wire engagement uses this structure in the `.wire/` directory:
       test/
       deploy/
       enablement/
+      iterations/        ← one file per ticket worked inside this release (/wire:work)
   research/
     sessions/            ← persisted technical research (auto-populated)
 ```
+
+A release is the durable unit of work: an epic, a deliverable or a platform. Once it is live, changes arrive as tickets, and a ticket is worked inside the release that built the thing it changes rather than in a release of its own, so that the requirements, design documents, definitions and decisions the ticket depends on are in front of Wire when it plans. `/wire:work <release> <ticket>` opens one, and each is recorded as an iteration: a file under `iterations/` and a row in the release's `status.md`. See [`/wire:work`](../reference/management-commands.md#wirework).
 
 ```mermaid
 graph TD
@@ -78,18 +81,20 @@ graph TD
 
 ## Setting up a new engagement
 
-Run `/wire:new`. The framework asks:
+Setting up a new engagement is a single command, `/wire:new`, and the framework asks you four things:
 
-1. **Client and engagement name** — for folder naming and status files
+1. **Client and engagement name**: for folder naming and status files
 2. **Repo mode**:
    - *Combined* (default): `.wire/` lives directly in the client's code repo
    - *Dedicated delivery repo*: this repo is exclusively for Wire artifacts; client code lives in a separate repo
-3. **First release type** — usually `discovery` for a new engagement, or a delivery type if joining mid-stream
-4. **SOW path** — optional; copied to `engagement/sow.md`
+3. **First release type**: usually `discovery` for a new engagement, or a delivery type if joining mid-stream
+4. **SOW path**: optional; copied to `engagement/sow.md`
 
-To add a subsequent release to an existing engagement, run `/wire:new` again. The framework detects the existing engagement context and skips directly to asking for the new release type.
+To add a subsequent release to an existing engagement, run `/wire:new` again, and the framework detects the existing engagement context and skips directly to asking for the new release type.
 
 ## Repo mode: combined vs dedicated delivery
+
+The second of those questions deserves a closer look, because the answer decides where the `.wire/` directory sits in relation to the client's own code.
 
 ```mermaid
 graph LR
@@ -109,15 +114,15 @@ graph LR
     end
 ```
 
-**Option A** is the default. Wire artifacts live in the same repo as the client's code.
+**Option A** is the default, and Wire artifacts live in the same repo as the client's code.
 
-**Option B** is for engagements where adding files directly to the client's code repo is not acceptable (regulated industries, multi-stakeholder repos) or where the client has several code repos. The delivery repo is typically named `<client_name>-delivery`.
+**Option B** is for engagements where adding files directly to the client's code repo is not acceptable (regulated industries, multi-stakeholder repos) or where the client has several code repos, and in that case the delivery repo is typically named `<client_name>-delivery`.
 
 ## Session lifecycle
 
-As of v3.4.20, session state is managed automatically — no explicit session commands required.
+What happens when you open a session? As of v3.4.20, session state is managed automatically, so there are no explicit session commands to run.
 
-The **engagement-context skill** fires automatically on the first message in any Wire repo. It locates the active release, reads `status.md`, and outputs a 4–6 line context summary before any work begins.
+The **engagement-context skill** fires automatically on the first message in any Wire repo. It locates the active release, reads `status.md` and outputs a 4–6 line context summary before any work begins, so that you start each session knowing where the release stands.
 
 After each command completes, the framework writes its result to `status.md` and appends a row to `execution_log.md`.
 

@@ -1,0 +1,7 @@
+schema: analytics
+table_name: dim_customers
+dimensions:
+  customer_id:
+    primary_key: true
+  region: {}
+  email: {}

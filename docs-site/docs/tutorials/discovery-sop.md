@@ -5,6 +5,8 @@ title: "Tutorial: Discovery (SOP)"
 
 # Tutorial: Discovery (SOP)
 
+In this tutorial we follow a ten-day discovery engagement for Thornfield Private Healthcare, a UK private healthcare group whose four clinics run on Cliniko, Stripe and HubSpot with no analytics layer between them, from the signed statement of work to a sponsor-endorsed roadmap and the spawning of the first build release. We start with the statement of work itself, since the engagement brief in the first step is generated from it, and then look at what this release type is for before walking through each command in turn.
+
 ## Statement of Work
 
 ```
@@ -71,9 +73,11 @@ The Findings Playback deck is generated and presented live to the Clinical Opera
 
 ## What is a Discovery (SOP) release?
 
-The SOP discovery release is the formal Rittman Analytics Canonical discovery methodology — the structured alternative to a Shape Up discovery. Rather than scoping a single bet, it produces a full diagnostic: stakeholder interviews classified against a mandatory four-tag scheme, a consolidated requirements matrix, and three named analyses (an Analytics Hierarchy of Needs distribution, a People/Process/Technology diagnosis, and a single Data Analytics Maturity Curve pin) that together tell the sponsor, in their own language, what's actually going on. It exits through a live Findings Playback presented to the sponsor, gated by a 7-item Sponsor Validation Checklist that has to be confirmed `true` on the call before the release can spawn any delivery work. Use it when the client is buying a genuine consulting engagement rather than just build scoping, when the problem is wide enough that multiple stakeholders' competing priorities need to be reconciled before any technical recommendation is credible, or when a regulatory constraint like GDPR needs to be formally surfaced and carried forward rather than discovered mid-build.
+Sometimes a client is buying a consulting engagement rather than build scoping. The problem is wide enough that several stakeholders' competing priorities have to be reconciled before any technical recommendation is credible, or a regulatory constraint such as GDPR has to be surfaced formally and carried forward rather than discovered mid-build. For this situation Wire provides the SOP discovery release, which is the formal Rittman Analytics Canonical discovery methodology and the structured alternative to a Shape Up discovery.
 
-Wire's Atlassian MCP integration runs automatically during [`/wire:new`](../reference/commands#session-and-management-commands) for SOP discovery releases. It creates a Jira Epic and one Task issue per planned artifact — so from the moment the release is set up, the delivery team and client stakeholders can track progress against a structured issue hierarchy without any manual Jira configuration. Review commands sync artifact status back to Jira as each gate is passed, giving the engagement sponsor a real-time view of what has been completed and what is pending their input.
+Rather than scoping a single bet, it produces a full diagnostic. Stakeholder interviews are classified against a mandatory "four-tag" scheme and the tagged themes are consolidated into a requirements matrix, after which three named analyses (an Analytics Hierarchy of Needs distribution, a People/Process/Technology diagnosis and a single Data Analytics Maturity Curve "pin") together tell the sponsor, in their own language, what is actually going on. The release then exits through a live Findings Playback presented to the sponsor, gated by a seven-item Sponsor Validation Checklist that has to be confirmed `true` on the call before the release can spawn any delivery work, and we will look at each of these steps in turn in the walkthrough below.
+
+Wire's Atlassian MCP integration runs automatically during [`/wire:new`](../reference/commands#session-and-management-commands) for SOP discovery releases, creating a Jira Epic and one Task issue per planned artifact, so that from the moment the release is set up the delivery team and the client's stakeholders can track progress against a structured issue hierarchy without any manual Jira configuration. Review commands then sync artifact status back to Jira as each gate is passed, which gives the engagement sponsor a real-time view of what has been completed and what is pending their input.
 
 ### High-Level Process
 
@@ -92,6 +96,33 @@ graph LR
     EB --> SM --> KO --> SI --> RM --> DA --> FP --> DR --> RS
 ```
 
+
+:::info New in 4.0: the modelling-led profile
+
+This walkthrough follows the `diagnostic` profile: the three analyses, the findings
+playback, then the roadmap. That is still the default, and the sequence below is
+unchanged.
+
+A second profile, `modelling_led`, is for a client who already knows their problems
+and is buying a data model. It replaces the three analyses with a
+`current_state_appraisal` and a signed-off conceptual and logical model, and it moves
+the roadmap *before* the playback, because under that profile the roadmap is one of
+the five things the sponsor signs off.
+
+Set it with `discovery_profile: modelling_led` in `status.md`. Reference:
+[Discovery (SOP / Canonical)](../release-types/discovery-sop.md).
+:::
+
+:::info New in 4.0: reading an existing Modality model
+
+Where the client already models their data in Modality, `/wire:utils-modality-link`
+points the release at it, and the design commands read the entities, sources and
+cardinality from the `.mml` files rather than deriving them, while still reading the
+requirements so that the difference between the two becomes a finding.
+
+Reference: [Modality models as an input](../advanced/modality-models.md).
+:::
+
 ## Engagement overview
 
 | | |
@@ -101,9 +132,9 @@ graph LR
 | **Release type** | `sop_discovery` |
 | **Release ID** | `01-thornfield-sop-discovery` |
 | **Duration** | 10 days |
-| **Key constraint** | GDPR — patient identifiers must not appear in the analytics layer |
+| **Key constraint** | GDPR: patient identifiers must not appear in the analytics layer |
 
-Thornfield's clinical operations director wants to understand data flows, reporting gaps, and integration opportunities across three systems — Cliniko for clinic management, Stripe for billing, and HubSpot for patient CRM — before commissioning a data platform. Each system holds a different slice of the patient journey, and none of them currently talk to each other. The analytics layer does not exist. This discovery engagement classifies what every stakeholder actually needs, diagnoses where the underlying maturity gaps are, and produces a sponsor-endorsed roadmap the clinical ops director can take to the board.
+Thornfield's clinical operations director wants to understand data flows, reporting gaps and integration opportunities across three systems (Cliniko for clinic management, Stripe for billing and HubSpot for patient CRM) before commissioning a data platform. Each system holds a different slice of the patient journey, none of them currently talk to each other and the analytics layer does not exist. This discovery engagement therefore classifies what every stakeholder actually needs, diagnoses where the underlying maturity gaps are and produces a sponsor-endorsed roadmap that the clinical operations director can take to the board.
 
 ## Deliverables
 
@@ -120,7 +151,7 @@ Thornfield's clinical operations director wants to understand data flows, report
 
 ## Tutorial Playbook
 
-The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this as a Mermaid-format delivery plan — dependency order, team assignments, and target dates tailored to the specific release.
+The diagram below is the delivery playbook for this tutorial's scenario. In a live engagement, [`/wire:playbook-generate`](../reference/commands#session-and-management-commands) generates this for you as a Mermaid-format delivery plan, with the dependency order, team assignments and target dates tailored to the specific release.
 
 ```mermaid
 flowchart TD
@@ -179,7 +210,7 @@ classDef event fill:#1a1a1a,stroke:#888,color:#fff
 
 :::info[First release in this repository?]
 
-If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement — naming the client, setting the engagement context, and configuring any integrations — before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
+If this is the first release created in a git repository, `/wire:new` will first take you through the steps to set up the overall client engagement (naming the client, setting the engagement context and configuring any integrations) before scaffolding the release itself. See [Setting up a new engagement](https://docs.rittmananalytics.com/en/latest/docs/getting-started/engagements-releases#setting-up-a-new-engagement) for further details.
 
 :::
 
@@ -206,15 +237,15 @@ If this is the first release created in a git repository, `/wire:new` will first
 
 :::info[Issue tracking and document sync]
 
-Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate, and review step completes. With the Jira integration, you can choose between one sub-task per lifecycle step (each moving through its own workflow states) or one ticket per artifact that transitions between issue statuses. Wire can create the Epic and issue hierarchy for you when you run `/wire:new`, or link to an existing one you have already set up.
+Wire can sync artifact progress to [Jira](../advanced/issue-tracking#jira-integration) or [Linear](../advanced/issue-tracking#linear-integration) as each generate, validate and review step completes. With the Jira integration you can choose between one sub-task per lifecycle step, each moving through its own workflow states, or one ticket per artifact that transitions between issue statuses, and Wire can either create the Epic and issue hierarchy for you when you run `/wire:new` or link to an existing one you have already set up.
 
-Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review — review commands pull comments and edits made in the document store back as context before gathering sign-off.
+Generated artifacts can also be replicated to [Confluence](../advanced/document-store#confluence) or [Notion](../advanced/document-store#notion) for client review, in which case review commands pull the comments and edits made in the document store back in as context before gathering sign-off.
 
-Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear), or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
+Both integrations are optional. Configure the [Atlassian](../reference/mcp-servers#atlassian), [Linear](../reference/mcp-servers#linear) or [Notion](../reference/mcp-servers#notion) MCP servers in `.claude/settings.json` to enable them.
 
 :::
 
-From this point, the Jira hierarchy is live. The clinical ops director's team can track the engagement in Jira without any additional setup on the client side.
+From this point the Jira hierarchy is live, and the clinical operations director's team can track the engagement in Jira without any additional setup on the client side. Let's now take a look at each artifact in turn, starting with the engagement brief.
 
 ### Engagement brief — auto-delegated to `discovery-analyst`
 
@@ -253,7 +284,7 @@ From this point, the Jira hierarchy is live. The clinical ops director's team ca
 
 :::info[Auto-delegation]
 
-When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically — no extra steps needed. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`) always stay in the main session and require your direct input.
+When you see `-> [auto-delegated to X agent]`, the main session has routed that command to a [specialist subagent](../advanced/wire-agents#auto-delegation-on-individual-commands) automatically, with no extra steps needed on your part. The specialist runs with a focused brief rather than the full engagement context, which typically produces sharper domain-specific output. Review commands (`*-review`), however, always stay in the main session and require your direct input.
 
 :::
 
@@ -271,9 +302,11 @@ When you see `-> [auto-delegated to X agent]`, the main session has routed that 
 → Atlassian MCP: TPH-2 status updated → done
 ```
 
-The GDPR constraint (CON-1) is captured here, at the very first artifact in the release, from the initial briefing call transcript alone. It will be carried forward as known context into the stakeholder map, every interview, and eventually a specific row of the requirements matrix — never re-discovered from scratch downstream.
+Notice that the GDPR constraint (CON-1) is captured here, at the very first artifact in the release, from the initial briefing call transcript alone. From this point on it is carried forward as known context into the stakeholder map, into every interview and eventually into a specific row of the requirements matrix, and as we will see it is never re-discovered from scratch downstream.
 
 ### Stakeholder map
+
+With the brief approved, we move on to the stakeholder map, which is the first sponsor-facing review of the release.
 
 ```
 /wire:stakeholder-map-generate 01-thornfield-sop-discovery
@@ -314,6 +347,8 @@ The GDPR constraint (CON-1) is captured here, at the very first artifact in the 
 
 ### Kick-off
 
+The kick-off deck is populated from the approved brief and stakeholder map, and it is reviewed internally before being presented to the sponsor alongside the map.
+
 ```
 /wire:kickoff-generate 01-thornfield-sop-discovery
 → Reading: engagement_brief.md (approved), stakeholder_map.md (approved)
@@ -326,6 +361,8 @@ The GDPR constraint (CON-1) is captured here, at the very first artifact in the 
 ```
 
 ### Stakeholder interviews — the mandatory four-tag rule
+
+So what does a tagged interview write-up actually look like? Here is the Billing Administrator's, generated from the Fathom recording of his interview:
 
 ```
 /wire:stakeholder-interview-generate 01-thornfield-sop-discovery --stakeholder mark-whitfield
@@ -345,7 +382,7 @@ The GDPR constraint (CON-1) is captured here, at the very first artifact in the 
   .wire/releases/01-thornfield-sop-discovery/planning/interviews/mark-whitfield.md
 ```
 
-Every theme bullet carries exactly one tag from each of four closed sets — domain (open, per-engagement: `#billing`, `#clinical`, `#crm`, `#governance`), type (`#pain` `#requirement` `#kpi` `#risk` `#existing-asset`), hierarchy tier (`#collect` `#clean` `#define-track` `#analyse` `#optimise-predict` — the lowest tier whose absence is actually blocking the stakeholder), and PPT axis (`#people` `#process` `#technology` — whichever axis's absence is causing the problem). Refusing to pick a hierarchy tier or a PPT axis is refusing to diagnose, so the spec doesn't allow it.
+Every theme bullet carries exactly one tag from each of four closed sets. The domain set is open and defined per engagement (here `#billing`, `#clinical`, `#crm` and `#governance`); the type set is `#pain` `#requirement` `#kpi` `#risk` `#existing-asset`; the hierarchy tier is `#collect` `#clean` `#define-track` `#analyse` `#optimise-predict`, meaning the lowest tier whose absence is actually blocking the stakeholder; and the PPT axis is `#people` `#process` `#technology`, meaning whichever axis's absence is causing the problem. Refusing to pick a hierarchy tier or a PPT axis is refusing to diagnose, and as such the spec does not allow it.
 
 The IT Manager's interview is where the GDPR constraint (CON-1) resurfaces on the record, tagged consistently with the rest:
 
@@ -363,7 +400,7 @@ The IT Manager's interview is where the GDPR constraint (CON-1) resurfaces on th
   .wire/releases/01-thornfield-sop-discovery/planning/interviews/susan-idowu.md
 ```
 
-After all 6 write-ups exist, `--all` checks tag completeness across every file and cross-references the stakeholder map:
+After all six write-ups exist, `--all` checks tag completeness across every file and cross-references the stakeholder map, and in Thornfield's case it finds one failure and one warning:
 
 ```
 /wire:stakeholder-interview-validate 01-thornfield-sop-discovery --all
@@ -391,6 +428,8 @@ After all 6 write-ups exist, `--all` checks tag completeness across every file a
 → FAIL — 1 tag error must be fixed before requirements-matrix can proceed
 ```
 
+The fix is to check the transcript, regenerate the one write-up with the missing tier and run the check again:
+
 ```
 [Consultant reviews the Daniel Osei transcript, confirms the missing tier]
 /wire:stakeholder-interview-generate 01-thornfield-sop-discovery --stakeholder daniel-osei
@@ -401,6 +440,8 @@ After all 6 write-ups exist, `--all` checks tag completeness across every file a
 /wire:stakeholder-interview-validate 01-thornfield-sop-discovery --all
 → PASS — 6/6 fully tagged, 1 uncertain tag confirmed, coverage complete
 ```
+
+With the tags complete, each write-up is reviewed in the main session as an internal peer review rather than a sponsor-facing one:
 
 ```
 /wire:stakeholder-interview-review 01-thornfield-sop-discovery --stakeholder mark-whitfield
@@ -414,6 +455,8 @@ After all 6 write-ups exist, `--all` checks tag completeness across every file a
 ```
 
 ### Requirements matrix
+
+With all six interviews approved, the tagged themes can be harvested into the requirements matrix. Note that the MoSCoW and Phase columns are deliberately left at `TBD` at this stage, because they are assigned in the discovery analyses step and not here.
 
 ```
 /wire:requirements-matrix-generate 01-thornfield-sop-discovery
@@ -457,9 +500,11 @@ After all 6 write-ups exist, `--all` checks tag completeness across every file a
 → Atlassian MCP: TPH-5 status updated → done
 ```
 
-`R-GOVERNANCE-01` is the GDPR constraint's third appearance in this release — first as a known constraint in the engagement brief, then as a tagged theme in the IT Manager's and the sponsor's own interviews, now as a sourced, two-stakeholder requirement with `sponsor_backing: Y`. That backing is exactly what makes it a strong Phase 1 candidate once MoSCoW gets applied in the next step.
+`R-GOVERNANCE-01` is the GDPR constraint's third appearance in this release, first as a known constraint in the engagement brief and then as a tagged theme in the IT Manager's and the sponsor's own interviews. Now it is a sourced, two-stakeholder requirement with `sponsor_backing: Y`, and it follows that when MoSCoW is applied in the next step, that backing is exactly what makes it a strong Phase 1 candidate.
 
 ### Discovery analyses — the three diagnoses
+
+So what do the tagged counts tell us? The discovery analyses step reads the approved matrix and all six write-ups, produces the three diagnoses and then applies MoSCoW and phase directly onto the matrix:
 
 ```
 /wire:discovery-analyses-generate 01-thornfield-sop-discovery
@@ -493,7 +538,7 @@ After all 6 write-ups exist, `--all` checks tag completeness across every file a
    Justification: no analytics layer exists at all; every cross-system
    number is produced by manual reconciliation; there is no agreed
    definition for a core billing KPI two years into the current process.
-   This is honest, not unkind — every subsequent recommendation is built
+   This is plain speaking, not unkindness: every subsequent recommendation is built
    on Thornfield genuinely starting from zero.
 
 4. MOSCOW + PHASE (applied directly onto requirements_matrix.md)
@@ -525,9 +570,11 @@ After all 6 write-ups exist, `--all` checks tag completeness across every file a
 → Atlassian MCP: TPH-6 status updated → done
 ```
 
-The Data Chaos pin is the moment this discovery earns its fee. It would be easy — and dishonest — to place a more flattering pin. The spec is explicit that the pin has to reflect the evidence, not the client relationship.
+The Data Chaos pin is the moment this discovery earns its fee. It would be easy to place a more flattering pin, and it would mislead the sponsor, which is why the spec is explicit that the pin has to reflect the evidence and not the client relationship.
 
 ### Findings Playback — the sponsor gate
+
+Up to this point every review has been internal, apart from the sponsor's sign-off on the stakeholder map. The Findings Playback review is different: it is the live playback session itself, presented to the sponsor, and the release becomes `approved` only when all seven items on the Sponsor Validation Checklist are confirmed `true` on the call.
 
 ```
 /wire:findings-playback-generate 01-thornfield-sop-discovery
@@ -580,9 +627,15 @@ The Data Chaos pin is the moment this discovery earns its fee. It would be easy 
 → Atlassian MCP: TPH-7 status updated → done
 ```
 
-If any of the 7 items had come back `false` or `unclear`, the release would stay at `reviewed` rather than `approved`, and a 30-minute sponsor follow-up session would need to be scheduled before delivery-roadmap generation could proceed. This is deliberately the hardest gate in the whole release — the spec calls the sponsor's verbal sign-off here "the most important artefact in the engagement after the SoW itself."
+This is deliberately the hardest gate in the whole release, and the spec calls the sponsor's verbal sign-off here "the most important artefact in the engagement after the SoW itself." Rebecca Forsyth's agreement to the Data Chaos pin is on the record in her own words, with a timestamp back to the Fathom recording, and every recommendation in the roadmap that follows rests on it.
+
+:::note
+If any of the seven items comes back `false` or `unclear`, the release stays at `reviewed` rather than `approved`, and a 30-minute sponsor follow-up session has to be scheduled before delivery-roadmap generation can proceed.
+:::
 
 ### Delivery roadmap
+
+With the playback held and Build named as the preferred option, the roadmap can be generated. It reads the playback notes together with the matrix, scopes Release 1 to the Phase 1 rows and headlines the sponsor's named option in the Build / Pair / Coach comparison:
 
 ```
 /wire:delivery-roadmap-generate 01-thornfield-sop-discovery
@@ -625,6 +678,8 @@ If any of the 7 items had come back `false` or `unclear`, the release would stay
 
 ### Spawning Release 1
 
+Finally, `/wire:release-spawn` reads the Downstream Releases section of the approved roadmap and creates Release 1 as a `full_platform` release, ready for the build engagement to begin once its own SOW is agreed:
+
 ```
 /wire:release-spawn 01-thornfield-sop-discovery
 → Reading Section 4 (Downstream Releases) of delivery_roadmap.md
@@ -649,15 +704,19 @@ Next steps:
 
 ## What was produced
 
+Here is everything the release produced, where each artifact lives and the state it was left in.
+
 | Artifact | Location | Status |
 |---|---|---|
-| Engagement brief | `.wire/releases/01-thornfield-sop-discovery/planning/engagement_brief.md` | Approved — GDPR recorded as CON-1 |
-| Stakeholder map | `.wire/releases/01-thornfield-sop-discovery/planning/stakeholder_map.md` | Approved — 6 stakeholders, 1 addition |
+| Engagement brief | `.wire/releases/01-thornfield-sop-discovery/planning/engagement_brief.md` | Approved: GDPR recorded as CON-1 |
+| Stakeholder map | `.wire/releases/01-thornfield-sop-discovery/planning/stakeholder_map.md` | Approved: 6 stakeholders, 1 addition |
 | Kick-off deck | `.wire/releases/01-thornfield-sop-discovery/artifacts/kickoff-deck.html` | Approved internally |
 | Stakeholder interviews | `.wire/releases/01-thornfield-sop-discovery/planning/interviews/` | 6 write-ups, all fully tagged, all approved |
-| Requirements matrix | `.wire/releases/01-thornfield-sop-discovery/planning/requirements_matrix.md` | Approved — 11 rows, MoSCoW/Phase assigned |
-| Discovery analyses | `.wire/releases/01-thornfield-sop-discovery/planning/discovery_analyses.md` | Approved — Maturity pin: Data Chaos |
-| Findings Playback | `.wire/releases/01-thornfield-sop-discovery/playback/findings_playback.html` | Approved — 7/7 Sponsor Validation Checklist items true |
-| Delivery roadmap | `.wire/releases/01-thornfield-sop-discovery/planning/delivery_roadmap.md` | Approved — Build option confirmed |
+| Requirements matrix | `.wire/releases/01-thornfield-sop-discovery/planning/requirements_matrix.md` | Approved: 11 rows, MoSCoW/Phase assigned |
+| Discovery analyses | `.wire/releases/01-thornfield-sop-discovery/planning/discovery_analyses.md` | Approved (Maturity pin: Data Chaos) |
+| Findings Playback | `.wire/releases/01-thornfield-sop-discovery/playback/findings_playback.html` | Approved: 7/7 Sponsor Validation Checklist items true |
+| Delivery roadmap | `.wire/releases/01-thornfield-sop-discovery/planning/delivery_roadmap.md` | Approved: Build option confirmed |
 | Release 1 | `.wire/releases/02-thornfield-foundation-platform/` | Spawned, `full_platform` |
-| Jira Epic | TPH-1 — 7 Task issues, all `done` | Tracked throughout |
+| Jira Epic | TPH-1: 7 Task issues, all `done` | Tracked throughout |
+
+Release 1 now waits in its own folder, and the build engagement begins with the two commands Wire printed as its next steps.

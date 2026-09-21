@@ -2,6 +2,10 @@
 
 This is embedded reference documentation used by the dbt development skill to guide testing validation. For the authoritative testing conventions, see the PKM or project-specific conventions as configured in the skill's 2-tier system.
 
+The minimum testing requirement below (primary key `unique` + `not_null`) is
+also machine-checked against `schema.yml` by `wire/conventions/dbt.yml` via
+`wire/scripts/lint_conventions.py` — see `wire/schemas/convention-schema.md`.
+
 ---
 
 ## Transformation Layers

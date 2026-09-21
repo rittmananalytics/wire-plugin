@@ -1,0 +1,6 @@
+schema: analytics
+table_name: dim_skus
+dimensions:
+  sku_id:
+    primary_key: true
+  category: {}

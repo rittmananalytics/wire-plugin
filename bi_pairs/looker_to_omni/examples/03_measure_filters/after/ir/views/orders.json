@@ -1,0 +1,366 @@
+{
+  "identity": "looker:lookml:view:orders",
+  "name": "orders",
+  "schema": "analytics",
+  "table_name": "fct_orders",
+  "emitted": true,
+  "class": "mechanical",
+  "unsupported": [],
+  "source": {
+    "file": "orders.view.lkml",
+    "refined_by": []
+  },
+  "fields": [
+    {
+      "identity": "looker:lookml:field:orders:order_id",
+      "name": "order_id",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.order_id",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "primary_key": true
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:status",
+      "name": "status",
+      "kind": "dimension",
+      "lookml_type": null,
+      "source_sql": "${TABLE}.status",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:amount",
+      "name": "amount",
+      "kind": "dimension",
+      "lookml_type": "number",
+      "source_sql": "${TABLE}.amount",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:is_gift",
+      "name": "is_gift",
+      "kind": "dimension",
+      "lookml_type": "yesno",
+      "source_sql": "${TABLE}.is_gift",
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {},
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:completed_orders",
+      "name": "completed_orders",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "aggregate_type": "count",
+        "filters": {
+          "status": {
+            "is": "complete"
+          }
+        }
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:large_orders",
+      "name": "large_orders",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "aggregate_type": "count",
+        "filters": {
+          "amount": {
+            "greater_than_or_equal_to": 100
+          }
+        }
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:gift_orders",
+      "name": "gift_orders",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "aggregate_type": "count",
+        "filters": {
+          "is_gift": {
+            "is": true
+          }
+        }
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:open_or_pending",
+      "name": "open_or_pending",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "aggregate_type": "count",
+        "filters": {
+          "status": {
+            "is": [
+              "open",
+              "pending"
+            ]
+          }
+        }
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:not_cancelled_amount",
+      "name": "not_cancelled_amount",
+      "kind": "measure",
+      "lookml_type": "sum",
+      "source_sql": "${amount}",
+      "references": [
+        "orders.amount"
+      ],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${amount}",
+        "aggregate_type": "sum",
+        "filters": {
+          "status": {
+            "is_not": "cancelled"
+          }
+        }
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:amount_with_status",
+      "name": "amount_with_status",
+      "kind": "measure",
+      "lookml_type": "sum",
+      "source_sql": "${amount}",
+      "references": [
+        "orders.amount"
+      ],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${amount}",
+        "aggregate_type": "sum",
+        "filters": {
+          "status": {
+            "not": null
+          }
+        }
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:uk_orders",
+      "name": "uk_orders",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "aggregate_type": "count",
+        "filters": {
+          "status": {
+            "contains": "pend"
+          }
+        }
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:recent_orders",
+      "name": "recent_orders",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "assisted",
+      "emitted": false,
+      "omni": null,
+      "unsupported": [
+        {
+          "construct": "measure_filter",
+          "class": "assisted",
+          "reason": "Filter expression '30 days' on created_date has no mechanical Omni operator; construct not emitted, write the filter by hand"
+        }
+      ],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:mixed_filter",
+      "name": "mixed_filter",
+      "kind": "measure",
+      "lookml_type": "count",
+      "source_sql": null,
+      "references": [],
+      "class": "assisted",
+      "emitted": false,
+      "omni": null,
+      "unsupported": [
+        {
+          "construct": "measure_filter",
+          "class": "assisted",
+          "reason": "Filter expression 'open,-pending' on status has no mechanical Omni operator; construct not emitted, write the filter by hand"
+        }
+      ],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:p90_amount",
+      "name": "p90_amount",
+      "kind": "measure",
+      "lookml_type": "percentile",
+      "source_sql": "${amount}",
+      "references": [
+        "orders.amount"
+      ],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${amount}",
+        "aggregate_type": "percentile",
+        "percentile": 90
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:average_amount",
+      "name": "average_amount",
+      "kind": "measure",
+      "lookml_type": "average",
+      "source_sql": "${amount}",
+      "references": [
+        "orders.amount"
+      ],
+      "class": "mechanical",
+      "emitted": true,
+      "omni": {
+        "sql": "${amount}",
+        "aggregate_type": "average",
+        "format": "number_2"
+      },
+      "unsupported": [],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    },
+    {
+      "identity": "looker:lookml:field:orders:aov",
+      "name": "aov",
+      "kind": "measure",
+      "lookml_type": "number",
+      "source_sql": "${amount_with_status} / NULLIF(${completed_orders}, 0)",
+      "references": [
+        "orders.amount_with_status",
+        "orders.completed_orders"
+      ],
+      "class": "assisted",
+      "emitted": true,
+      "omni": {
+        "sql": "${amount_with_status} / NULLIF(${completed_orders}, 0)"
+      },
+      "unsupported": [
+        {
+          "construct": "measure_number",
+          "class": "assisted",
+          "reason": "derived measure (type: number) emitted without aggregate_type; validate it resolves on the branch"
+        }
+      ],
+      "source": {
+        "file": "orders.view.lkml",
+        "view": "orders"
+      }
+    }
+  ]
+}

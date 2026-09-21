@@ -5,7 +5,7 @@ description: Connect to an Omni Analytics instance and work with its semantic mo
 
 # Omni
 
-Connection details and object hierarchy for cataloguing, modeling, and migrating an Omni Analytics reporting layer. Used by `/wire:omni-audit-*` and `/wire:omni-migration-*`, by `dashboards-generate`/`semantic_layer-generate` when `migration.reporting_tool: omni` (or the equivalent non-migration `reporting_tool` setting), and by any reporting-layer work that reads or edits Omni content.
+Connection details and object hierarchy for cataloguing, modeling, and migrating an Omni Analytics reporting layer. Analytical authoring idioms (table calcs, LoD cohorting, date spines, sessionization, multi-tenant patterns) are in `patterns.md` beside this file — read it when building or reviewing Omni content rather than deriving a technique from scratch. Used by `/wire:omni-audit-*` and `/wire:omni-migration-*`, by `dashboards-generate`/`semantic_layer-generate` when `migration.reporting_tool: omni` (or the equivalent non-migration `reporting_tool` setting), and by any reporting-layer work that reads or edits Omni content.
 
 ## Imported upstream skills
 
@@ -31,7 +31,7 @@ Nine upstream skills ship in the package. The ones relevant to Wire migration an
 - **omni-query** — run queries against the semantic layer, interpret results, chain multi-step analysis. Used for equivalency comparison during migration validation.
 - **omni-admin** — manage connections, users, groups, user attributes, permissions, and schedules. The surface for `omni-migration-generate`'s connection repoint and permission remap.
 
-Two further skills exist upstream but aren't relevant to migration work: **omni-ai-optimizer** and **omni-ai-eval** (tuning and evaluating Omni's Blobby AI assistant — a post-migration enablement concern, not a migration one). **omni-embed** matters only if the client embeds Omni dashboards in an external application.
+Two further skills, **omni-ai-optimizer** and **omni-ai-eval** (tuning and evaluating Omni's AI assistant), are not migration surfaces but are the enablement ones: `specs/utils/omni_ai_quality.md` drives them during the enablement phase to tune topic scoping, labels, `all_values`, synonyms and `ai_context`, and to run the question-set gate. **omni-embed** matters only if the client embeds Omni dashboards in an external application.
 
 The `omni-integrations` sub-plugin (`omni-to-databricks-metric-views`, `omni-to-snowflake-semantic-view`) is relevant only when the target platform is Databricks or Snowflake and the client wants Omni's model expressed as native metric views/semantic views on that platform — check before installing it.
 
@@ -67,3 +67,7 @@ Unlike Metabase's card-level SQL, most Omni tiles query through the semantic mod
 - **Model SQL, not tile SQL, is where dialect translation concentrates.** Audit the model's views (`omni-model-builder`) for source-platform SQL constructs first; only then scan tiles for raw-SQL overrides.
 - **Content and model are versioned separately.** Omni supports branch-based model development (promote model changes independently of dashboard/content changes) — a migration can translate and validate the model on a branch before any dashboard is touched, which Metabase's card-level model doesn't offer.
 - **Schema refresh** (`omni-admin`) must run against the new connection before the model can validate — a Snowflake→BigQuery migration needs a fresh schema refresh on the target connection, not a copy of the source connection's cached schema.
+
+## Looker to Omni migration (`bi_migration`, wire#258)
+
+When the release type is `bi_migration` with `bi_pair: looker_to_omni`, this skill is the Omni side of a BI-tool migration: the warehouse does not move, the semantic model and the content do. The pair files at `bi_pairs/looker_to_omni/` (translation guide, property mappings, feature detection, content mapping, tooling, worked examples) and the deterministic converter `scripts/lookml_to_omni.py` do the LookML side. Use `omni-model-builder` on the branch `omni-target-setup` created (`yaml-create` one file at a time with the exact path, `yaml-get` to read back, `omni models validate --branch-id` before any batch is reported ready), `omni-content-builder`'s `omni documents v2-*` commands for dashboards, `omni-query` with `branchId` for the Omni side of tile parity, and `omni-admin` for groups and user attributes. Never merge the branch: merging is the release director's ruling at cutover.

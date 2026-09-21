@@ -1,0 +1,11 @@
+schema: analytics
+table_name: fct_order_lines
+dimensions:
+  line_id:
+    primary_key: true
+  order_id: {}
+  sku_id: {}
+measures:
+  units:
+    sql: ${units}
+    aggregate_type: sum

@@ -77,9 +77,9 @@ Produce **one complete, self-contained HTML file** following this structure:
 </style>
 
 <body>
-  <header>        — looker_logo.png (35px), hamburger, toolbar_icons.png (35px), avatar initials
+  <header>        — hamburger, inline SVG logo mark, search + help icon buttons, avatar initials
   <div.body>
-    <aside.sidebar> — create_button.png (70% width), nav sections, active state on current tab
+    <aside.sidebar> — Create button (inline SVG plus icon), nav sections, active state on current tab
     <main.main>
       <div.titlebar>   — Breadcrumb + h1 + action icons (heart, folder, refresh, more)
       <div.filter-bar> — One .filter-pill-wrap per filter dimension + Run button
@@ -131,12 +131,14 @@ Cycle through `--chart-1` through `--chart-6` for `--card-accent`:
 Write the complete HTML to the path specified by the caller (e.g. `.wire/<project-folder>/design/mockups/<dashboard-slug>.html`),
 where `<dashboard-slug>` is a lowercase-hyphenated version of the dashboard title.
 
-After writing the HTML, copy the three image assets into the **same directory** as the HTML file:
-- `wire/skills/looker-dashboard-mockup/references/looker_logo.png`
-- `wire/skills/looker-dashboard-mockup/references/create_button.png`
-- `wire/skills/looker-dashboard-mockup/references/toolbar_icons.png`
+**The output is a single self-contained file.** There are no image assets to copy. The logo mark,
+the toolbar icons and the Create button are inline SVG in `design-system.md`, so the HTML renders
+correctly from any directory, and stays correct when it is emailed or attached to a ticket.
 
-The HTML references these by filename only (`src="looker_logo.png"` etc.), so they must sit alongside the HTML for the images to load when opened in a browser.
+Do not reintroduce an `<img src="...">` pointing at a file in the skill's `references/` folder.
+The HTML is written to the release folder, not the skill folder, so such an image resolves to
+nothing for the person you send it to. This was a live defect: every generated mockup carried
+three broken images.
 
 Follow up with a brief summary (3–5 bullet points) of what was generated — tile names, chart types,
 table columns — so the user can quickly verify it matches their intent without opening the file.
