@@ -9,6 +9,14 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.1.1: client names removed from published material
+
+**Released**: October 2026
+
+**Made-up names in examples.** The worked example now follows a made-up client, Northfield Sixth Form College, and example paths and skill references that named clients now use made-up names. No command behaves differently.
+
+---
+
 ## v4.1.0 — Wire Studio returns, and the Wire mod measures every command
 
 **Released**: October 2026

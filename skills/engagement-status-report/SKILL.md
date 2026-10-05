@@ -10,7 +10,7 @@ description: >
   Atlassian where available. Use when Mark asks for delivery status, project
   status, milestone status, sprint status, "where are we on [client]", "is
   [client] on track", or "what's slipping on [client]". Triggers on any client
-  name (Client A, Client B, Client C, Client D, Client E, Barton Peveril, Client F,
+  name (Client A, Client B, Client C, Client D, Client E, Client G, Client F,
   Client H, Client I, Client J) plus a delivery framing.
 ---
 

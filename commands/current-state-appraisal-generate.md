@@ -196,7 +196,7 @@ logs_execution: true
 inputs:
   required:
     - name: release_folder
-      description: "Path to the release folder, e.g. .wire/releases/01-aceve-discovery"
+      description: "Path to the release folder, e.g. .wire/releases/01-acme-discovery"
   optional:
     - name: section
       description: "--section \"<title>\" adds a free-form section to the appraisal for engagement-specific material (migration sizing, an acquisition engine, a regulatory constraint). Repeatable."

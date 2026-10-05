@@ -177,7 +177,7 @@ to make the semantics correct and explicit, under human sign-off.
 
 If you're proposing `meta.oac` by comparing against an existing OAC model
 (as `dbt-to-smml`'s worked example was), treat that model as a reference, not
-a specification. A shipped model can be incomplete — the `eyelit_smml`
+a specification. A shipped model can be incomplete — the client
 project that grounds this skill's worked example left one date role on a
 fact joined straight to the base dimension table while its siblings were
 properly aliased. That was confirmed to be an oversight in that build, not a

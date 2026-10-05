@@ -3,9 +3,9 @@ sidebar_position: 1
 title: Worked Example
 ---
 
-# Worked Example: Barton Peveril Live Pastoral Analytics
+# Worked Example: Northfield Live Pastoral Analytics
 
-Reading about commands, gates and agents one page at a time tells you what each piece does, but it does not tell you what a fortnight of real delivery looks like when they are all in play at once: which commands you run on which day, where the specialist agents take the work off your hands, where everything stops for a named person to approve it and what is on disk when you finish. This walkthrough answers that by tracing a complete Wire engagement from initial kick-off through to delivery handover, using a real-world further education client. It covers every command in the canonical sequence and shows two Wire Agents features in practice: auto-delegation during the design phase, and batch dispatch via `/wire:delegate` at the start of development.
+Reading about commands, gates and agents one page at a time tells you what each piece does, but it does not tell you what a fortnight of real delivery looks like when they are all in play at once: which commands you run on which day, where the specialist agents take the work off your hands, where everything stops for a named person to approve it and what is on disk when you finish. This walkthrough answers that by tracing a complete Wire engagement from initial kick-off through to delivery handover, using a further education engagement. The client name and identifying details are made up. It covers every command in the canonical sequence and shows two Wire Agents features in practice: auto-delegation during the design phase, and batch dispatch via `/wire:delegate` at the start of development.
 
 The engagement is a `full_platform` release using BigQuery, dbt and Looker, together with dbt Cloud for orchestration. We will work through it phase by phase, in the order the release ran, and where an agent did the work rather than the consultant we will say so as we go.
 
@@ -13,7 +13,7 @@ The engagement is a `full_platform` release using BigQuery, dbt and Looker, toge
 
 | | |
 |-|-|
-| **Client** | Barton Peveril Sixth Form College, Hampshire |
+| **Client** | Northfield Sixth Form College (made-up name) |
 | **Engagement** | Live Pastoral Analytics (SOW 2) |
 | **Duration** | 2 weeks (Feb 2–13, 2026) |
 | **Release type** | `full_platform` |
@@ -29,23 +29,23 @@ Every engagement starts with `/wire:new`, which records the client, engagement n
 
 ```
 /wire:new
-→ Client: Barton Peveril Sixth Form College
-→ Engagement name: barton_peveril
+→ Client: Northfield Sixth Form College
+→ Engagement name: northfield
 → Release type: full_platform
-→ Release ID: 01-barton-peveril-live-pastoral
-→ Branch: feature/barton-peveril-live-pastoral
-→ .wire/releases/01-barton-peveril-live-pastoral/status.md created
+→ Release ID: 01-northfield-live-pastoral
+→ Branch: feature/northfield-live-pastoral
+→ .wire/releases/01-northfield-live-pastoral/status.md created
   16 artifacts across 6 phases, all at not_started
 ```
 
-Once `/wire:new` has finished, copy the SOW PDF and the ProSolution SQL schema examples into `releases/01-barton-peveril-live-pastoral/requirements/`, as these are the source materials the requirements step reads.
+Once `/wire:new` has finished, copy the SOW PDF and the ProSolution SQL schema examples into `releases/01-northfield-live-pastoral/requirements/`, as these are the source materials the requirements step reads.
 
 ### Requirements — auto-delegated to `discovery-analyst`
 
 The first artifact is also the first place you will see auto-delegation at work: rather than drafting the requirements itself, the main session hands the command to the `discovery-analyst` agent.
 
 ```
-/wire:requirements-generate 01-barton-peveril-live-pastoral
+/wire:requirements-generate 01-northfield-live-pastoral
 → [auto-delegated to discovery-analyst agent]
 ```
 
@@ -57,11 +57,11 @@ The agent reads the SOW and the SQL examples and produces a 13-section requireme
 Validation goes to the same agent, but the review does not, because review gates always stay with the consultant in the main session:
 
 ```
-/wire:requirements-validate 01-barton-peveril-live-pastoral
+/wire:requirements-validate 01-northfield-live-pastoral
 → [auto-delegated to discovery-analyst agent]
 → PASS
 
-/wire:requirements-review 01-barton-peveril-live-pastoral
+/wire:requirements-review 01-northfield-live-pastoral
 → [main session — review gates stay with the consultant]
 → Fathom context: pre-engagement call transcript pulled
 → Approved by Head of MIS, 2026-02-03
@@ -72,7 +72,7 @@ Validation goes to the same agent, but the review does not, because review gates
 Before moving into design, generate a playbook for the full release, so that everyone shares one view of what comes next and who approves what:
 
 ```
-/wire:playbook-generate 01-barton-peveril-live-pastoral
+/wire:playbook-generate 01-northfield-live-pastoral
 ```
 
 The command reads the approved requirements, the SOW timeline and `status.md`, and produces a Mermaid control-flow diagram together with a narrative step guide at `planning/live_pastoral_analytics_playbook.md`. The ✅ and 🔄 markers on the phase headings update each time you regenerate it, so the version below, which was produced mid-engagement after design was complete, shows the first two phases done and development in progress.
@@ -260,17 +260,17 @@ With the requirements approved, the design phase produces four artifacts, three 
 ### Conceptual model — auto-delegated to `data-designer`
 
 ```
-/wire:conceptual_model-generate 01-barton-peveril-live-pastoral
+/wire:conceptual_model-generate 01-northfield-live-pastoral
 → [auto-delegated to data-designer agent]
 ```
 
 This produces a business-level entity model with five domain entities (`Student`, `Attendance`, `PastoralNote`, `SPAAlert` and `Assignment`) and a Mermaid `erDiagram` showing the cardinalities between them. The review records a joint approval together with a modelling decision:
 
 ```
-/wire:conceptual_model-validate 01-barton-peveril-live-pastoral
+/wire:conceptual_model-validate 01-northfield-live-pastoral
 → [auto-delegated to data-designer agent] → PASS
 
-/wire:conceptual_model-review 01-barton-peveril-live-pastoral
+/wire:conceptual_model-review 01-northfield-live-pastoral
 → [main session]
 → Approved by Head of MIS + Head of Student Services, 2026-02-04
 → Decision: SPAAlert is a first-class entity, not a flag on PastoralNote
@@ -279,22 +279,22 @@ This produces a business-level entity model with five domain entities (`Student`
 ### Pipeline design — auto-delegated to `pipeline-engineer`
 
 ```
-/wire:pipeline_design-generate 01-barton-peveril-live-pastoral
+/wire:pipeline_design-generate 01-northfield-live-pastoral
 → [auto-delegated to pipeline-engineer agent]
 ```
 
 This produces the full pipeline architecture document: an analysis of the ProSolution source schema, three Fivetran connectors (ProSolution SQL Server CDC, Focus CDC and MIS Applications for risk weights) and 12 design decisions. The design went through five versions before approval, and the key decisions were that the attendance percentage is calculated dynamically in Looker and never stored (CR-1), that risk scoring comes from the live `Looker_Risk_Score` table via Fivetran rather than from a static seed (CR-3) and that `focus.users` is removed from CDC scope (CR-5). Open question **PD-2** is carried forward: the role of `note_type_id = 31` has to be confirmed before the dbt review is approved.
 
 ```
-/wire:pipeline_design-validate 01-barton-peveril-live-pastoral → PASS
-/wire:pipeline_design-review 01-barton-peveril-live-pastoral
+/wire:pipeline_design-validate 01-northfield-live-pastoral → PASS
+/wire:pipeline_design-review 01-northfield-live-pastoral
 → Approved v5.0, 2026-02-25 — five rounds incorporating CR-1 through CR-6
 ```
 
 ### Data model — auto-delegated to `data-designer`
 
 ```
-/wire:data_model-generate 01-barton-peveril-live-pastoral
+/wire:data_model-generate 01-northfield-live-pastoral
 → [auto-delegated to data-designer agent]
 ```
 
@@ -305,8 +305,8 @@ This produces `_sources.yml` for all three Fivetran connectors, a physical ERD a
 - all facts use incremental (`merge`) materialisation
 
 ```
-/wire:data_model-validate 01-barton-peveril-live-pastoral → PASS
-/wire:data_model-review 01-barton-peveril-live-pastoral
+/wire:data_model-validate 01-northfield-live-pastoral → PASS
+/wire:data_model-review 01-northfield-live-pastoral
 → Approved v6.0, 2026-02-25 — six rounds
 → student_risk_history added in v5 to accumulate snapshots over time
 ```
@@ -316,7 +316,7 @@ This produces `_sources.yml` for all three Fivetran connectors, a physical ERD a
 The mockups are the one design artifact that stays in the main session:
 
 ```
-/wire:mockups-generate 01-barton-peveril-live-pastoral
+/wire:mockups-generate 01-northfield-live-pastoral
 → [main session — no specialist agent for wireframes]
 ```
 
@@ -351,7 +351,7 @@ What you get is a self-contained interactive HTML prototype, with no build step 
 ![SPA Operational Dashboard mock: Daily Caseload tab](/img/dashboard_mock.png)
 
 ```
-/wire:mockups-review 01-barton-peveril-live-pastoral
+/wire:mockups-review 01-northfield-live-pastoral
 → Approved 2026-02-06
 → Change request: add "days since last SPA contact" column
 ```
@@ -361,7 +361,7 @@ What you get is a self-contained interactive HTML prototype, with no build step 
 All four design artifacts are approved. Before switching off, close the session so that the next one opens with an accurate picture:
 
 ```
-/wire:session:end 01-barton-peveril-live-pastoral
+/wire:session:end 01-northfield-live-pastoral
 ```
 
 Wire summarises the position: six artifacts completed, two open items (OQ-2 still open) and a next session focused on Phase 3 Development, for which it recommends starting with `/wire:delegate`.
@@ -376,7 +376,7 @@ The new session opens two days later, and `/wire:start` is the way back in:
 
 ```
 /wire:start
-→ Select: 01-barton-peveril-live-pastoral
+→ Select: 01-northfield-live-pastoral
 → Choose: Plan session
 ```
 
@@ -385,17 +385,17 @@ Wire shows the release state (6/16 artifacts done), lists the next four artifact
 ### Batch dispatch with `/wire:delegate`
 
 ```
-/wire:delegate 01-barton-peveril-live-pastoral
+/wire:delegate 01-northfield-live-pastoral
 ```
 
 Wire inspects `status.md`, identifies every development artifact at `not_started` and presents the delegation plan. With nine staging models and seven warehouse models in scope, the dbt step fans out across parallel agents, one layer at a time:
 
 ```
-Delegation plan — Barton Peveril Live Pastoral Analytics / 01-barton-peveril-live-pastoral
+Delegation plan — Northfield Live Pastoral Analytics / 01-northfield-live-pastoral
 ───────────────────────────────────────────────────────────────────────────────────────────
 
 Step 1 (sequential):
-  pipeline-engineer  →  /wire:pipeline-generate 01-barton-peveril-live-pastoral
+  pipeline-engineer  →  /wire:pipeline-generate 01-northfield-live-pastoral
                         (ProSolution SQL Server CDC + Focus REST API connectors)
 
 Step 2 (multi-wave fan-out, starts after Step 1):
@@ -421,8 +421,8 @@ Step 2 (multi-wave fan-out, starts after Step 1):
   Total dbt-developer agents: 5  (2 + 1 + 2)
 
 Step 3 (parallel, starts after Step 2):
-  3a  orchestration-engineer    →  /wire:orchestration-generate 01-barton-peveril-live-pastoral  (dbt Cloud job config)
-  3b  semantic-layer-developer  →  /wire:semantic_layer-generate 01-barton-peveril-live-pastoral  (LookML views + explores)
+  3a  orchestration-engineer    →  /wire:orchestration-generate 01-northfield-live-pastoral  (dbt Cloud job config)
+  3b  semantic-layer-developer  →  /wire:semantic_layer-generate 01-northfield-live-pastoral  (LookML views + explores)
 
 Total: 8 specialist agents across 4 execution stages. Review commands stay in this session.
 
@@ -446,7 +446,7 @@ So what came back from each specialist? Taking them in the order the plan ran th
 ```markdown
 ## Jobs
 
-### barton_peveril_scheduled_run
+### northfield_scheduled_run
 - Environment: Production (bp-analytics, target: prod)
 - Schedule: every 30 minutes (matches NFR-3 freshness SLA)
 - Commands:
@@ -454,7 +454,7 @@ So what came back from each specialist? Taking them in the order the plan ran th
     dbt test --select staging+ warehouse+
 - On failure: Slack → #pastoral-data-alerts
 
-### barton_peveril_ci
+### northfield_ci
 - Trigger: pull request against main
 - Commands: dbt build --select state:modified+
 - On completion: GitHub PR status check
@@ -469,21 +469,21 @@ It adds to `decisions.md` that the scheduled job runs on cadence regardless of s
 The review gates stay in the main session, and each records who approved and what they checked:
 
 ```
-/wire:pipeline-review 01-barton-peveril-live-pastoral → Approved 2026-02-11
-/wire:dbt-review 01-barton-peveril-live-pastoral → Approved 2026-02-11
-/wire:orchestration-review 01-barton-peveril-live-pastoral
+/wire:pipeline-review 01-northfield-live-pastoral → Approved 2026-02-11
+/wire:dbt-review 01-northfield-live-pastoral → Approved 2026-02-11
+/wire:orchestration-review 01-northfield-live-pastoral
 → data engineering lead (dbt Cloud admin)
 → Job selectors verified, 30-minute schedule confirmed against NFR-3
 → Approved 2026-02-11
-/wire:semantic_layer-review 01-barton-peveril-live-pastoral → Approved 2026-02-12
+/wire:semantic_layer-review 01-northfield-live-pastoral → Approved 2026-02-12
 ```
 
 With the semantic layer approved, the dashboard can be generated, validated and reviewed:
 
 ```
-/wire:dashboards-generate 01-barton-peveril-live-pastoral
-/wire:dashboards-validate 01-barton-peveril-live-pastoral → PASS
-/wire:dashboards-review 01-barton-peveril-live-pastoral → Approved 2026-02-12
+/wire:dashboards-generate 01-northfield-live-pastoral
+/wire:dashboards-validate 01-northfield-live-pastoral → PASS
+/wire:dashboards-review 01-northfield-live-pastoral → Approved 2026-02-12
 ```
 
 ## Phase 4: Testing (Days 9–10)
@@ -491,27 +491,27 @@ With the semantic layer approved, the dashboard can be generated, validated and 
 Testing has two artifacts. The data quality artifact is auto-delegated, and the UAT artifact is where the SPAs and pastoral leads get to try the dashboard for themselves.
 
 ```
-/wire:data_quality-generate 01-barton-peveril-live-pastoral
+/wire:data_quality-generate 01-northfield-live-pastoral
 → [auto-delegated to data-quality-engineer agent]
 ```
 
 This adds a 30-minute freshness Slack alert, row count reconciliation between ProSolution and `attendance_fct` with a ±2% tolerance, null rate monitoring and an FK hit rate check.
 
 ```
-/wire:data_quality-validate 01-barton-peveril-live-pastoral → PASS
-/wire:data_quality-review 01-barton-peveril-live-pastoral → Approved 2026-02-13
+/wire:data_quality-validate 01-northfield-live-pastoral → PASS
+/wire:data_quality-review 01-northfield-live-pastoral → Approved 2026-02-13
 ```
 
 UAT with the SPAs and pastoral leads follows:
 
 ```
-/wire:uat-generate 01-barton-peveril-live-pastoral
+/wire:uat-generate 01-northfield-live-pastoral
 ```
 
 The UAT plan is mapped to FR-1 through FR-9, and it took one iteration: "days since last SPA contact" needed rounding to whole days.
 
 ```
-/wire:uat-review 01-barton-peveril-live-pastoral
+/wire:uat-review 01-northfield-live-pastoral
 → Approved by Head of Student Services, 2026-02-13
 ```
 
@@ -520,24 +520,24 @@ The UAT plan is mapped to FR-1 through FR-9, and it took one iteration: "days si
 Deployment is where the work leaves the development environment, so the runbook is validated and proved in dev before anything goes to production.
 
 ```
-/wire:deployment-generate 01-barton-peveril-live-pastoral
+/wire:deployment-generate 01-northfield-live-pastoral
 ```
 
 This generates a step-by-step deployment runbook (Fivetran → BigQuery datasets → dbt Cloud environment and jobs → Looker publish), the monitoring setup and the rollback procedures.
 
 ```
-/wire:deployment-validate 01-barton-peveril-live-pastoral → PASS
+/wire:deployment-validate 01-northfield-live-pastoral → PASS
 
-/wire:utils-deploy-to-dev 01-barton-peveril-live-pastoral
+/wire:utils-deploy-to-dev 01-northfield-live-pastoral
 → All models built, all tests passing in dbt Cloud dev environment,
   dashboards visible in Looker dev
 
-/wire:deployment-review 01-barton-peveril-live-pastoral
+/wire:deployment-review 01-northfield-live-pastoral
 → data engineering lead + analytics engineering lead
 → Dev results presented, runbook walked through
 → Approved 2026-02-13
 
-/wire:utils-deploy-to-prod 01-barton-peveril-live-pastoral
+/wire:utils-deploy-to-prod 01-northfield-live-pastoral
 → Fivetran connectors activated
 → dbt Cloud production environment configured and tested
 → Scheduled job (30-minute cadence) and CI/PR job activated
@@ -550,7 +550,7 @@ This generates a step-by-step deployment runbook (Fivetran → BigQuery datasets
 The last phase hands the platform over to the people who will run it and the people who will use it, with a session for each audience.
 
 ```
-/wire:training-generate 01-barton-peveril-live-pastoral
+/wire:training-generate 01-northfield-live-pastoral
 ```
 
 **Data Team Enablement** (Day 12 morning) covers the pipeline architecture, the dbt model structure, dbt Cloud job operation, LookML extension and a hands-on trace of a data point from ProSolution to Looker.
@@ -558,22 +558,22 @@ The last phase hands the platform over to the people who will run it and the peo
 **End User Training** (Day 12 afternoon) covers dashboard navigation, interpreting risk signals, data freshness expectations and how to raise a data quality issue.
 
 ```
-/wire:training-validate 01-barton-peveril-live-pastoral → PASS
-/wire:training-review 01-barton-peveril-live-pastoral → Approved 2026-02-14
+/wire:training-validate 01-northfield-live-pastoral → PASS
+/wire:training-review 01-northfield-live-pastoral → Approved 2026-02-14
 ```
 
 Documentation is the last artifact, and the `delivery-lead` agent writes it from everything that has been approved so far:
 
 ```
-/wire:documentation-generate 01-barton-peveril-live-pastoral
+/wire:documentation-generate 01-northfield-live-pastoral
 → [delivery-lead agent reads all approved artifacts and decisions.md]
 ```
 
 This produces an architecture overview, a dbt model reference, a dbt Cloud job reference (selectors, cadence and how to change them), a LookML field catalogue and an operational runbook.
 
 ```
-/wire:documentation-validate 01-barton-peveril-live-pastoral → PASS
-/wire:documentation-review 01-barton-peveril-live-pastoral → Approved 2026-02-14
+/wire:documentation-validate 01-northfield-live-pastoral → PASS
+/wire:documentation-review 01-northfield-live-pastoral → Approved 2026-02-14
 ```
 
 ### Archive
@@ -581,7 +581,7 @@ This produces an architecture overview, a dbt model reference, a dbt Cloud job r
 Finally, archiving the release closes it out in Wire and in Jira:
 
 ```
-/wire:archive 01-barton-peveril-live-pastoral
+/wire:archive 01-northfield-live-pastoral
 → 16 artifacts, 48 generate/validate/review actions, 11 decisions.md entries
 → Jira Epic BP-1 closed
 ```
@@ -593,7 +593,7 @@ Here, for reference, is what the two weeks produced and where each item lives:
 | Artifact | Format |
 |---|---|
 | Requirements specification | `.wire/releases/.../requirements.md` |
-| Delivery playbook | `.wire/releases/.../planning/barton_peveril_playbook.md` |
+| Delivery playbook | `.wire/releases/.../planning/northfield_playbook.md` |
 | Conceptual entity model | `.wire/releases/.../conceptual_model.md` |
 | Pipeline design | `.wire/releases/.../pipeline_design.md` |
 | Physical data model | `.wire/releases/.../data_model.md` |

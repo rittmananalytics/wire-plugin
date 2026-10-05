@@ -247,7 +247,7 @@ by a prompt.
 
 Then proceed to the calling spec's workflow.
 
-**Why a reason at all.** Recommendation R6 in the Hunkemöller usage review found
+**Why a reason at all.** Recommendation R6 in a client usage review found
 seven releases with no recorded review and a reverted change that had gone in
 without one, and concluded that a deliberate skip should be visible rather than
 absent. An advisory gate that logged nothing would be indistinguishable from a

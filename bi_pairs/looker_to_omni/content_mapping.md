@@ -78,7 +78,7 @@ Dynamic fields, per the same guide:
 
 ## Styling and fidelity
 
-Not carried programmatically: colour themes, series colours beyond the model's `colors`, font sizes, KPI comparison styling, conditional formatting on tables. The content batch lists each as `hand_finish`. Plan for a fidelity pass on the prioritised dashboards; the Hunkemöller review found dashboard fidelity iteration to be the largest manual cost on a BI engagement.
+Not carried programmatically: colour themes, series colours beyond the model's `colors`, font sizes, KPI comparison styling, conditional formatting on tables. The content batch lists each as `hand_finish`. Plan for a fidelity pass on the prioritised dashboards; a client usage review found dashboard fidelity iteration to be the largest manual cost on a BI engagement.
 
 ## Skipped-tile reasons
 

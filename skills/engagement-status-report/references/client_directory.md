@@ -41,13 +41,13 @@ When a client is mentioned that isn't on this list, ask Mark to confirm the doma
 - **Engagement summary:** Customer acquisition funnel build across two platforms. Discovery completed late March 2026. **Engagement suspended by client on 15 May 2026 with four-week notice period.** Closeout work in progress: Braze ingestion, Zendesk and Dialpad ingestion, knowledge transfer to client engineering, gap-analysis write-up.
 - **Key stakeholders:** Confirm via Mark.
 
-### Client E / Boost
+### Client E
 - **Domain:** Confirm via Mark
 - **Slack channels:** Confirm via search
 - **Delivery lead:** Confirm
-- **Engagement summary:** Boost revenue analysis, provider portfolio, category mix. Mark uses the `boost-revenue-analyst` skill for ad-hoc analysis here.
+- **Engagement summary:** Revenue analysis, provider portfolio, category mix. Mark uses a client-specific revenue analysis skill for ad-hoc analysis here.
 
-### Barton Peveril
+### Client G
 - **Domain:** client-bp.example (confirm)
 - **Slack channels:** Confirm via search
 - **Engagement summary:** Active. Confirm scope.

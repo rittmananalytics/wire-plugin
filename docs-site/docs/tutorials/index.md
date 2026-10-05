@@ -52,6 +52,6 @@ direction rather than by keystrokes.
 
 :::note
 
-The original worked example at [Advanced → Worked Example](../advanced/worked-example) uses a real RA client engagement (Barton Peveril Sixth Form College), whereas the tutorials on this page use fictional scenarios designed to illustrate each release type.
+The original worked example at [Advanced → Worked Example](../advanced/worked-example) follows one full engagement from kick-off to handover, whereas the tutorials on this page use fictional scenarios designed to illustrate each release type.
 
 :::

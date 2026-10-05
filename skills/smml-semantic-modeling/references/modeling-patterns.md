@@ -2,7 +2,7 @@
 
 The judgement calls behind the schema in `smml-schema.md` — how Oracle
 recommends building the constructs that matter, plus what the one real,
-OAC-validated project (`eyelit_smml`) actually shipped when its human curators
+OAC-validated client project actually shipped when its human curators
 made those same calls. Sourced from *Building Semantic Models in Oracle
 Analytics Cloud* (F42737-41, 341pp) and the ground-truth comparison. Citations
 give the PDF page (as paginated in the doc) / chapter-internal page.
@@ -51,7 +51,7 @@ needed — join the fact straight to the base dimension table. Aliasing exists
 to disambiguate *multiple* roles, not as a blanket convention.
 
 **A cautionary real-world example of rule 2 above, not a counter-example**:
-`eyelit_smml`'s own `fact_activity_log` has two date roles into `dim_date` —
+That project's own `fact_activity_log` has two date roles into `dim_date` —
 `start_date_key` and `end_date_key`. Only `end_date_key` got a proper alias
 (`DIM_END_DATE`); `start_date_key` stayed joined straight to the base
 `DIM_DATE` table, with a presentation-only rename ("Activity Start Date")

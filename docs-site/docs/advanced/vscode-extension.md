@@ -39,7 +39,7 @@ Open the Wire Explorer from the Activity Bar (the Wire icon), and the explorer s
 
 ```
 WIRE FRAMEWORK
-└── 20240115_barton_peveril_full_platform
+└── 20240115_northfield_full_platform
     ├── Phase: Development
     ├── Requirements ✓ (all approved)
     ├── Design ✓ (all approved)
@@ -71,7 +71,7 @@ There are three ways to run a command from the editor.
 If the workspace contains multiple Wire releases, you set the active release from the status bar:
 
 ```
-Wire: 20240115_barton_peveril ▾
+Wire: 20240115_northfield ▾
 ```
 
 Click the status bar item to change the active release, and all quick-run commands run against the active release.

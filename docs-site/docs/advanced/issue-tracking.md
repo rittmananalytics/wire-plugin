@@ -32,7 +32,7 @@ To use Jira, the Atlassian MCP server must be configured in `.claude/settings.js
 
 Wire creates one Jira hierarchy per engagement, with three levels:
 
-- **Epic**: one per project (e.g. "Barton Peveril Full Platform")
+- **Epic**: one per project (e.g. "Northfield Full Platform")
 - **Tasks**: one per artifact (e.g. "Problem Definition", "High-Level Design")
 - **Sub-tasks**: one per lifecycle step (Generate, Validate, Review)
 

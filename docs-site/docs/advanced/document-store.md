@@ -32,7 +32,7 @@ To publish to Confluence, the Atlassian MCP server must be configured (see Issue
 
 ```
 Confluence space key: DP
-Parent page title (optional): Barton Peveril Engagement
+Parent page title (optional): Northfield Engagement
 ```
 
 Wire creates one Confluence page per artifact, nested under the parent page, and each page is tagged with the Wire artifact ID and engagement ID so that Wire can find and update it on subsequent runs.

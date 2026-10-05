@@ -152,7 +152,7 @@ This command is safe to re-run. For Case B, the migration runs on a **new git br
 
 ```
 .wire/
-  20260202_barton_peveril_live_pastoral/
+  20260202_northfield_live_pastoral/
     status.md
     artifacts/
       sow.pdf
@@ -295,11 +295,11 @@ Display the proposed migration to the user and ask for confirmation before proce
 
 ```
 Found N project folder(s) in the old layout:
-  .wire/20260202_barton_peveril_live_pastoral/
+  .wire/20260202_northfield_live_pastoral/
   .wire/20260310_acme_marketing_analytics/
 
 These will be migrated to:
-  .wire/releases/01-barton-peveril-live-pastoral/
+  .wire/releases/01-northfield-live-pastoral/
   .wire/releases/02-acme-marketing-analytics/
 
 Engagement-level files found:
@@ -409,8 +409,8 @@ Also update the `project_id` field in the frontmatter if it changed.
 ╚══════════════════════════════════════════════════════════╝
 
 Releases migrated:
-  .wire/20260202_barton_peveril_live_pastoral/
-    → .wire/releases/01-barton-peveril-live-pastoral/
+  .wire/20260202_northfield_live_pastoral/
+    → .wire/releases/01-northfield-live-pastoral/
 
   .wire/20260310_acme_marketing_analytics/
     → .wire/releases/02-acme-marketing-analytics/

@@ -8,9 +8,9 @@ title: Commands Reference
 Sooner or later on any engagement you will want to know exactly what Wire ran on your behalf, or you will want to run one step yourself rather than ask for it, and for either of those you need the names. This page is the catalogue of them. Every Wire command follows the pattern `/wire:<artifact>-<action> <release-folder>`, and every artifact has three lifecycle commands, `generate`, `validate` and `review`, except where noted in the tables below, so that once you know an artifact's name you can usually work out its commands without looking them up.
 
 ```
-/wire:dbt-generate    20240115_barton_peveril_full_platform
-/wire:dbt-validate    20240115_barton_peveril_full_platform
-/wire:dbt-review      20240115_barton_peveril_full_platform
+/wire:dbt-generate    20240115_northfield_full_platform
+/wire:dbt-validate    20240115_northfield_full_platform
+/wire:dbt-review      20240115_northfield_full_platform
 ```
 
 ---
