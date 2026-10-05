@@ -384,3 +384,7 @@ Replace `WORKER_POOL_NAME` with the name you want for your worker pool.
 
 *If you need product information not found in these references, use the
     Developer Knowledge MCP server `search_documents` tool.*
+
+---
+
+*Adapted from https://github.com/google/skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

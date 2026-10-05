@@ -723,3 +723,7 @@ When working with user-provided YAML, SQL, or schema files:
 ### 10. Attribution
 
 This skill is adapted from the `building-dbt-semantic-layer` skill in the [dbt-labs/dbt-agent-skills](https://github.com/dbt-labs/dbt-agent-skills) repository, modified for Rittman Analytics conventions, BigQuery-first development, and integration with the Wire Framework delivery lifecycle.
+
+---
+
+*Adapted from https://github.com/dbt-labs/dbt-agent-skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

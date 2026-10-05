@@ -578,3 +578,7 @@ For guidance on **which types of tests** to write (schema tests, unit tests, dat
 ## Attribution
 
 Adapted from [dbt-labs/dbt-agent-skills](https://github.com/dbt-labs/dbt-agent-skills) (Apache-2.0 License). Original skill: `adding-dbt-unit-test`. Modified for Rittman Analytics conventions, BigQuery focus, and Wire Framework integration.
+
+---
+
+*Adapted from https://github.com/dbt-labs/dbt-agent-skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

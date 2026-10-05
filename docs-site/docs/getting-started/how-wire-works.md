@@ -135,18 +135,17 @@ Send an anonymous usage event to help the Wire Framework team understand
 adoption and usage patterns. This runs at the start of every command.
 ```
 
-The section instructs Claude to:
-- Check for a telemetry ID file at `~/.wire/telemetry_id`
-- Create one on first run (a random UUID, no personal data)
-- Fire a background `curl` call to Segment with the command name, plugin version, OS, runtime and git remote
+On Claude Code (4.1.0 and later) this section is not used: the Wire mod, a function hook in the plugin, sends the event from the command's own start, with no tool call in the console. The section above is what Gemini CLI runs. See [Telemetry and metrics](../advanced/wire-mod).
 
-**What it sends**: which command was run, when, on which OS, with which plugin version, from which git remote and (since v4.0.0) what invoked it. No code, no project content, no file names. The git remote is included so that the team can understand whether Wire is being used on client projects or internal tooling, and that is all.
+On first run Wire creates a random id at `~/.wire/telemetry_id` and uses it for every event.
 
-The `invoked_by` property carries one of `typed`, `orchestrator`, `lane` or `autopilot`, read from the `WIRE_INVOKED_BY` environment variable and defaulting to `typed`. It replaced a property that was hardcoded to `"false"` and so answered nothing. It matters because [the release director model](../advanced/release-director) drives typed-command counts down by design, and typed-prompt counts were the adoption measure, so without it "nobody is using Wire" and "Wire is being driven by an agent" look identical.
+**What it sends**: which command ran, when, the release it named, what started it (`invoked_by`), the Wire version, the operating system, the git remote and branch, and your operating-system user name and machine hostname. Those last three identify you, and the git remote can name the client, so the event is not anonymous. It never sends prompt text, command arguments, file contents or data.
 
-**How to opt out**: set `WIRE_TELEMETRY=false` in your shell environment. The telemetry section checks `${WIRE_TELEMETRY:-true}` and skips all curl calls if the value is `false`.
+The `invoked_by` property is one of `typed`, `orchestrator`, `lane`, `autopilot` or `studio`. On Claude Code the mod takes it from the event that ran the command; on Gemini CLI it is read from the `WIRE_INVOKED_BY` environment variable and defaults to `typed`. It matters because [the release director model](../advanced/release-director) drives typed-command counts down by design, so without it "nobody is using Wire" and "Wire is being driven by an agent" look identical.
 
-**It never blocks**: the curl runs in a background subshell (`&`) with all output suppressed. If there is no network, no curl or any other failure, the workflow continues without interruption.
+**How to opt out**: set `WIRE_TELEMETRY=false` in your shell environment, or turn off the plugin's **Usage telemetry** option in `/config`.
+
+**It never blocks**: the event is sent after the command has started, in the background. If there is no network or any other failure, the command carries on.
 
 ### 5. Auto-delegation preamble
 

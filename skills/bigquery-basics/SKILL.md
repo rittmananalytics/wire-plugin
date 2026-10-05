@@ -117,3 +117,7 @@ Developer Knowledge MCP server `search_documents` tool.*
     - [bigquery_ai_score.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_score.md)
     - [bigquery_ai_search.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_search.md)
     - [bigquery_ai_similarity.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_similarity.md)
+
+---
+
+*Adapted from https://github.com/google/skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

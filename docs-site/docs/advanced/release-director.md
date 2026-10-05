@@ -124,7 +124,7 @@ the review spec already gathers, then asks for one of three answers:
 
 ## Parked decisions
 
-A release can be waiting on more than one thing at once, which is why `status.md` carries a list rather than a single `paused_at` value:
+A release can be waiting on more than one thing at once, which is why `status.md` carries a list rather than a single `paused_at` value. [Wire Studio](./wire-studio) shows the list, with review gates and advisory gates, as one decision inbox:
 
 ```yaml
 parked_decisions:

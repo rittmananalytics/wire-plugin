@@ -1,11 +1,27 @@
 {
   "name": "wire",
   "description": "The Wire Framework — AI-accelerated data platform delivery for the full lifecycle: requirements, design, development, testing, deployment, enablement",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "author": {
     "name": "Rittman Analytics",
     "email": "hello@rittmananalytics.com"
   },
   "homepage": "https://rittmananalytics.com",
-  "repository": "https://github.com/rittmananalytics/wire-plugin"
+  "repository": "https://github.com/rittmananalytics/wire-plugin",
+  "license": "FSL-1.1-ALv2",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "telemetry": {
+      "type": "boolean",
+      "title": "Usage telemetry",
+      "description": "Send one usage event per Wire command (command name, release, what started it, Wire version, machine and repository identifiers). Never prompt text or file contents. WIRE_TELEMETRY=false also turns it off.",
+      "default": true
+    },
+    "metrics": {
+      "type": "boolean",
+      "title": "Execution-log metrics",
+      "description": "Fill the Duration, Tokens and Cost cells of each Wire command's execution_log.md row from measured usage. WIRE_METRICS=false also turns it off.",
+      "default": true
+    }
+  }
 }

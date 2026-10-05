@@ -370,3 +370,7 @@ Do NOT activate this skill when:
 - The warehouse context is BigQuery, Databricks, or Redshift
 - The user is asking about Snowflake billing/procurement (not engineering)
 - Working with Snowflake semantic views specifically — defer to `snowflake-semantic-views` skill
+
+---
+
+*The AI-readiness assessment section is adapted from https://github.com/Snowflake-Labs/ai-ready-data (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

@@ -692,3 +692,7 @@ WHERE {{ source_key }} IN (
 ## Attribution
 
 Adapted from [dbt-labs/dbt-agent-skills](https://github.com/dbt-labs/dbt-agent-skills) (Apache-2.0 License). Original skill: `troubleshooting-dbt-job-errors`. Modified for Rittman Analytics conventions, BigQuery focus, Wire Framework integration, and expanded error catalog.
+
+---
+
+*Adapted from https://github.com/dbt-labs/dbt-agent-skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

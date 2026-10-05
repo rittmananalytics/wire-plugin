@@ -266,3 +266,7 @@ After setting up in Claude Code, ask Claude:
 - Wire's `.mcp.json` already exists — always **add** the dbt server entry rather than creating a new file
 - If using Wire's Dagster orchestration, the dbt MCP server and Dagster skill complement each other: dbt MCP for model development, Dagster skill for orchestration setup
 - For projects using dbt Cloud jobs (orchestration tool = `dbt_cloud`), the remote server gives Claude visibility into job status via the Admin API
+
+---
+
+*Adapted from https://github.com/dbt-labs/dbt-agent-skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

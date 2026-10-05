@@ -142,3 +142,7 @@ cost-optimization recommendations:
   unless specific technical constraints exist.
 - **Storage Tiers**: Lifecycle policies are active for all major storage
   buckets to minimize archival costs.
+
+---
+
+*Adapted from https://github.com/google/skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

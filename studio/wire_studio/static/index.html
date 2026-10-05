@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="studio-token" content="__STUDIO_TOKEN__">
+<title>Wire Studio</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="shell">
+  <nav class="nav" aria-label="Wire Studio">
+    <div class="brand"><span class="word">wire</span><span class="sub">Studio 4.x</span></div>
+    <div class="group">
+      <span class="label">ENGAGEMENT</span>
+      <a href="#/" data-nav="home">Releases</a>
+    </div>
+    <div class="group" id="release-nav" hidden>
+      <span class="label">RELEASE</span>
+      <a data-nav="overview">Overview</a>
+      <a data-nav="decisions">Decision inbox <span class="pill" id="nav-waiting">0</span></a>
+      <a data-nav="lanes">Lanes <span class="muted-pill" id="nav-lanes"></span></a>
+      <a data-nav="record">Record and rulings</a>
+    </div>
+    <p class="foot">Reads <code>.wire/</code> and the release-type graph. Writes nothing to the record. Each action gives a directive to copy, or to run in a new Claude Code session.</p>
+  </nav>
+  <main id="main" tabindex="-1">
+    <p class="loading">Loading…</p>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.0/mermaid.min.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

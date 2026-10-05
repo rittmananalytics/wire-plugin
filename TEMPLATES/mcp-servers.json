@@ -1,19 +1,19 @@
 {
   "mcpServers": {
     "atlassian": {
-      "type": "url",
+      "type": "http",
       "url": "https://mcp.atlassian.com/v1/mcp"
     },
     "linear": {
-      "type": "url",
+      "type": "http",
       "url": "https://mcp.linear.app/sse"
     },
     "fathom": {
-      "type": "url",
+      "type": "http",
       "url": "https://your-fathom-mcp-server/mcp"
     },
     "context7": {
-      "type": "url",
+      "type": "http",
       "url": "https://mcp.context7.com/mcp"
     },
     "notion": {

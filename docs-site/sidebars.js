@@ -105,10 +105,12 @@ const sidebars = {
           items: [
             'advanced/worked-example',
             'advanced/release-director',
+            'advanced/wire-studio',
             'advanced/wire-agent-architecture',
             'advanced/wire-agents',
             'advanced/autopilot',
             'advanced/model-routing',
+            'advanced/wire-mod',
             'advanced/dbt-charts',
             'advanced/agents-schema',
             'advanced/vscode-extension',

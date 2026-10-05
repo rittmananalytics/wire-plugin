@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.1.0 — Wire Studio returns, and the Wire mod measures every command
+
+**Released**: October 2026
+
+- **Wire Studio 4.x**: a local console for the release director: release overview with the runnable set and AI spend recorded, decision inbox, lanes, rulings and record, document preview. It never writes the release record; **Run in Claude Code** opens a session with the directive typed. See [Wire Studio](../advanced/wire-studio).
+- **The Wire mod**: telemetry and execution-log metrics as Claude Code function hooks. `invoked_by` now comes from the event that ran the command (`typed`, `orchestrator`, `lane`, `autopilot`, `studio`), metrics are attributed per model request and filled when the command's turn ends, `/wire-usage` lists the session's runs, and `/wire-studio start|restart|stop|status` runs Wire Studio for the current repository. See [Telemetry and metrics](../advanced/wire-mod).
+- **Third-party licence notices** ship in every package.
+- **Fixed**: five bundled MCP servers (Atlassian, Fathom, Context7, Coupler.io, Airbyte) that Claude Code silently dropped because of an unrecognised transport type now load.
+- **Requires** Claude Code 2.1.287 or later for the mod.
+
+---
+
 ## v4.0.0 — The release director model, precondition gate, process/data-model registries, Autopilot rewrite
 
 **Released**: September 2026

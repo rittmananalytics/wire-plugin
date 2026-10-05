@@ -1,23 +1,23 @@
 {
   "mcpServers": {
     "atlassian": {
-      "type": "url",
+      "type": "http",
       "url": "https://mcp.atlassian.com/v1/mcp"
     },
     "fathom": {
-      "type": "url",
+      "type": "http",
       "url": "https://your-fathom-mcp-server/mcp"
     },
     "context7": {
-      "type": "url",
+      "type": "http",
       "url": "https://mcp.context7.com/mcp"
     },
     "coupler-io": {
-      "type": "url",
+      "type": "http",
       "url": "https://mcp.coupler.io/mcp/"
     },
     "airbyte": {
-      "type": "url",
+      "type": "http",
       "url": "https://mcp.airbyte.ai/mcp"
     },
     "amplitude": {

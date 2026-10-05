@@ -240,3 +240,7 @@ List Locations     | `gcloud <GROUP> locations list --project=<PROJECT_ID>`
 Refer to the
 [gcloud CLI Scripting Guide](https://docs.cloud.google.com/sdk/docs/scripting-gcloud)
 for guidance on using the gcloud CLI in automation.
+
+---
+
+*Adapted from https://github.com/google/skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

@@ -317,3 +317,7 @@ security recommendations:
   - Is differential privacy or data masking used for training data where
     appropriate?
   - Are Vertex Explainable AI and fairness indicators used for model governance?
+
+---
+
+*Adapted from https://github.com/google/skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*

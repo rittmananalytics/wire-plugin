@@ -426,18 +426,34 @@ This check is self-contained within this utility, so every caller gets it automa
 
 ## Metrics Backfill (Claude Code)
 
-The Wire Claude Code plugin registers a `Stop` hook (`hooks/wire-metrics.sh`)
-that runs after each turn ends. It reads the session transcript, sums the
-measured token usage from the most recent `/wire:*` command invocation to the
-end of the turn, estimates its cost from a built-in price table, and rewrites
-the Duration (only if still `n/a`), Tokens, and Cost cells of the log's most
-recent row — only when that row's Command matches the command found in the
-transcript and the row already has the metric columns. It never touches any
-other cell or row. Commands that span several turns (e.g. a review waiting on
-feedback) are re-summed on each turn's hook run, so the final backfill covers
-the whole command. If the cost table does not recognise the model, Tokens is
-still filled and Cost stays `n/a`. On runtimes without this hook, the metric
-cells keep the values the workflow wrote.
+From 4.1.0 the Wire mod (`hooks/register.ts`, a function hook in the Claude
+Code plugin) fills the metric cells. It replaces the `Stop` settings hook
+(`hooks/wire-metrics.sh` and `wire_metrics.py`), which re-read the session
+transcript after each turn.
+
+1. Each Wire command opens a run when it starts: a typed `/wire:` command, or
+   a Wire command called through the Skill tool by the orchestrating session,
+   a lane or Autopilot.
+2. Every model request adds its measured usage to the run open in its own
+   loop (the main session, or one subagent). Counts come only from the usage
+   the API reports, never estimates.
+3. When that loop's turn ends, the run closes and the mod fills the
+   Duration (only if still `n/a`), Tokens and Cost cells of the newest row
+   whose Command cell names the command, whose Tokens cell is still `n/a`, and
+   which is dated no earlier than the day before the run started (a date, not
+   a time, because commands write the row's time themselves and it is often
+   rough). It
+   never touches another cell or row, and never widens a row without the
+   metric columns.
+4. A row written after the run closed (an orchestrating session writing a
+   lane's row once the lane reports) is filled when that write happens.
+5. Cost comes from the mod's price table; an unrecognised model leaves Cost
+   at `n/a` with Tokens filled.
+
+`/wire-usage` prints the session's runs with their duration, tokens and cost.
+The plugin's `metrics` option, or `WIRE_METRICS=false`, turns the backfill
+off. On runtimes without the mod (Gemini CLI), the metric cells keep the
+values the workflow wrote.
 
 ## Legacy five-column rows
 

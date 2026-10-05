@@ -1,28 +1,6 @@
 {
-  "hooks": {
-    "UserPromptExpansion": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/wire-telemetry.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/wire-metrics.sh",
-            "timeout": 15
-          }
-        ]
-      }
-    ]
-  }
+  "description": "Wire mod: telemetry and execution-log metrics as function hooks (hooks/register.ts)",
+  "modules": [
+    "./register.ts"
+  ]
 }

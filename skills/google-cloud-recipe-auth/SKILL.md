@@ -265,4 +265,6 @@ the `Authorization: Bearer <TOKEN>` header.
 -   [Application Default Credentials](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc)
 -   [Service Account Best Practices](https://docs.cloud.google.com/iam/docs/best-practices-service-accounts)
 
+---
 
+*Adapted from https://github.com/google/skills (Apache-2.0). Modified by Rittman Analytics Ltd. See `NOTICE.md` and `LICENSE.txt` in this folder.*
