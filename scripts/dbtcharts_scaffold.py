@@ -226,8 +226,9 @@ def classify_column(name: str, dtype: str | None) -> str:
         return "nested"
     if lname.endswith(KEY_SUFFIXES) or lname in ("id", "pk", "fk"):
         return "key"
-    if lname.startswith(BOOL_PREFIXES):
-        # Wire convention: is_/has_/was_ is a flag whatever the warehouse type says.
+    if lname.startswith(BOOL_PREFIXES) or any(f"_{p}" in lname for p in BOOL_PREFIXES):
+        # Wire convention: is_/has_/was_ is a flag whatever the warehouse type says,
+        # at the start (is_active) or after the entity prefix (user_is_active, wire#277).
         return "boolean"
     if dtype:
         base = dtype.split("(")[0].strip().upper()

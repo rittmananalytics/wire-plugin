@@ -230,6 +230,12 @@ Options:
   c) Review diff first
 ```
 
+### Step 5.5: Source Declarations Are Written by Hand
+
+The `sources.yml` droughty writes is a column list for the dataset. It is not the project's source declaration. droughty does not generate `_sources.yml` files. The `_sources.yml` in each `models/staging/stg_<source>/` directory is written by hand, following the content rules in `/wire:data_model-generate` Step 2 (grain line, `Use it for` sentence, inline column descriptions, personal data marked, `freshness` as the only test). Use droughty's output as a starting list of tables and columns, then write the declaration. An existing project keeps its existing source file names.
+
+droughty names staging files `stg_<table_name>.sql`. Before adding them to the project, rename new files to `stg_<source>__<entities>.sql` (plural entity name) in `models/staging/stg_<source>/`, or to the form a recorded `form_choices:` ruling sets. Never rename staging models that already exist in the project.
+
 ### Step 6: Update status.md
 
 ```yaml

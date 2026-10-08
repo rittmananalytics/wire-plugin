@@ -44,21 +44,33 @@ You work with a focused context — dbt conventions, the engagement's source sch
 
 ## What you always do
 
-- Follow the Wire dbt conventions in `wire/skills/dbt-development/SKILL.md` exactly: staging (`stg_<group>__`) → integration (`int_<group>__`) → warehouse (`wh_<group>__..._dim`/`_fact`/`_xa`), PK naming (`_pk`), FK naming (`_fk`), date naming (`_dt`), timestamp naming (`_ts`), boolean prefixes (`is_`/`has_`/`was_`), revenue naming (`_amount`)
-- Write tests for every model: uniqueness and not_null on PKs, relationships for FKs, accepted_values where appropriate
-- Read `requirements.md` and `conceptual_model.md` before writing a single model — derive grain, relationships, and source tables from these before generating code
-- Validate your output against the source DDL or schema information available — never assume column names or types
-- Update `status.md` after each artifact action (`artifacts.dbt.generate: in_progress` when starting, `complete` when done)
-- Append non-obvious modelling decisions (grain choices, surrogate key strategy, handling of late-arriving data) to `decisions.md`
+- Follow `wire/skills/dbt-development/SKILL.md`. It applies the `ra_fw_core` dbt development reference (0.0.1); `wire/conventions/dbt.yml` is its machine-checkable form.
+- **New and changed code only. Never rename or move an existing model, column, seed, snapshot or schema.** Consumers read them by name. A rename is a refactor decision, not part of your task.
+- Before writing, establish: new or existing project; which files are new or changed (`git merge-base`); any `form_choices:` ruling in the project's `.wire/conventions/dbt.yml` (also recorded in `decisions.md`). Follow a ruling where one exists; otherwise write the new form. Mixed naming in one project is allowed.
+- New form: plural staging and integration names (`stg_<source>__users`, `int_<group>__users`), singular warehouse names (`wh_<group>__user_dim` / `_fact` / `_xa`, where `_xa` is an extended aggregate). Base models `base_<source>__<entity>` (read only by their staging model); intermediate models `int_<group>__<entities>__<verb>` in `intermediate/`, views. Snapshots, seeds (`seed__`, new projects and releases only) and macros (`macro__`, described in `macros/_schema_macros.yml`) per the skill.
+- Every model: `config()` description opening `Grain: One row per ...`; `s_` import CTEs; last CTE `final`; ends `select * from final`; eight Jinja-commented column groups; lines up to 120.
+- Columns: entity prefix on every new column, booleans `<entity>_is_/has_/was_`; suffixes `_pk`, `_fk`, `_natural_key`, `_count`, `_rank`, `_amount`, `_amount_<ccy>`, `_<measure>_<unit>`, `_pct` (0 to 100) kept apart from `_ratio` (0 to 1), `_dt`, `_ts`; aggregates lead with the function. Lowercase attribute strings only; never lowercase natural keys or source IDs. Cast through `dbt.type_*()` and the project's date macro (`ra_type_date()` in new projects).
+- Keys only in the warehouse, via `dbt_utils.generate_surrogate_key`.
+- Tests: `unique` + `not_null` on every primary key; `dbt_utils.at_least_one` alongside `not_null`, never instead of it; `relationships` on foreign keys; `accepted_values` on enums. `data_tests:` on dbt 1.8+, `tests:` before, and keep `tests:` in a file that already uses it.
+- Document every column in every layer with doc blocks in `models/field_descriptions.md`. Declare sources in `_sources.yml` with inline column descriptions and `freshness` as the only test. Projects using droughty set `required_docs: false`.
+- New projects get the `dbt_project.yml` and `packages.yml` template and `macros/utility/macro__type_date.sql`. In existing projects, report differences from the template as suggestions only; never apply them.
+- Run `python3 wire/scripts/lint_conventions.py --domain dbt --convention <.wire/conventions/dbt.yml if present, else wire/conventions/dbt.yml> --path <models dir>` with `--new-project` or `--changed-from <merge-base>`, and treat its findings as ground truth.
+- Read `requirements.md` and `conceptual_model.md` before writing a single model: derive grain, relationships and source tables from them.
+- Validate against the source DDL or schema available. Never assume column names or types.
+- Update `status.md` after each artifact action (`artifacts.dbt.generate: in_progress` when starting, `complete` when done), except when running as a lane (see Lane contract).
+- Append non-obvious modelling decisions (grain, surrogate key strategy, late-arriving data, form rulings) to `decisions.md`.
 
 ## Acceptance criteria
 
-- Every staging model covers all columns in the source table — no silent column drops
+- Every staging model covers all columns in the source table; no silent column drops
 - Every integration model resolves every FK declared in the conceptual model
-- Every warehouse model (`_dim`/`_fact`/`_xa`) has a `_pk` column, a `schema.yml` entry with a description, and at least `unique` + `not_null` tests on the PK
-- All measures are explicitly typed; all timestamps are cast to UTC
-- `dbt compile` would succeed against the declared source schemas — no unresolved refs
-- `schema.yml` descriptions are written in plain English, not auto-generated placeholders
+- Every new or changed warehouse model (`_dim`/`_fact`/`_xa`) has a `_pk` column, a schema entry with a description, and `unique` + `not_null` tests on the PK
+- Every new or changed model has a `Grain:` line and ends `select * from final`, and every column is documented
+- All measures are explicitly typed and carry their unit; all timestamps are cast to UTC
+- No existing object renamed or moved
+- The checker reports no errors on new or changed files
+- `dbt compile` would succeed against the declared source schemas, with no unresolved refs
+- Descriptions are written in plain English, not generated placeholders
 
 ## Fan-out mode
 

@@ -1,112 +1,114 @@
 -- =============================================================================
 -- MULTI-SOURCE STAGING MODEL EXAMPLE
--- File: models/sources/stg_hubspot_crm/stg_hubspot_crm__company.sql
+-- File: models/staging/stg_hubspot_crm/stg_hubspot_crm__companies.sql
 -- =============================================================================
--- 
--- This staging model demonstrates the multi-source framework pattern:
--- 1. Conditional compilation based on source enablement
--- 2. Multi-ETL support (Stitch, Fivetran, Airbyte)
--- 3. ID prefixing to prevent collisions
--- 4. Standardized column naming for integration
+--
+-- Shows the multi-source pattern in a staging model:
+-- 1. Compiles only when hubspot_crm is in the company sources array
+-- 2. Supports more than one loader in one model (Stitch or Fivetran here; add an elif per loader)
+-- 3. Prefixes the natural key with the source, so IDs cannot collide across sources
+-- 4. Uses the column names every company staging model shares, so the intermediate model can union them
+--
+-- Projects built on the older pattern (models/sources/, stg_hubspot_crm__company.sql) keep those names.
 -- =============================================================================
 
-{% if var("crm_warehouse_company_sources") %}
-{% if 'hubspot_crm' in var("crm_warehouse_company_sources") %}
+{% if 'hubspot_crm' in var('crm_warehouse_company_sources', []) %}
 
--- Support multiple ETL pipelines
-{% if var("stg_hubspot_crm_etl") == 'stitch' %}
+{{
+    config(
+        description = """
+            Grain: One row per HubSpot company.
+            HubSpot companies with source-prefixed natural keys and standard column names, ready to union
+            with the company staging models of other sources.
+        """
+    )
+}}
 
-with source as (
+{% if var('stg_hubspot_crm_etl') == 'stitch' %}
+
+with s_companies as (
+
     select * from {{ source('stitch_hubspot_crm', 'companies') }}
-    -- Optional: filter for latest record per company if Stitch provides history
+
+),
+
+-- Stitch appends a new row on every change. Keeps the latest row per company.
+current_companies as (
+
+    select * from s_companies
+
     qualify row_number() over (partition by companyid order by _sdc_batched_at desc) = 1
-)
 
-{% elif var("stg_hubspot_crm_etl") == 'fivetran' %}
+),
 
-with source as (
-    select * from {{ source('fivetran_hubspot_crm', 'company') }}
-    where not _fivetran_deleted
-)
+{% elif var('stg_hubspot_crm_etl') == 'fivetran' %}
 
-{% elif var("stg_hubspot_crm_etl") == 'airbyte' %}
+with s_companies as (
 
-with source as (
-    select * from {{ source('airbyte_hubspot_crm', 'companies') }}
-)
+    select * from {{ source('fivetran_hubspot_crm', 'companies') }}
+
+),
+
+-- Removes companies Fivetran has marked deleted in HubSpot.
+current_companies as (
+
+    select * from s_companies
+
+    where not coalesce(_fivetran_deleted, false)
+
+),
 
 {% endif %}
 
-renamed as (
+rename_and_cast as (
+
     select
-        -- =================================================================
-        -- PRIMARY KEY: Prefixed with source identifier
-        -- This prevents ID collisions when merging with other sources
-        -- =================================================================
+
+        {# natural keys #}
+        -- The source prefix is added; the HubSpot id itself keeps its case.
         concat(
             '{{ var("stg_hubspot_crm_id-prefix") }}',
             cast(companyid as {{ dbt.type_string() }})
-        ) as company_id,
-        
-        -- =================================================================
-        -- BUSINESS KEY: Standardized for matching across sources
-        -- Apply consistent cleaning: trim, normalize spacing, remove suffixes
-        -- =================================================================
-        trim(
+        ) as company_natural_key,
+        {# attributes #}
+        -- Legal suffixes are removed so the same company matches across sources.
+        lower(trim(
             regexp_replace(
                 regexp_replace(
                     coalesce(properties_name, ''),
-                    r'(?i)\s*(Limited|Ltd\.?|Inc\.?|LLC|Corp\.?|PLC|GmbH|SA|SAS|BV|NV)$',
+                    r'(?i)\s*(limited|ltd\.?|inc\.?|llc|corp\.?|plc|gmbh|sa|sas|bv|nv)$',
                     ''
                 ),
                 r'\s+',
                 ' '
             )
-        ) as company_name,
-        
-        -- =================================================================
-        -- STANDARDIZED ATTRIBUTES
-        -- Use consistent column names across all sources
-        -- =================================================================
+        )) as company_name,
         lower(trim(properties_website)) as company_website,
-        properties_industry as company_industry,
+        lower(properties_industry) as company_industry,
         properties_phone as company_phone,
-        properties_address as company_address,
-        properties_city as company_city,
-        properties_state as company_state,
-        properties_country as company_country,
-        properties_zip as company_zip,
-        
-        -- LinkedIn and social
+        lower(properties_city) as company_city,
+        lower(properties_country) as company_country_name,
         properties_linkedin_company_page as company_linkedin_url,
-        properties_twitterhandle as company_twitter_handle,
-        
-        -- Description
-        properties_description as company_description,
-        
-        -- =================================================================
-        -- TIMESTAMPS: Always use _ts suffix, store in UTC
-        -- =================================================================
+        'hubspot_crm' as company_source_system,
+        {# temporal #}
         cast(properties_createdate as {{ dbt.type_timestamp() }}) as company_created_ts,
-        cast(properties_hs_lastmodifieddate as {{ dbt.type_timestamp() }}) as company_last_modified_ts,
-        
-        -- =================================================================
-        -- SOURCE METADATA: Track origin for debugging
-        -- =================================================================
-        'hubspot_crm' as source_system,
-        current_timestamp() as _loaded_ts
-        
-    from source
-    where properties_name is not null
-      and trim(properties_name) != ''
+        cast(properties_hs_lastmodifieddate as {{ dbt.type_timestamp() }}) as company_last_modified_ts
+
+    from current_companies
+
+),
+
+final as (
+
+    select * from rename_and_cast
+
 )
 
-select * from renamed
+select * from final
 
-{% endif %}
-{% else %} 
+{% else %}
 
--- Model disabled when source not in enablement array
-{{ config(enabled=false) }} 
+-- Model disabled when hubspot_crm is not in the company sources array.
+{{ config(enabled = false) }}
 
 {% endif %}

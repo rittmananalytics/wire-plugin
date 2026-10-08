@@ -258,9 +258,11 @@ Walk each resolved project's filesystem directly. The manifest gives dependency 
 - SQL feature tags (see Step 4)
 - `enabled` — per `specs/utils/dbt_manifest_parse.md` Steps 3 and 3b: `true` (statically enabled), `false` (statically disabled — confirmed no `var()` anywhere in the resolution path, not just absent from the manifest's `nodes`), or `conditional:<var_name>` (the config resolves via a `var()` — in scope regardless of what it currently evaluates to, never collapsed to `true` or `false`). On disk but absent from the manifest entirely → flag the model for investigation in the audit output rather than silently defaulting to `enabled=true`.
 
-**Sources**: Count and list all sources defined in `schema.yml` files.
+**Sources**: Count and list all sources, from any YAML file that declares them (`schema.yml`, `sources.yml`, `_sources.yml`, `_<source>__sources.yml`).
 
-**Tests**: Count generic and singular tests. Note which models have no tests.
+**Tests**: Count generic and singular tests, under either YAML key (`data_tests:` or `tests:`). Note which models have no tests.
+
+**Naming as found**: Record the project's existing naming forms as facts, not findings: singular or plural staging and integration names, entity-prefixed or unprefixed columns (`user_is_active` or `is_active`), `tests:` or `data_tests:`, source file names, `_agg` or `_xa` aggregates. The migration preserves them. The audit never proposes renaming a model, column, seed, snapshot or schema to the current Wire forms.
 
 **Macros**: List all macros in each project's `macros/` directory. Platform-specific flagging happens in Step 5.
 

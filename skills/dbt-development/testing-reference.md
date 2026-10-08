@@ -1,446 +1,316 @@
 # dbt Testing Reference
 
-This is embedded reference documentation used by the dbt development skill to guide testing validation. For the authoritative testing conventions, see the PKM or project-specific conventions as configured in the skill's 2-tier system.
+Embedded reference used by the dbt development skill for testing. The authority for people is the `ra_fw_core` dbt development reference (`analytics_warehouse/docs/development_reference_dbt.md`, version 0.0.1). The primary key requirement (`unique` + `not_null`) and the test key are also checked by `wire/conventions/dbt.yml` through `wire/scripts/lint_conventions.py` (see `wire/schemas/convention-schema.md`).
 
-The minimum testing requirement below (primary key `unique` + `not_null`) is
-also machine-checked against `schema.yml` by `wire/conventions/dbt.yml` via
-`wire/scripts/lint_conventions.py` — see `wire/schemas/convention-schema.md`.
+Testing is project specific. Each client project decides its strategy and when tests run, based on its data, warehouse and cost. What follows is what Wire generates by default. Like the other conventions, it applies to new and changed models; existing tests are not rewritten.
 
 ---
 
-## Transformation Layers
+## Terminology and the test key
 
-The dbt transformation process has 4 main layers:
+dbt calls them **data tests**. Older documents call them schema tests; the two mean the same thing. dbt renamed them to tell them apart from unit tests.
 
-### 1. Sources
-- Pointers to raw data
-- No transformations
-- Defined in `sources.yml` files
+| Situation | Key |
+|---|---|
+| dbt 1.8 or later | `data_tests:` |
+| dbt before 1.8 | `tests:` |
+| Schema file that already uses `tests:` | keep `tests:` |
+| Project with a `test_key:` ruling in `.wire/conventions/dbt.yml` `form_choices` | the ruling |
 
-### 2. Staging Models (`stg_`)
-- First transformation layer
-- Basic cleaning: renaming, casting, deduplication, filtering
-- Core assumptions about data shape
-- **Only layer that selects from sources**
-- Always 100% documented
+Never put both keys on one resource; dbt rejects it. Keeping `tests:` in a file that already uses it means one file reads one way and the diff shows only the real change.
 
-### 3. Integration Models (`int_`)
-- Integrates multiple sources into single entities
-- Enriches entities with calculated fields
-- Examples:
-  - Union user data from website + CRM
-  - Calculate `last_month_total_visits`
-  - Merge conceptual rows into single row
-
-### 4. Warehouse Models (`_dim`, `_fact`)
-- Public entities for consumption in BI tools
-- Dimensions: Mutable, noun-based (users, products, accounts)
-- Facts: Immutable, verb-based (transactions, sessions, events)
-- Always 100% documented
-- Always materialized as tables
+Examples below use `data_tests:`.
 
 ---
 
-## Test Types
+## Layers and what they test
 
-### Schema Tests
+| Layer | Reads | Holds |
+|---|---|---|
+| Sources (`_sources.yml`) | raw tables | declarations only; `freshness` is the only test |
+| Base | sources | the join or union one source concept needs |
+| Staging | sources, snapshots, seeds, base models | one source concept, renamed and cast |
+| Intermediate | staging | one concept combined from several sources |
+| Integration | staging, intermediate | entities joined across sources, derived fields |
+| Warehouse | integration (or staging) | dimensions, facts, extended aggregates; PK and FK created here |
 
-Defined in `.yml` files alongside models. Validate data conforms to assumptions.
+**Why only `freshness` in `_sources.yml`.** A test on raw data fails on problems the project cannot fix in the raw table. Assumptions about data shape are tested on the staging model, where a failure points at the model that holds the assumption.
 
-#### Built-in Tests
+---
 
-**`unique`**
-- Validates field has unique values across table
-- Required for all primary keys
+## Generic tests by model type
 
-**`not_null`**
-- Validates field never contains null
-- Required for all primary keys
+| Model type | Primary key | Other columns |
+|---|---|---|
+| Base | (no PK; natural key) | `not_null` where populated in every row, `dbt_utils.at_least_one` |
+| Staging | `unique` + `not_null` on the natural key | `not_null`, `dbt_utils.at_least_one`, `accepted_values` |
+| Intermediate | `unique` + `not_null` | `not_null`, `dbt_utils.at_least_one`, `accepted_values` |
+| Integration | `unique` + `not_null` (or `unique_combination_of_columns`) | `not_null`, `dbt_utils.at_least_one`, `accepted_values` |
+| Dimension | `unique` + `not_null` | `not_null`, `dbt_utils.at_least_one`, `relationships` |
+| Fact | `unique` + `not_null` | `not_null`, `dbt_utils.at_least_one`, `relationships`, business-logic tests |
+| Extended aggregate | `unique` + `not_null` | `not_null`, `dbt_utils.at_least_one` |
 
-**`relationships`**
-- Validates field values exist in another table
-- Use for foreign keys
+### `at_least_one` alongside `not_null`, never instead
 
+- `not_null` asserts every row is populated.
+- `dbt_utils.at_least_one` asserts the column is not entirely empty, which also catches an empty table or a column that broke upstream.
+- The reference makes `at_least_one` the default column test. Wire adds it **alongside** `not_null` and never removes a `not_null` to make room for it. On its own, `at_least_one` passes a column that is 99% null. Primary keys always keep `unique` + `not_null`.
+- On a column that is legitimately null on some rows, `at_least_one` is the right test on its own, because `not_null` would fail.
+
+### Minimum enforcement
+
+New projects set `required_tests: {"unique": 1, "not_null": 1}` under `+meta` on the warehouse layer. Where `packages.yml` has `tnightengale/dbt_meta_testing`:
+
+```bash
+dbt run-operation required_tests
+dbt run-operation required_docs
+```
+
+These do not run as part of `dbt run` or `dbt build`; they run against built models. Skip them where the package is not installed. Projects that use droughty set `required_docs: false` and keep `required_tests` on.
+
+---
+
+## Built-in and dbt_utils tests
+
+**`unique`**, **`not_null`**: required on every primary key.
+
+**`relationships`**: foreign keys.
 ```yaml
-tests:
+data_tests:
   - relationships:
-      to: ref('users')
+      to: ref('wh_core__user_dim')
       field: user_pk
 ```
 
-**`accepted_values`**
-- Validates field only contains specific values
-- Use for enums/status fields
-
+**`accepted_values`**: enums and status fields. Values are lowercase, because staging lowercases attribute strings.
 ```yaml
-tests:
+data_tests:
   - accepted_values:
       values: ['visitor', 'trial', 'paying', 'churned']
 ```
 
-#### dbt-utils Tests
-
-**`not_null_where`**
-- Conditional not_null check
-
+**`dbt_utils.at_least_one`**: column not entirely empty.
 ```yaml
-tests:
-  - dbt_utils.not_null_where:
-      where: "is_paying = true"
+data_tests:
+  - not_null
+  - dbt_utils.at_least_one
 ```
 
-**`not_constant`**
-- Validates field has more than one distinct value
-
-**`unique_combination_of_columns`**
-- Validates uniqueness across multiple columns
-- Required for integration models with multiple sources
-
+**`dbt_utils.not_null_where`**: conditional not-null.
 ```yaml
-tests:
+data_tests:
+  - dbt_utils.not_null_where:
+      where: "subscription_is_paying = true"
+```
+
+**`dbt_utils.unique_combination_of_columns`**: uniqueness across columns, for multi-source integration models.
+```yaml
+data_tests:
   - dbt_utils.unique_combination_of_columns:
       combination_of_columns:
-        - user_pk
-        - source_system
+        - user_natural_key
+        - user_source_system
 ```
 
-**`expression_is_true`**
-- Validates relationship between fields
-
+**`dbt_utils.expression_is_true`**: relationships between fields.
 ```yaml
-tests:
+data_tests:
   - dbt_utils.expression_is_true:
-      expression: "end_date >= start_date"
+      expression: "subscription_ended_dt >= subscription_started_dt"
+```
+
+**`dbt_utils.accepted_range`**: bounds. Useful on `_pct` (0 to 100) and `_ratio` (0 to 1) columns, where a value on the wrong scale is otherwise easy to miss.
+```yaml
+- name: order_discount_pct
+  data_tests:
+    - dbt_utils.accepted_range:
+        min_value: 0
+        max_value: 100
 ```
 
 ---
 
-## Minimum Testing Requirements
+## Source freshness
 
-### Every Model Must Have:
+`freshness` applies where a source table has a column recording when each row was loaded, set as `loaded_at_field`. `warn_after` and `error_after` are set per client project.
 
-1. **Entry in schema.yml**
-   - Located in same directory as model
-   - Typically one yml per source/warehouse
-
-2. **Primary Key Tests**
-   ```yaml
-   - name: user_pk
-     tests:
-       - unique
-       - not_null
-   ```
-
-3. **For Integration Models with Multiple Sources:**
-   ```yaml
-   tests:
-     - dbt_utils.unique_combination_of_columns:
-         combination_of_columns:
-           - source_a_id
-           - source_b_id
-           - source_system
-   ```
-
-### Recommended Additional Tests:
-
-**Foreign Keys:**
 ```yaml
-- name: account_fk
-  tests:
-    - relationships:
-        to: ref('account_dim')
-        field: account_pk
-```
-
-**Status/Enum Fields:**
-```yaml
-- name: subscription_status
-  tests:
-    - accepted_values:
-        values: ['active', 'cancelled', 'past_due', 'trialing']
-```
-
-**Timestamps:**
-```yaml
-- name: created_ts
-  tests:
-    - not_null
-    - dbt_utils.expression_is_true:
-        expression: "created_ts <= current_timestamp()"
-```
-
-**Conditional Requirements:**
-```yaml
-- name: payment_method
-  tests:
-    - dbt_utils.not_null_where:
-        where: "subscription_status = 'active'"
+tables:
+  - name: users
+    identifier: user_accounts
+    config:
+      loaded_at_field: _fivetran_synced
+      freshness:
+        warn_after: {count: 24, period: hour}
+        error_after: {count: 48, period: hour}
 ```
 
 ---
 
-## Test Coverage by Layer
+## Schema files
 
-| Layer | Documentation | Primary Key Tests | Other Tests |
-|-------|--------------|-------------------|-------------|
-| Staging | 100% required | unique + not_null | Basic validation (accepted_values, not_null on critical fields) |
-| Integration | As needed | unique + not_null (or unique_combination) | Relationships tests for fks |
-| Warehouse | 100% required | unique + not_null | Comprehensive: relationships, business logic validation |
+- **With droughty:** `models/droughty_schema.yml` is generated from the warehouse information schema. Do not hand-edit it. Column descriptions come from the doc blocks in `models/field_descriptions.md`.
+- **Without droughty:** each new model subdirectory holds a `_schema.yml`. Existing schema file names are kept.
+- Source declarations (`_sources.yml`) are always written by hand; droughty does not generate them.
 
 ---
 
-## Data Tests
+## Documentation coverage
 
-Beyond schema tests, create custom data tests in `tests/` directory:
+- Every column of a base, staging, intermediate, integration and warehouse model is documented.
+- Model column descriptions are held once, as doc blocks in `models/field_descriptions.md`, and referenced from schema files. A column that keeps its name across layers uses one doc block.
+- Source columns are documented inline in `_sources.yml`.
 
-**Purpose:**
-- Validate KPIs continuously
-- Check metric performance
-- Regression testing for development
-
-**Example: Metric Performance Test**
-```sql
--- tests/metric_performance_sessions.sql
-{{
-    metric_performance(
-        source_table = 'website_landing_pages',
-        metric = 'sessions',
-        base_month_offset = 0,
-        comparison_months_window = 2,
-        performance_variation = 0.5
-    )
-}}
-```
-
-**Regression Tests:**
-- Located in `analysis/regression_tests/`
-- Validate that development doesn't break existing results
-- Run with `dbt compile`
-
----
-
-## Test Execution Flow
-
-Standard dbt run sequence:
-
-```bash
-# 1. Run staging models
-dbt run -m staging.*
-
-# 2. Test staging models
-dbt test --schema -m staging.*
-
-# 3. Run integration models
-dbt run -m integration.*
-
-# 4. Test integration models
-dbt test --schema -m integration.*
-
-# 5. Run warehouse models
-dbt run -m warehouse.*
-
-# 6. Test warehouse models
-dbt test --schema -m warehouse.*
-
-# 7. Run data tests
-dbt test --data
-```
-
-**Behavior:**
-- If tests fail at any stage, transformation stops
-- Prevents errors from propagating to public warehouse layer
-- Data in warehouse stays clean but may not be refreshed
-
----
-
-## Test Severity Levels
-
-Configure test severity in schema.yml:
-
-**Warning:**
-```yaml
-tests:
-  - unique:
-      severity: warn
-```
-- Logs warning but doesn't fail build
-- Use for non-critical issues
-
-**Error (default):**
-```yaml
-tests:
-  - unique:
-      severity: error
-```
-- Fails build if test fails
-- Use for critical data quality issues
-
-**Best Practice:**
-- Primary key tests: Always `error`
-- Foreign key tests: Usually `error`
-- Optional fields: Can use `warn`
-- Nice-to-have validations: Use `warn`
-
----
-
-## Documentation Coverage
-
-Enforced via [dbt-meta-testing](https://github.com/tnightengale/dbt-meta-testing)
-
-**Requirements:**
-- Staging models: 100% (all models and columns)
-- Warehouse models: 100% (all models and columns)
-- Integration models: As needed for clarity
-
-**Using Doc Blocks:**
-
-Create shared documentation:
-```sql
--- models/docs/common_fields.md
+```markdown
 {% docs user_pk %}
-Unique identifier for user records. Generated using
-`dbt_utils.surrogate_key()` from source system ID and source name.
+The surrogate primary key of the user entity.
 {% enddocs %}
 ```
 
-Reference in schema.yml:
 ```yaml
 - name: user_pk
-  description: "{{ doc('user_pk') }}"
+  description: '{{ doc("user_pk") }}'
 ```
 
 ---
 
-## Testing Checklist
+## Regression tests, singular tests and unit tests
 
-Before merging dbt code:
-
-### Schema Tests
-- [ ] schema.yml exists in model directory
-- [ ] All models listed in schema.yml
-- [ ] Primary key has `unique` test
-- [ ] Primary key has `not_null` test
-- [ ] Foreign keys have `relationships` tests
-- [ ] Enum/status fields have `accepted_values` tests
-- [ ] Conditional requirements use `not_null_where`
-- [ ] Integration models use `unique_combination_of_columns` if needed
-
-### Documentation
-- [ ] Staging models: 100% documented (model + columns)
-- [ ] Warehouse models: 100% documented (model + columns)
-- [ ] Integration models: Complex logic documented
-- [ ] Doc blocks used for shared field definitions
-
-### Data Tests
-- [ ] Critical KPIs have data tests in `tests/`
-- [ ] Regression tests updated if logic changed
-- [ ] Tests run successfully: `dbt test`
-
-### Test Configuration
-- [ ] Appropriate severity levels set (error vs warn)
-- [ ] Critical tests set to `error`
-- [ ] Nice-to-have validations set to `warn`
+- **Regression tests** live in `analyses/regression_tests/` and run with `dbt compile`. Existing projects that use `analysis/` keep it.
+- **Singular data tests** (`tests/*.sql`) and **custom generic tests** are project specific.
+- **Unit tests** mock model inputs and assert outputs without querying the warehouse. See the `dbt-unit-testing` skill (`wire/skills/dbt-unit-testing/SKILL.md`). RA convention: required for warehouse models with business logic (case statements, window functions, complex joins); recommended for staging models with non-trivial transformations.
 
 ---
 
-## Common Testing Patterns
+## Running tests
 
-### Pattern 1: Dimension Table
+Prefer `dbt build`, which runs models and their tests in dependency order and stops downstream models when a test fails:
+
+```bash
+dbt build --select staging
+dbt build --select integration
+dbt build --select warehouse
+```
+
+Where the client project has a `selectors.yml`, use its named runs: `dbt build --selector <name>`. A common one builds warehouse models and runs only their primary-key `unique` tests, to keep warehouse cost down.
+
+---
+
+## Severity
+
+```yaml
+data_tests:
+  - unique:
+      config:
+        severity: warn
+```
+
+- Primary key tests: always `error`.
+- Foreign key tests: usually `error`.
+- `at_least_one`: `error`; an empty column is a broken load or model.
+- Optional fields and nice-to-have checks: `warn`.
+
+---
+
+## Patterns
+
+### Dimension
 ```yaml
 models:
-  - name: user_dim
-    description: User dimension table
+  - name: wh_core__user_dim
+    description: >
+      Grain: One row per user.
+      The user dimension.
     columns:
       - name: user_pk
-        description: Primary key
-        tests:
+        description: '{{ doc("user_pk") }}'
+        data_tests:
           - unique
           - not_null
 
-      - name: email
-        description: User email address
-        tests:
-          - not_null
-          - unique  # If email should be unique
-
       - name: account_fk
-        description: Foreign key to account dimension
-        tests:
+        description: '{{ doc("account_fk") }}'
+        data_tests:
           - relationships:
-              to: ref('account_dim')
+              to: ref('wh_core__account_dim')
               field: account_pk
 
+      - name: user_natural_key
+        description: '{{ doc("user_natural_key") }}'
+        data_tests:
+          - not_null
+          - dbt_utils.at_least_one
+
       - name: user_status
-        description: Current user status
-        tests:
+        description: '{{ doc("user_status") }}'
+        data_tests:
           - accepted_values:
               values: ['active', 'inactive', 'suspended']
 
-      - name: created_ts
-        description: User creation timestamp (UTC)
-        tests:
+      - name: user_created_ts
+        description: '{{ doc("user_created_ts") }}'
+        data_tests:
           - not_null
+          - dbt_utils.at_least_one
 ```
 
-### Pattern 2: Fact Table
+### Fact
 ```yaml
 models:
-  - name: transaction_fact
-    description: Transaction fact table
+  - name: wh_core__transaction_fact
+    description: >
+      Grain: One row per transaction.
+      Completed payment transactions.
     columns:
       - name: transaction_pk
-        description: Primary key
-        tests:
+        description: '{{ doc("transaction_pk") }}'
+        data_tests:
           - unique
           - not_null
 
       - name: user_fk
-        description: Foreign key to user dimension
-        tests:
+        description: '{{ doc("user_fk") }}'
+        data_tests:
           - not_null
           - relationships:
-              to: ref('user_dim')
+              to: ref('wh_core__user_dim')
               field: user_pk
 
-      - name: product_fk
-        description: Foreign key to product dimension
-        tests:
-          - relationships:
-              to: ref('product_dim')
-              field: product_pk
+      - name: transaction_amount
+        description: '{{ doc("transaction_amount") }}'
+        data_tests:
+          - not_null
+          - dbt_utils.at_least_one
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
 
       - name: transaction_ts
-        description: Transaction timestamp (UTC)
-        tests:
+        description: '{{ doc("transaction_ts") }}'
+        data_tests:
           - not_null
-
-      - name: amount
-        description: Transaction amount in USD
-        tests:
-          - not_null
-          - dbt_utils.expression_is_true:
-              expression: "amount >= 0"
 ```
 
-### Pattern 3: Integration Model (Multiple Sources)
+### Integration model, several sources
 ```yaml
 models:
-  - name: int__user
-    description: Integrated user data from Salesforce and Stripe
-    tests:
+  - name: int_core__users
+    description: >
+      Grain: One row per user per source system.
+      Users from Salesforce and Stripe.
+    data_tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns:
-            - user_pk
-            - source_system
+            - user_natural_key
+            - user_source_system
     columns:
-      - name: user_pk
-        description: User primary key
-        tests:
+      - name: user_natural_key
+        description: '{{ doc("user_natural_key") }}'
+        data_tests:
           - not_null
 
-      - name: source_system
-        description: Source system for this record
-        tests:
+      - name: user_source_system
+        description: '{{ doc("user_source_system") }}'
+        data_tests:
           - not_null
           - accepted_values:
               values: ['salesforce', 'stripe']
@@ -448,23 +318,39 @@ models:
 
 ---
 
-## Troubleshooting Failed Tests
+## Testing checklist (new or changed model)
 
-### Test Fails: unique
-**Cause:** Duplicate values in field
-**Investigation:**
+- [ ] Schema entry exists (`_schema.yml`, the existing schema file, or droughty regenerated)
+- [ ] Primary key has `unique` and `not_null`
+- [ ] Columns populated on every row have `not_null`
+- [ ] `dbt_utils.at_least_one` added alongside `not_null`, not in place of it
+- [ ] Foreign keys have `relationships`
+- [ ] Enum and status fields have `accepted_values`, lowercase
+- [ ] `_pct` and `_ratio` columns bounded where useful
+- [ ] Multi-source integration models use `unique_combination_of_columns`
+- [ ] Test key matches the dbt version, the file, and any ruling
+- [ ] Every column has a doc block in `field_descriptions.md`
+- [ ] Source tables declared with `freshness` where a load timestamp exists
+- [ ] Regression tests updated if logic changed
+- [ ] `dbt build` passes; `required_tests` / `required_docs` pass where `dbt_meta_testing` is installed
+
+---
+
+## Troubleshooting failed tests
+
+### `unique`
+Cause: duplicate values. Often a grain that differs from the `Grain:` line.
 ```sql
 select
     field_name,
-    count(*) as count
+    count(*) as row_count
 from {{ ref('model_name') }}
 group by field_name
 having count(*) > 1
 ```
 
-### Test Fails: not_null
-**Cause:** Null values in field
-**Investigation:**
+### `not_null`
+Cause: null values.
 ```sql
 select *
 from {{ ref('model_name') }}
@@ -472,34 +358,23 @@ where field_name is null
 limit 100
 ```
 
-### Test Fails: relationships
-**Cause:** Foreign key values don't exist in referenced table
-**Investigation:**
+### `at_least_one`
+Cause: the column is null on every row, or the model is empty. Check the upstream model and the source freshness first.
+
+### `relationships`
+Cause: foreign key values missing from the referenced table.
 ```sql
-select distinct source_table.fk_field
-from {{ ref('source_model') }} as source_table
-left join {{ ref('target_model') }} as target_table
-    on source_table.fk_field = target_table.pk_field
-where target_table.pk_field is null
+select distinct child_model.fk_field
+from {{ ref('child_model') }} as child_model
+left join {{ ref('parent_model') }} as parent_model
+    on child_model.fk_field = parent_model.pk_field
+where parent_model.pk_field is null
 ```
 
-### Test Fails: accepted_values
-**Cause:** Field contains values not in accepted list
-**Investigation:**
+### `accepted_values`
+Cause: values outside the list. Check for upper-case values that staging should have lowercased.
 ```sql
 select distinct field_name
 from {{ ref('model_name') }}
 where field_name not in ('value1', 'value2', 'value3')
 ```
-
----
-
-### Unit Testing
-
-For detailed guidance on dbt unit tests (Model-Inputs-Outputs pattern, format selection, BigQuery caveats, and production deployment), see the **dbt-unit-testing** skill:
-
-- `wire/skills/dbt-unit-testing/SKILL.md`
-
-Unit tests are distinct from schema tests and data tests — they validate transformation logic by mocking model inputs and asserting expected outputs, without hitting the database.
-
-**RA Convention**: Unit tests are required for all warehouse-layer models with business logic (case statements, window functions, complex joins). They are recommended but optional for staging models with non-trivial transformations.

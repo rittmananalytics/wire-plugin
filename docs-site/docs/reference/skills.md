@@ -19,14 +19,14 @@ Most of the code Wire writes is dbt, and so the largest group of skills is the o
 
 **Activates when**: creating, reviewing or refactoring dbt models in staging, integration or warehouse layers.
 
-This skill enforces Wire's three-layer dbt architecture and naming conventions, so that a model written with it active comes out in the shape the rest of the project expects:
-- Staging models (`stg_<source>__<entity>.sql`): one-to-one with source tables, minimal transformation
-- Integration models (`int_<domain>__<description>.sql`): business logic, joins, deduplication
-- Warehouse models (`dim_<entity>.sql` / `fct_<entity>.sql`): final analytics-ready tables
+This skill applies the team's dbt development reference (ra_fw_core, version recorded in `conventions/dbt.yml`) and Wire's three-layer architecture, so that a model written with it active comes out in the shape the rest of the project expects:
+- Staging models (`stg_<source>__<entities>.sql`), with base models (`base_<source>__<entity>.sql`) where a source concept needs a join or union, and snapshots and seeds read only by staging
+- Integration models (`int_<group>__<entities>.sql`), with intermediate models (`int_<group>__<entity>__<verb>.sql`) that combine one concept from several sources
+- Warehouse models (`wh_<group>__<entity>_dim.sql`, `_fact.sql`, `_xa.sql` for extended aggregates), where keys are created
 
-It validates naming conventions, PK/FK field naming (`_pk`, `_fk`), boolean prefixes (`is_`, `has_`), timestamp suffix (`_ts`), test coverage (every model needs at minimum `not_null` + `unique` on its PK) and documentation completeness.
+It covers column naming (entity prefix such as `user_is_active`; `_pk`, `_fk`, `_natural_key`, `_dt`, `_ts`, `_amount`, `_count`, `_rank`, `_pct`, `_ratio`), the `Grain:` line in each model description, documentation through doc blocks, source declarations, macros, tests and the `dbt_project.yml` template, with the reason for each rule. It applies the rules to new and changed code only: it never renames or moves an existing model or column, and it runs `wire/scripts/lint_conventions.py --changed-from <base>` for the deterministic checks.
 
-It integrates with sqlfluff when that is present in the project, and it supports project-specific convention overrides via `CLAUDE.md`.
+It integrates with sqlfluff when that is present in the project, and it supports project-specific overrides through `.wire/conventions/dbt.yml`, including `form_choices:` for a project that keeps an older naming form by ruling.
 
 ---
 

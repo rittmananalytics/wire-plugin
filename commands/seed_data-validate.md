@@ -180,7 +180,10 @@ Validate the generated CSV seed data files for structural correctness, referenti
 
 ### Step 3: Run Validation Checks
 
-For each CSV file in `dev/seed_data/`:
+For each CSV file in `dev/seed_data/`. Match each file to its DDL table by name: `seed__<table_name>.csv` (new releases) and `<table_name>.csv` (releases under way before Wire 4.1.2) both map to `<table_name>`.
+
+**Naming Check**:
+0. All files in the release use one naming, and it matches `seed_data.seed_naming` in status.md where that field is set: `seed_prefix` means `seed__<table_name>.csv`; `legacy` (or no field, on a release generated before 4.1.2) means the existing names. Both are accepted. A mix of the two in one release is a warning, not a failure. Never ask for an existing seed to be renamed.
 
 **Structural Checks**:
 1. CSV parses without errors (proper quoting, consistent column count)

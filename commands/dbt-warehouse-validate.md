@@ -145,7 +145,9 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 
 ## Purpose
 
-Validate the warehouse layer: compile all `_dim`/`_fact`/`_agg`/`_xa` models, verify referential integrity (FK → dim PK), check materialization settings, and ensure full schema documentation coverage.
+Validate the warehouse layer: compile all `_dim`/`_fact`/`_xa`/`_agg` models, verify referential integrity (FK → dim PK), check materialization settings, and ensure full schema documentation coverage.
+
+Scope and severity follow `specs/development/dbt_validate.md` (**Scope and Severity**): carried rules apply to every model, both accepted forms pass, and rules new in 4.1.2 apply to changed models only. Wire never renames or moves an existing model, column or schema.
 
 ## Prerequisites
 
@@ -157,39 +159,64 @@ Validate the warehouse layer: compile all `_dim`/`_fact`/`_agg`/`_xa` models, ve
 
 List and read all files in `dbt/models/warehouse/`.
 
+### Step 1.5: Resolve Conventions and the Changed Set
+
+1. Resolve the convention file as in `dbt_validate.md` Step 1.5: `.wire/conventions/dbt.yml` in the project (with any `form_choices:` ruling), else `<plugin>/conventions/dbt.yml`. Read a project prose document (`docs/development_reference_dbt.md` or the older `docs/dbt_coding_conventions.md`) for context if present.
+2. Work out the changed set as in `dbt_validate.md` Step 1.6 (`git merge-base` against the release branch's base). Without git history, rules new in 4.1.2 report as warnings.
+3. Run the convention lint:
+   ```bash
+   python3 <plugin>/scripts/lint_conventions.py --domain dbt \
+     --convention <resolved convention file> \
+     --path <dbt project dir>/models/warehouse \
+     --changed-from <base commit> --format json
+   ```
+   Drop `--changed-from` when git is unavailable. Fold its findings into Steps 2 to 5 and the report.
+
 ### Step 2: Dependency Check
 
 For each warehouse model verify:
-- [ ] Only `{{ ref() }}` calls — no `{{ source() }}`
-- [ ] Dimensions reference `int_<group>__*` models
-- [ ] Facts reference `_dim` and/or `int_<group>__*` models
-- [ ] Cross-attribute / bridge (`_xa`) models reference the correct pair (or more) of dimensions
+- [ ] Only `{{ ref() }}` calls, no `{{ source() }}`
+- [ ] Dimensions and facts reference `int_<group>__*` models, or `stg_*` models where no integration model is needed
+- [ ] Facts may also reference `_dim` models
+- [ ] Changed models: no `{{ ref() }}` to a base model (`base_*`)
+- [ ] Extended aggregate (`_xa`) models reference `_fact` and `_dim` models (an `int_*` reference passes, but may mean a dimension or fact is missing). Existing `_xa` models built as bridge or cross-attribute tables pass
 - [ ] No circular dependencies
 
 ### Step 3: Naming Convention Checks
 
 - [ ] Dimension files match `wh_<group>__<entity>_dim.sql`
 - [ ] Fact files match `wh_<group>__<entity>_fact.sql` (note: `_fact`, not `_fct`)
-- [ ] Aggregate files match `wh_<group>__<entity>_agg.sql`
-- [ ] Cross-attribute / bridge files match `wh_<group>__<entity>_xa.sql`
+- [ ] Extended aggregate files match `wh_<group>__<entity>_xa.sql`. An extended aggregate is a denormalised table built from fact and dimension models, either aggregated to a summary grain or combining several facts at a shared grain
+- [ ] Existing aggregate files match `wh_<group>__<entity>_agg.sql`. `_agg` is accepted beside `_dim`/`_fact`/`_xa`; new models use `_xa`
+- [ ] Warehouse entity names are singular (`wh_core__user_dim`)
 - [ ] Primary keys named `<entity>_pk`, generated via `dbt_utils.generate_surrogate_key(...)`
 - [ ] Foreign keys named `<referenced_entity>_fk`, generated via `dbt_utils.generate_surrogate_key(...)`
 - [ ] Dates end in `_dt`; timestamps end in `_ts` (UTC) or `_<tz>_ts` (non-UTC, timezone before `_ts`)
-- [ ] Booleans use `is_`, `has_`, or `was_`
-- [ ] Revenue / money columns use the `_amount` suffix
-- [ ] Type casts use `{{ dbt.type_*() }}` / `{{ type_date() }}` macros, not raw SQL types
-- [ ] Field ordering: keys → attributes → indexes/ranks → metrics → booleans → temporal data types
-- [ ] Dimensions materialized as `table`, facts as `table`
+- [ ] Booleans use `is_`, `has_` or `was_`, at the start or after the entity prefix (`user_is_active` or `is_active`)
+- [ ] Revenue / money columns use the `_amount` suffix (`_amount_<currency>` for a non-base currency, changed models)
+- [ ] Changed models: `_count`, `_rank`, `_<measure>_<unit>`, `_pct` (0 to 100) and `_ratio` (0 to 1) suffixes used where they apply
+- [ ] Type casts use `{{ dbt.type_*() }}` macros, and `{{ ra_type_date() }}` or the project's existing date macro (`{{ type_date() }}`), not raw SQL types
+- [ ] Materialized as `table`, or `incremental` where the client chose it for that model
+- [ ] Changed models: the last CTE is `final` and the model ends with `select * from final`
+
+Advisory only (Nice-to-have, never a failure):
+- Entity prefix on every output column (`user_name`; unprefixed `name` passes)
+- Aggregated columns lead with the function (`sum_invoice_line_item_amount`)
+- Field ordering in eight groups with Jinja comments: `{# primary key #}`, `{# foreign keys #}`, `{# natural keys #}`, `{# attributes #}`, `{# indexes and ranks #}`, `{# metrics #}`, `{# booleans #}`, `{# temporal #}`. The older six-group order passes
+- Lines up to 120 characters; Jinja delimiters with inner spaces (`{{ this }}`)
 
 ### Step 4: Referential Integrity
 
-For each `_fk` in fact tables, verify a corresponding `relationships` test exists in the schema.yml pointing to the correct `_dim`.
+For each `_fk` in fact tables, verify a corresponding `relationships` test exists in the schema file pointing to the correct `_dim`.
 
-### Step 5: Schema.yml Coverage
+### Step 5: Schema File Coverage
 
-- [ ] Every `_dim`, `_fact`, `_agg`, and `_xa` model has a `.yml` entry (100% documentation required)
-- [ ] Primary keys have `unique` + `not_null` tests
+- [ ] Every `_dim`, `_fact`, `_xa` and `_agg` model has an entry in a schema file: `_schema.yml` (new form), the existing `wh_<group>.yml`, or `droughty_schema.yml` (100% documentation required)
+- [ ] Primary keys have `unique` + `not_null` tests. `dbt_utils.at_least_one` is accepted as an addition, never in place of `not_null` on a primary key
 - [ ] Foreign keys have `relationships` tests where applicable
+- [ ] `data_tests:` and `tests:` both pass. A resource that uses both is a finding
+- [ ] Changed models: `config()` description opens `Grain: One row per ...`; column descriptions held as doc blocks in `models/field_descriptions.md`
+- [ ] Where `packages.yml` includes `dbt_meta_testing`: run `dbt run-operation required_tests` and `dbt run-operation required_docs` and record the results. Skip `required_docs` where the project uses droughty (it sets `required_docs: false`)
 
 ### Step 6: Produce Validation Report
 
@@ -203,10 +230,15 @@ For each `_fk` in fact tables, verify a corresponding `relationships` test exist
 
 ## Models Checked: <count>
 
-| Model | Type | Compile | FK Tests | Docs | Status |
-|-------|------|---------|----------|------|--------|
-| wh_core__customer_dim | dimension | ✓ | ✓ | ✓ | PASS |
-| wh_sales__order_fact | fact | ✓ | ✓ | ✓ | PASS |
+**Convention source:** <resolved file>
+**Changed set:** <base ref and commit> / unknown (new rules reported as warnings)
+**Models in scope for new rules:** <added and modified models>
+**dbt_meta_testing:** required_tests <result>, required_docs <result / skipped: droughty / not installed>
+
+| Model | Type | Changed | Compile | FK Tests | Docs | Status |
+|-------|------|---------|---------|----------|------|--------|
+| wh_core__customer_dim | dimension | no | ✓ | ✓ | ✓ | PASS |
+| wh_sales__order_fact | fact | modified | ✓ | ✓ | ✓ | PASS |
 
 ## Issues Found
 <list any failures>

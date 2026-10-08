@@ -1,63 +1,180 @@
 schema_version: 1
 domain: dbt
 description: >
-  Rittman Analytics dbt modeling conventions — the machine-checkable subset
-  of wire/skills/dbt-development/SKILL.md, conventions-reference.md, and
-  testing-reference.md. Loaded by the dbt-development skill and enforced by
-  wire/scripts/lint_conventions.py. Narrative rationale, SQL templates, and
-  judgment calls (grain choice, whether a join is modelled correctly) stay
-  in the skill file — this covers only what a script can check without an
-  AI call.
+  Rittman Analytics dbt modeling conventions: the machine-checkable form of
+  the ra_fw_core dbt development reference (see `reference:` below). Loaded
+  by the dbt-development skill and enforced by wire/scripts/lint_conventions.py.
+  Reasons, SQL templates and judgment calls (grain choice, whether a join is
+  modelled correctly) stay in the skill. Where this file and the reference
+  disagree, the reference wins and this file is updated, except for the two
+  holds listed under `reference.held_back`.
 
 # ----------------------------------------------------------------------
-# File naming — layer prefix/suffix + entity-group pattern
+# Provenance: the ra_fw_core reference version this file follows
 # ----------------------------------------------------------------------
+reference:
+  repo: rittmananalytics/ra_fw_core
+  path: analytics_warehouse/docs/development_reference_dbt.md
+  version: "0.0.1"
+  source: "ra_fw_core#21 (feat/development_resources/0.0.1 @ 8e0f1061)"
+  adopted_in_wire: "4.1.2"
+  held_back:
+    - id: lowercase_natural_keys
+      reference_rule: "String values are lowercased in staging, natural keys included."
+      wire_rule: "Lowercase attribute strings only. Natural keys and source identifiers keep their case."
+      reason: "Some source identifiers are case-sensitive (Salesforce 15-character IDs). Lowercasing can merge different records."
+    - id: at_least_one_default
+      reference_rule: "dbt_utils.at_least_one is the default column test."
+      wire_rule: "dbt_utils.at_least_one is added alongside not_null, never in place of it. Primary keys keep unique and not_null."
+      reason: "at_least_one only checks a column is not entirely empty, which is weaker than not_null."
+
+# ----------------------------------------------------------------------
+# Scope: which rules apply to which files
+# ----------------------------------------------------------------------
+# A rule with `applies_to: new_and_changed` (a rule the reference added or
+# tightened) is checked only on files added or changed on the current branch.
+# A rule with `applies_to: new_files` is checked only on files added on the
+# current branch, so an edit to an existing file never asks for a rename.
+# lint_conventions.py works out the changed set from git with
+# --changed-from <base ref>. --new-project treats every file as new. With
+# neither, or where git cannot answer, these rules report as warnings.
+# Rules without `applies_to` apply to every file, as before.
+scope:
+  changed_definition: >
+    Files added or modified on the current branch compared with the merge
+    base of the release branch's base (git merge-base <base> HEAD), plus
+    uncommitted and untracked files.
+  without_git: warning
+
+# ----------------------------------------------------------------------
+# Form choices: where the reference changed a convention without improving
+# it, Wire generates the new form and accepts the old. A project that keeps
+# the old form for consistency records a ruling in decisions.md and sets the
+# choice here in its own .wire/conventions/dbt.yml. Generate reads these;
+# validate accepts either form regardless.
+# ----------------------------------------------------------------------
+form_choices:
+  model_name_number: plural          # plural | singular (staging and integration; warehouse is always singular)
+  column_prefix: entity              # entity | none
+  test_key: data_tests               # data_tests | tests (tests is written for dbt before 1.8 regardless)
+  source_file_name: _sources         # _sources | _<source>__sources
+
+# ----------------------------------------------------------------------
+# File naming
+# ----------------------------------------------------------------------
+# `kind` is inferred by lint_conventions.py from the path and filename:
+#   base          .sql under staging/ whose name starts base_
+#   staging       other .sql under staging/
+#   intermediate  .sql under integration/**/intermediate/
+#   integration   other .sql under integration/
+#   warehouse     .sql under warehouse/
+#   snapshot      .sql under snapshots/
+#   macro         .sql under macros/
+#   seed          .csv under seeds/
+#   sources_yml   .yml/.yaml whose top level declares sources:
+# `accepted_patterns` lists every form that passes; `form: new` is the one
+# Wire generates.
 file_naming:
-  - id: staging_model_filename
-    description: "Staging model: stg_<group>__<table>.sql"
-    layer: staging
-    path_glob: "**/staging/**/*.sql"
-    pattern: '^stg_[a-z0-9]+__[a-z0-9_]+\.sql$'
-    example: "stg_core__users.sql"
+  - id: base_model_filename
+    description: "Base model: base_<source>__<entity_name>.sql"
+    kind: base
+    path_glob: "**/staging/**/base_*.sql"
+    pattern: '^base_[a-z0-9_]+__[a-z0-9_]+\.sql$'
+    example: "base_source_a__users.sql"
     severity: error
+    applies_to: new_files
+
+  - id: staging_model_filename
+    description: "Staging model: stg_<source>__<entity_name>.sql (entity usually plural; singular still accepted)"
+    kind: staging
+    path_glob: "**/staging/**/*.sql"
+    pattern: '^stg_[a-z0-9_]+__[a-z0-9_]+\.sql$'
+    example: "stg_source_a__users.sql"
+    severity: error
+    note: "Underscores are allowed in source and entity names (stg_source_a__users). The number of the entity name is a form choice, not checked."
+
+  - id: intermediate_model_filename
+    description: "Intermediate model: int_<entity_group>__<entity_name>__<verb>.sql in integration/<group>/intermediate/"
+    kind: intermediate
+    path_glob: "**/integration/**/intermediate/*.sql"
+    accepted_patterns:
+      - form: new
+        pattern: '^int_[a-z0-9_]+__[a-z0-9_]+__[a-z0-9_]+\.sql$'
+      - form: old
+        pattern: '^int_[a-z0-9_]+__[a-z0-9_]+\.sql$'
+    example: "int_core__users__unioned.sql"
+    severity: error
+    note: "Existing intermediate models named like integration models stay accepted."
 
   - id: integration_model_filename
-    description: "Integration model: int_<group>__<entity>.sql"
-    layer: integration
+    description: "Integration model: int_<entity_group>__<entity_name>.sql"
+    kind: integration
     path_glob: "**/integration/**/*.sql"
-    pattern: '^int_[a-z0-9]+__[a-z0-9_]+\.sql$'
+    pattern: '^int_[a-z0-9_]+__[a-z0-9_]+\.sql$'
     example: "int_core__users.sql"
     severity: error
 
-  - id: warehouse_dim_filename
-    description: "Warehouse dimension: wh_<group>__<entity>_dim.sql"
-    layer: warehouse
+  - id: warehouse_model_filename
+    description: "Warehouse model: wh_<entity_group>__<entity_name>_<dim|fact|xa>.sql"
+    kind: warehouse
     path_glob: "**/warehouse/**/*.sql"
-    pattern: '^wh_[a-z0-9]+__[a-z0-9_]+_dim\.sql$'
-    example: "wh_core__user_dim.sql"
+    accepted_patterns:
+      - form: new
+        pattern: '^wh_[a-z0-9_]+__[a-z0-9_]+_(dim|fact|xa)\.sql$'
+      - form: old
+        pattern: '^wh_[a-z0-9_]+__[a-z0-9_]+_agg\.sql$'
+    example: "wh_core__user_dim.sql, wh_core__transaction_fact.sql, wh_engagement__engagement_xa.sql"
     severity: error
-    note: "Applies only to files ending _dim — see warehouse_fact_filename / warehouse_xa_filename for the other warehouse suffixes."
+    note: "_xa is an extended aggregate: a denormalised table built from fact and dimension models, aggregated to a summary grain or combining facts at a shared grain. Existing _agg models stay accepted. Warehouse entity names are singular (advisory, not checked)."
 
-  - id: warehouse_fact_filename
-    description: "Warehouse fact: wh_<group>__<entity>_fact.sql"
-    layer: warehouse
-    path_glob: "**/warehouse/**/*.sql"
-    pattern: '^wh_[a-z0-9]+__[a-z0-9_]+_fact\.sql$'
-    example: "wh_entity_group__entity_name_b_fact.sql"
+  - id: snapshot_filename
+    description: "Snapshot: snapshot_<source>__<source_table>.sql"
+    kind: snapshot
+    path_glob: "snapshots/**/*.sql"
+    pattern: '^snapshot_[a-z0-9_]+__[a-z0-9_]+\.sql$'
+    example: "snapshot_source_a__users.sql"
     severity: error
+    applies_to: new_files
 
-  - id: warehouse_xa_filename
-    description: "Warehouse cross-attribute: wh_<group>__<entity>_xa.sql"
-    layer: warehouse
-    path_glob: "**/warehouse/**/*.sql"
-    pattern: '^wh_[a-z0-9]+__[a-z0-9_]+_xa\.sql$'
-    example: "wh_entity_group__entity_name_d_xa.sql"
-    severity: error
-
-  - id: singular_entity_name
-    description: "Entity portion of the filename is singular, not plural"
+  - id: macro_filename
+    description: "Macro: macro__<macro_name>.sql, one macro per file"
+    kind: macro
+    path_glob: "macros/**/*.sql"
+    pattern: '^macro__[a-z0-9_]+\.sql$'
+    exempt_filenames:
+      - generate_schema_name.sql
+      - generate_alias_name.sql
+      - generate_database_name.sql
+    example: "macro__geo_country.sql"
     severity: warning
-    note: "Advisory — pluralization can't be reliably regex-checked across arbitrary English nouns; the agent applies this by eye."
+    applies_to: new_files
+    note: "dbt override macros keep their dbt names."
+
+  - id: seed_filename
+    description: "Seed: seed__<description>.csv"
+    kind: seed
+    path_glob: "seeds/**/*.csv"
+    pattern: '^seed__[a-z0-9_]+\.csv$'
+    example: "seed__sku_category_lookup.csv"
+    severity: warning
+    applies_to: new_files
+    note: "New projects and new releases only. Dashboard-first mock seeds in a release already under way keep their names so data_refactor still finds them."
+
+  - id: sources_filename
+    description: "Source declarations: _sources.yml, one per source directory"
+    kind: sources_yml
+    accepted_patterns:
+      - form: new
+        pattern: '^_sources\.ya?ml$'
+      - form: old
+        pattern: '^_[a-z0-9_]+__sources\.ya?ml$'
+    example: "_sources.yml"
+    severity: warning
+
+  - id: entity_name_number
+    description: "Staging and integration entity names are usually plural; warehouse entity names are singular"
+    severity: warning
+    note: "Advisory. Plural and singular staging and integration names are both accepted. Pluralisation cannot be regex-checked across English nouns."
 
 # ----------------------------------------------------------------------
 # Column naming
@@ -69,15 +186,15 @@ naming:
     pattern: '_pk$'
     example: "user_pk"
     severity: error
-    note: "Documentation only — a suffix rule like this can't be enforced against every column without knowing which one is meant to be the key. See surrogate_key_suffix below for the actually-enforced version, which checks the alias of a generate_surrogate_key() call."
+    note: "Documentation only. See surrogate_key_suffix for the enforced form."
 
   - id: foreign_key_suffix
-    description: "Foreign key columns end in _fk"
+    description: "Foreign key columns end in _fk and keep the prefix of the entity they point at"
     scope: column_alias
     pattern: '_fk$'
-    example: "subscription_fk"
+    example: "user_fk"
     severity: error
-    note: "Documentation only — see surrogate_key_suffix below for the enforced version."
+    note: "Documentation only. See surrogate_key_suffix for the enforced form."
 
   - id: surrogate_key_suffix
     description: "The alias of a dbt_utils.generate_surrogate_key(...) call ends in _pk or _fk"
@@ -88,10 +205,10 @@ naming:
     severity: error
 
   - id: natural_key_suffix
-    description: "Natural key columns end in _natural_key"
+    description: "Source system identifiers end in _natural_key; one surfaced on another entity takes that model's prefix"
     scope: column_alias
     pattern: '_natural_key$'
-    example: "user_natural_key"
+    example: "user_natural_key, order_user_natural_key"
     severity: warning
 
   - id: date_suffix
@@ -100,27 +217,73 @@ naming:
     pattern: '_dt$'
     example: "user_created_dt"
     severity: warning
+    applies_to: new_and_changed
+    note: "Checked on cast aliases. Before Wire 4.1.2 the checker could not match the Jinja cast form, so existing models were never checked; enforced on new and changed models only."
 
   - id: timestamp_suffix
-    description: "UTC timestamp columns end in _ts; non-UTC carries the tz before _ts"
+    description: "UTC timestamp columns end in _ts; a timestamp outside UTC carries its zone before _ts"
     scope: column_alias
     pattern: '(_ts|_[a-z]{2,4}_ts)$'
-    example: "created_ts, created_cet_ts"
+    example: "user_created_ts, user_created_cet_ts"
     severity: warning
+    applies_to: new_and_changed
+    note: "Checked on cast aliases. Before Wire 4.1.2 the checker could not match the Jinja cast form, so existing models were never checked; enforced on new and changed models only."
 
   - id: boolean_prefix
-    description: "Boolean columns are prefixed is_ / has_ / was_"
+    description: "Boolean columns use is_ / has_ / was_, after the entity prefix (new) or at the start (still accepted)"
     scope: column_alias
-    pattern: '^(is_|has_|was_)'
-    example: "is_active, has_subscription, was_refunded"
+    accepted_patterns:
+      - form: new
+        pattern: '^[a-z0-9]+(_[a-z0-9]+)*_(is|has|was)_[a-z0-9_]+$'
+      - form: old
+        pattern: '^(is|has|was)_[a-z0-9_]+$'
+    example: "user_is_active (new), is_active (accepted)"
     severity: error
+    applies_to: new_and_changed
+    note: "Checked on cast aliases. Before Wire 4.1.2 the checker could not match the Jinja cast form, so existing models were never checked; enforced on new and changed models only."
 
   - id: money_suffix
-    description: "Revenue / money columns end in _amount"
+    description: "Money in the base currency ends _amount; another currency ends _amount_<iso 4217 code>"
     scope: column_alias
-    pattern: '_amount$'
-    example: "subscription_revenue_amount"
+    pattern: '_amount(_[a-z]{3})?$'
+    example: "revenue_amount, revenue_amount_usd"
     severity: warning
+    note: "Documentation only. Price columns are converted to decimal currency."
+
+  - id: measure_unit_suffix
+    description: "A measured quantity other than currency states its unit: _<measure>_<unit>"
+    scope: column_alias
+    example: "package_weight_kg, call_duration_seconds"
+    severity: warning
+    note: "Advisory. The unit is the SI symbol lowercased (kg, km, ml), else spelled out (seconds, days)."
+
+  - id: count_rank_suffixes
+    description: "A count of things ends _count; an ordinal position ends _rank"
+    scope: column_alias
+    example: "order_line_count, revenue_rank"
+    severity: warning
+    note: "Advisory."
+
+  - id: pct_vs_ratio
+    description: "_pct holds a percentage from 0 to 100; _ratio holds a proportion from 0 to 1"
+    scope: column_alias
+    example: "discount_pct, conversion_ratio"
+    severity: warning
+    note: "Advisory. The two are kept apart because mixing them is a common source of wrong figures."
+
+  - id: aggregate_function_prefix
+    description: "A column produced by an aggregation leads with the function"
+    scope: column_alias
+    example: "sum_invoice_line_item_amount"
+    severity: warning
+    note: "Advisory."
+
+  - id: entity_column_prefix
+    description: "Every output column carries the prefix of the thing the model holds"
+    scope: column_alias
+    example: "user_name, user_is_active, order_shipping_country_name"
+    severity: warning
+    note: "Advisory, never an error. Foreign keys keep the prefix of the entity they point at. Unprefixed columns stay accepted; a project may keep them by ruling (form_choices.column_prefix: none)."
 
   - id: snake_case
     description: "All identifiers are lowercase snake_case"
@@ -135,7 +298,18 @@ naming:
     severity: error
 
 # ----------------------------------------------------------------------
-# SQL style
+# Column output order
+# ----------------------------------------------------------------------
+column_order:
+  - id: column_group_order
+    description: "Columns appear in eight groups, each opened by a Jinja comment"
+    groups: [primary key, foreign keys, natural keys, attributes, indexes and ranks, metrics, booleans, temporal]
+    comment_form: "{# <group> #}"
+    severity: warning
+    note: "Advisory. Refines the earlier six groups (keys, attributes, indexes and ranks, metrics, booleans, temporal) without conflicting with them."
+
+# ----------------------------------------------------------------------
+# SQL, YAML and Jinja style
 # ----------------------------------------------------------------------
 style:
   - id: indentation
@@ -145,9 +319,31 @@ style:
     severity: warning
 
   - id: max_line_length
-    description: "SQL lines should not exceed 80 characters"
-    value: 80
+    description: "SQL lines are no longer than 120 characters"
+    value: 120
+    file_types: [sql]
     severity: warning
+
+  - id: yaml_indentation
+    description: "YAML indentation is two spaces"
+    indent_spaces: 2
+    file_types: [yml]
+    severity: warning
+    applies_to: new_and_changed
+
+  - id: yaml_max_line_length
+    description: "YAML lines are no longer than 80 characters"
+    value: 80
+    file_types: [yml]
+    severity: warning
+    applies_to: new_and_changed
+
+  - id: jinja_delimiter_spacing
+    description: "Jinja delimiters carry spaces on the inside: {{ this }}, not {{this}}"
+    scope: file_content
+    forbidden_pattern: '\{\{(?=[^\s-])|(?<=[^\s-])\}\}'
+    severity: warning
+    applies_to: new_and_changed
 
   - id: explicit_join_type
     description: "Joins are explicit (inner join / left join / etc.), never a bare join"
@@ -156,52 +352,99 @@ style:
     severity: error
 
   - id: prefer_union_all
-    description: "Prefer union all over union distinct"
+    description: "union all is used in place of union distinct"
     scope: file_content
     forbidden_pattern: '\bunion\s+distinct\b'
     severity: warning
 
   - id: raw_type_cast_forbidden
-    description: "Type casts use dbt.type_*() macros, not raw SQL types"
+    description: "Type casts use dbt.type_*() macros or ra_type_date(), not raw SQL types"
     scope: file_content
-    forbidden_pattern: '(?i)as\s+(string|int64|float64|numeric|boolean|timestamp|date)\)\s*$'
-    note: "Flags a bare `as <type>)` at end of a cast line not wrapped in a dbt.type_*() macro call — checked line-by-line, so a macro call spanning multiple lines can false-positive; treat a hit as a prompt to check by eye."
+    forbidden_pattern: '(?i)as\s+(string|int64|float64|numeric|boolean|timestamp|date)\)\s*,?\s*$'
+    note: "Flags a bare `as <type>)` at the end of a cast line not wrapped in a macro call. Checked line by line, so a call spanning lines can false-positive."
     severity: warning
 
   - id: final_cte_required
-    description: "Model ends with a `final` CTE and `select * from final`"
+    description: "Model has a `final` CTE"
     scope: file_content
+    kind: [base, staging, intermediate, integration, warehouse]
     required_pattern: 'final\s+as\s*\('
     severity: error
 
+  - id: select_from_final_required
+    description: "Model ends with `select * from final`"
+    scope: file_content
+    kind: [base, staging, intermediate, integration, warehouse]
+    required_pattern: 'select\s+\*\s+from\s+final\s*;?\s*(--[^\n]*\s*|\{#.*?#\}\s*)*\Z'
+    note: "Comments may follow the final select."
+    severity: error
+    applies_to: new_and_changed
+
   - id: source_ref_cte_prefix
-    description: "CTEs that select directly from source()/ref() are prefixed s_"
+    description: "Import CTEs that select from source()/ref() are prefixed s_ and sit at the top of the file"
     scope: file_content
     severity: warning
-    note: "Advisory — the prefix is on the CTE name at the point of the ref/source call, which requires light SQL-aware parsing beyond a single regex; the agent checks this during review."
+    note: "Advisory. Needs light SQL-aware parsing; the agent checks this during review."
 
 # ----------------------------------------------------------------------
-# Layer rules — what each layer is allowed to select from
+# Layer rules: what each kind may select from, and how it is materialized
 # ----------------------------------------------------------------------
 layer_rules:
+  base:
+    may_select_from: [source, ref]
+    materialization: [view, ephemeral]
   staging:
-    may_select_from: [source]
+    may_select_from: [source, ref]
+    may_ref: [base, snapshot, seed]
+    materialization: [view, ephemeral]
+  intermediate:
+    may_select_from: [ref]
     materialization: [view, ephemeral]
   integration:
     may_select_from: [ref]
     materialization: [view, ephemeral, table]
   warehouse:
     may_select_from: [ref]
-    materialization: [table]
+    materialization: [table, incremental]
+
+layer_checks:
+  - id: no_source_outside_staging
+    description: "Only staging and base models select from source()"
+    severity: error
+
+  - id: no_base_ref_outside_staging
+    description: "Later layers select from staging models, not base models"
+    severity: error
+    applies_to: new_and_changed
+
+  - id: materialization_allowed
+    description: "A model's config materialization is one its layer allows"
+    severity: warning
 
 # ----------------------------------------------------------------------
-# Testing requirements
+# Testing
 # ----------------------------------------------------------------------
 testing:
   - id: primary_key_tests_required
-    description: "Every primary key has unique + not_null schema tests"
+    description: "Every primary key has unique + not_null data tests"
     required_tests: [unique, not_null]
     severity: error
+
+  - id: test_key_forms
+    description: "Data tests sit under data_tests: (dbt 1.8+) or tests:, never both on one resource"
+    accepted_keys: [data_tests, tests]
+    severity: error
+
+  - id: at_least_one_alongside_not_null
+    description: "dbt_utils.at_least_one is added alongside not_null, never in place of it"
+    severity: warning
+    note: "Advisory. Which columns carry not_null is a client project choice; primary keys always keep unique and not_null."
+
+  - id: sources_freshness_only
+    description: "freshness is the only test in _sources.yml"
+    kind: sources_yml
+    severity: warning
+    applies_to: new_and_changed
 
   - id: integration_multi_source_uniqueness
     description: "Integration models sourced from multiple tables use dbt_utils.unique_combination_of_columns"
@@ -209,12 +452,9 @@ testing:
     severity: warning
 
 # ----------------------------------------------------------------------
-# Documentation requirements
-# ----------------------------------------------------------------------
-# ----------------------------------------------------------------------
-# Business-rule citation — links a model back to the register that agreed its
-# definition (wire#229). Advisory: only releases that ran business_rules have a
-# register to cite, so this never fails a project that has not opted in.
+# Business-rule citation: links a model back to the register that agreed its
+# definition (wire#229). Advisory: only releases that ran business_rules have
+# a register to cite, so this never fails a project that has not opted in.
 # ----------------------------------------------------------------------
 business_rules:
   - id: business_rule_id_format
@@ -224,11 +464,17 @@ business_rules:
     required_pattern_if_present: 'wire_business_rule:\s*BR-\d+\s*$'
     severity: warning
 
+# ----------------------------------------------------------------------
+# Documentation
+# ----------------------------------------------------------------------
 documentation:
-  - id: warehouse_columns_documented
-    description: "Every warehouse-layer column has a description (via field_descriptions.md doc blocks)"
-    layer: warehouse
-    severity: warning
+  - id: model_grain_line
+    description: "A model's config() description opens with a Grain: line"
+    scope: file_content
+    kind: [base, staging, intermediate, integration, warehouse]
+    required_pattern: 'description\s*=\s*("""|''''''|"|'')\s*Grain:'
+    severity: error
+    applies_to: new_and_changed
 
   - id: staging_model_description_required
     description: "Staging models set description in their config() block"
@@ -236,3 +482,39 @@ documentation:
     scope: file_content
     required_pattern: 'description\s*='
     severity: warning
+
+  - id: warehouse_columns_documented
+    description: "Every warehouse-layer column has a description (via field_descriptions.md doc blocks)"
+    layer: warehouse
+    severity: warning
+
+  - id: all_columns_documented
+    description: "Every column of every model has a description, held once as a doc block in models/field_descriptions.md"
+    severity: warning
+    applies_to: new_and_changed
+
+  - id: source_table_grain_line
+    description: "A source table's description opens with a Grain: line"
+    kind: sources_yml
+    severity: warning
+    applies_to: new_and_changed
+
+  - id: source_loader_declared
+    description: "A source declares loader"
+    kind: sources_yml
+    severity: warning
+    applies_to: new_and_changed
+
+  - id: source_columns_declared
+    description: "Every column of a declared source table is declared, with a description; personal data columns carry 'Personal data.'"
+    kind: sources_yml
+    severity: warning
+    applies_to: new_and_changed
+    note: "The checker confirms each declared table lists columns with descriptions. Whether every source column is listed, and personal data marking, need the warehouse schema; the agent checks those."
+
+  - id: macro_documented
+    description: "Every macro has an entry in macros/_schema_macros.yml"
+    kind: macro
+    severity: warning
+    applies_to: new_and_changed
+    note: "Advisory. The agent checks the entry exists and lists the macro's arguments."

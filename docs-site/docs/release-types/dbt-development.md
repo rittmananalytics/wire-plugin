@@ -69,6 +69,22 @@ A worked example of a dbt Development engagement, using a fictional client scena
 
 > **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved.
 
+## dbt conventions
+
+Wire writes and checks dbt code to the team's dbt development reference (ra_fw_core `analytics_warehouse/docs/development_reference_dbt.md`). `conventions/dbt.yml` holds its machine-checkable form and records the reference version.
+
+| Area | New code | Still accepted in existing code |
+|---|---|---|
+| Staging and integration names | Plural: `stg_stripe__charges` | Singular: `stg_stripe__charge` |
+| Columns | Entity prefix: `charge_status`, `charge_is_paid` | `status`, `is_paid` |
+| Test key | `data_tests:` (dbt 1.8 or later) | `tests:` |
+| Source declarations | `_sources.yml` per source folder | `_<source>__sources.yml` |
+| Warehouse | `_dim`, `_fact`, `_xa` (extended aggregate) | `_agg` |
+
+New and changed models also open their description with a `Grain:` line, document every column through doc blocks in `models/field_descriptions.md`, use unit suffixes (`_count`, `_rank`, `_<measure>_<unit>`, `_pct`, `_ratio`) and end with `select * from final`.
+
+**Existing projects.** Wire never renames or moves an existing model, column, seed or snapshot. `/wire:dbt-validate` applies the newer rules to models added or changed on the branch only, and still accepts the older forms. A project that keeps an older form for consistency records a ruling in `decisions.md` and sets it under `form_choices:` in `.wire/conventions/dbt.yml`. Differences from the new `dbt_project.yml` template are reported as suggestions, never applied.
+
 ## Optional: dbt Charts boards
 
 A dbt development release often has no BI tool in scope, and yet the client wants to see the numbers. The optional `dbtcharts` artifact answers that: once `dbt` passes validation, `/wire:dbtcharts-generate <release>` writes one [dbt Charts](../advanced/dbt-charts) board per warehouse subject area, as YAML in the dbt project reading the models through `ref()`, validated and rendered by the `dct` CLI. The scaffold is deterministic and the curation is recorded, so the reviewer sees what was proposed and what changed. `/wire:dbtcharts-validate` runs the `dct` checks and Wire's own, and `/wire:dbtcharts-review` presents the renders for sign-off.

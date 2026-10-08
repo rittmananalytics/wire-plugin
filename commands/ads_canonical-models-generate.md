@@ -280,21 +280,21 @@ For each duplicate group where the canonical candidate is already a dbt model:
 
 3. If the canonical model does not yet exist (consolidation required):
    - Create a new mart model combining the relevant sources
-   - Follow Wire dbt naming conventions (fct_ prefix for facts, dim_ for dimensions)
+   - Follow Wire dbt naming conventions: `wh_<group>__<entity>_fact` for facts, `wh_<group>__<entity>_dim` for dimensions, `wh_<group>__<entity>_xa` for an extended aggregate (singular entity name); entity-prefixed columns such as `order_amount` and `order_is_paid`
    - Apply full schema.yml documentation and tests
    - Reference the new model from the deprecation notice on the legacy tables
 
 ### Step 3: Apply Wire dbt Conventions
 
-For every canonical model touched in this phase, verify:
+For every canonical model touched in this phase, verify the rules below. Accept both naming forms on existing models and never rename an existing model or column to meet them; report a gap as a finding instead.
 
 - Surrogate key generated via `dbt_utils.generate_surrogate_key()`
 - Primary key column named `<entity>_pk`
 - Foreign keys named `<entity>_fk`
-- Boolean columns prefixed `is_` or `has_`
+- Boolean columns named `<entity>_is_/has_/was_<x>` (`user_is_active`) or, on existing models, `is_/has_/was_<x>` (`is_active`)
 - Timestamp columns suffixed `_ts`
 - All references use `{{ ref() }}` — no hardcoded table names
-- Tests: `not_null` + `unique` on PK; `not_null` on all NOT NULL columns; `relationships` on all FKs
+- Tests: `not_null` + `unique` on PK; `not_null` on all NOT NULL columns; `relationships` on all FKs. Use `data_tests:` in new schema files (`tests:` for dbt before 1.8, or where the file already uses `tests:`)
 
 ### Step 4: Update dbt_project.yml Tags
 

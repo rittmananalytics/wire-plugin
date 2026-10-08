@@ -153,6 +153,8 @@ This is **Tier 1** of the three-tier equivalence approach in `wire/platform_pair
 
 **What this command does not do:** it does not prove output equivalence. Every rule here flags a *risk* a naive translation would miss; clearing the lint means the model is free of known silent-divergence patterns, not that its output matches. Tier 3 remains mandatory. Say so in the report header so a green lint is never mistaken for a pass.
 
+It also does not check Wire's dbt naming conventions. A migration preserves the source project's model, column and file names, so a singular model name or an unprefixed column such as `is_active` is never a lint finding here.
+
 ## Relationship to `dbt_migration-validate`
 
 The two are complementary and must not be merged:

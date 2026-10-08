@@ -1,331 +1,182 @@
+# Example schema files, without droughty. Each model subdirectory holds a
+# _schema.yml (existing projects keep their existing schema file names).
+# Column descriptions reference doc blocks in models/field_descriptions.md,
+# so each column's meaning is written once. The test key is data_tests: on
+# dbt 1.8+; a file that already uses tests: keeps tests:.
+#
+# Projects that use droughty do not hand-write these files: droughty
+# generates models/droughty_schema.yml from the warehouse.
+
+# ---------------------------------------------------------------------------
+# models/staging/stg_back_office/_schema.yml
+# ---------------------------------------------------------------------------
 version: 2
 
 models:
-  # Staging Model Example
-  - name: stg_salesforce__contact
-    description: |
-      Salesforce contact records with basic cleaning and standardization.
-      Filters out deleted records and normalizes field formats.
+  - name: stg_back_office__users
+    description: >
+      Grain: One row per user account.
+      Back-office user accounts, renamed and cast.
     columns:
-      - name: contact_pk
-        description: |
-          Primary key for contact. Generated using surrogate_key from
-          Salesforce ID and source system name.
-        tests:
+      - name: user_natural_key
+        description: '{{ doc("user_natural_key") }}'
+        data_tests:
           - unique
           - not_null
 
-      - name: salesforce_contact_natural_key
-        description: Original Salesforce contact ID
-        tests:
+      - name: user_account_natural_key
+        description: '{{ doc("user_account_natural_key") }}'
+        data_tests:
           - not_null
-          - unique
+          - dbt_utils.at_least_one
 
-      - name: salesforce_account_natural_key
-        description: Salesforce account ID this contact belongs to
+      - name: user_name
+        description: '{{ doc("user_name") }}'
+        data_tests:
+          - not_null
+          - dbt_utils.at_least_one
 
-      - name: created_ts
-        description: Timestamp when contact was created in Salesforce (UTC)
-        tests:
+      - name: user_email
+        description: '{{ doc("user_email") }}'
+        data_tests:
+          # Null on some older accounts, so at_least_one only.
+          - dbt_utils.at_least_one
+
+      - name: user_country_code
+        description: '{{ doc("user_country_code") }}'
+
+      - name: user_account_balance_amount
+        description: '{{ doc("user_account_balance_amount") }}'
+
+      - name: user_average_session_duration_seconds
+        description: '{{ doc("user_average_session_duration_seconds") }}'
+
+      - name: user_profile_completion_ratio
+        description: '{{ doc("user_profile_completion_ratio") }}'
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1
+
+      - name: user_is_active
+        description: '{{ doc("user_is_active") }}'
+        data_tests:
           - not_null
 
-      - name: updated_ts
-        description: Timestamp when contact was last modified (UTC)
-        tests:
+      - name: user_was_deleted
+        description: '{{ doc("user_was_deleted") }}'
+        data_tests:
           - not_null
 
-      - name: last_activity_date
-        description: Date of last recorded activity for this contact
+      - name: user_created_dt
+        description: '{{ doc("user_created_dt") }}'
+        data_tests:
+          - not_null
+          - dbt_utils.at_least_one
 
-      - name: email
-        description: Contact email address (normalized to lowercase)
-        tests:
+      - name: user_updated_ts
+        description: '{{ doc("user_updated_ts") }}'
+        data_tests:
           - not_null
 
-      - name: first_name
-        description: Contact first name
-
-      - name: last_name
-        description: Contact last name
-        tests:
-          - not_null
-
-      - name: phone
-        description: Contact phone number
-
-      - name: job_title
-        description: Contact job title or role
-
-      - name: lead_source
-        description: Original source/channel where contact was acquired
-        tests:
-          - accepted_values:
-              values:
-                - 'web'
-                - 'referral'
-                - 'partner'
-                - 'event'
-                - 'advertisement'
-                - 'other'
-
-      - name: city
-        description: Contact mailing city
-
-      - name: state
-        description: Contact mailing state/province
-
-      - name: country
-        description: Contact mailing country
-
-      - name: employee_count
-        description: Number of employees at contact's company
-
-      - name: is_deleted
-        description: Whether this contact has been deleted in Salesforce
-
-      - name: source_updated_ts
-        description: System timestamp from source system
-
-  # Integration Model Example
-  - name: int__contact
-    description: |
-      Integrated contact data from Salesforce and HubSpot.
-      Deduplicates by email and enriches with engagement metrics.
-    tests:
-      - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - contact_pk
-            - source_system
+# ---------------------------------------------------------------------------
+# models/integration/int_crm/_schema.yml
+# ---------------------------------------------------------------------------
+  - name: int_crm__contacts
+    description: >
+      Grain: One row per contact email address.
+      Contacts from Salesforce and HubSpot, deduplicated by email, with
+      engagement fields.
     columns:
-      - name: contact_pk
-        description: Primary key for contact
-        tests:
+      - name: contact_natural_key
+        description: '{{ doc("contact_natural_key") }}'
+        data_tests:
           - not_null
 
-      - name: source_system
-        description: Source system for this contact record
-        tests:
+      - name: contact_email
+        description: '{{ doc("contact_email") }}'
+        data_tests:
+          - unique
+          - not_null
+
+      - name: contact_source_system
+        description: '{{ doc("contact_source_system") }}'
+        data_tests:
           - not_null
           - accepted_values:
               values: ['salesforce', 'hubspot']
 
-      - name: source_natural_key
-        description: Natural key from source system
-        tests:
-          - not_null
-
-      - name: email
-        description: Contact email address
-        tests:
-          - not_null
-
-      - name: first_name
-        description: Contact first name
-
-      - name: last_name
-        description: Contact last name
-        tests:
-          - not_null
-
-      - name: engagement_level
-        description: |
-          Calculated engagement level based on days since last activity.
-          Categories: high (<=7 days), medium (<=30 days),
-          low (<=90 days), dormant (>90 days)
-        tests:
+      - name: contact_engagement_level
+        description: '{{ doc("contact_engagement_level") }}'
+        data_tests:
           - not_null
           - accepted_values:
               values: ['high', 'medium', 'low', 'dormant']
 
-      - name: days_since_last_activity
-        description: Number of days since last recorded activity
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "days_since_last_activity >= 0"
+      - name: contact_time_since_last_activity_days
+        description: '{{ doc("contact_time_since_last_activity_days") }}'
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
 
-      - name: has_email
-        description: Whether contact has a valid email address
-        tests:
-          - not_null
-
-      - name: has_phone
-        description: Whether contact has a phone number
-        tests:
-          - not_null
-
-  # Warehouse Model Example
-  - name: contact_dim
-    description: |
-      Contact dimension for BI consumption. Contains unified contact
-      information from all sources with enriched engagement and
-      transaction metrics. Updated nightly.
+# ---------------------------------------------------------------------------
+# models/warehouse/wh_core/_schema.yml
+# ---------------------------------------------------------------------------
+  - name: wh_core__user_dim
+    description: >
+      Grain: One row per user.
+      The user dimension: profile attributes and status for every
+      back-office user account.
     columns:
-      - name: contact_pk
-        description: "{{ doc('contact_pk') }}"
-        tests:
+      - name: user_pk
+        description: '{{ doc("user_pk") }}'
+        data_tests:
           - unique
           - not_null
 
       - name: account_fk
-        description: Foreign key to account dimension
-        tests:
+        description: '{{ doc("account_fk") }}'
+        data_tests:
+          - not_null
           - relationships:
-              to: ref('account_dim')
+              to: ref('wh_core__account_dim')
               field: account_pk
 
-      - name: created_ts
-        description: Timestamp when contact was first created (UTC)
-        tests:
+      - name: user_natural_key
+        description: '{{ doc("user_natural_key") }}'
+        data_tests:
+          - not_null
+          - dbt_utils.at_least_one
+
+      - name: user_name
+        description: '{{ doc("user_name") }}'
+
+      - name: user_email
+        description: '{{ doc("user_email") }}'
+
+      - name: user_country_code
+        description: '{{ doc("user_country_code") }}'
+
+      - name: user_account_balance_amount
+        description: '{{ doc("user_account_balance_amount") }}'
+
+      - name: user_profile_completion_ratio
+        description: '{{ doc("user_profile_completion_ratio") }}'
+
+      - name: user_is_active
+        description: '{{ doc("user_is_active") }}'
+        data_tests:
           - not_null
 
-      - name: updated_ts
-        description: Timestamp when contact was last updated (UTC)
-        tests:
+      - name: user_was_deleted
+        description: '{{ doc("user_was_deleted") }}'
+        data_tests:
           - not_null
 
-      - name: last_activity_date
-        description: Date of last recorded activity
-
-      - name: last_activity_ts
-        description: Timestamp of last activity (UTC)
-
-      - name: first_transaction_ts
-        description: Timestamp of first transaction (UTC)
-
-      - name: last_transaction_ts
-        description: Timestamp of most recent transaction (UTC)
-
-      - name: contact_email
-        description: Contact email address
-        tests:
+      - name: user_created_dt
+        description: '{{ doc("user_created_dt") }}'
+        data_tests:
           - not_null
 
-      - name: contact_first_name
-        description: Contact first name
-
-      - name: contact_last_name
-        description: Contact last name
-        tests:
-          - not_null
-
-      - name: contact_full_name
-        description: Contact full name (first + last)
-        tests:
-          - not_null
-
-      - name: contact_phone
-        description: Contact phone number
-
-      - name: contact_job_title
-        description: Contact job title or role
-
-      - name: contact_lead_source
-        description: Original acquisition source/channel
-
-      - name: contact_city
-        description: Contact city
-
-      - name: contact_state
-        description: Contact state/province
-
-      - name: contact_country
-        description: Contact country
-
-      - name: account_name
-        description: Name of account this contact belongs to
-
-      - name: account_industry
-        description: Industry of account
-
-      - name: account_type
-        description: Type of account (prospect, customer, partner, etc.)
-
-      - name: contact_engagement_level
-        description: Current engagement level (high, medium, low, dormant)
-        tests:
-          - not_null
-          - accepted_values:
-              values: ['high', 'medium', 'low', 'dormant']
-
-      - name: days_since_last_activity
-        description: Days since last activity
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "days_since_last_activity >= 0"
-
-      - name: total_activities
-        description: Total number of recorded activities
-        tests:
-          - not_null
-          - dbt_utils.expression_is_true:
-              expression: "total_activities >= 0"
-
-      - name: total_emails
-        description: Total number of email activities
-        tests:
-          - not_null
-
-      - name: total_calls
-        description: Total number of call activities
-        tests:
-          - not_null
-
-      - name: total_meetings
-        description: Total number of meeting activities
-        tests:
-          - not_null
-
-      - name: total_transactions
-        description: Total number of transactions
-        tests:
-          - not_null
-          - dbt_utils.expression_is_true:
-              expression: "total_transactions >= 0"
-
-      - name: lifetime_value
-        description: Total transaction value (USD)
-        tests:
-          - not_null
-          - dbt_utils.expression_is_true:
-              expression: "lifetime_value >= 0"
-
-      - name: average_transaction_value
-        description: Average value per transaction (USD)
-        tests:
-          - not_null
-          - dbt_utils.expression_is_true:
-              expression: "average_transaction_value >= 0"
-
-      - name: days_since_last_transaction
-        description: Days since most recent transaction
-
-      - name: is_emailable
-        description: Whether contact can be reached by email
-        tests:
-          - not_null
-
-      - name: is_callable
-        description: Whether contact can be reached by phone
-        tests:
-          - not_null
-
-      - name: is_customer
-        description: Whether contact has made at least one transaction
-        tests:
-          - not_null
-
-      - name: is_active_customer
-        description: |
-          Whether contact has made a transaction in last 90 days
-        tests:
-          - not_null
-
-      - name: contact_source_system
-        description: Original source system for contact
-        tests:
-          - not_null
-
-      - name: contact_source_natural_key
-        description: Natural key from original source system
-        tests:
-          - not_null
+      - name: user_updated_ts
+        description: '{{ doc("user_updated_ts") }}'

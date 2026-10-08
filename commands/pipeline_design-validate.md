@@ -195,8 +195,8 @@ Run: /wire:pipeline_design-generate <project_id>
 |-------|------|----------|
 | Source system coverage | Every source system named in requirements appears in Section 1 | Critical |
 | Replication strategy defined | Every source system has a replication method specified (no blanks) | Critical |
-| Staging model names | All staging models follow `stg_<source>__<entity>` naming convention | Critical |
-| Warehouse model names | All warehouse models follow `wh_<group>__<entity>_fact` or `wh_<group>__<entity>_dim` convention | Major |
+| Staging model names | All staging models follow `stg_<source>__<entity>` naming convention (plural or singular entity name) | Critical |
+| Warehouse model names | All warehouse models follow `wh_<group>__<entity>_dim`, `_fact` or `_xa` (extended aggregate). Existing `_agg` models are accepted. | Major |
 | Error handling specified | Section 3.4 (Error Handling) is non-empty and covers failure detection and alerting | Major |
 | Scheduling defined | Section 3.5 (Scheduling) specifies refresh cadences for all sources | Major |
 | Design decisions documented | All trade-off decisions are listed as PD-N items, not silently resolved | Major |

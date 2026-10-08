@@ -157,8 +157,8 @@ Confirm the dbt implementation with the data engineering team before proceeding 
 
 | Domain | Canonical Model | Tests | Deprecated Tables |
 |---|---|---|---|
-| orders | fct_orders | 12 passing | orders_raw, revenue_v2 (sunset YYYY-MM-DD) |
-| customers | dim_customers | 8 passing | customer_snapshot_2023 |
+| orders | wh_sales__order_fact | 12 passing | orders_raw, revenue_v2 (sunset YYYY-MM-DD) |
+| customers | wh_core__customer_dim | 8 passing | customer_snapshot_2023 |
 
 ### dbt Test Results
 

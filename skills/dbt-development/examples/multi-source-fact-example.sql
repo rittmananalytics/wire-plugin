@@ -1,148 +1,106 @@
 -- =============================================================================
--- MULTI-SOURCE FACT TABLE EXAMPLE
--- File: models/warehouse/finance/invoice_fact.sql
+-- MULTI-SOURCE FACT EXAMPLE
+-- File: models/warehouse/wh_finance/wh_finance__invoice_fact.sql
 -- =============================================================================
--- 
--- This fact table demonstrates:
--- 1. Joining to dimension using source ID arrays (IN UNNEST pattern)
--- 2. Conditional compilation based on source enablement
--- 3. Proper surrogate key generation
--- 4. Calculated metrics and sequencing
+--
+-- Shows:
+-- 1. Joining to the company dimension through its array of source natural keys (BigQuery unnest)
+-- 2. Conditional compilation on the invoice sources array
+-- 3. Primary key from the invoice's natural key and source system
+-- 4. Measures with explicit units and a rank within each company
+--
+-- Projects built on the older pattern (models/warehouse/finance/invoice_fact.sql) keep those names.
 -- =============================================================================
 
-{% if var("finance_warehouse_invoice_sources") %}
+{% if var('finance_warehouse_invoice_sources', []) %}
 
 {{
     config(
-        materialized='table',
-        unique_key='invoice_pk',
-        partition_by={
-            "field": "invoice_created_ts",
+        description = """
+            Grain: One row per invoice per source system.
+            Invoices from every enabled finance source, with the company they were raised to.
+        """,
+        partition_by = {
+            "field": "invoice_issued_ts",
             "data_type": "timestamp",
             "granularity": "month"
         }
     )
 }}
 
-with invoices as (
-    select * from {{ ref('int__invoice') }}
+with s_invoices as (
+
+    select * from {{ ref('int_finance__invoices') }}
+
 ),
 
--- Reference the dimension table for joins
-companies_dim as (
-    select * from {{ ref('company_dim') }}
+s_companies as (
+
+    select * from {{ ref('wh_crm__company_dim') }}
+
 ),
 
--- Optional: Join to contacts if available
-{% if var('crm_warehouse_contact_sources', []) %}
-contacts_dim as (
-    select * from {{ ref('contact_dim') }}
+-- Matches each invoice to the company whose array of source natural keys holds the invoice's company id.
+join_companies as (
+
+    select
+
+        s_invoices.*,
+        s_companies.company_pk
+
+    from s_invoices
+
+    left join s_companies
+        on s_invoices.invoice_company_natural_key in unnest(s_companies.company_natural_keys)
+
 ),
-{% endif %}
+
+add_keys_and_measures as (
+
+    select
+
+        {# primary key #}
+        {{ dbt_utils.generate_surrogate_key(['invoice_natural_key', 'invoice_source_system']) }} as invoice_pk,
+        {# foreign keys #}
+        company_pk as company_fk,
+        {# natural keys #}
+        invoice_natural_key,
+        invoice_company_natural_key,
+        {# attributes #}
+        invoice_number,
+        invoice_status,
+        invoice_currency_code,
+        invoice_source_system,
+        {# indexes and ranks #}
+        row_number() over (partition by company_pk order by invoice_issued_ts) as invoice_company_sequence_rank,
+        {# metrics #}
+        invoice_revenue_amount,
+        invoice_tax_amount,
+        invoice_revenue_amount_usd,
+        {{ dbt.datediff('invoice_issued_ts', 'invoice_paid_ts', 'day') }} as invoice_payment_duration_days,
+        {{ dbt.datediff('invoice_due_ts', 'invoice_paid_ts', 'day') }} as invoice_overdue_duration_days,
+        {# booleans #}
+        invoice_status = 'open' and invoice_due_ts < {{ dbt.current_timestamp() }} as invoice_is_overdue,
+        {# temporal #}
+        invoice_issued_ts,
+        invoice_due_ts,
+        invoice_paid_ts
+
+    from join_companies
+
+),
 
 final as (
-    select
-        -- =================================================================
-        -- PRIMARY KEY
-        -- =================================================================
-        {{ dbt_utils.generate_surrogate_key(['i.invoice_number', 'i.source_system']) }} as invoice_pk,
-        
-        -- =================================================================
-        -- FOREIGN KEYS: Join using the source ID arrays
-        -- The IN UNNEST() pattern matches ANY source ID in the array
-        -- =================================================================
-        c.company_pk as company_fk,
-        
-        {% if var('crm_warehouse_contact_sources', []) %}
-        ct.contact_pk as contact_fk,
-        {% endif %}
-        
-        -- =================================================================
-        -- NATURAL KEYS: Preserve source system IDs
-        -- =================================================================
-        i.invoice_id,
-        i.invoice_number,
-        i.company_id as company_natural_key,
-        
-        -- =================================================================
-        -- INVOICE ATTRIBUTES
-        -- =================================================================
-        i.invoice_subject,
-        i.invoice_status,
-        i.invoice_type,
-        i.invoice_currency,
-        i.invoice_payment_term,
-        
-        -- =================================================================
-        -- AMOUNTS
-        -- =================================================================
-        i.invoice_local_total_revenue_amount,
-        i.invoice_local_total_tax_amount,
-        i.invoice_local_total_due_amount,
-        i.total_local_amount,
-        i.total_gbp_amount,
-        i.invoice_currency_rate,
-        
-        -- =================================================================
-        -- TIMESTAMPS
-        -- =================================================================
-        i.invoice_created_ts,
-        i.invoice_issue_ts,
-        i.invoice_due_ts,
-        i.invoice_sent_ts,
-        i.invoice_paid_ts,
-        i.expected_payment_ts,
-        
-        -- =================================================================
-        -- CALCULATED FIELDS
-        -- =================================================================
-        -- Invoice sequence per company
-        row_number() over (
-            partition by c.company_pk 
-            order by i.invoice_issue_ts
-        ) as invoice_seq,
-        
-        -- Days calculations
-        {{ dbt.datediff('i.invoice_issue_ts', 'i.invoice_paid_ts', 'day') }} as days_to_pay,
-        {{ dbt.datediff('i.invoice_due_ts', 'i.invoice_paid_ts', 'day') }} as days_overdue,
-        {{ dbt.datediff('i.invoice_issue_ts', 'i.invoice_due_ts', 'day') }} as payment_terms_days,
-        
-        -- Derived status
-        case 
-            when i.invoice_status = 'Paid' then 'Paid'
-            when i.invoice_status = 'Open' and i.invoice_due_ts < current_timestamp() then 'Overdue'
-            when i.invoice_status = 'Open' then 'Open'
-            when i.invoice_status = 'Draft' then 'Draft'
-            else i.invoice_status
-        end as invoice_status_derived,
-        
-        -- =================================================================
-        -- SOURCE METADATA
-        -- =================================================================
-        i.source_system,
-        current_timestamp() as _loaded_ts
 
-    from invoices i
-    
-    -- =================================================================
-    -- JOIN TO COMPANY DIMENSION USING SOURCE ID ARRAY
-    -- This is the key pattern: match ANY ID in the all_company_ids array
-    -- =================================================================
-    left join companies_dim c
-        on i.company_id in unnest(c.all_company_ids)
-    
-    {% if var('crm_warehouse_contact_sources', []) %}
-    -- Similar pattern for contact dimension if available
-    left join contacts_dim ct
-        on i.contact_id in unnest(ct.all_contact_ids)
-    {% endif %}
+    select * from add_keys_and_measures
+
 )
 
 select * from final
 
 {% else %}
 
--- No invoice sources configured, model disabled
-{{ config(enabled=false) }}
+-- No invoice sources configured, model disabled.
+{{ config(enabled = false) }}
 
 {% endif %}

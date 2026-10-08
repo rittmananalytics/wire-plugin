@@ -151,6 +151,38 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 
 Validate generated dbt models by running dbt tests, checking naming conventions, verifying SQL structure, model configuration, testing coverage, documentation coverage, and optionally running sqlfluff. Produces a structured validation report with severity-rated issues.
 
+The conventions follow the RA dbt development reference (adopted in Wire 4.1.2). Wire never renames or moves an existing model, column, seed, snapshot or schema, so an existing project keeps passing this command. See **Scope and Severity** below.
+
+## Scope and Severity
+
+Three kinds of rule apply. Each check in Step 3 onward is marked with its kind where it matters.
+
+| Kind | What it covers | Applies to | Effect of a breach |
+|------|----------------|------------|--------------------|
+| **Carried rule** | A rule this spec checked before 4.1.2 (key naming, `ref()` in top CTEs, `select * from final`, explicit joins, PK tests, warehouse as `table`, line length, now 120) | All models | Severity as stated in the check |
+| **Accepted form** | A choice where the new form and the older form are both valid (table below) | All models | Never a finding. Either form passes |
+| **Reference rule** | A rule new in 4.1.2 (`Grain:` line, column docs in every layer held as doc blocks, new column suffixes, base/snapshot/macro/seed file names, source declaration content, macro entries, Jinja spacing, YAML style, comments on row-removing CTEs) | Models in the changed set only (Step 1.6) | Important and sets status FAIL, unless the check marks it advisory or warning. Never Critical |
+
+**Accepted forms.** Both columns pass. Generate writes the new form unless the project has a `form_choices:` ruling in `.wire/conventions/dbt.yml` (recorded in the release's `decisions.md`). Mixed naming inside one project is allowed.
+
+| Area | New form | Older form, still accepted |
+|------|----------|---------------------------|
+| Staging and integration model names | Plural: `stg_salesforce__users`, `int_core__users` | Singular: `stg_salesforce__user`, `int_core__user` |
+| Warehouse model names | Singular: `wh_core__user_dim` | Same |
+| Column prefixes | Entity prefix on every output column: `user_name` | Unprefixed: `name` |
+| Boolean names | `user_is_active` | `is_active` |
+| Test key in YAML | `data_tests:` | `tests:` (a resource that uses both is a finding) |
+| Source file name | `_sources.yml` | `_<source>__sources.yml` |
+| Schema file name (no droughty) | `_schema.yml` per subdirectory | Existing names: `stg_<source>.yml`, `integration.yml`, `wh_<group>.yml`, `intermediate.yml` |
+| Intermediate model materialization | `view`, set by folder | `ephemeral` |
+| Warehouse aggregate | `_xa` | Existing `_agg` models |
+| Seeds | `seeds/seed__<description>.csv` in the `seeds` schema | Existing names and schema |
+| Snapshots | `snapshots` schema | Existing schema |
+
+**No git history.** Where the changed set cannot be worked out (Step 1.6), reference rules are checked on every model and reported as warnings (Nice-to-have). They do not set status FAIL.
+
+**Unchanged models.** Nothing the pre-4.1.2 spec accepted is a Critical finding on an unchanged model. A reference rule never applies to an unchanged model when git history is available.
+
 > **Per-layer alternative**: If the dbt project was built layer-by-layer instead of via `/wire:dbt-generate`, validate each layer with its own command instead: `/wire:dbt-staging-validate`, `/wire:dbt-integration-validate`, `/wire:dbt-warehouse-validate` — run after the corresponding `/wire:dbt-*-generate` command.
 
 ## Usage
@@ -182,20 +214,35 @@ Run `/wire:dbt-generate [folder]` first.
 
 ### Step 1.5: Load Convention Source
 
-**Priority Order (2-tier system):**
+**Resolution order:**
 
-1. **Project-specific conventions** (highest priority)
-   - Check for `.dbt-conventions.md` in project root
-   - Check for `dbt_coding_conventions.md` in project root
-   - Check for `docs/dbt_conventions.md` in project
+1. **Project override**: `.wire/conventions/dbt.yml` in the engagement repo, if present. Read its `form_choices:` block if it has one (keys: `model_name_number`, `column_prefix`, `test_key`, `source_file_name`). A `form_choices:` value is a ruling recorded in the release's `decisions.md`. It tells generate which form to write. Validate still accepts both forms.
+2. **Plugin default**: `<plugin>/conventions/dbt.yml`.
 
-2. **Embedded conventions** (fallback — use the conventions defined in this spec)
+The resolved file is the `--convention` argument for the lint in Step 2.5.
 
-**Detection:**
-- Use Glob to search for convention files in project root
-- If found, read and use project conventions
-- If not found, use the embedded conventions below
-- Note which source is being used in validation output
+**Prose conventions document.** If the project has its own prose conventions document (for example `docs/development_reference_dbt.md`, or the older `docs/dbt_coding_conventions.md`, `dbt_coding_conventions.md` or `.dbt-conventions.md`), read it for context. Where it states a rule the YAML file does not, apply the rule by reading the code. It does not replace the YAML file.
+
+Record in the report which convention file resolved, whether it has `form_choices:`, and which prose document (if any) was read.
+
+### Step 1.6: Work Out the Changed Set
+
+Reference rules (see **Scope and Severity**) apply to new and changed files only. Work out the set before running any check.
+
+**Process:**
+1. Find the base ref: the branch the release branch was cut from (usually `main`, or the release's integration branch named in `status.md`).
+2. Run `git merge-base HEAD <base branch>` to get the base commit.
+3. Run `git diff --name-status <base commit>...HEAD -- <dbt project dir>` and add uncommitted changes from `git status --porcelain`.
+4. Classify each path:
+   - **Added** (`A`, or untracked): new file.
+   - **Modified** (`M`, `R`): changed file. A renamed file counts as changed, not added.
+   - Anything else: unchanged.
+5. A model is in scope when its `.sql` file is added or modified, or its entry in a schema file changed.
+6. File-naming rules for new kinds (base model, snapshot, macro, seed) apply to **added** files only. Editing an existing macro, seed or snapshot never asks for a rename.
+
+**If git is not available** (not a repo, shallow clone without the base, or no base branch found): record "changed set unknown". Reference rules then run on all models and report as warnings only.
+
+**Report** the base ref and commit, and list the models in scope (added and modified) in the report's Scope section.
 
 ### Step 2: Run dbt Tests
 
@@ -216,69 +263,143 @@ dbt test
 - Tests passed
 - Tests failed (with details)
 
+### Step 2.5: Run the Convention Lint
+
+Run the deterministic convention check. It is a plain script with no AI call. Run it before the semantic checks in Step 3, and trust its findings over a reading of the code where the two disagree.
+
+**With a changed set** (Step 1.6 found a base commit):
+```bash
+python3 <plugin>/scripts/lint_conventions.py --domain dbt \
+  --convention <resolved convention file> \
+  --path <dbt project dir>/models \
+  --changed-from <base commit> \
+  --format json
+```
+
+**Without git**: drop `--changed-from`. The script then reports reference rules as warnings.
+
+**New project** (every file is new, for example the first `/wire:dbt-generate` run): `--new-project` in place of `--changed-from`.
+
+Run it again with `--path` set to `snapshots/`, `seeds/` and `macros/` where those directories exist.
+
+**Fold the findings into the report:**
+- Each finding goes under the Step 3 heading it belongs to, with its rule id and file.
+- A script `error` on a carried rule keeps the severity stated in Step 3.
+- A script `error` on a reference rule for a changed file is Important. A script `warning` is Nice-to-have.
+- If the script is not found, note "convention lint not run" in the report and do the Step 3 checks by reading the code.
+
+### Step 2.6: Run dbt_meta_testing Checks (If Installed)
+
+Only where the project's `packages.yml` includes `tnightengale/dbt_meta_testing`:
+
+```bash
+dbt run-operation required_tests
+dbt run-operation required_docs
+```
+
+- Skip `required_docs` when the project uses droughty (a `droughty_project.yaml` exists, or `dbt_project.yml` sets `required_docs: false`). droughty does not write model descriptions, so the check would fail on every warehouse model.
+- Both run against built models, so run them after `dbt run` or `dbt build`.
+- Include each result in the report's Testing Coverage and Documentation Coverage sections. A failure of either is Important.
+- Where the package is not installed, note "dbt_meta_testing not installed" and continue. Never add the package to an existing project.
+
 ### Step 3: Check Naming Conventions
 
 #### 3.1 File and Model Naming
 
-| Check | Rule | Example | Severity |
-|-------|------|---------|----------|
-| Singular names | All objects are SINGULAR | `user` not `users` | Critical |
-| Staging models | `stg_<group>__<entity>.sql` | `stg_salesforce__user.sql` | Critical |
-| Integration models | `int_<group>__<entity>.sql` | `int_core__user.sql` | Critical |
-| Intermediate models | `int_<group>__<entity>__<action>.sql` (past tense verbs) | `int_core__user__unioned.sql` | Critical |
-| Warehouse dimensions | `wh_<group>__<entity>_dim.sql` | `wh_core__user_dim.sql` | Critical |
-| Warehouse facts | `wh_<group>__<entity>_fact.sql` | `wh_finance__transaction_fact.sql` | Critical |
-| Warehouse cross-attribute | `wh_<group>__<entity>_xa.sql` (bridge / many-to-many / cross-entity attribute models) | `wh_core__user_role_xa.sql` | Critical |
-| Aggregate tables | `wh_<group>__<entity>_agg.sql` | `wh_core__course_summary_by_year_agg.sql` | Critical |
-| Files | Lowercase with underscores only | ✅ `wh_core__user_dim.sql` ❌ `StudentDim.sql` | Critical |
+Entity names may be plural or singular in staging and integration models. Neither is a finding. Warehouse model names are singular in both forms.
 
-**Directory Structure Check**:
+| Kind | New form (generate) | Also accepted | Example | Applies to | Severity |
+|------|---------------------|---------------|---------|------------|----------|
+| Base model | `base_<source>__<entity>.sql` in `models/staging/stg_<source>/` | (new kind) | `base_salesforce__users.sql` | Added files | Important |
+| Staging model | `stg_<source>__<entity>.sql`, entity usually plural | Singular entity | `stg_salesforce__users.sql`, `stg_salesforce__user.sql` | All models | Critical |
+| Intermediate model | `int_<group>__<entity>__<verb>.sql` in `int_<group>/intermediate/`, verb in past tense | Singular entity | `int_core__users__unioned.sql` | All models | Critical |
+| Integration model | `int_<group>__<entity>.sql` | Singular entity | `int_core__users.sql`, `int_core__user.sql` | All models | Critical |
+| Warehouse dimension | `wh_<group>__<entity>_dim.sql` | Same | `wh_core__user_dim.sql` | All models | Critical |
+| Warehouse fact | `wh_<group>__<entity>_fact.sql` | Same | `wh_finance__transaction_fact.sql` | All models | Critical |
+| Warehouse extended aggregate | `wh_<group>__<entity>_xa.sql`: a denormalised table built from fact and dimension models, either aggregated to a summary grain or combining several facts at a shared grain | Existing `_xa` models built as bridge or cross-attribute tables | `wh_engagement__engagement_xa.sql` | All models | Critical |
+| Warehouse aggregate (older form) | Not generated for new models | `wh_<group>__<entity>_agg.sql` | `wh_core__course_summary_by_year_agg.sql` | All models | Critical if the suffix is malformed; `_agg` itself is never a finding |
+| Snapshot | `snapshots/snapshot_<source>/snapshot_<source>__<source_table>.sql`, `{% snapshot %}` block name equals the file name | Existing names | `snapshot_salesforce__accounts.sql` | Added files | Important |
+| Seed | `seeds/seed__<description>.csv`, `seeds` schema. Columns keep the CSV's names | Existing names and schema | `seed__sku_category_lookup.csv` | Added files in a new project or new release | Important |
+| Macro | `macros/macro__<name>.sql`, one macro per file, adapter versions (`default__`, `bigquery__`, `snowflake__`) in the same file. Utility macros in `macros/utility/`. dbt override macros (`generate_schema_name` and similar) keep their dbt names | Existing names | `macro__geo_country.sql` | Added files | Important |
+| Files | Lowercase with underscores only | Same | ✅ `wh_core__user_dim.sql` ❌ `StudentDim.sql` | All models | Critical |
+
+Dashboard-first mock seeds in a release already under way keep their names, so `/wire:data_refactor-generate` still finds them.
+
+**Directory Structure Check** (new form; the older file names in the accepted-forms table also pass):
 ```
 models/
+├── field_descriptions.md              # doc blocks for column descriptions
 ├── staging/
-│   └── <group>/
-│       ├── stg_<group>.yml
-│       └── stg_<group>__<entity>.sql
+│   └── stg_<source>/
+│       ├── _sources.yml               # or _<source>__sources.yml
+│       ├── _schema.yml                # or stg_<source>.yml
+│       ├── base_<source>__<entity>.sql
+│       └── stg_<source>__<entity>.sql
 ├── integration/
-│   ├── int_<group>/
-│   │   ├── intermediate/
-│   │   │   ├── intermediate.yml
-│   │   │   └── int_<group>__<entity>__<action>.sql
-│   │   ├── int_<group>__<entity>.sql
-│   │   └── integration.yml
+│   └── int_<group>/
+│       ├── intermediate/
+│       │   ├── _schema.yml            # or intermediate.yml
+│       │   └── int_<group>__<entity>__<verb>.sql
+│       ├── _schema.yml                # or integration.yml
+│       └── int_<group>__<entity>.sql
 └── warehouse/
     └── wh_<group>/
-        ├── wh_<group>.yml
+        ├── _schema.yml                # or wh_<group>.yml
         ├── wh_<group>__<entity>_dim.sql
         ├── wh_<group>__<entity>_fact.sql
         └── wh_<group>__<entity>_xa.sql
+macros/
+├── _schema_macros.yml
+├── macro__<name>.sql
+└── utility/
+snapshots/
+└── snapshot_<source>/
+    └── snapshot_<source>__<source_table>.sql
+seeds/
+└── seed__<description>.csv
 ```
 
+Projects that use droughty hold model schema in `models/droughty_schema.yml` in place of per-directory schema files. That passes.
+
 **Violations to Flag:**
-- Plural object names
-- Missing or incorrect prefixes/suffixes
+- Missing or incorrect layer prefixes or suffixes
 - Non-standard directory structure
 - Mismatched filename and directory location
+- Added base, snapshot, macro or seed files that do not follow the new pattern
+- A `{% snapshot %}` block name that differs from its file name (added snapshots)
+
+Plural or singular entity names are not a finding.
 
 #### 3.2 Field Naming Conventions
 
 For each model, check ALL fields against these conventions:
 
-| Type | Pattern | Example | Severity |
-|------|---------|---------|----------|
-| Primary Key | `<entity>_pk`, generated via `dbt_utils.generate_surrogate_key(...)` | `user_pk`, `transaction_pk` | Critical |
-| Foreign Key | `<referenced_entity>_fk`, generated via `dbt_utils.generate_surrogate_key(...)` | `user_fk`, `account_fk` | Critical |
-| Natural Key | `<descriptive_name>_natural_key` | `salesforce_user_natural_key` | Important |
-| Date | `<event>_dt` | `user_created_dt` | Important |
-| Timestamp (UTC) | `<event>_ts` — always assumed UTC unless otherwise indicated | `created_ts`, `updated_ts` | Important |
-| Timestamp (non-UTC) | `<event>_<tz>_ts` — timezone tag inserted before `_ts` | `created_cet_ts`, `created_pt_ts` | Important |
-| Boolean | `is_<state>`, `has_<thing>`, or `was_<event>` | `is_active`, `has_subscription`, `was_refunded` | Important |
-| Revenue / Money | `<entity>_<measure>_amount` — decimal currency, converted from cents at the staging layer | `user_account_balance_amount` (not `price_in_cents`) | Important |
-| Common fields | `<entity>_<field>` prefix | `customer_name` (not just `name`) | Important |
+| Type | Pattern | Example | Applies to | Severity |
+|------|---------|---------|------------|----------|
+| Primary Key | `<entity>_pk`, generated via `dbt_utils.generate_surrogate_key(...)` | `user_pk`, `transaction_pk` | All models | Critical |
+| Foreign Key | `<referenced_entity>_fk`, generated via `dbt_utils.generate_surrogate_key(...)`. Keeps the referenced entity's prefix | `user_fk`, `account_fk` | All models | Critical |
+| Natural Key | `<descriptive_name>_natural_key`. On another entity it takes that model's prefix | `user_natural_key`, `order_user_natural_key` | All models | Important |
+| Date | `<event>_dt` | `user_created_dt` | All models | Important |
+| Timestamp (UTC) | `<event>_ts`, always UTC | `user_created_ts`, `created_ts` | All models | Important |
+| Timestamp (non-UTC) | `<event>_<tz>_ts`, time zone before `_ts` | `user_created_cet_ts` | All models | Important |
+| Boolean | `is_`, `has_` or `was_` at the start, or after the entity prefix | `user_is_active`, `is_active`, `has_subscription` | All models | Important |
+| Money, base currency | `_amount`, decimal currency, converted from cents in staging | `user_account_balance_amount` (not `price_in_cents`) | All models | Important |
+| Money, other currency | `_amount_<currency>`, ISO 4217 code lowercased | `revenue_amount_usd` | Changed models | Important |
+| Count | `_count`: a count of things | `order_line_count` | Changed models | Important |
+| Rank | `_rank`: an ordinal position | `revenue_rank` | Changed models | Important |
+| Measured quantity | `_<measure>_<unit>`: SI symbol lowercased where one exists (`kg`, `km`, `ml`), else the unit spelled out (`seconds`, `days`). Currency is the only measure whose unit may be implicit | `package_weight_kg`, `session_duration_seconds` | Changed models | Important |
+| Percentage | `_pct`: a value from 0 to 100 | `discount_pct` | Changed models | Important |
+| Proportion | `_ratio`: a value from 0 to 1. A `_pct` column holding 0 to 1, or a `_ratio` column holding 0 to 100, is a finding | `conversion_ratio` | Changed models | Important |
+| Attribute | No suffix | `user_name` | Changed models | Nice-to-have |
+| Entity prefix | Every output column carries the entity prefix of the model. FKs keep the referenced entity's prefix. Two columns about the same thing are told apart by the relationship after the prefix (`order_shipping_country_name`, `order_billing_country_name`) | `user_name`, not `name` | Changed models | Advisory (Nice-to-have, never a failure) |
+| Aggregated column | Leads with the aggregate function, then the source column name | `sum_invoice_line_item_amount`, `max_by_activity_user_name` | Changed models | Advisory (Nice-to-have, never a failure) |
+
+Seed columns keep the CSV's names. Snapshot meta columns (`dbt_valid_from`, `dbt_valid_to`, `dbt_scd_id`, `dbt_updated_at`) keep their dbt names. Neither is a finding.
 
 **Type Casting:**
-- Always use dbt's type-cast macros, never raw SQL types: `{{ dbt.type_string() }}`, `{{ dbt.type_numeric() }}`, `{{ dbt.type_boolean() }}`, `{{ dbt.type_timestamp() }}`, `{{ type_date() }}` (community macro, no `dbt.` prefix)
-- This keeps models portable across warehouses (BigQuery / Snowflake / Databricks / Postgres)
+- Use dbt's cross-database type macros, never raw SQL types: `{{ dbt.type_string() }}`, `{{ dbt.type_numeric() }}`, `{{ dbt.type_boolean() }}`, `{{ dbt.type_timestamp() }}`.
+- For dates, new projects use the project macro `{{ ra_type_date() }}` (in `macros/utility/macro__type_date.sql`). An existing project keeps the date macro it already uses (`{{ type_date() }}` or similar). Either passes.
+- This keeps models portable across warehouses (BigQuery / Snowflake / Databricks / Postgres).
 
 **General Rules:**
 - All names in `snake_case`
@@ -290,21 +411,28 @@ For each model, check ALL fields against these conventions:
 - Inconsistent naming patterns across models
 - Missing `_pk`/`_fk` suffixes; PKs/FKs not generated via `dbt_utils.generate_surrogate_key`
 - Timestamps without `_ts` suffix; dates without `_dt` suffix; non-UTC timestamps without a timezone tag before `_ts`
-- Booleans without `is_`/`has_`/`was_` prefix
+- Booleans without `is_`/`has_`/`was_` at the start or after the entity prefix
 - Revenue columns without `_amount` suffix
 - Raw SQL type casts instead of `dbt.type_*()` macros
 - Reserved words as column names
+- Changed models: counts, ranks, measured quantities, percentages and proportions without the suffixes above
+
+Unprefixed columns (`name`, `is_active`) are not a finding on any model. On a changed model the missing entity prefix is advisory only.
 
 #### 3.3 Field Ordering
 
-Check that fields in each model's `select` list follow this ordering:
+Advisory on all models (Nice-to-have, never a failure). Check that fields in each model's final `select` list follow this order, each group opened by a Jinja comment:
 
-1. **Keys** — pk, fks, natural keys
-2. **Attributes** — dimensions, slicing fields, descriptive columns
-3. **Indexes / ranks** — `row_number()`, rank columns, sequence positions
-4. **Metrics** — measures, aggregatable values, `_amount` columns
-5. **Booleans** — `is_*`, `has_*`, `was_*` flags
-6. **Temporal data types** — `_dt`, `_ts` columns last
+1. `{# primary key #}`
+2. `{# foreign keys #}`
+3. `{# natural keys #}`
+4. `{# attributes #}`: dimensions, slicing fields, descriptive columns
+5. `{# indexes and ranks #}`: `row_number()`, `_rank` columns, sequence positions
+6. `{# metrics #}`: measures, `_amount`, `_count`, `_pct`, `_ratio` columns
+7. `{# booleans #}`: `is_`, `has_`, `was_` flags
+8. `{# temporal #}`: `_dt`, `_ts` columns last
+
+The older six-group order (keys, attributes, indexes/ranks, metrics, booleans, temporal) also passes. Missing group comments are noted for changed models only.
 
 ### Step 3.5: Validate SQL Structure
 
@@ -316,39 +444,57 @@ For each model file, check:
 |-------|------|----------|
 | Refs at top | All `{{ ref() }}` and `{{ source() }}` calls in top CTEs | Critical |
 | CTE naming | `s_` prefix for ref/source CTEs | Important |
-| Final CTE | Must have `final` CTE with `select * from final` at end | Critical |
+| Final CTE | Last CTE is named `final` and the model ends with `select * from final` | Critical (unchanged from earlier versions) |
 | One logical unit | Each CTE does one transformation | Info |
+| Row-removing CTE (changed models) | A CTE that filters out rows carries a comment saying why | Important |
 
 **Required Pattern:**
 ```sql
-with
+with s_source_table as (
 
-s_source_table as (
     select * from {{ ref('source_model') }}
+
 ),
 
 transformation_cte as (
+
     select ... from s_source_table
+
 ),
 
 final as (
-    select ... from transformation_cte
+
+    select * from transformation_cte
+
 )
 
 select * from final
 ```
 
+#### Layer Boundaries
+
+| Check | Rule | Applies to | Severity |
+|-------|------|------------|----------|
+| Sources | Only staging and base models select from `{{ source() }}` | All models | Critical |
+| Staging inputs | A staging model reads sources, base models, snapshots and seeds | All models | Important if it reads a warehouse model |
+| Base models | Read only by the staging model of the same source. Later layers read staging models, not base models | Changed models | Important |
+| Seeds | Read only by staging models | Changed models | Important |
+| Staging joins | No join or union except within one source system | Changed models | Important |
+| Integration inputs | Staging models, intermediate models and other integration models | All models | Important if it reads a warehouse model |
+| Warehouse inputs | Integration models, or staging models where no integration model is needed. `_xa` models also read `_dim` and `_fact` models | All models | Critical if it reads `{{ source() }}` |
+
 **Violations to Flag:**
 - `ref()` or `source()` calls outside of top CTEs
 - Missing final CTE
-- Non-staging models selecting from `{{ source() }}`
+- Non-staging models selecting from `{{ source() }}` (base models count as staging)
+- Integration or warehouse models reading a base model (changed models)
 
 #### SQL Style
 
 | Check | Rule | Severity |
 |-------|------|----------|
 | Indentation | 4 spaces (not tabs) | Important |
-| Line length | Max 80 characters | Info |
+| Line length | Max 120 characters | Info |
 | Case | Lowercase field names and SQL functions | Important |
 | Aliases | Always use `as` keyword | Important |
 | Joins | Explicit: `inner join`, `left join` (never just `join`) | Critical |
@@ -356,83 +502,121 @@ select * from final
 | Column prefixes | Required when joining 2+ tables | Important |
 | Union | `union all` preferred over `union distinct` | Info |
 | Group by | Column names, not numbers | Important |
+| Jinja spacing (changed models) | Delimiters carry inner spaces: `{{ this }}`, not `{{this}}` | Warning (Nice-to-have) |
+| Comments (changed models) | Plain English, full column names, the business's own terms | Info |
+
+**YAML style** (changed schema and source files): 2-space indent, list items indented, lines up to 80 characters. Warning (Nice-to-have) only.
 
 **Violations to Flag:**
 - Implicit joins or missing join qualifiers
 - Hard-to-understand table aliases (single letters)
 - Uppercase SQL keywords or functions
-- Improper indentation or line length
+- Improper indentation, or lines over 120 characters
 
 ### Step 3.6: Validate Model Configuration
 
 | Check | Rule | Severity |
 |-------|------|----------|
-| Warehouse models | Always materialized as `table` | Critical |
-| Staging models | `view` or ephemeral (not `table` unless performance requires) | Important |
+| Warehouse models | Materialized as `table`, or `incremental` where the client chose it for that model | Critical |
+| Staging and base models | `view` or ephemeral (not `table` unless performance requires) | Important |
 | Integration models | `view` or ephemeral (not `table` unless performance requires) | Important |
+| Intermediate models | `view` set by the folder config, or `ephemeral`. Both pass | Important if `table` without a stated reason |
+| Snapshots | `timestamp` strategy, or `check` with `check_cols` where the source has no reliable modified timestamp. Source columns unchanged | Important (added snapshots) |
 | Config placement | Model-specific in `{{ config() }}` block, directory-wide in `dbt_project.yml` | Info |
+| Model description (changed models) | The `config()` block has a `description` that opens `Grain: One row per ...` | Important |
+
+**dbt_project.yml (existing projects).** Compare the project's `dbt_project.yml` and `packages.yml` with the template for new projects (layer configs under the real project name, `+persist_docs` for relation and columns, staging and integration `+materialized: view` with `+schema: staging` / `integration`, warehouse `+materialized: table` with `+meta: {required_docs: true, required_tests: {"unique": 1, "not_null": 1}}`, seeds `+schema: seeds`, snapshots `+schema: snapshots`, `dbt_meta_testing` beside `dbt_utils`). Report each difference under **Suggestions** in the report. A difference is never a finding and never changes status. Do not apply any of them. Note that correcting the project key in an existing project can change which models build as tables or views.
 
 **Violations to Flag:**
-- Warehouse models not materialized as tables
+- Warehouse models not materialized as `table` or `incremental`
 - Unnecessary table materializations in staging/integration
 - Config that should be in `dbt_project.yml` but is in model
+- Changed models with no `Grain:` line in the `config()` description
 
 ### Step 3.7: Validate Testing Coverage
 
 #### Minimum Testing Requirements
 
 **Every Model Must Have:**
-- Entry in a `schema.yml` file
-- Primary key with `unique` and `not_null` tests
+- Entry in a schema file
+- Primary key with `unique` and `not_null` tests. In staging and integration models that follow the reference, the key is the natural key (`_natural_key`), since `_pk` is created in the warehouse layer. An older model with a `_pk` in staging passes
 
 **By Layer:**
 
 | Layer | Required Tests | Severity |
 |-------|---------------|----------|
-| Staging | `unique` + `not_null` on pk, `not_null` on critical fields | Critical |
-| Integration | `unique` + `not_null` on pk, `dbt_utils.unique_combination_of_columns` for multi-source | Critical |
+| Staging | `unique` + `not_null` on the key, `not_null` on critical fields | Critical |
+| Integration | `unique` + `not_null` on the key, `dbt_utils.unique_combination_of_columns` for multi-source | Critical |
 | Warehouse | `unique` + `not_null` on pk, `relationships` on all fk fields | Critical |
+
+**`dbt_utils.at_least_one`.** Accepted on any column as an addition. It never replaces `not_null` on a primary key: a PK with `at_least_one` and no `not_null` is a Critical finding (missing PK test). On other columns, the project decides between `not_null` and `at_least_one`. Neither is a finding.
+
+**Test key.** `data_tests:` and `tests:` both pass. One resource that uses both keys is an Important finding (dbt rejects it). In a schema file that already uses `tests:`, new entries using `tests:` pass.
+
+**Sources** (changed `_sources.yml` or `_<source>__sources.yml` files): `freshness`, with `loaded_at_field` set, is the only test expected. Other tests on source columns are a Nice-to-have finding. `warn_after` and `error_after` values are the client's choice and are not checked.
 
 **Additional Tests to Check:**
 - `relationships` tests for foreign keys
 - `accepted_values` for enum/status fields
 - `not_null_where` for conditional requirements
 - Custom data tests in `tests/` directory for KPI validation
+- `dbt run-operation required_tests` result, where Step 2.6 ran it
 
-**Schema.yml Location:**
-- Every subdirectory should contain a `.yml` file
-- Named after directory: `stg_<source>.yml`, `integration.yml`, etc.
+**Schema File Location:**
+- Every model subdirectory holds a schema file: `_schema.yml` (new form) or the existing name (`stg_<source>.yml`, `integration.yml`, `wh_<group>.yml`, `intermediate.yml`). Both pass
+- Projects that use droughty hold model schema in `models/droughty_schema.yml`. That passes
 
 **Violations to Flag:**
-- Missing `schema.yml` file for a subdirectory
+- Missing schema file for a subdirectory (and no `droughty_schema.yml`)
 - Models without any test coverage
 - Primary keys without `unique`/`not_null` tests
 - Missing `relationships` tests on foreign keys
 - Integration models without `unique_combination_of_columns`
+- A resource that uses both `data_tests:` and `tests:`
 
 ### Step 3.8: Validate Documentation Coverage
 
-| Layer | Required Coverage | Severity |
-|-------|------------------|----------|
-| Staging | 100% — all models and columns documented | Critical |
-| Warehouse | 100% — all models and columns documented | Critical |
-| Integration | As needed — document complex logic and special cases | Important |
+| Layer | Required Coverage | Applies to | Severity |
+|-------|------------------|------------|----------|
+| Staging | 100%: all models and columns documented | All models | Critical |
+| Warehouse | 100%: all models and columns documented | All models | Critical |
+| Integration | As needed: document complex logic and special cases | Unchanged models | Important |
+| Base, intermediate, integration | 100%: every column documented | Changed models | Important |
+| All layers | `config()` description opens `Grain: One row per ...` | Changed models | Important |
+
+Projects that use droughty meet column coverage through the doc blocks droughty writes into `droughty_schema.yml`. They have no model description in a schema file, so the model-description checks for staging and warehouse read the `config()` description instead.
 
 **Checks:**
-- Every staging model has a `description` in schema.yml
-- Every warehouse model has a `description` in schema.yml
+- Every staging model has a `description` in its schema file
+- Every warehouse model has a `description` in its schema file
 - Every column in staging/warehouse has a `description`
+- Changed models: every column in every layer has a `description`
 - Descriptions use business terminology (not just field names)
 - Complex/calculated fields have explanatory descriptions
+- `dbt run-operation required_docs` result, where Step 2.6 ran it
 
-**Best Practices to Check:**
-- Use of `{% docs %}` blocks for shared documentation
-- Doc blocks stored in `models/docs/` directory
-- Descriptions focus on WHY, not just WHAT
+**Doc blocks** (changed models): column descriptions are held once as doc blocks in `models/field_descriptions.md`, and schema files reference them with `'{{ doc("<name>") }}'`. A column that keeps its name across layers uses one doc block. Inline text on a changed model is a Nice-to-have finding. Existing doc blocks in other files (for example `models/docs/`) pass.
+
+**Source declarations** (changed `_sources.yml` or `_<source>__sources.yml` files):
+
+| Check | Severity |
+|-------|----------|
+| One source per `stg_<source>/` directory, named for the directory without `stg_` | Nice-to-have |
+| `schema` and `loader` set | Important |
+| Each table description opens `Grain: ...` (then `Source table group:` where relevant) and ends with a `Use it for ...` sentence | Important (Grain line), Nice-to-have (rest) |
+| Every column of a declared table declared under its source name, including loader columns such as `_fivetran_synced` | Important |
+| Column descriptions written inline, not as doc blocks | Nice-to-have |
+| Columns holding personal data carry "Personal data." in the description | Important |
+| Profiled figures carry the date measured ("Null on 30% of rows as at 2026-09") | Nice-to-have |
+
+**Macros** (added or changed macro files): each macro has an entry in `macros/_schema_macros.yml` with `name`, `description` and `arguments` (each with `name`, `type`, `description`). A missing or out-of-date entry is Important.
 
 **Violations to Flag:**
 - Staging/warehouse models without descriptions
 - Missing column documentation in staging/warehouse
+- Changed models with undocumented columns in any layer, or no `Grain:` line
+- Changed source files missing `loader`, a `Grain:` line, a column, or a personal-data marker
+- Added or changed macros with no `_schema_macros.yml` entry
 - Vague or unhelpful descriptions (e.g., description matches field name)
 
 ### Step 3.9: Run sqlfluff Validation (If Available)
@@ -480,12 +664,22 @@ If compile fails, there are dependency issues.
 
 **Project:** [PROJECT_NAME]
 **Status:** PASS | FAIL
-**Convention Source:** [project-specific / embedded defaults]
+**Convention Source:** [.wire/conventions/dbt.yml / plugin conventions/dbt.yml] [form_choices: yes/no] [prose document read: path / none]
 **Models Location:** dbt/models/
+
+### Scope
+- **Base ref:** [branch] at [commit] / changed set unknown (reference rules reported as warnings)
+- **Models in scope for reference rules:** [n added, m modified]
+  - Added: `[model]`, ...
+  - Modified: `[model]`, ...
+- **Unchanged models:** [count] (carried rules only)
 
 ### Summary
 - ✓ X checks passed
 - ⚠️ Y issues found (N critical, M important, P nice-to-have)
+
+### Convention Lint
+[✓/⚠️/Not run] **lint_conventions.py:** [errors] errors, [warnings] warnings, by rule id
 
 ### Test Results
 
@@ -520,11 +714,16 @@ If compile fails, there are dependency issues.
 [✓/⚠️] **Primary key tests:** [details]
 [✓/⚠️] **Foreign key tests:** [details]
 [✓/⚠️] **Additional tests:** [details]
+[✓/⚠️/N/A] **required_tests (dbt_meta_testing):** [result / not installed]
 
 ### Documentation Coverage
 [✓/⚠️] **Staging models documented:** [x]/[y]
 [✓/⚠️] **Warehouse models documented:** [x]/[y]
 [✓/⚠️] **Column descriptions:** [x]/[y]
+[✓/⚠️] **Changed models with a Grain line:** [x]/[y]
+[✓/⚠️/N/A] **Source declarations (changed files):** [details]
+[✓/⚠️/N/A] **Macro entries in _schema_macros.yml:** [details]
+[✓/⚠️/N/A] **required_docs (dbt_meta_testing):** [result / not installed / skipped: droughty]
 
 ### sqlfluff
 [✓/⚠️/N/A] **Linter results:** [details]
@@ -550,6 +749,10 @@ If compile fails, there are dependency issues.
 ### Nice-to-have Improvements
 [same format]
 
+### Suggestions (dbt_project.yml and packages.yml)
+Differences from the new-project template. Not findings. Not applied.
+1. [difference]: [effect if adopted]
+
 ---
 
 ### Next Steps
@@ -566,6 +769,8 @@ If compile fails, there are dependency issues.
 | **Critical** | Breaks functionality, violates core principles, missing required tests | Missing pk tests, `ref()` outside CTEs, warehouse not materialized as table |
 | **Important** | Inconsistent with conventions, maintainability issues, missing documentation | Wrong field naming, missing docs, implicit joins, no table aliases |
 | **Nice-to-have** | Style preferences, minor optimizations, enhanced documentation | Line length, indentation, `union all` vs `union distinct` |
+
+Status is FAIL when there is a failing dbt test, a Critical finding, or an Important reference-rule finding on a changed model. Important findings from carried rules are reported as before ("should fix"). Advisory items, warnings and suggestions never set FAIL. Reference rules are never Critical, and never apply to unchanged models when git history is available (see **Scope and Severity**).
 
 ### Step 6: Update Status
 
@@ -626,19 +831,25 @@ If tests fail:
 ### No Convention Source Found
 
 ```
-Note: No project-specific conventions found.
-Using embedded conventions from this specification.
+Note: No .wire/conventions/dbt.yml found in this project.
+Using the plugin's conventions/dbt.yml.
 
-To use project-specific conventions, create one of:
-- .dbt-conventions.md
-- dbt_coding_conventions.md
-- docs/dbt_conventions.md
+To override conventions for this project, create .wire/conventions/dbt.yml.
+To keep an older form (for example singular model names or tests:),
+record the ruling in the release's decisions.md and set it under
+form_choices: in that file.
 ```
+
+If the plugin's `conventions/dbt.yml` is also missing, skip Step 2.5, note "convention lint not run" in the report, and do the Step 3 checks by reading the code against this spec.
+
+### No Git History
+
+If Step 1.6 cannot work out the changed set, reference rules run on every model and report as warnings. Say so at the top of the report's Scope section.
 
 ## Common Violations Reference
 
 ❌ **Don't:**
-- Use plural object names (`users` → use `user`)
+- Rename or move an existing model, column, seed, snapshot or schema to match the new forms
 - Put `ref()` calls outside top CTEs
 - Use implicit joins or just `join` (use `inner join`, `left join`)
 - Use table alias initialisms (`c` → use `customer`)
@@ -648,9 +859,13 @@ To use project-specific conventions, create one of:
 - Select from sources in non-staging models
 - Use `union distinct` without good reason
 - Look up PKs in separate queries (generate with `dbt_utils.generate_surrogate_key()`)
+- Replace `not_null` on a primary key with `dbt_utils.at_least_one`
+- Use both `data_tests:` and `tests:` on one resource
+- Let integration or warehouse models read a base model
 
 ✅ **Do:**
-- Use singular names
+- Accept either plural or singular names in staging and integration models
+- Open every changed model's `config()` description with `Grain: One row per ...`
 - All refs in top CTEs (prefixed with `s_`)
 - Explicit join types
 - Descriptive table aliases
@@ -665,7 +880,9 @@ To use project-specific conventions, create one of:
 ## Output
 
 This command:
-- Runs dbt tests
+- Works out the changed set and states which models were in scope
+- Runs dbt tests, and `required_tests` / `required_docs` where `dbt_meta_testing` is installed
+- Runs the convention lint (`lint_conventions.py --domain dbt`)
 - Validates naming conventions (file, field, ordering)
 - Checks SQL structure and style
 - Validates model configuration

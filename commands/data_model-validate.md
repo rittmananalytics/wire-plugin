@@ -188,17 +188,35 @@ Run: /wire:data_model-generate <project_id>
 
 ### Step 3: Run Validation Checks
 
+**Accepted naming forms.** The checks below accept both the current form and the older form. A design is never failed for singular staging or integration names, unprefixed columns, `tests:` as the test key, `_<source>__sources.yml` file names, `ephemeral` intermediate models, or existing `_agg`/`<subject>_summary` aggregates. These are different forms, not defects. Where the project's `.wire/conventions/dbt.yml` or the release's `decisions.md` records a `form_choices:` ruling, report (Info) any new model that follows neither the ruling nor the current form.
+
+| Area | Current form | Older form, still accepted |
+|------|--------------|----------------------------|
+| Staging and integration names | plural: `stg_source_a__users`, `int_core__users` | singular: `stg_source_a__user` |
+| Warehouse names | singular: `wh_core__user_dim` | same |
+| Column prefixes | `user_name`, `user_is_active`, `order_user_natural_key` | `name`, `is_active` |
+| Booleans | `<entity>_is_/has_/was_<x>` | `is_/has_/was_<x>` |
+| Test key | `data_tests:` | `tests:` (never both on one resource) |
+| Source file name | `_sources.yml` | `_<source>__sources.yml` |
+| Warehouse aggregate | `wh_<group>__<entity>_xa` (extended aggregate) | `_agg`, `<subject>_<grain>`, `<subject>_summary` |
+| Seed names | `seed__<description>.csv`, `seeds` schema | existing names and schema |
+
 **Naming Convention Checks**:
 
 | Check | Rule | Severity |
 |-------|------|----------|
-| Staging naming | All staging models follow `stg_<source>__<entity>` (double underscore) | Critical |
+| Staging naming | All staging models follow `stg_<source>__<entity>` (double underscore), plural or singular entity name | Critical |
+| Base model naming | Base models follow `base_<source>__<entity>` and sit with the staging models of their source | Major |
 | Warehouse fact naming | All fact tables follow `wh_<group>__<entity>_fact` | Critical |
 | Warehouse dimension naming | All dimension tables follow `wh_<group>__<entity>_dim` | Critical |
-| Aggregate naming | Aggregate models follow `<subject>_<grain>` or `<subject>_summary` | Major |
-| Integration naming | Integration models follow `int_<group>__<subject>__<description>` | Major |
+| Extended aggregate naming | New aggregate or denormalised warehouse models follow `wh_<group>__<entity>_xa`; existing aggregates keep their names | Major |
+| Integration naming | Integration models follow `int_<group>__<entity>`; intermediate models follow `int_<group>__<entity>__<verb>` | Major |
+| Snapshot naming | New snapshots follow `snapshot_<source>__<source_table>` | Major |
+| Seed naming | New seeds in a new release follow `seed__<description>.csv`; existing seeds keep their names | Major |
 | Surrogate key naming | Surrogate key columns follow `<entity>_pk` pattern | Critical |
 | Foreign key naming | Foreign key columns follow `<referenced_entity>_fk` pattern | Major |
+| Boolean naming | Boolean columns follow `<entity>_is_/has_/was_<x>` or `is_/has_/was_<x>` | Major |
+| Column suffixes | Measures in new models use `_amount`, `_amount_<currency>`, `_<measure>_<unit>`, `_count`, `_rank`, `_pct` or `_ratio`; dates `_dt`, timestamps `_ts` | Info |
 | No reserved words | No model or column names use SQL reserved words (e.g. `date`, `order`, `group`) | Major |
 | snake_case columns | All column names are `lower_snake_case` | Major |
 
@@ -208,15 +226,19 @@ Run: /wire:data_model-generate <project_id>
 |-------|------|----------|
 | Entity coverage | Every entity from conceptual_model.md appears as at least one warehouse model | Critical |
 | Grain defined | Every model (staging and warehouse) has a grain statement | Critical |
-| Surrogate key defined | Every model has a surrogate key specified | Critical |
+| Key defined | Every warehouse model has a surrogate key specified. Every staging and integration model has a natural key (current form) or a surrogate key (older designs, accepted) | Critical |
 | Source defined | Every staging model references a source table from the pipeline architecture | Critical |
 | FK → PK traceability | Every foreign key in a warehouse model references a defined PK in another model | Critical |
-| Test coverage | Every model has at minimum: `not_null(pk)` and `unique(pk)` | Critical |
+| Test coverage | Every warehouse model has at minimum `unique` and `not_null` on its primary key; every staging and integration model has them on its key | Critical |
+| `at_least_one` placement | Where `dbt_utils.at_least_one` is specified, it sits alongside `not_null`, never in place of it on a key column | Major |
 | FK tests | Every foreign key column has a `relationships` test defined | Major |
 | Audit column | Every warehouse model includes `dbt_updated_at: current_timestamp()` | Major |
-| Materialisation specified | Staging = view, Warehouse = table (or justified exception) | Major |
+| Materialisation specified | Staging, base, intermediate and integration = view (existing `ephemeral` accepted), Warehouse = table (or justified exception) | Major |
 | Source definitions | `_sources.yml` content is present for each source system | Major |
+| Source content | New source declarations: one source per `stg_<source>/` directory named for the directory without `stg_`; `schema` and `loader` set; each table description opens `Grain:` and ends with a `Use it for` sentence; every column of a declared table declared, inline descriptions, no doc blocks; personal data columns say "Personal data." | Major |
+| Source tests | `freshness` is the only test in new `_sources.yml` content (existing source files with column tests are reported as Info, not failed) | Major |
 | Freshness thresholds | Freshness `warn_after` / `error_after` set for each source table with a live feed | Major |
+| Natural keys not lowercased | No natural key or source identifier is specified as lowercased | Major |
 
 **Physical ERD Checks**:
 
@@ -261,11 +283,14 @@ Run: /wire:data_model-generate <project_id>
 
 | Check | Status | Notes |
 |-------|--------|-------|
+| Naming form | ℹ️ | [current / older form / form_choices ruling followed] |
 | Staging naming (stg_source__entity) | ✅/❌ | |
 | Fact naming (_fact) | ✅/❌ | |
 | Dimension naming (_dim) | ✅/❌ | |
+| Extended aggregate naming (_xa) | ✅/⚠️ | |
 | Surrogate key naming (_pk) | ✅/❌ | |
 | Foreign key naming (_fk) | ✅/⚠️ | |
+| Boolean naming | ✅/⚠️ | |
 | snake_case columns | ✅/⚠️ | |
 
 ### Model Completeness Checks
@@ -281,6 +306,7 @@ Run: /wire:data_model-generate <project_id>
 | Audit columns | ✅/⚠️ | |
 | Materialisations | ✅/⚠️ | |
 | Source definitions | ✅/❌ | |
+| Source content and tests | ✅/⚠️ | |
 | Freshness thresholds | ✅/⚠️ | |
 
 ### Physical ERD Checks
@@ -366,6 +392,10 @@ If a conceptual model entity has no warehouse model, this is a Critical failure 
 1. Add a warehouse model for it
 2. Explicitly document it as out of scope in the data model spec (with justification)
 3. Flag it as a future phase item
+
+### Existing Models in the Design
+
+A design that extends an existing dbt project lists existing models alongside new ones. Never report a finding that would require renaming an existing model, column, seed, snapshot or schema. Apply the source content, column suffix and extended aggregate checks to new models only.
 
 ### Provisional Column Names
 

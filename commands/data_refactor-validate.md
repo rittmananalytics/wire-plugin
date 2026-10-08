@@ -175,7 +175,7 @@ Validate that the refactored dbt project (transitioned from seed data to real cl
 1. Navigate to the dbt project directory
 2. Run `dbt compile` to verify all models parse correctly
 3. Check for:
-   - Missing source references (seeds that weren't properly replaced)
+   - Missing source references (seeds that weren't properly replaced). Check `ref()` calls for seeds under either naming: `seed__<table_name>` and `<table_name>`.
    - Undefined column references
    - SQL syntax errors from schema changes
    - Broken ref() chains

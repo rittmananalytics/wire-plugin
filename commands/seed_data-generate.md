@@ -304,6 +304,19 @@ YAML does not carry that edge.
    - Identify which measures and dimensions are needed
    - Ensure seed data will produce non-zero values for key metrics
 
+### Step 2.5: Choose the Seed Naming
+
+New releases name seed files `seed__<table_name>.csv` and load them to the `seeds` schema. A release already under way keeps the names it has, so `data_refactor` still finds them. Never rename an existing seed.
+
+Use the **legacy** naming (`<table_name>.csv`, existing schema) if any of these is true:
+- `status.md` has `seed_data.seed_naming: legacy`.
+- `status.md` shows `seed_data.generate: complete` with no `seed_naming` field (seeds generated before Wire 4.1.2).
+- `dev/seed_data/`, or the dbt project's `seeds/` directory, already holds CSV files for this release that are not named `seed__*`.
+
+Otherwise use the **seed_prefix** naming. Record the choice in Step 6 as `seed_naming: seed_prefix | legacy`.
+
+Seed columns keep the CSV's column names (the source column names from the DDL). The model column prefix rules do not apply to seeds. Only a staging model reads a seed.
+
 ### Step 3: Design Seed Data Strategy
 
 **Process**:
@@ -344,7 +357,8 @@ For each source table, in dependency order:
    - Some records should have NULL in nullable columns (for testing NULL handling)
 
 4. Save each CSV to `.wire/<project-folder>/dev/seed_data/`:
-   - File naming: `[table_name].csv` (matching the source table name, lowercase)
+   - File naming (seed_prefix): `seed__[table_name].csv` (the source table name, lowercase)
+   - File naming (legacy, release already under way): `[table_name].csv`
 
 ### Step 5: Generate Seed Data Summary
 
@@ -385,13 +399,15 @@ Load seeds in this order to maintain referential integrity:
 
 ## dbt Configuration
 
-Add to `dbt_project.yml`:
+Add to `dbt_project.yml` (seed_prefix naming, new releases):
 ```yaml
 seeds:
-  +schema: seed
-  project_name:
+  <project_name>:
+    +schema: seeds
     +enabled: true
 ```
+
+For legacy naming, keep the seed schema the project already uses (earlier Wire releases wrote `+schema: seed`).
 ```
 
 ### Step 6: Update Status
@@ -406,6 +422,7 @@ seeds:
      review: not_started
      generated_date: [today's date]
      seed_file_count: [number of CSV files]
+     seed_naming: seed_prefix | legacy   # from Step 2.5
    ```
 3. Write updated status.md
 
@@ -480,7 +497,7 @@ If the DDL suggests a table would need many rows for realistic data:
 ## Output
 
 This command creates:
-- `dev/seed_data/*.csv` — CSV seed files, one per source table
+- `dev/seed_data/*.csv`: CSV seed files, one per source table (`seed__<table_name>.csv` in new releases)
 - `dev/seed_data/README.md` — seed data summary and documentation
 - Updates `status.md`
 

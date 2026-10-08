@@ -1,0 +1,106 @@
+# Example source declarations: models/staging/stg_back_office/_sources.yml
+# One _sources.yml per stg_<source>/ directory, declaring one source named for
+# the directory without stg_. Column descriptions are written here, inline,
+# not as doc blocks. freshness is the only test in this file.
+# Existing projects keep their _<source>__sources.yml files.
+
+version: 2
+
+sources:
+  - name: back_office
+    description: >
+      The back-office administration system, loaded by Fivetran into
+      BigQuery. Data starts on 1 March 2021. Money is held in integer
+      cents. Timestamps are UTC. users.id joins to orders.user_id.
+    schema: fivetran_back_office
+    loader: fivetran
+    tables:
+      - name: users
+        identifier: user_accounts
+        description: >
+          Grain: One row per user account.
+          Holds the current state of each account. Fivetran re-reads rows
+          changed in the last three days on every sync, and marks deleted
+          accounts in is_deleted rather than removing them.
+          Use it for user attributes and account status.
+        config:
+          loaded_at_field: _fivetran_synced
+          freshness:
+            warn_after: {count: 24, period: hour}
+            error_after: {count: 48, period: hour}
+        columns:
+          - name: id
+            description: >
+              Back-office identifier for the user account. One row per id.
+              Case-sensitive. The same value is held in orders.user_id.
+          - name: account_id
+            description: >
+              Identifier of the billing account the user belongs to. The
+              same value is held in accounts.id.
+          - name: name
+            description: >
+              The user's full name as entered at sign-up. Personal data.
+          - name: email
+            description: >
+              The user's email address. Personal data. Null on 2% of rows
+              as at 2026-09, all created before 2022.
+          - name: country_code
+            description: >
+              ISO 3166-1 alpha-2 country code, upper case. Null where the
+              user skipped the country question.
+          - name: account_balance_cents
+            description: >
+              Prepaid balance on the account, in integer cents of the base
+              currency (GBP).
+          - name: session_length_secs
+            description: >
+              The user's average session length over the last 30 days, in
+              seconds. Null for users with no sessions.
+          - name: profile_completion
+            description: >
+              Share of profile fields completed, from 0 to 1.
+          - name: active
+            description: >
+              True where the account can sign in. Null means the account
+              predates the flag and is active.
+          - name: is_deleted
+            description: >
+              True where the account was deleted in the back office. Null
+              means not deleted.
+          - name: created_date
+            description: The date the account was created. UTC.
+          - name: updated_at
+            description: When the row was last changed in the back office. UTC.
+          - name: _loaded_at
+            description: When the back-office export wrote the row. UTC.
+          - name: _fivetran_synced
+            description: When Fivetran loaded the row. UTC.
+
+      - name: orders
+        description: >
+          Grain: One row per order placed in the last two years.
+          Older orders move to archived_orders. Fivetran re-reads the
+          whole table on every sync.
+          Use it with archived_orders for order history.
+        config:
+          loaded_at_field: _fivetran_synced
+          freshness:
+            warn_after: {count: 24, period: hour}
+        columns:
+          - name: id
+            description: >
+              Back-office identifier for the order. One row per id. The
+              same value is held in archived_orders.id once archived.
+          - name: user_id
+            description: >
+              The user who placed the order. The same value is held in
+              user_accounts.id.
+          - name: status
+            description: >
+              Order status. One of PLACED, SHIPPED, DELIVERED, CANCELLED.
+          - name: total_cents
+            description: Order total including tax, in integer cents (GBP).
+          - name: placed_at
+            description: When the order was placed. UTC.
+          - name: _fivetran_synced
+            description: When Fivetran loaded the row. UTC.

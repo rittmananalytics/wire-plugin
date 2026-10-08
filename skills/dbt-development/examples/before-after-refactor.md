@@ -1,617 +1,183 @@
-# dbt Model Refactoring: Before & After
+# Changing an Existing Model: Before and After
 
-> Side-by-side comparison showing transformation from non-compliant to compliant dbt model
-
----
-
-## Overview
-
-**Model**: Salesforce Opportunities staging model
-**Original State**: Non-compliant (multiple convention violations)
-**Refactored State**: Fully compliant with Wire/Rittman Analytics standards
-**Effort**: 2 points (~1 hour)
-**Files Changed**: 2 (model SQL + schema.yml)
+Example of a ticket-sized change to a model in an existing client project. It shows what Wire changes and what it leaves alone.
 
 ---
 
-## Before: Non-Compliant Model
+## The request
 
-### File: `models/staging/opportunities.sql`
+"Add the opportunity's discount, its forecast category and the owner's region to the Salesforce opportunities staging model."
 
-**Issues**:
-- ❌ Missing `stg_` prefix
-- ❌ Not in source subdirectory
-- ❌ No CTE pattern
-- ❌ Poor field naming
-- ❌ No config block
-- ❌ No tests
-- ❌ No documentation
+## The project
+
+- Existing project, dbt 1.7. Schema files use `tests:`.
+- Staging models are singular and unprefixed (`stg_salesforce__opportunity`, columns `name`, `is_won`).
+- `.wire/conventions/dbt.yml` has no `form_choices:` ruling.
+- The model is read by `int_sales__opportunity`, a LookML view and a Hightouch sync.
+
+---
+
+## Before
+
+`models/staging/stg_salesforce/stg_salesforce__opportunity.sql`
 
 ```sql
--- models/staging/opportunities.sql
+{{ config(description = 'Salesforce opportunities') }}
 
-select
-    id,
-    accountid,
-    name,
-    stagename,
-    amount,
-    closedate,
-    probability,
-    isclosed,
-    iswon,
-    createddate,
-    lastmodifieddate,
-    ownerid,
-    type
-from raw.salesforce.opportunities
-where isdeleted = 0
-```
+with s_opportunities as (
 
-**Validation Score**: 6/25 (24%)
-
----
-
-## After: Compliant Model
-
-### File: `models/staging/salesforce/stg_salesforce_opportunities.sql`
-
-**Improvements**:
-- ✅ Correct naming: `stg_salesforce_opportunities.sql`
-- ✅ Proper directory: `models/staging/salesforce/`
-- ✅ CTE pattern (source → renamed)
-- ✅ Correct field naming (_pk, _fk, _ts suffixes)
-- ✅ Config block with materialization + tags
-- ✅ Logical field grouping
-- ✅ Source reference via `{{ source() }}`
-- ✅ Comments explaining sections
-
-```sql
--- models/staging/salesforce/stg_salesforce_opportunities.sql
-
-{{
-    config(
-        materialized='view',
-        tags=['salesforce', 'crm', 'staging', 'opportunities']
-    )
-}}
-
-with source as (
-
-    select * from {{ source('salesforce', 'opportunities') }}
+    select * from {{ source('salesforce', 'opportunity') }}
 
 ),
 
 renamed as (
 
     select
-        -- Primary Key
-        id as opportunity_pk,
 
-        -- Foreign Keys
-        accountid as account_fk,
-        ownerid as owner_fk,
-
-        -- Descriptive Fields
-        name as opportunity_name,
-        type as opportunity_type,
-        stagename as stage_name,
-
-        -- Financial Fields
+        id as opportunity_natural_key,
+        account_id as account_natural_key,
+        lower(name) as name,
+        lower(stage_name) as stage_name,
         amount,
-        probability,
+        is_won,
+        cast(created_date as {{ dbt.type_timestamp() }}) as created_ts
 
-        -- Status Flags
-        isclosed as is_closed,
-        iswon as is_won,
+    from s_opportunities
 
-        -- Timestamps
-        closedate as close_date,
-        createddate as created_ts,
-        lastmodifieddate as modified_ts
-
-    from source
-
-    -- Filter out deleted opportunities (soft deletes in Salesforce)
-    where isdeleted = 0
+    where not is_deleted
 
 )
 
 select * from renamed
 ```
 
-**Validation Score**: 22/25 (88%) - Tests and documentation needed
-
----
-
-## Tests Added
-
-### File: `models/staging/salesforce/schema.yml`
-
-**Before**: No schema.yml file existed
-
-**After**:
-
-```yaml
-version: 2
-
-models:
-  - name: stg_salesforce_opportunities
-    description: >
-      Staging model for Salesforce opportunities. Contains all active
-      (non-deleted) opportunities with sales pipeline information including
-      stage, amount, and close date.
-
-    columns:
-      - name: opportunity_pk
-        description: Primary key - Salesforce opportunity ID
-        tests:
-          - unique
-          - not_null
-
-      - name: account_fk
-        description: Foreign key to associated account
-        tests:
-          - not_null
-          - relationships:
-              to: ref('stg_salesforce_accounts')
-              field: account_pk
-
-      - name: owner_fk
-        description: Foreign key to opportunity owner (user)
-        tests:
-          - relationships:
-              to: ref('stg_salesforce_users')
-              field: user_pk
-
-      - name: opportunity_name
-        description: Name/title of the opportunity
-        tests:
-          - not_null
-
-      - name: stage_name
-        description: Current sales stage (e.g., 'Prospecting', 'Closed Won')
-        tests:
-          - not_null
-
-      - name: amount
-        description: Opportunity value in account currency
-        tests:
-          - not_null
-
-      - name: close_date
-        description: Expected or actual close date
-        tests:
-          - not_null
-
-      - name: probability
-        description: Win probability percentage (0-100)
-
-      - name: is_closed
-        description: Boolean flag indicating if opportunity is closed
-
-      - name: is_won
-        description: Boolean flag indicating if opportunity was won
-
-      - name: created_ts
-        description: Timestamp when opportunity was created in Salesforce
-
-      - name: modified_ts
-        description: Timestamp when opportunity was last modified
-```
-
-**Validation Score**: Now 25/25 (100%) ✅
-
----
-
-## Detailed Changes Breakdown
-
-### 1. File Naming & Structure
-
-**Before**:
-```
-models/staging/opportunities.sql
-```
-
-**After**:
-```
-models/staging/salesforce/stg_salesforce_opportunities.sql
-```
-
-**Changes**:
-- ✅ Added `stg_` prefix (identifies layer)
-- ✅ Added source system `salesforce_` (identifies source)
-- ✅ Created source subdirectory `/salesforce/`
-- ✅ Matches naming convention exactly
-
----
-
-### 2. Configuration
-
-**Before**: No config block (uses defaults)
-
-**After**:
-```sql
-{{
-    config(
-        materialized='view',
-        tags=['salesforce', 'crm', 'staging', 'opportunities']
-    )
-}}
-```
-
-**Changes**:
-- ✅ Explicit materialization (view - correct for staging)
-- ✅ Tags for selective execution
-- ✅ Clear, declarative configuration
-
----
-
-### 3. SQL Structure
-
-**Before**: Direct select from raw table
-
-**After**: CTE pattern with clear sections
-
-```sql
-with source as (
-    select * from {{ source('salesforce', 'opportunities') }}
-),
-
-renamed as (
-    select
-        -- Transformation logic
-    from source
-    where isdeleted = 0
-)
-
-select * from renamed
-```
-
-**Changes**:
-- ✅ Separated source reference from transformation
-- ✅ Makes model extensible (easy to add more CTEs)
-- ✅ Follows established pattern
-- ✅ Used `{{ source() }}` macro instead of raw table reference
-
----
-
-### 4. Field Naming
-
-**Before → After**:
-
-| Before (Non-Compliant) | After (Compliant) | Convention |
-|------------------------|-------------------|------------|
-| `id` | `opportunity_pk` | Primary key: `_pk` suffix |
-| `accountid` | `account_fk` | Foreign key: `_fk` suffix |
-| `ownerid` | `owner_fk` | Foreign key: `_fk` suffix |
-| `name` | `opportunity_name` | Descriptive: full context |
-| `type` | `opportunity_type` | Descriptive: full context |
-| `stagename` | `stage_name` | Snake case |
-| `isclosed` | `is_closed` | Boolean: `is_` prefix |
-| `iswon` | `is_won` | Boolean: `is_` prefix |
-| `closedate` | `close_date` | Date: snake case |
-| `createddate` | `created_ts` | Timestamp: `_ts` suffix |
-| `lastmodifieddate` | `modified_ts` | Timestamp: `_ts` suffix |
-
-**Key Improvements**:
-- ✅ All conventions followed
-- ✅ Field purpose clear from name
-- ✅ Consistent style (snake_case)
-- ✅ No ambiguity
-
----
-
-### 5. Field Grouping
-
-**Before**: Random order (as they appear in source)
-
-**After**: Logical grouping with comments
-
-```sql
--- Primary Key
-opportunity_pk,
-
--- Foreign Keys
-account_fk,
-owner_fk,
-
--- Descriptive Fields
-opportunity_name,
-opportunity_type,
-stage_name,
-
--- Financial Fields
-amount,
-probability,
-
--- Status Flags
-is_closed,
-is_won,
-
--- Timestamps
-close_date,
-created_ts,
-modified_ts
-```
-
-**Benefits**:
-- ✅ Easier to scan
-- ✅ Clear sections
-- ✅ Maintainable
-- ✅ Self-documenting
-
----
-
-### 6. Testing
-
-**Before**: No tests ❌
-
-**After**: Comprehensive test coverage ✅
-
-**Primary Key Tests**:
-```yaml
-- name: opportunity_pk
-  tests:
-    - unique
-    - not_null
-```
-
-**Foreign Key Tests**:
-```yaml
-- name: account_fk
-  tests:
-    - relationships:
-        to: ref('stg_salesforce_accounts')
-        field: account_pk
-```
-
-**Critical Field Tests**:
-```yaml
-- name: opportunity_name
-  tests:
-    - not_null
-- name: amount
-  tests:
-    - not_null
-```
-
-**Test Count**:
-- Primary key: 2 tests (unique + not_null)
-- Foreign keys: 2 relationship tests
-- Critical fields: 3 not_null tests
-- **Total**: 7 tests
-
----
-
-### 7. Documentation
-
-**Before**: 0% documented ❌
-
-**After**: 100% documented ✅
-
-**Model-Level**:
-```yaml
-description: >
-  Staging model for Salesforce opportunities. Contains all active
-  (non-deleted) opportunities with sales pipeline information...
-```
-
-**Column-Level**: All 13 columns documented
-
-**Documentation Coverage**:
-- Model description: ✅
-- Primary key: ✅
-- Foreign keys: ✅
-- Business fields: ✅
-- Technical fields: ✅
-- **Coverage**: 100%
-
----
-
-## Impact Comparison
-
-### Code Quality Metrics
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Validation Score** | 6/25 (24%) | 25/25 (100%) | +76% |
-| **Lines of Code** | 19 | 58 | +205% (more complete) |
-| **Tests** | 0 | 7 | +7 tests |
-| **Documentation** | 0% | 100% | +100% |
-| **Maintainability** | Low | High | Qualitative |
-| **Convention Adherence** | 1/8 patterns | 8/8 patterns | +700% |
-
-### Specific Improvements
-
-**Naming**: 2/5 → 5/5 (perfect)
-**Structure**: 1/5 → 5/5 (perfect)
-**Field Naming**: 1/5 → 5/5 (perfect)
-**Configuration**: 0/3 → 3/3 (perfect)
-**Testing**: 0/4 → 4/4 (perfect)
-**Documentation**: 0/3 → 3/3 (perfect)
-
----
-
-## Common Refactoring Patterns
-
-### Pattern 1: Add Staging Prefix
-
-```bash
-# Before
-models/staging/opportunities.sql
-
-# After
-models/staging/salesforce/stg_salesforce_opportunities.sql
-```
-
-**Steps**:
-1. Create source subdirectory: `mkdir models/staging/salesforce`
-2. Rename file with `stg_` prefix
-3. Move to subdirectory
-4. Update any references in downstream models
-
----
-
-### Pattern 2: Wrap in CTE Pattern
-
-**Before**:
-```sql
-select
-    field1,
-    field2
-from raw.table
-where condition
-```
-
-**After**:
-```sql
-with source as (
-    select * from {{ source('system', 'table') }}
-),
-
-renamed as (
-    select
-        field1,
-        field2
-    from source
-    where condition
-)
-
-select * from renamed
-```
-
----
-
-### Pattern 3: Fix Field Naming
-
-**Before**: `createddate`, `id`, `accountid`, `isclosed`
-
-**After**: `created_ts`, `object_pk`, `account_fk`, `is_closed`
-
-**Rule Application**:
-- Primary keys: add `_pk`
-- Foreign keys: add `_fk`
-- Timestamps: add `_ts`
-- Booleans: add `is_` or `has_` prefix
-- All: convert to snake_case
-
----
-
-### Pattern 4: Add Configuration
+## After
 
 ```sql
 {{
     config(
-        materialized='view',  # or 'table' for warehouse
-        tags=['source_system', 'domain', 'layer']
+        description = """
+            Grain: One row per Salesforce opportunity that is not deleted.
+            Salesforce opportunities, renamed and cast.
+        """
     )
 }}
+
+with s_opportunities as (
+
+    select * from {{ source('salesforce', 'opportunity') }}
+
+),
+
+-- Deleted opportunities are kept in the Salesforce table with is_deleted set. They are not
+-- opportunities the business recognises, so they are removed here.
+current_opportunities as (
+
+    select * from s_opportunities
+
+    where not is_deleted
+
+),
+
+renamed as (
+
+    select
+
+        {# natural keys #}
+        id as opportunity_natural_key,
+        account_id as account_natural_key,
+        {# attributes #}
+        lower(name) as name,
+        lower(stage_name) as stage_name,
+        lower(forecast_category_name) as opportunity_forecast_category_name,
+        {# metrics #}
+        amount,
+        cast(discount_percent__c as {{ dbt.type_numeric() }}) as opportunity_discount_pct,
+        {# booleans #}
+        is_won,
+        {# temporal #}
+        cast(created_date as {{ dbt.type_timestamp() }}) as created_ts
+
+    from current_opportunities
+
+),
+
+final as (
+
+    select * from renamed
+
+)
+
+select * from final
 ```
-
-**Template for Staging**:
-- Materialization: `view`
-- Tags: `[source, domain, 'staging']`
-
-**Template for Warehouse**:
-- Materialization: `table`
-- Tags: `[domain, 'warehouse', fact/dim]`
 
 ---
 
-### Pattern 5: Add Basic Tests
+## What changed, and why
 
-**Minimum for Staging**:
+| Change | Rule | Reason |
+|---|---|---|
+| `Grain:` line added to the config description | Section A, changed model | Grain is the first thing a reader needs |
+| `where not is_deleted` moved into its own CTE with a comment | Staging filters only for correctness, with a comment | A reader sees why rows are removed |
+| New columns `opportunity_forecast_category_name`, `opportunity_discount_pct` | New columns take the new form (no ruling) | Prefix says which entity; `_pct` says the 0 to 100 scale |
+| Column groups marked with Jinja comments | Section A, changed model | Eight groups, in order |
+| `final` CTE and `select * from final` | Section A, changed model | One line to change when debugging |
+| `opportunity_natural_key` not lowercased | Natural keys keep their case | Salesforce IDs are case-sensitive |
+
+## What did not change, and why
+
+| Kept | Reason |
+|---|---|
+| File name `stg_salesforce__opportunity.sql` (singular) | Never rename existing objects; three consumers read it |
+| Owner region not added here | It comes from another concept (the Salesforce user). A join that derives a value from another concept, even in the same source, belongs in a later model: it is added to `int_sales__opportunity` |
+| Columns `name`, `stage_name`, `amount`, `is_won`, `created_ts` (unprefixed) | Never rename existing columns; the LookML view and the sync use them |
+| `renamed` CTE name | Renaming a CTE adds diff and no value |
+| `tests:` in `stg_salesforce.yml` | dbt 1.7, and the file already uses `tests:` |
+| Source file `_salesforce__sources.yml` | Old source file name still accepted |
+
+Because the model already uses unprefixed columns, ask the consultant before writing whether the project wants a `column_prefix: none` ruling. If they do, record it in `decisions.md` and `.wire/conventions/dbt.yml`, and name the new columns `forecast_category_name` and `discount_pct` instead.
+
+---
+
+## Schema entry added
+
+In `models/staging/stg_salesforce/stg_salesforce.yml` (existing file, existing key):
+
 ```yaml
-models:
-  - name: stg_<source>_<object>
-    columns:
-      - name: <object>_pk
-        tests:
-          - unique
-          - not_null
-      - name: <critical_field>
+      - name: opportunity_forecast_category_name
+        description: '{{ doc("opportunity_forecast_category_name") }}'
         tests:
           - not_null
+          - dbt_utils.at_least_one
+          - accepted_values:
+              values: ['pipeline', 'best case', 'commit', 'closed', 'omitted']
+
+      - name: opportunity_discount_pct
+        description: '{{ doc("opportunity_discount_pct") }}'
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
 ```
 
-**Expand with**:
-- Foreign key relationships
-- Accepted values (for enums)
-- Custom business logic tests
+Doc blocks for both columns added to `models/field_descriptions.md`. Because the model changed, every column in it is documented: doc blocks were added for the seven existing columns that had none.
+
+## Source declaration checked
+
+`discount_percent__c` and `forecast_category_name` are already declared under the `opportunity` table in `_salesforce__sources.yml`. Had they been missing, they would be added with descriptions in Salesforce terms: what the column holds, its unit or allowed values, and what a null means.
+
+## Checker run
+
+```
+python3 wire/scripts/lint_conventions.py --domain dbt \
+  --convention wire/conventions/dbt.yml --path models \
+  --changed-from "$(git merge-base HEAD main)" --format json
+```
+
+Findings: none on the changed model. No findings on unchanged models, which keep their old forms.
 
 ---
 
-## Refactoring Checklist
+## When a rename is wanted
 
-Use this when refactoring any dbt model:
-
-### File Structure
-- [ ] File named: `stg_<source>_<object>.sql` or `int_<domain>_<object>.sql` or `<object>_dim/fct.sql`
-- [ ] In correct directory: `models/<layer>/<source or domain>/`
-- [ ] Referenced in `dbt_project.yml` if needed
-
-### SQL Structure
-- [ ] Has config block (materialization + tags)
-- [ ] Uses CTE pattern (source → transformation CTEs → final select)
-- [ ] Uses `{{ source() }}` or `{{ ref() }}` macros (not raw table names)
-- [ ] Has comments for each major section
-- [ ] WHERE clause explained if filtering data
-
-### Field Naming
-- [ ] Primary key has `_pk` suffix
-- [ ] Foreign keys have `_fk` suffix
-- [ ] Timestamps have `_ts` suffix
-- [ ] Booleans have `is_` or `has_` prefix
-- [ ] All fields are snake_case
-- [ ] Fields grouped logically (pk → fks → descriptive → timestamps)
-
-### Testing
-- [ ] Primary key tested: unique + not_null
-- [ ] Foreign keys tested: relationships
-- [ ] Critical business fields tested: not_null or accepted_values
-- [ ] Custom business logic tested if applicable
-
-### Documentation
-- [ ] Model description exists in schema.yml
-- [ ] All critical columns documented
-- [ ] Staging: 100% column documentation
-- [ ] Integration: Key transformation columns documented
-- [ ] Warehouse: All dimension/fact columns documented
-
-### Code Quality
-- [ ] Indentation consistent (4 spaces)
-- [ ] Lines under 80 characters where possible
-- [ ] No hard-coded values (use variables or sources)
-- [ ] sqlfluff passes with no errors
-
----
-
-## Time Investment vs Value
-
-**Refactoring Effort**: 1-2 hours per model
-
-**Value Gained**:
-- ✅ Catches data quality issues (PK uniqueness, FK relationships)
-- ✅ Self-documenting code (clear naming, tests, docs)
-- ✅ Easier onboarding (new team members understand faster)
-- ✅ Reduced bugs (conventions prevent common mistakes)
-- ✅ Better maintainability (consistent patterns)
-- ✅ Confidence in data quality (comprehensive testing)
-
-**ROI**: High - upfront time investment pays off in reduced debugging and maintenance
-
----
-
-## Key Takeaways
-
-1. **Small changes, big impact**: Renaming fields and adding tests dramatically improves quality
-2. **Conventions matter**: Consistent patterns make code predictable and maintainable
-3. **Testing is essential**: Primary key and foreign key tests catch critical issues
-4. **Documentation pays off**: 100% documentation seems like overhead but saves time later
-5. **CTE pattern scales**: Easy to extend with additional transformations
-6. **Use templates**: Copy from compliant models rather than starting from scratch
-
----
-
-_Example refactoring guide from wire:dbt-development skill showing convention application_
+If the client wants `stg_salesforce__opportunity` renamed to `stg_salesforce__opportunities`, or its columns prefixed, that is a refactor: a separate decision, planned with its consumers, in a `/wire:data_refactor-generate` run. It is never done as part of a feature change.

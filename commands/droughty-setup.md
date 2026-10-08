@@ -321,6 +321,26 @@ lookml_path: [lookml_project_path]/views/generated/
 
 If `lookml_project_path` is null, omit the `lookml_path` line.
 
+### Step 6.5: dbt Documentation and Test Settings with Droughty
+
+A dbt project that uses droughty sets `required_docs: false` in the warehouse `+meta` block of `dbt_project.yml`, and keeps `required_tests` on:
+
+```yaml
+models:
+  <project_name>:
+    warehouse:
+      +meta:
+        required_docs: false
+        required_tests: {"unique": 1, "not_null": 1}
+```
+
+Reasons: droughty writes no model descriptions, and it rewrites `models/droughty_schema.yml` on every run, so `required_docs` (from `dbt_meta_testing`) would fail on every warehouse model. The project meets the documentation rule through doc blocks in `models/field_descriptions.md`, which droughty writes into the column descriptions of `droughty_schema.yml`. `required_tests` is not affected.
+
+- **New dbt project**: set the block above.
+- **Existing dbt project**: if `dbt_project.yml` sets `required_docs: true`, report the change as a suggestion. Do not apply it.
+
+droughty does not generate the `_sources.yml` files under `models/staging/`. Those are written by hand (see `/wire:droughty-stage`).
+
 ### Step 7: Verify Connectivity
 
 Run a lightweight test to confirm warehouse access:

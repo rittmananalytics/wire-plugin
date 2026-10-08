@@ -200,27 +200,29 @@ This is how the chain of derivation works in practice. The dbt code is not gener
 
 ### Step 1.5 — Convention source detection
 
-Before writing any code, the command checks for a project-specific conventions file:
+Before writing any code, the command works out which conventions apply:
 
 ```
 Priority order:
-1. .dbt-conventions.md in project root         (highest priority)
-2. dbt_coding_conventions.md in project root
-3. docs/dbt_conventions.md in project
-4. Embedded conventions in this command file   (fallback)
+1. Rulings: decisions.md entries and form_choices: in .wire/conventions/dbt.yml
+2. .wire/conventions/dbt.yml (the project's copy of the plugin's conventions/dbt.yml)
+3. .dbt-conventions.md, dbt_coding_conventions.md or docs/dbt_conventions.md
+4. The plugin's conventions/dbt.yml and the conventions in the command file
 ```
 
-If a conventions file exists, its rules override the embedded defaults, which means that a client project can deviate from RA standard conventions by dropping a file at the root, and the command picks it up automatically, without any modification to the plugin.
+The plugin's conventions follow the ra_fw_core dbt development reference; `conventions/dbt.yml` records the reference version. A client project can deviate by adding its own file, and the command picks it up without any change to the plugin.
+
+On a project that already has models, Wire never renames or moves an existing model, column, seed or snapshot. New and changed models use the current conventions. Where the project keeps an older form for consistency (singular model names, unprefixed columns), that choice is a ruling recorded in `decisions.md`, and the command follows it.
 
 ### Steps 3–5 — Layered SQL generation
 
 The command generates models in three passes, one per dbt layer:
 
-**Staging** (`stg_<source>__<object>.sql`): Clean and rename raw source columns, add a surrogate key and rename to RA conventions, with no joins and no business logic.
+**Staging** (`stg_<source>__<entities>.sql`, with `base_<source>__<entity>.sql` where a source concept needs a join or union): Clean, rename and cast raw source columns and extract natural keys, with no joins across sources and no business logic. Keys are created in the warehouse layer.
 
-**Integration** (`int__<object>.sql`): Business logic, entity merging and cross-source joins. Complex models such as contact deduplication and multi-source company merging have their own sub-pattern (Steps 5.5) with specific macro structures the command knows to generate.
+**Integration** (`int_<group>__<entities>.sql`, with intermediate `int_<group>__<entity>__<verb>.sql` models): Business logic, entity merging and cross-source joins. Complex models such as contact deduplication and multi-source company merging have their own sub-pattern (Steps 5.5) with specific macro structures the command knows to generate.
 
-**Warehouse** (`<object>_dim.sql`, `<object>_fct.sql`): Dimensional model ready for BI, in which dimensions get a surrogate key and a full column set and facts join to dimensions via those keys.
+**Warehouse** (`wh_<group>__<entity>_dim.sql`, `_fact.sql`, `_xa.sql` for extended aggregates): Dimensional model ready for BI, in which dimensions get a surrogate key and a full column set and facts join to dimensions via those keys.
 
 The naming conventions, directory structure, field ordering and CTE patterns are all specified inline in the command file, and the SQL the model writes is constrained by those rules: it cannot invent its own conventions.
 

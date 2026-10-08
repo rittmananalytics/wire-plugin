@@ -17,9 +17,18 @@ matching skill file for those.
 
 Usage:
   python3 wire/scripts/lint_conventions.py --domain dbt \\
-      --convention wire/conventions/dbt.yml --path models/ [--format json]
+      --convention wire/conventions/dbt.yml --path models/ [--format json] \\
+      [--changed-from <base ref> | --new-project]
   python3 wire/scripts/lint_conventions.py --domain dbtcharts \\
       --convention wire/conventions/dbtcharts.yml --path charts/
+
+Scope (wire#277): a rule carrying `applies_to: new_and_changed` is checked
+only on files added or changed on the current branch, and one carrying
+`applies_to: new_files` only on files added on it. --changed-from <ref> works
+the changed set out from git (merge base of <ref> and HEAD, plus uncommitted
+and untracked files). --new-project treats every file as new. With neither,
+or where git cannot answer, those rules still run but report as warnings, so
+an existing project never fails on a rule it predates.
 
 Exit code: 1 if any error-severity finding fires, 0 otherwise. Warnings never
 fail the run.
@@ -28,6 +37,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 
 try:
@@ -37,7 +47,7 @@ except ImportError:
     sys.exit(2)
 
 DOMAIN_EXTENSIONS = {
-    "dbt": (".sql", ".yml", ".yaml"),
+    "dbt": (".sql", ".yml", ".yaml", ".csv"),
     "lookml": (".lkml",),
     "cube": (".yml", ".yaml"),
     "dbtcharts": (".yml", ".yaml"),
@@ -75,12 +85,16 @@ def get_rule(conv, section, rule_id):
     return None
 
 
+# Build output and installed packages, never the project's own code.
+SKIPPED_DIRS = {"target", "dbt_packages", "dbt_modules", "node_modules", "logs"}
+
+
 def iter_target_files(path, extensions):
     if os.path.isfile(path):
         yield path
         return
     for root, dirs, files in os.walk(path):
-        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in SKIPPED_DIRS]
         for fname in sorted(files):
             if fname.endswith(extensions):
                 yield os.path.join(root, fname)
@@ -90,11 +104,46 @@ def _severity(rule, default="warning"):
     return rule.get("severity", default)
 
 
+def _as_list(value):
+    if value is None:
+        return None
+    return value if isinstance(value, list) else [value]
+
+
+def _rule_patterns(rule):
+    """Every pattern a rule accepts. A rule carries either one `pattern`, or
+    `accepted_patterns` (a list of {form, pattern}) where the reference
+    changed a convention without improving it: Wire generates the `new` form
+    and still accepts the `old` one (wire#277)."""
+    if rule.get("accepted_patterns"):
+        return [p["pattern"] for p in rule["accepted_patterns"] if isinstance(p, dict) and p.get("pattern")]
+    if rule.get("pattern"):
+        return [rule["pattern"]]
+    return []
+
+
+def rule_accepts(rule, value):
+    return any(re.search(p, value) for p in _rule_patterns(rule))
+
+
+def _in_scope(rule, layer, kind):
+    """`layer` restricts a rule to files inferred to be in that layer, and
+    `kind` (dbt only) to a kind of file within it (base, staging, snapshot,
+    macro, ...). A rule with neither applies everywhere."""
+    layers = _as_list(rule.get("layer"))
+    if layers is not None and layer not in layers:
+        return False
+    kinds = _as_list(rule.get("kind"))
+    if kinds is not None and kind not in kinds:
+        return False
+    return True
+
+
 # ----------------------------------------------------------------------
 # Generic checks — driven entirely by the YAML, no domain-specific code
 # ----------------------------------------------------------------------
 
-def check_file_naming(conv, filepath, layer=None):
+def check_file_naming(conv, filepath, layer=None, kind=None):
     """Matches file_naming rules against the file's inferred layer (a plain
     path-segment check, done once by the caller — see infer_dbt_layer /
     infer_lookml_layer) rather than the rule's `path_glob`. `path_glob` is
@@ -107,15 +156,13 @@ def check_file_naming(conv, filepath, layer=None):
     findings = []
     basename = os.path.basename(filepath)
     for rule in conv.get("file_naming", []) or []:
-        pattern = rule.get("pattern")
-        if not pattern:
+        if not _rule_patterns(rule):
             continue
-        rule_layer = rule.get("layer")
-        if rule_layer is not None:
-            allowed = rule_layer if isinstance(rule_layer, list) else [rule_layer]
-            if layer not in allowed:
-                continue
-        if not re.search(pattern, basename):
+        if not _in_scope(rule, layer, kind):
+            continue
+        if basename in (rule.get("exempt_filenames") or []):
+            continue
+        if not rule_accepts(rule, basename):
             findings.append(Finding(
                 rule["id"], _severity(rule, "error"), filepath,
                 f"{rule.get('description', rule['id'])} — got '{basename}'",
@@ -123,11 +170,12 @@ def check_file_naming(conv, filepath, layer=None):
     return findings
 
 
-def check_file_content_rules(conv, filepath, text, layer=None):
+def check_file_content_rules(conv, filepath, text, layer=None, kind=None):
     """Runs every rule (in any section) with scope: file_content. A rule may
     carry forbidden_pattern (flag every matching line) and/or required_pattern
     (flag if absent from the whole file). An optional `layer` field (string
-    or list) restricts the rule to files inferred to be in that layer."""
+    or list) restricts the rule to files inferred to be in that layer, and an
+    optional `kind` field to a kind of file (dbt)."""
     findings = []
     lines = text.splitlines()
     for section_name, rules in conv.items():
@@ -136,11 +184,8 @@ def check_file_content_rules(conv, filepath, text, layer=None):
         for rule in rules:
             if not isinstance(rule, dict) or rule.get("scope") != "file_content":
                 continue
-            rule_layer = rule.get("layer")
-            if rule_layer is not None:
-                allowed = rule_layer if isinstance(rule_layer, list) else [rule_layer]
-                if layer not in allowed:
-                    continue
+            if not _in_scope(rule, layer, kind):
+                continue
             severity = _severity(rule)
             rid = rule["id"]
             desc = rule.get("description", rid)
@@ -170,13 +215,21 @@ def check_file_content_rules(conv, filepath, text, layer=None):
     return findings
 
 
-def check_style_thresholds(conv, filepath, text):
+def check_style_thresholds(conv, filepath, text, file_type=None):
     """Handles style rules keyed by a threshold value (max_line_length via
-    `value`, tab-forbidding via `forbid_tabs`) rather than a regex pattern."""
+    `value`, tab-forbidding via `forbid_tabs`) rather than a regex pattern.
+
+    `file_type` is passed by domains that lint more than one kind of text
+    file (dbt: "sql" or "yml"). A rule then applies only to the types in its
+    `file_types` list, defaulting to sql so a rule written before YAML was
+    linted keeps its meaning. A rule with `file_types` and `indent_spaces`
+    also checks every indented line is a multiple of that width."""
     findings = []
     lines = text.splitlines()
     for rule in conv.get("style", []) or []:
         rid = rule.get("id", "")
+        if file_type is not None and file_type not in (_as_list(rule.get("file_types")) or ["sql"]):
+            continue
         severity = _severity(rule)
         desc = rule.get("description", rid)
         if "value" in rule and "length" in rid:
@@ -188,6 +241,15 @@ def check_style_thresholds(conv, filepath, text):
             for i, line in enumerate(lines, start=1):
                 if "\t" in line:
                     findings.append(Finding(rid, severity, filepath, f"{desc} — tab character found", line=i))
+        if rule.get("indent_spaces") and rule.get("file_types"):
+            width = int(rule["indent_spaces"])
+            for i, line in enumerate(lines, start=1):
+                if not line.strip():
+                    continue
+                indent = len(line) - len(line.lstrip(" "))
+                if indent % width:
+                    findings.append(Finding(rid, severity, filepath,
+                                            f"{desc} — indented {indent} spaces", line=i))
     return findings
 
 
@@ -215,13 +277,52 @@ def infer_dbt_layer(filepath):
     return None
 
 
+def infer_dbt_kind(filepath, text=None):
+    """The kind of dbt file, from its path and name: base, staging,
+    intermediate, integration, warehouse, other_model (a model outside the
+    three layers), snapshot, macro, seed, sources_yml (a YAML file declaring
+    sources), or None. File-naming and content rules select on this."""
+    parts = filepath.replace(os.sep, "/").split("/")
+    base = os.path.basename(filepath)
+    if base.endswith(".csv"):
+        return "seed" if "seeds" in parts else None
+    if base.endswith((".yml", ".yaml")):
+        if text is not None:
+            try:
+                doc = yaml.safe_load(text)
+            except Exception:
+                doc = None
+            if isinstance(doc, dict) and doc.get("sources"):
+                return "sources_yml"
+        return None
+    if "macros" in parts:
+        return "macro"
+    if "snapshots" in parts:
+        return "snapshot"
+    layer = infer_dbt_layer(filepath)
+    if layer == "staging":
+        return "base" if base.startswith("base_") else "staging"
+    if layer == "integration":
+        return "intermediate" if "intermediate" in parts else "integration"
+    if layer == "warehouse":
+        return "warehouse"
+    if "models" in parts:
+        return "other_model"
+    return None
+
+
 ALIAS_RE = re.compile(r"\bas\s+([A-Za-z_][A-Za-z0-9_]*)\s*,?\s*$", re.IGNORECASE)
+# The cast-to-alias checks. Generated models cast with a Jinja macro inside the
+# cast — `cast(active as {{ dbt.type_boolean() }}) as user_is_active` — so the
+# closing `}}` sits between the macro call and the `)`. Before 4.1.2 these
+# patterns had no room for it and never fired (wire#277).
 CAST_MACRO_ALIAS_RES = {
-    "boolean_prefix": re.compile(r"type_boolean\(\)\s*\)\s*as\s+([A-Za-z_][A-Za-z0-9_]*)"),
-    "timestamp_suffix": re.compile(r"type_timestamp\(\)\s*\)\s*as\s+([A-Za-z_][A-Za-z0-9_]*)"),
-    "date_suffix": re.compile(r"type_date\(\)\s*\)\s*as\s+([A-Za-z_][A-Za-z0-9_]*)"),
+    "boolean_prefix": re.compile(r"type_boolean\(\)\s*(?:\}\})?\s*\)\s*as\s+([A-Za-z_][A-Za-z0-9_]*)"),
+    "timestamp_suffix": re.compile(r"type_timestamp\(\)\s*(?:\}\})?\s*\)\s*as\s+([A-Za-z_][A-Za-z0-9_]*)"),
+    "date_suffix": re.compile(r"type_date\(\)\s*(?:\}\})?\s*\)\s*as\s+([A-Za-z_][A-Za-z0-9_]*)"),
 }
 RESERVED_ALIAS_WORDS = {"select", "from", "final", "where", "group", "order"}
+MODEL_KINDS = ("base", "staging", "intermediate", "integration", "warehouse", "other_model")
 
 
 def check_dbt_sql(conv, filepath, text):
@@ -246,12 +347,11 @@ def check_dbt_sql(conv, filepath, text):
 
     for rule_id, cast_re in CAST_MACRO_ALIAS_RES.items():
         rule = get_rule(conv, "naming", rule_id)
-        if not rule:
+        if not rule or not _rule_patterns(rule):
             continue
-        pat = re.compile(rule["pattern"])
         for i, line in enumerate(lines, start=1):
             m = cast_re.search(line)
-            if m and not pat.search(m.group(1)):
+            if m and not rule_accepts(rule, m.group(1)):
                 findings.append(Finding(
                     rule["id"], _severity(rule), filepath,
                     f"{rule.get('description')} — '{m.group(1)}'", line=i,
@@ -277,21 +377,64 @@ def check_dbt_sql(conv, filepath, text):
     return findings
 
 
-def check_dbt_layer_rules(conv, filepath, text):
+def _layer_check(conv, rule_id, default_severity):
+    """A layer_checks rule, or a stand-in when an older convention file has
+    layer_rules but no layer_checks section (the source() check predates it)."""
+    rule = get_rule(conv, "layer_checks", rule_id)
+    if rule:
+        return rule
+    if conv.get("layer_checks") is None and rule_id == "no_source_outside_staging":
+        return {"id": rule_id, "severity": default_severity}
+    return None
+
+
+def check_dbt_layer_rules(conv, filepath, text, kind=None):
     findings = []
-    layer = infer_dbt_layer(filepath)
-    if not layer:
-        return findings
-    layer_rule = (conv.get("layer_rules") or {}).get(layer)
+    kind = kind or infer_dbt_kind(filepath)
+    rules = conv.get("layer_rules") or {}
+    # Older convention files key layer_rules by layer only; a base model then
+    # takes the staging entry and an intermediate model the integration entry.
+    layer_rule = rules.get(kind) or rules.get(infer_dbt_layer(filepath) or "")
     if not layer_rule:
         return findings
     may = layer_rule.get("may_select_from", [])
-    if "source" not in may and re.search(r"\{\{\s*source\(", text):
+
+    source_rule = _layer_check(conv, "no_source_outside_staging", "error")
+    if source_rule and "source" not in may and re.search(r"\{\{\s*source\(", text):
         findings.append(Finding(
-            f"layer_rules.{layer}", "error", filepath,
-            f"{layer} models must not select from source() — only staging models do",
+            source_rule["id"], _severity(source_rule, "error"), filepath,
+            f"{kind} models must not select from source() — only staging and base models do",
         ))
+
+    base_rule = _layer_check(conv, "no_base_ref_outside_staging", "error")
+    if base_rule and kind not in ("base", "staging"):
+        for i, line in enumerate(text.splitlines(), start=1):
+            if re.search(r"\bref\(\s*['\"]base_", line):
+                findings.append(Finding(
+                    base_rule["id"], _severity(base_rule, "error"), filepath,
+                    f"{kind} models select from staging models, not base models", line=i,
+                ))
+
+    mat_rule = _layer_check(conv, "materialization_allowed", "warning")
+    allowed = layer_rule.get("materialization")
+    if mat_rule and allowed:
+        m = re.search(r"materialized\s*=\s*['\"]([A-Za-z_]+)['\"]", text)
+        if m and m.group(1) not in allowed:
+            findings.append(Finding(
+                mat_rule["id"], _severity(mat_rule), filepath,
+                f"{kind} model materialized as '{m.group(1)}'; allowed: {allowed}",
+            ))
     return findings
+
+
+def _test_names(tests):
+    names = set()
+    for t in tests or []:
+        if isinstance(t, str):
+            names.add(t)
+        elif isinstance(t, dict):
+            names.update(t.keys())
+    return names
 
 
 def check_dbt_schema_yml(conv, filepath, text):
@@ -304,49 +447,221 @@ def check_dbt_schema_yml(conv, filepath, text):
         return findings
 
     pk_rule = get_rule(conv, "testing", "primary_key_tests_required")
+    key_rule = get_rule(conv, "testing", "test_key_forms")
     doc_rule = get_rule(conv, "documentation", "warehouse_columns_documented")
+    all_doc_rule = get_rule(conv, "documentation", "all_columns_documented")
     is_warehouse = "warehouse" in filepath.replace(os.sep, "/").split("/")
+
+    def both_keys(node, what):
+        if key_rule and isinstance(node, dict) and "tests" in node and "data_tests" in node:
+            findings.append(Finding(
+                key_rule["id"], _severity(key_rule, "error"), filepath,
+                f"{what} carries both tests: and data_tests:; dbt allows one",
+            ))
 
     for model in doc.get("models") or []:
         if not isinstance(model, dict):
             continue
+        both_keys(model, f"model '{model.get('name')}'")
         for col in model.get("columns") or []:
             if not isinstance(col, dict):
                 continue
             name = col.get("name", "")
+            both_keys(col, f"column '{name}' in model '{model.get('name')}'")
             if pk_rule and name.endswith("_pk"):
-                tests = col.get("tests") or col.get("data_tests") or []
-                test_names = set()
-                for t in tests:
-                    if isinstance(t, str):
-                        test_names.add(t)
-                    elif isinstance(t, dict):
-                        test_names.update(t.keys())
+                test_names = _test_names(col.get("data_tests") or col.get("tests"))
                 missing = [t for t in pk_rule.get("required_tests", []) if t not in test_names]
                 if missing:
                     findings.append(Finding(
                         pk_rule["id"], _severity(pk_rule, "error"), filepath,
                         f"primary key column '{name}' in model '{model.get('name')}' missing test(s): {missing}",
                     ))
-            if doc_rule and is_warehouse and not (col.get("description") or "").strip():
+            undocumented = not str(col.get("description") or "").strip()
+            if doc_rule and is_warehouse and undocumented:
                 findings.append(Finding(
                     doc_rule["id"], _severity(doc_rule), filepath,
                     f"column '{name}' in warehouse model '{model.get('name')}' has no description",
                 ))
+            elif all_doc_rule and undocumented:
+                findings.append(Finding(
+                    all_doc_rule["id"], _severity(all_doc_rule), filepath,
+                    f"column '{name}' in model '{model.get('name')}' has no description",
+                ))
+
+    findings += check_dbt_sources_yml(conv, filepath, doc)
+    return findings
+
+
+def check_dbt_sources_yml(conv, filepath, doc):
+    """Source declaration content rules from the reference (wire#277): a
+    loader, a Grain: line opening each table's description, declared columns
+    with descriptions, and freshness as the only test."""
+    findings = []
+    loader_rule = get_rule(conv, "documentation", "source_loader_declared")
+    grain_rule = get_rule(conv, "documentation", "source_table_grain_line")
+    cols_rule = get_rule(conv, "documentation", "source_columns_declared")
+    fresh_rule = get_rule(conv, "testing", "sources_freshness_only")
+
+    def has_tests(node):
+        return isinstance(node, dict) and bool(node.get("tests") or node.get("data_tests"))
+
+    for source in doc.get("sources") or []:
+        if not isinstance(source, dict):
+            continue
+        sname = source.get("name", "<unnamed>")
+        if loader_rule and not str(source.get("loader") or "").strip():
+            findings.append(Finding(loader_rule["id"], _severity(loader_rule), filepath,
+                                    f"source '{sname}' does not declare loader"))
+        if fresh_rule and has_tests(source):
+            findings.append(Finding(fresh_rule["id"], _severity(fresh_rule), filepath,
+                                    f"source '{sname}' carries data tests; freshness is the only source test"))
+        for table in source.get("tables") or []:
+            if not isinstance(table, dict):
+                continue
+            tname = f"{sname}.{table.get('name', '<unnamed>')}"
+            if grain_rule and not str(table.get("description") or "").strip().startswith("Grain:"):
+                findings.append(Finding(grain_rule["id"], _severity(grain_rule), filepath,
+                                        f"source table '{tname}' description does not open with 'Grain:'"))
+            columns = table.get("columns") or []
+            if cols_rule:
+                if not columns:
+                    findings.append(Finding(cols_rule["id"], _severity(cols_rule), filepath,
+                                            f"source table '{tname}' declares no columns"))
+                for col in columns:
+                    if isinstance(col, dict) and not str(col.get("description") or "").strip():
+                        findings.append(Finding(cols_rule["id"], _severity(cols_rule), filepath,
+                                                f"source column '{tname}.{col.get('name')}' has no description"))
+            if fresh_rule:
+                if has_tests(table):
+                    findings.append(Finding(fresh_rule["id"], _severity(fresh_rule), filepath,
+                                            f"source table '{tname}' carries data tests; freshness is the only source test"))
+                for col in columns:
+                    if has_tests(col):
+                        findings.append(Finding(fresh_rule["id"], _severity(fresh_rule), filepath,
+                                                f"source column '{tname}.{col.get('name')}' carries data tests; "
+                                                "freshness is the only source test"))
     return findings
 
 
 def check_dbt_file(conv, filepath, text):
     layer = infer_dbt_layer(filepath)
+    kind = infer_dbt_kind(filepath, text)
+    # A file-naming rule keyed only by `layer` (an older convention file) is
+    # written for models. It must not judge a YAML file, a seed or a macro by a
+    # model pattern, so those files are named with no layer and only rules
+    # keyed by `kind` reach them.
+    if filepath.endswith(".csv"):
+        return check_file_naming(conv, filepath, kind=kind)
     if filepath.endswith((".yml", ".yaml")):
-        return check_file_naming(conv, filepath, layer=layer) + check_dbt_schema_yml(conv, filepath, text)
+        return (check_file_naming(conv, filepath, kind=kind)
+                + check_style_thresholds(conv, filepath, text, file_type="yml")
+                + check_dbt_schema_yml(conv, filepath, text))
     findings = []
-    findings += check_file_naming(conv, filepath, layer=layer)
-    findings += check_file_content_rules(conv, filepath, text, layer=layer)
-    findings += check_style_thresholds(conv, filepath, text)
+    naming_layer = layer if kind in MODEL_KINDS else None
+    findings += check_file_naming(conv, filepath, layer=naming_layer, kind=kind)
+    findings += check_file_content_rules(conv, filepath, text, layer=layer, kind=kind)
+    findings += check_style_thresholds(conv, filepath, text, file_type="sql")
     findings += check_dbt_sql(conv, filepath, text)
-    findings += check_dbt_layer_rules(conv, filepath, text)
+    findings += check_dbt_layer_rules(conv, filepath, text, kind=kind)
     return findings
+
+
+# ----------------------------------------------------------------------
+# Changed-code scope (wire#277)
+# ----------------------------------------------------------------------
+
+class Scope:
+    """Which files count as new or changed. mode is one of:
+      new_project  every file is new (--new-project)
+      changed      worked out from git (--changed-from <ref>)
+      unknown      no scope given, or git could not answer"""
+
+    def __init__(self, mode, base=None, changed=None, added=None, note=None):
+        self.mode = mode
+        self.base = base
+        self.changed = changed or set()
+        self.added = added or set()
+        self.note = note
+
+    def to_dict(self):
+        d = {"mode": self.mode}
+        if self.base:
+            d["base"] = self.base
+        if self.mode == "changed":
+            d["changed_files"] = len(self.changed)
+            d["added_files"] = len(self.added)
+        if self.note:
+            d["note"] = self.note
+        return d
+
+
+def _git(args, cwd):
+    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=True).stdout
+
+
+def git_scope(path, base_ref):
+    """Files added or changed against the merge base of base_ref and HEAD:
+    committed and uncommitted changes (git diff against the merge base reads
+    the working tree) plus untracked files. A rename counts as changed, not
+    added. Any git failure gives an unknown scope, never an exception."""
+    start = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
+    try:
+        root = _git(["rev-parse", "--show-toplevel"], start).strip()
+        merge_base = _git(["merge-base", base_ref, "HEAD"], root).strip()
+        diff = _git(["diff", "--name-status", "--no-renames", merge_base], root)
+        untracked = _git(["ls-files", "--others", "--exclude-standard"], root)
+    except (OSError, subprocess.CalledProcessError) as e:
+        detail = getattr(e, "stderr", "") or str(e)
+        return Scope("unknown", base=base_ref,
+                     note=f"git could not work out changed files ({detail.strip()}); "
+                          "new-and-changed rules report as warnings")
+    changed, added = set(), set()
+    for line in diff.splitlines():
+        status, _, name = line.partition("\t")
+        if not name or status.startswith("D"):
+            continue
+        full = os.path.realpath(os.path.join(root, name))
+        changed.add(full)
+        if status.startswith("A"):
+            added.add(full)
+    for name in untracked.splitlines():
+        if name:
+            full = os.path.realpath(os.path.join(root, name))
+            changed.add(full)
+            added.add(full)
+    return Scope("changed", base=base_ref, changed=changed, added=added)
+
+
+def _rules_by_id(conv):
+    by_id = {}
+    for rules in conv.values():
+        if isinstance(rules, list):
+            for rule in rules:
+                if isinstance(rule, dict) and rule.get("id"):
+                    by_id[rule["id"]] = rule
+    return by_id
+
+
+def apply_scope(conv, findings, scope):
+    """Drops or softens findings from rules marked applies_to. In changed
+    mode a new_and_changed rule keeps only findings on changed files and a
+    new_files rule only those on added files. In unknown mode both keep every
+    finding but as a warning. Rules without applies_to are untouched."""
+    by_id = _rules_by_id(conv)
+    kept = []
+    for f in findings:
+        applies_to = (by_id.get(f.rule_id) or {}).get("applies_to")
+        if not applies_to or scope.mode == "new_project":
+            kept.append(f)
+            continue
+        if scope.mode == "unknown":
+            f.severity = "warning"
+            kept.append(f)
+            continue
+        target = scope.added if applies_to == "new_files" else scope.changed
+        if os.path.realpath(f.file) in target:
+            kept.append(f)
+    return kept
 
 
 # ----------------------------------------------------------------------
@@ -620,6 +935,12 @@ def main():
     ap.add_argument("--convention", required=True, help="path to the domain's convention YAML")
     ap.add_argument("--path", required=True, help="file or directory to lint")
     ap.add_argument("--format", choices=["text", "json"], default="text")
+    scope_args = ap.add_mutually_exclusive_group()
+    scope_args.add_argument("--changed-from", metavar="REF",
+                            help="git ref of the release branch's base; rules marked applies_to "
+                                 "are checked only on files added or changed since its merge base")
+    scope_args.add_argument("--new-project", action="store_true",
+                            help="treat every file as new, so every rule applies at its own severity")
     args = ap.parse_args()
 
     try:
@@ -638,6 +959,12 @@ def main():
 
     check_fn = DISPATCH[args.domain]
     extensions = DOMAIN_EXTENSIONS[args.domain]
+    if args.new_project:
+        scope = Scope("new_project")
+    elif args.changed_from:
+        scope = git_scope(args.path, args.changed_from)
+    else:
+        scope = Scope("unknown", note="no --changed-from or --new-project; new-and-changed rules report as warnings")
 
     all_findings = []
     files_checked = 0
@@ -650,6 +977,7 @@ def main():
             all_findings.append(Finding("read_error", "error", f, str(e)))
             continue
         all_findings.extend(check_fn(conv, f, text))
+    all_findings = apply_scope(conv, all_findings, scope)
 
     errors = [f for f in all_findings if f.severity == "error"]
     warnings = [f for f in all_findings if f.severity == "warning"]
@@ -658,6 +986,7 @@ def main():
         print(json.dumps({
             "domain": args.domain,
             "files_checked": files_checked,
+            "scope": scope.to_dict(),
             "errors": len(errors),
             "warnings": len(warnings),
             "findings": [f.to_dict() for f in all_findings],
@@ -667,6 +996,10 @@ def main():
             loc = f"{f.file}:{f.line}" if f.line else f.file
             print(f"  {f.severity.upper():7} [{f.rule_id}] {loc} — {f.message}")
         print()
+        if scope.note:
+            print(f"Scope: {scope.note}")
+        elif scope.mode == "changed":
+            print(f"Scope: {len(scope.changed)} file(s) changed since the merge base with {scope.base}")
         print(f"{files_checked} file(s) checked — {len(errors)} error(s), {len(warnings)} warning(s)")
 
     sys.exit(1 if errors else 0)

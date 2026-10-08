@@ -221,6 +221,12 @@ find [dbt_project_path] -name "schema.yml" -type f
 
 - **Full overlap**: inform the consultant that Droughty adds no new coverage and stop.
 
+**Test settings with droughty.** A project that uses droughty keeps `required_tests` on (`{"unique": 1, "not_null": 1}` under the warehouse `+meta` in `dbt_project.yml`) and sets `required_docs: false`, because droughty writes no model descriptions and rewrites `models/droughty_schema.yml` on every run. See `/wire:droughty-setup` Step 6.5. Where the project's `packages.yml` has `dbt_meta_testing`, check the result with `dbt run-operation required_tests` after `dbt build`.
+
+Keep the test key the target schema file already uses (`tests:` or `data_tests:`). Never put both keys on one resource.
+
+droughty does not generate tests in `_sources.yml`. Source files are written by hand, and `freshness` is their only test.
+
 ### Step 5: Verify Output
 
 Report:

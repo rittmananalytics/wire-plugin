@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.1.2: dbt development reference adopted for new and changed code
+
+**Released**: October 2026
+
+**New dbt conventions, nothing renamed.** Wire now follows the team's dbt development reference (version 0.0.1) when it writes and checks dbt code: plural staging names, entity-prefixed columns such as `user_is_active`, base models, snapshots, macros, complete source declarations, a `Grain:` line on every model, every column documented, unit suffixes, and `_xa` as extended aggregate. The new rules apply to models added or changed on the branch only. Wire never renames or moves an existing model, column, seed or snapshot, and `/wire:dbt-validate` still accepts the older forms.
+
+**Held back.** Natural keys are not lowercased, and `dbt_utils.at_least_one` is added alongside `not_null`, not in place of it.
+
+**Checker fixes.** `lint_conventions.py` gains `--changed-from` and `--new-project`, and its filename, boolean, timestamp and date checks are fixed.
+
+---
+
 ## v4.1.1: client names removed from published material
 
 **Released**: October 2026

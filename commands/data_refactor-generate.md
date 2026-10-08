@@ -286,6 +286,7 @@ Wait for the consultant to respond and provide the data.
 **Process**:
 1. Read the original seed-based source schema:
    - `.wire/<project-folder>/design/source_tables_ddl.sql`
+   - Find the seeds under either naming: `seed__<table_name>.csv` (releases from Wire 4.1.2) or `<table_name>.csv` (releases started earlier). Look in `dev/seed_data/` and the dbt project's `seeds/` directory, and in the staging models' `ref()` calls. `seed_data.seed_naming` in status.md, where set, says which naming the release uses. Match each seed to its source table by stripping a leading `seed__`.
 2. Read the real client source schema:
    - `.wire/<project-folder>/design/revised_source_tables_ddl.sql`
    (or inspect database directly if access provided)
@@ -342,9 +343,10 @@ Date: [today's date]
 ## dbt Configuration Changes
 
 ### Source Definitions
-- Update `models/staging/_sources.yml`:
+- Write or update the `_sources.yml` in each `models/staging/stg_<source>/` directory (an existing project keeps its existing source file names):
   - Change from seed references to real source database/schema
   - Update table and column names as needed
+  - Follow the source declaration content rules in `data_model-generate` Step 2 for new declarations. These files are written by hand.
 
 ### Staging Models
 - Models to update: [list with specific changes]
@@ -377,8 +379,8 @@ After presenting the plan and getting consultant confirmation:
    - Update database, schema, and table references
 
 2. **Update staging models**:
-   - Change `ref('seed_name')` to `source('source_name', 'table_name')`
-   - Update column references where names differ
+   - Change `ref('seed__table_name')` or `ref('table_name')` (whichever naming the release's seeds use) to `source('source_name', 'table_name')`
+   - Update column references where names differ. Keep the staging models' output column names, so downstream models and dashboards do not change.
    - Add/remove column transformations as needed
 
 3. **Update dbt_project.yml**:

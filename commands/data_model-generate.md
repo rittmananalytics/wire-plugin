@@ -371,33 +371,72 @@ This step runs automatically on every engagement — there's no opt-in flag to s
 
 5. For every model in the final data model that maps to a canonical entity (whether from a confident match, an adjacent match, or an accepted cross-vertical pattern, adopted as-is or adapted), carry that entity's `generation_constraints` and `reference_implementation` pointer(s) forward into that model's spec entry in Step 5 (or Step 3 for staging). This is the only place the registry's worked-example SQL becomes reachable — `dbt-generate` reads `data_model_specification.md` as its primary input either way, so it inherits these pointers automatically; no changes to `dbt-generate` itself are needed. Treat `reference_implementation` strictly as a worked example to read and adapt, never to copy verbatim — the registry's own README is explicit that a specific `.sql` file is not reusable across clients, only the pattern it demonstrates is.
 
+### Step 1.6: Settle the Naming Form
+
+New designs use the current naming form (the RA dbt development reference). Existing models, columns, seeds, snapshots and schemas are never renamed or moved.
+
+1. **New dbt project** (no existing `dbt_project.yml` with models in the client repository): use the current form throughout. No ruling is needed.
+2. **Existing dbt project**: read the project's `.wire/conventions/dbt.yml` if present, and the release's `decisions.md`. If either records a `form_choices:` ruling, follow it:
+
+   | Key | Current form | Older form |
+   |-----|--------------|------------|
+   | `model_name_number` | `plural` staging and integration names (`stg_source_a__users`) | `singular` (`stg_source_a__user`) |
+   | `column_prefix` | `entity` (`user_name`, `user_is_active`) | `none` (`name`, `is_active`) |
+   | `test_key` | `data_tests` | `tests` |
+   | `source_file_name` | `_sources` (`_sources.yml`) | `_<source>__sources` |
+
+3. If no ruling is recorded and the existing models use an older form, use the current form for new models and ask the release director whether the project should keep the older form for consistency. Keeping it is a ruling: record it in `decisions.md` and in `.wire/conventions/dbt.yml` under `form_choices:`. Mixed naming inside one project is allowed where new models use the current form.
+
+Warehouse model names are singular in both forms (`wh_core__user_dim`).
+
+Use `data_tests:` as the test key unless the project runs dbt before 1.8 (then `tests:`), or a ruling sets `test_key: tests`. Never put both keys on one resource. In a schema file that already uses `tests:`, keep `tests:`.
+
 ### Step 2: Define Source Definitions
 
-For each source system in the pipeline design, produce a complete dbt `_sources.yml` specification:
+For each source system in the pipeline design, produce one `_sources.yml` per source directory (`models/staging/stg_<source>/_sources.yml`). An existing project that already names these files `_<source>__sources.yml` keeps its names. These files are written by hand: droughty does not generate them.
 
 ```yaml
 version: 2
 
 sources:
-  - name: <source_system>
-    database: <bigquery_project>
-    schema: <dataset_name>
-    freshness:
-      warn_after: {count: <N>, period: hour}
-      error_after: {count: <N>, period: hour}
+  - name: <source>                # the directory name without stg_
+    description: >
+      <Source system>, loaded by <loading tool>. Data starts on <date>.
+      <Units, table groups and the columns that join tables.>
+    schema: <dataset the loading tool writes to>
+    loader: <loading tool>
     tables:
-      - name: <table_name>
-        description: "<Table description>"
-        loaded_at_field: <timestamp_column>
+      - name: <business name of the concept>
+        identifier: <raw table name, where it differs from name>
+        description: >
+          Grain: One row per <description>.
+          Source table group: <group, where the source has groups>
+          <What the table holds and how the loading tool writes it:
+          full refresh, a re-read window, or deleted rows marked.>
+          Use it for <what the table is used for>.
+        config:
+          loaded_at_field: <load timestamp column>
+          freshness:
+            warn_after: {count: <N>, period: hour}
+            error_after: {count: <N>, period: hour}
         columns:
-          - name: <column_name>
-            description: "<Column description>"
-            tests:
-              - not_null
-              - unique   # only on PK columns
+          - name: <source column name, unchanged>
+            description: >
+              <Meaning in the source system. Unit, time zone, null meaning,
+              allowed values, where they apply.>
 ```
 
-Freshness thresholds must be calibrated to the replication cadence from the pipeline design:
+Content rules:
+- One source per directory, named for the directory without the `stg_` prefix (`stg_source_a/_sources.yml` declares `source_a`). Set `schema` and `loader`.
+- Declare a table only where a staging model, base model or snapshot reads it.
+- Declare every column of a declared table under its source name, including the columns the loading tool adds (for example `_fivetran_synced`).
+- Write column descriptions inline. Do not use doc blocks in `_sources.yml`.
+- An identifier column's description says it identifies a row and names the columns in other tables that hold the same value.
+- A column holding personal data carries "Personal data." in its description.
+- A profiled figure carries the date measured, as in "Null on 30% of rows as at 2026-09."
+- `freshness` (with `loaded_at_field`) is the only test in `_sources.yml`. Do not put `not_null` or `unique` tests on source columns; those tests sit on the staging model.
+
+Freshness thresholds are set per client project. As a starting point, calibrate them to the replication cadence from the pipeline design:
 - Real-time / CDC sources: `warn_after: 30 minutes`, `error_after: 60 minutes`
 - Daily batch sources: `warn_after: 25 hours`, `error_after: 49 hours`
 - Manual/on-demand: no freshness check
@@ -408,84 +447,128 @@ Note any columns that are excluded for data governance reasons (e.g. free-text f
 
 For each source table, define the staging model:
 
-**Naming**: `stg_<source_system>__<entity_name>` (double underscore between source and entity)
+**Naming**: `stg_<source>__<entities>`, plural entity name (double underscore between source and entity), e.g. `stg_source_a__users`. Under a `model_name_number: singular` ruling, use the singular (`stg_source_a__user`).
 
-**Materialisation**: `view`
+**Path**: `models/staging/stg_<source>/`
 
-**Tags**: `['staging', '<source_system>']`
+**Materialisation**: `view`, schema `staging`
+
+**Tags**: `['staging', '<source>']`
+
+Staging rules for the design:
+- Only staging models read sources, snapshots and seeds. Later layers read staging models.
+- Avoid joins. A join or union is allowed only within one source system, where the concept cannot be staged without it. Put that shaping in a **base model** (`base_<source>__<entities>.sql`, same directory, view) where it is repeated or testable on its own; otherwise a base CTE. Only the staging model reads a base model.
+- Filter for correctness only (deduplication, rows known to be erroneous). State the reason for each filter.
+- Keep the population and grain of the source entity.
+- Extract natural keys (`<entity>_natural_key`; a compound key where no single column identifies a row). Do not create primary or foreign keys here; they are created in the warehouse layer.
+- Lowercase attribute strings. Never lowercase natural keys or source identifiers (some are case-sensitive).
+- Cast timestamps to UTC. Flatten nested records. Carry repeated fields through unchanged unless they are queried or tested downstream.
+- Derivations that read only the same source row are allowed (unit conversion, `case when` categories, resolving a known value issue).
+
+**Snapshots**: where a source overwrites history that must be kept, specify a snapshot `snapshots/snapshot_<source>/snapshot_<source>__<source_table>.sql` in the `snapshots` schema, `timestamp` strategy by default (`check` with `check_cols` where there is no reliable modified timestamp), source columns unchanged. The staging model reads the snapshot as it reads a source.
+
+**Column naming** (current form): every output column carries the entity prefix (`user_name`, `user_created_dt`). A foreign key keeps the referenced entity's prefix (`user_fk`). A natural key surfaced on another entity takes this model's prefix (`order_user_natural_key`). Two columns about the same thing are told apart by the relationship after the prefix (`order_shipping_country_name`, `order_billing_country_name`). Under a `column_prefix: none` ruling, omit the entity prefix.
+
+Suffixes:
+
+| Suffix | Use | Example |
+|--------|-----|---------|
+| `_pk`, `_fk` | Primary key, foreign key (warehouse only) | `user_pk`, `user_fk` |
+| `_natural_key` | Source system identifier | `user_natural_key` |
+| `_is_`, `_has_`, `_was_` | Boolean | `user_is_active` |
+| `_dt`, `_ts`, `_<timezone>_ts` | Date, UTC timestamp, non-UTC timestamp | `user_created_dt`, `user_created_cet_ts` |
+| `_amount`, `_amount_<currency>` | Base currency; other currency (ISO 4217, lowercased) | `revenue_amount`, `revenue_amount_usd` |
+| `_<measure>_<unit>` | Measured quantity (SI symbol lowercased, else unit spelled out) | `package_weight_kg`, `call_duration_seconds` |
+| `_count`, `_rank` | Count of things; ordinal position | `order_line_count`, `revenue_rank` |
+| `_pct`, `_ratio` | Percentage 0 to 100; proportion 0 to 1 | `discount_pct`, `conversion_ratio` |
+
+Attributes carry no suffix. An aggregated column leads with its function (`sum_invoice_line_item_amount`).
+
+**Column order**: primary key, foreign keys, natural keys, attributes, indexes and ranks, metrics, booleans, temporal.
 
 For each staging model, specify:
-- **Grain**: One row per what? (e.g. "one row per daily attendance mark per student per session")
-- **Surrogate key**: `dbt_utils.generate_surrogate_key(['<id_columns>'])` → `<entity>_pk`
-- **Column renames**: Source column name → standard column name (snake_case, business-meaningful)
-- **Derived columns**: Any simple transformations applied at staging (e.g. `is_present = mark_code IN ('/', 'L')`)
+- **Grain**: One row per what? (e.g. "one row per daily attendance mark per student per session"). This becomes the `Grain: One row per ...` line that opens the model's `config()` description.
+- **Natural key**: the column or columns that identify a row → `<entity>_natural_key`
+- **Column renames**: Source column name → standard column name (snake_case, business-meaningful, entity-prefixed)
+- **Derived columns**: Any single-row transformations applied at staging (e.g. `attendance_mark_is_present = mark_code in ('/', 'L')`)
 - **Exclusions**: Any source columns excluded and why
-- **Filters**: Any `WHERE` clause applied (e.g. `WHERE _fivetran_deleted = false`)
-- **Tests**: `not_null` and `unique` on `<entity>_pk`; `not_null` on any non-nullable business keys
+- **Filters**: Any `WHERE` clause applied and the reason (e.g. `WHERE _fivetran_deleted = false`)
+- **Tests**: `unique` and `not_null` on the natural key; `not_null` on columns populated in every row; `dbt_utils.at_least_one` alongside `not_null` (never in place of it)
 
 Use this template format:
 
 ```
-### stg_<source>__<entity>
-**Source**: `<source_system>.<table_name>`
+### stg_<source>__<entities>
+**Source**: `<source>.<table_name>`
+**Base model**: `base_<source>__<entities>` (only if a join or union is needed)
 **Grain**: One row per [description]
-**Surrogate key**: `generate_surrogate_key(['<col1>', '<col2>'])` → `<entity>_pk`
+**Natural key**: `<col1>`, `<col2>` → `<entity>_natural_key`
 
 | Source column | Staged column | Type | Notes |
 |--------------|---------------|------|-------|
-| <SourceCol> | <staged_name> | string/date/int/bool | |
-| <SourceCol> | <staged_name> | timestamp | Renamed from Fivetran audit column |
+| <SourceCol> | <entity>_<staged_name> | string/date/int/bool | |
+| <SourceCol> | <entity>_<staged_name>_ts | timestamp | Converted to UTC |
 
 **Derived columns**:
-- `<derived_col>`: `<expression>`
+- `<entity>_<derived_col>`: `<expression>`
 
-**Filters**: `WHERE <condition>`
+**Filters**: `WHERE <condition>` (reason: ...)
 
-**Tests**: `not_null(entity_pk)`, `unique(entity_pk)`, `not_null(<business_key>)`
+**Tests**: `unique(<entity>_natural_key)`, `not_null(<entity>_natural_key)`, `dbt_utils.at_least_one(<column>)`
 
 **Canonical entity** (only if sourced from the data model registry per Step 1.5): `<vertical>/<entity>` — constraints: [`generation_constraints` from the entity YAML] — reference: [`reference_implementation` path(s)]
 ```
 
 ### Step 4: Define Integration Models (if applicable)
 
-For complex transformations that span multiple staging models but are not yet warehouse-level:
+An integration model exists only where one is needed. Where none is needed, the warehouse model reads staging directly.
 
-**Naming**: `int_<group>__<subject>__<description>` (e.g. `int_core__student__risk_signals`)
+**Integration model naming**: `int_<group>__<entities>`, plural (e.g. `int_core__students`), in `models/integration/int_<group>/`. Under a `model_name_number: singular` ruling, use the singular.
 
-**Materialisation**: `view` (or `ephemeral` for simple pass-throughs)
+**Intermediate model naming**: `int_<group>__<entities>__<verb>` (e.g. `int_core__students__unioned`), in `models/integration/int_<group>/intermediate/`. An intermediate model combines the same concept from more than one source, so the integration model receives one input per concept. The verb states what the model does to its inputs.
+
+**Materialisation**: `view`, schema `integration`, set by folder. Existing models materialised as `ephemeral` stay accepted.
 
 Use integration models for:
 - Cross-system joins (e.g. joining ProSolution student IDs to Focus student IDs)
+- Filtering to the concept the warehouse layer exposes
 - Business logic that derives flags or categorisations
 - Pre-aggregations that feed multiple warehouse models
 
+Specify grain, natural key, column names (same column rules as staging) and tests (`unique` and `not_null` on the key, `dbt_utils.at_least_one` alongside `not_null`) for each.
+
 ### Step 5: Define Warehouse Models
 
-For each fact table, dimension table, and aggregate:
+For each fact table, dimension table, and extended aggregate. Warehouse model names use the singular entity name in every form.
 
-**Fact table naming**: `wh_<group>__<entity>_fact` (e.g. `wh_core__attendance_fact`, `wh_core__pastoral_notes_fact`)
+**Fact table naming**: `wh_<group>__<entity>_fact` (e.g. `wh_core__attendance_fact`, `wh_core__pastoral_note_fact`)
 **Dimension table naming**: `wh_<group>__<entity>_dim` (e.g. `wh_core__student_dim`, `wh_core__course_dim`)
-**Aggregate naming**: `<subject>_<grain>` (e.g. `student_risk_summary`, `daily_attendance_summary`)
+**Extended aggregate naming**: `wh_<group>__<entity>_xa` (e.g. `wh_core__student_risk_xa`, `wh_core__daily_attendance_xa`). An extended aggregate is a denormalised table built from fact and dimension models: either aggregated to a summary grain (such as a daily summary) or combining several facts at a shared grain (such as an event stream). Existing aggregate models (`_agg`, `<subject>_<grain>`, `<subject>_summary`) keep their names.
 
 **Materialisation**: `table`
 
-**Tags**: `['warehouse', 'fact']` or `['warehouse', 'dimension']`
+**Tags**: `['warehouse', 'fact']`, `['warehouse', 'dimension']` or `['warehouse', 'extended_aggregate']`
+
+Primary and foreign keys are created in this layer only, with `dbt_utils.generate_surrogate_key`. An entity's attributes live on its dimension; other models reference it by foreign key.
 
 For each warehouse model specify:
-- **Grain**: One row per what?
+- **Grain**: One row per what? (the `Grain:` line of the model description)
 - **Surrogate key**: composition and name (e.g. `attendance_pk`)
 - **Foreign keys**: which dimension PKs are referenced (e.g. `student_fk → student_dim.student_pk`)
-- **Measures**: numeric columns with business descriptions
-- **Flags/indicators**: boolean derived columns with their logic
+- **Natural keys**: source identifiers exposed (e.g. `attendance_natural_key`)
+- **Measures**: numeric columns with business descriptions, named with the suffixes in Step 3
+- **Flags/indicators**: boolean derived columns with their logic, named `<entity>_is_/has_/was_<x>` (e.g. `attendance_is_late`)
+- **Tests**: `unique` and `not_null` on the primary key (the warehouse minimum); `dbt_utils.at_least_one` alongside `not_null` where used; `relationships` on each foreign key
+- **Documentation**: every column documented through a doc block in `models/field_descriptions.md`
 - **Audit columns**: `dbt_updated_at: current_timestamp()`
 - **Canonical entity** (only if sourced from the data model registry per Step 1.5): `<vertical>/<entity>` — constraints: [`generation_constraints` from the entity YAML] — reference: [`reference_implementation` path(s)]
 
 ### Step 6: Define Seed Files
 
-For any configurable business logic (thresholds, mappings, categorisations), specify seed files:
+For any configurable business logic (thresholds, mappings, categorisations), specify seed files. A new seed is named `seeds/seed__<description>.csv` (e.g. `seed__attendance_mark_type_lookup.csv`) and loads to the `seeds` schema. Seed columns keep the CSV's names; the column prefix rules do not apply. Only a staging model reads a seed. Existing seeds keep their names and schema, including the mock seeds of a `dashboard_first` release already under way (see `seed_data-generate`).
 
 ```
-### seeds/<seed_name>.csv
+### seeds/seed__<description>.csv
 **Purpose**: [What business rule this encodes]
 **Columns**: [column names and types]
 **Sample rows**: [3-5 representative rows]
@@ -509,36 +592,39 @@ Use this template:
 
 ```mermaid
 erDiagram
-    ENTITY_FCT {
+    ENTITY_FACT {
         string entity_pk PK
         string dimension_fk FK
-        date event_date
-        int measure_column
-        bool flag_column
+        string entity_natural_key
+        int entity_item_count
+        float entity_value_amount
+        bool entity_is_flag
+        date entity_event_dt
         timestamp dbt_updated_at
     }
     DIMENSION_DIM {
         string dimension_pk PK
-        string natural_key
-        string display_name
-        string category
+        string dimension_natural_key
+        string dimension_display_name
+        string dimension_category
         timestamp dbt_updated_at
     }
-    AGGREGATE_SUMMARY {
+    SUMMARY_XA {
         string summary_pk PK
         string dimension_fk FK
-        int count_metric
-        float rate_metric
-        date summary_date
+        int summary_event_count
+        float summary_conversion_ratio
+        date summary_dt
         timestamp dbt_updated_at
     }
-    ENTITY_FCT }|--|| DIMENSION_DIM : "dimension_fk"
-    AGGREGATE_SUMMARY }|--|| DIMENSION_DIM : "dimension_fk"
+    ENTITY_FACT }|--|| DIMENSION_DIM : "dimension_fk"
+    SUMMARY_XA }|--|| DIMENSION_DIM : "dimension_fk"
 ```
 ```
 
 **ERD conventions**:
-- Include all warehouse models (facts, dims, aggregates)
+- Include all warehouse models (facts, dims, extended aggregates)
+- Column names follow the naming form settled in Step 1.6
 - Include staging models only if they are directly referenced by semantic layer (unusual)
 - Mark surrogate keys as `PK`, foreign keys as `FK`
 - Use types: `string`, `int`, `float`, `bool`, `date`, `timestamp`
@@ -623,7 +709,8 @@ If docstore sync fails, log the error and continue — do not block the generate
 
 **Staging models**: [count]
 **Integration models**: [count]
-**Warehouse models**: [count] ([fact count] facts, [dim count] dims, [agg count] aggregates)
+**Warehouse models**: [count] ([fact count] facts, [dim count] dims, [xa count] extended aggregates)
+**Naming form**: [current, or the form_choices ruling followed]
 **Seed files**: [count]
 **Physical ERD**: included ([entity count] entities, [relationship count] relationships)
 **Cross-system joins**: [count — flag if > 0, these are high-risk]
@@ -657,15 +744,16 @@ Add source schema examples to artifacts/ and regenerate.
 
 If the client has an existing dbt project:
 1. Read existing staging models from `artifacts/` to understand current naming conventions
-2. Follow those conventions for new models
+2. Name new models in the current form, or in the older form a recorded `form_choices:` ruling sets (Step 1.6)
 3. Explicitly note which existing models are being extended vs which are net-new
-4. Do not rename or restructure existing models — only add
+4. Do not rename or restructure existing models, columns, seeds, snapshots or schemas. Only add. Columns added to an existing model follow that model's existing column naming.
 
 ### Complex Many-to-Many Relationships
 
 If the conceptual model contains a many-to-many relationship, resolve it in the data model:
-- Create a bridge/junction table (e.g. `student_course_bridge`)
-- Name it clearly and document the resolution in Section 6
+- Create a junction model at the grain of the pair, named as a fact (e.g. `wh_core__student_course_enrolment_fact`, one row per student per course)
+- Document the resolution in Section 6
+- Do not use `_xa` for a junction model. `_xa` means extended aggregate (Step 5).
 
 ## Additional Output for `dashboard_first` Projects
 

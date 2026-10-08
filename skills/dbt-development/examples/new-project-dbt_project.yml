@@ -1,0 +1,73 @@
+# Example dbt_project.yml for a NEW project. Replace <project_name> with the
+# real project name. Layer configs must sit under that name: dbt ignores
+# configs under any other key without an error.
+#
+# For an EXISTING project, compare with this template and report the
+# differences as suggestions only. Do not apply them: correcting the project
+# key can change which models build as tables or views.
+
+name: <project_name>
+version: '1.0.0'
+config-version: 2
+
+profile: <project_name>
+
+macro-paths: ["macros"]
+model-paths: ["models"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+analysis-paths: ["analyses"]
+target-path: "target"
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  +persist_docs:
+    relation: true
+    columns: true
+  <project_name>:
+    staging:
+      +materialized: view
+      +schema: staging
+    integration:
+      +materialized: view
+      +schema: integration
+    warehouse:
+      +materialized: table
+      +meta:
+        # Projects that use droughty set required_docs: false. droughty
+        # writes no model descriptions and rewrites droughty_schema.yml.
+        required_docs: true
+        required_tests: {"unique": 1, "not_null": 1}
+
+seeds:
+  <project_name>:
+    +schema: seeds
+
+snapshots:
+  <project_name>:
+    +schema: snapshots
+
+# packages.yml for a new project:
+#
+# packages:
+#   - package: dbt-labs/dbt_utils
+#     version: ">=1.3.0"
+#   - package: tnightengale/dbt_meta_testing
+#     version: ">=0.4.0"
+#
+# macros/utility/macro__type_date.sql for a new project:
+#
+# {% macro ra_type_date() %}
+#     {{ return(api.Column.translate_type("date")) }}
+# {% endmacro %}
+#
+# with its entry in macros/_schema_macros.yml:
+#
+# macros:
+#   - name: ra_type_date
+#     description: >
+#       Returns the adapter's date data type, for casting a column to a
+#       date in a way that works on every supported warehouse.

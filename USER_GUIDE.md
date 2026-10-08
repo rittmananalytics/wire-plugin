@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.1.1 | **Date**: October 2026
+**Version**: 4.1.2 | **Date**: October 2026
 
 ---
 
@@ -1316,7 +1316,7 @@ Runs the generated dbt models in dbt Cloud or locally. Verify all models build a
 ```
 /wire:dbt-validate <release-folder>
 ```
-Validates dbt models against a comprehensive checklist: file and model naming conventions (singular names, correct layer prefixes/suffixes), field naming conventions (`_pk`, `_fk`, `_ts`, boolean prefixes), field ordering, SQL structure (CTE patterns, style compliance), model configuration (materialization by layer), testing coverage (PK tests, FK relationships, integration model unique combinations), documentation coverage (100% for staging and warehouse layers), and optionally runs sqlfluff linting. Produces a structured validation report with severity-rated issues (critical, important, nice-to-have) and actionable recommendations.
+Validates dbt models against a comprehensive checklist: file and model naming conventions (layer prefixes and suffixes; plural or singular entity names both accepted), field naming conventions (`_pk`, `_fk`, `_ts`, `is_`/`has_`/`was_` booleans at the start or after the entity prefix), field ordering, SQL structure (CTE patterns, style compliance), model configuration (materialization by layer), testing coverage (PK tests, FK relationships, integration model unique combinations), documentation coverage (100% for staging and warehouse layers), and optionally runs sqlfluff linting. Rules added by the ra_fw_core dbt development reference (Wire 4.1.2) apply to models added or changed on the branch only, so an existing project keeps passing; `wire/scripts/lint_conventions.py --changed-from <base>` runs the deterministic half. Produces a structured validation report with severity-rated issues (critical, important, nice-to-have) and actionable recommendations.
 
 ```
 /wire:orchestration-generate <release-folder>
@@ -1547,6 +1547,22 @@ Use this when data is already in the warehouse (e.g. via Fivetran, Stitch, or ma
 - Store SQL examples from the source database (schema introspection results, sample queries) so the AI understands actual column names and types
 
 > **Tip**: Run `/wire:playbook-generate <release-folder>` after requirements are approved to get a step-by-step plan for the dbt development work. See [Section 29](#29-framework-management-commands).
+
+### dbt conventions
+
+Wire writes and checks dbt code to the team's dbt development reference (ra_fw_core `analytics_warehouse/docs/development_reference_dbt.md`). `conventions/dbt.yml` holds its machine-checkable form and records the reference version.
+
+| Area | New code | Still accepted in existing code |
+|---|---|---|
+| Staging and integration names | Plural: `stg_stripe__charges` | Singular: `stg_stripe__charge` |
+| Columns | Entity prefix: `charge_status`, `charge_is_paid` | `status`, `is_paid` |
+| Test key | `data_tests:` (dbt 1.8 or later) | `tests:` |
+| Source declarations | `_sources.yml` per source folder | `_<source>__sources.yml` |
+| Warehouse | `_dim`, `_fact`, `_xa` (extended aggregate) | `_agg` |
+
+New and changed models also open their description with a `Grain:` line, document every column through doc blocks in `models/field_descriptions.md`, use unit suffixes (`_count`, `_rank`, `_<measure>_<unit>`, `_pct`, `_ratio`) and end with `select * from final`.
+
+**Existing projects.** Wire never renames or moves an existing model, column, seed or snapshot. `/wire:dbt-validate` applies the newer rules to models added or changed on the branch only, and still accepts the older forms. A project that keeps an older form for consistency records a ruling in `decisions.md` and sets it under `form_choices:` in `.wire/conventions/dbt.yml`. Differences from the new `dbt_project.yml` template are reported as suggestions, never applied.
 
 ---
 
@@ -5100,12 +5116,11 @@ The non-technology artifacts (requirements, data_model, training, documentation)
 
 ### Adjusting naming conventions
 
-dbt naming conventions are embedded in the dbt generate and validate specs. To change them (e.g. to use `int__` prefix for integration models instead of no prefix):
+Wire's dbt conventions follow the ra_fw_core dbt development reference. Their machine-checkable form is `conventions/dbt.yml` (authored in the process registry and synced into the plugin), which records the reference version it follows; the generate and validate specs hold the rest.
 
-1. Edit the naming section in `specs/development/dbt_generate.md`
-2. Update the corresponding validation checks in `specs/development/dbt_validate.md`
+For one client project, copy `conventions/dbt.yml` to `.wire/conventions/dbt.yml` in the client repo and change it there. Where the project keeps an older form for consistency with its existing models, record the ruling in `decisions.md` and set it under `form_choices:` (`model_name_number`, `column_prefix`, `test_key`, `source_file_name`). The older prose files (`.dbt-conventions.md`, `dbt_coding_conventions.md`, `docs/dbt_conventions.md`) are still read if present.
 
-The framework uses a 2-tier convention loading system. When generating or validating dbt models, it first checks for project-specific convention files (`.dbt-conventions.md`, `dbt_coding_conventions.md`, or `docs/dbt_conventions.md` in the project root). If found, those conventions take priority. If not found, the framework uses the comprehensive embedded conventions covering field naming, SQL style, CTE structure, testing requirements, and documentation standards.
+Wire never renames or moves an existing model, column, seed or snapshot to meet a convention. Rules the reference added apply to new and changed models only.
 
 ---
 

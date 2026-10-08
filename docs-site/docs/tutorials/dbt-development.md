@@ -22,7 +22,7 @@ Vantage Financial Reporting Ltd has three data sources landing in Snowflake via 
 - `_sources.yml` source definitions for `stripe_raw`, `salesforce_raw`, and `product_raw` Snowflake schemas
 - Six staging models: `stg_stripe__charges`, `stg_stripe__customers`, `stg_stripe__refunds`, `stg_salesforce__accounts`, `stg_salesforce__opportunities`, `stg_product__users`
 - One integration model: `int__customer_unified` — cross-system customer identity resolution via email matching with surrogate fallback
-- Four warehouse models: `customer_dim`, `opportunity_fct`, `charge_fct`, `subscription_mrr_fct`
+- Four warehouse models: `wh_core__customer_dim`, `wh_sales__opportunity_fact`, `wh_finance__charge_fact`, `wh_finance__subscription_mrr_fact`
 - 38 dbt schema tests covering `not_null`, `unique`, `relationships`, and accepted values across all models
 - Documentation YAML (`description:` fields) for every model and column
 - dbt Cloud production job (`vantage_daily_run`) — daily at 04:00 UTC, running `dbt run` then `dbt test`
@@ -50,12 +50,12 @@ Vantage Financial Reporting Ltd has three data sources landing in Snowflake via 
 - Vantage's analytics engineering lead is available to review and approve the data model spec within 24 hours of delivery (end of Day 2)
 - A dbt Cloud account is already provisioned and the project repository is accessible
 - Vantage provides Snowflake service account credentials and information schema exports for the three raw schemas before engagement start
-- The `subscription_mrr_fct` model will be built at monthly snapshot grain — intra-month MRR movement is out of scope unless the finance team raises a specific requirement during the data model review
+- The `wh_finance__subscription_mrr_fact` model will be built at monthly snapshot grain — intra-month MRR movement is out of scope unless the finance team raises a specific requirement during the data model review
 
 ### Acceptance criteria
 
 - All 38 dbt schema tests pass in the production Snowflake environment with zero failures
-- `subscription_mrr_fct` grain confirmed correct by the finance team (monthly snapshot per customer) before sign-off
+- `wh_finance__subscription_mrr_fact` grain confirmed correct by the finance team (monthly snapshot per customer) before sign-off
 - `vantage_daily_run` dbt Cloud job completes without errors for three consecutive days prior to handover
 - All 11 models have `description:` fields populated in schema YAML — `dbt docs generate` produces a complete project documentation site
 ```
@@ -127,7 +127,7 @@ Vantage has three data sources landing in Snowflake via Fivetran: Stripe (paymen
 | Source definitions | `_sources.yml` for Stripe, Salesforce and product database raw schemas |
 | Staging models (6) | One model per raw entity: field normalisation, type casting, renamed columns |
 | Integration model (1) | `int__customer_unified`: cross-system customer identity resolution |
-| Warehouse models (4) | `customer_dim`, `opportunity_fct`, `charge_fct`, `subscription_mrr_fct` |
+| Warehouse models (4) | `wh_core__customer_dim`, `wh_sales__opportunity_fact`, `wh_finance__charge_fact`, `wh_finance__subscription_mrr_fact` |
 | Schema tests | 38 tests across all models: `not_null`, `unique`, `relationships`, accepted values |
 | Documentation YAML | `description:` fields for every model and column |
 | `decisions.md` | Agent-recorded grain choices, modelling trade-offs and rationale |
@@ -253,9 +253,9 @@ The agent reads the raw schema exports and the SOW, then produces a full model i
 - `stg_salesforce__accounts`, `stg_salesforce__opportunities`
 - `stg_product__users`
 - `int__customer_unified`: joins Stripe customer email to Salesforce account and product user via a deterministic email match, with a fallback surrogate for unmatched records
-- `customer_dim`, `opportunity_fct`, `charge_fct`, `subscription_mrr_fct`
+- `wh_core__customer_dim`, `wh_sales__opportunity_fact`, `wh_finance__charge_fact`, `wh_finance__subscription_mrr_fact`
 
-The agent appends to `decisions.md` that `subscription_mrr_fct` is modelled at monthly snapshot grain per customer (not at individual subscription-event grain), because event grain would require twelve times the row count for the same analytical value and no current requirement calls for intra-month MRR movement.
+The agent appends to `decisions.md` that `wh_finance__subscription_mrr_fact` is modelled at monthly snapshot grain per customer (not at individual subscription-event grain), because event grain would require twelve times the row count for the same analytical value and no current requirement calls for intra-month MRR movement.
 
 ```
 /wire:data_model-validate 01-vantage-dbt-foundation
@@ -265,7 +265,7 @@ The agent appends to `decisions.md` that `subscription_mrr_fct` is modelled at m
 /wire:data_model-review 01-vantage-dbt-foundation
 → [main session]
 → Approved by analytics engineering lead, 2026-06-17
-→ Decision: add net_mrr_movement column to subscription_mrr_fct for churn analysis
+→ Decision: add net_mrr_movement column to wh_finance__subscription_mrr_fact for churn analysis
 ```
 
 ### dbt model generation — auto-delegated to `dbt-developer`
@@ -279,55 +279,90 @@ The agent appends to `decisions.md` that `subscription_mrr_fct` is modelled at m
 The agent writes all the SQL files and schema YAML, and a representative staging model looks like this:
 
 ```sql
--- models/staging/stripe/stg_stripe__charges.sql
-with source as (
-    select * from {{ source('stripe_raw', 'charges') }}
+-- models/staging/stg_stripe/stg_stripe__charges.sql
+{{
+    config(
+        description = """
+            Grain: One row per Stripe charge.
+            Amounts converted from pence to GBP. Rows Fivetran marks as deleted are excluded.
+        """
+    )
+}}
+
+with s_charges as (
+
+    select * from {{ source('stripe', 'charges') }}
+
 ),
 
-renamed as (
-    select
-        id                                          as charge_id,
-        customer                                    as stripe_customer_id,
-        amount / 100.0                              as amount_gbp,
-        currency,
-        status                                      as charge_status,
-        paid                                        as is_paid,
-        refunded                                    as is_refunded,
-        to_timestamp(created)                       as created_at,
-        to_timestamp(coalesce(updated, created))    as updated_at
+-- Removes rows Fivetran marks as deleted in Stripe.
+remove_deleted as (
 
-    from source
+    select * from s_charges
+
     where _fivetran_deleted = false
+
+),
+
+rename_and_cast as (
+
+    select
+
+        {# natural keys #}
+        cast(id as {{ dbt.type_string() }}) as charge_natural_key,
+        cast(customer as {{ dbt.type_string() }}) as charge_customer_natural_key,
+        {# attributes #}
+        lower(cast(status as {{ dbt.type_string() }})) as charge_status,
+        {# metrics #}
+        cast(amount as {{ dbt.type_numeric() }}) / 100 as charge_amount,
+        {# booleans #}
+        cast(paid as {{ dbt.type_boolean() }}) as charge_is_paid,
+        cast(refunded as {{ dbt.type_boolean() }}) as charge_is_refunded,
+        {# temporal #}
+        cast(created as {{ dbt.type_timestamp() }}) as charge_created_ts,
+        cast(coalesce(updated, created) as {{ dbt.type_timestamp() }}) as charge_updated_ts
+
+    from remove_deleted
+
+),
+
+final as (
+
+    select * from rename_and_cast
+
 )
 
-select * from renamed
+select * from final
 ```
 
-The schema entry for this model is as follows:
+The model follows the conventions Wire applies to new code since 4.1.2: a `Grain:` line, entity-prefixed columns (`charge_is_paid`), natural keys left in their source case, and columns grouped under Jinja comments. GBP is the project's base currency, so the amount column ends in `_amount` with no currency code.
+
+The schema entry for this model references doc blocks held once in `models/field_descriptions.md`:
 
 ```yaml
-- name: stg_stripe__charges
-  description: >
-    One row per Stripe charge. Amounts converted from pence to GBP.
-    Soft-deleted rows (Fivetran _fivetran_deleted) are excluded.
-  columns:
-    - name: charge_id
-      description: Stripe charge identifier (ch_...)
-      tests:
-        - not_null
-        - unique
-    - name: amount_gbp
-      description: Charge amount in GBP, converted from Stripe's integer pence value
-      tests:
-        - not_null
-    - name: charge_status
-      description: Stripe charge status at time of last sync
-      tests:
-        - accepted_values:
-            values: ['succeeded', 'pending', 'failed']
+models:
+  - name: stg_stripe__charges
+    description: >
+      Grain: One row per Stripe charge.
+    columns:
+      - name: charge_natural_key
+        description: '{{ doc("charge_natural_key") }}'
+        data_tests:
+          - not_null
+          - unique
+      - name: charge_amount
+        description: '{{ doc("charge_amount") }}'
+        data_tests:
+          - not_null
+          - dbt_utils.at_least_one
+      - name: charge_status
+        description: '{{ doc("charge_status") }}'
+        data_tests:
+          - accepted_values:
+              values: ['succeeded', 'pending', 'failed']
 ```
 
-The agent also records in `decisions.md` that `subscription_mrr_fct` uses `dbt_utils.generate_surrogate_key(['customer_id', 'snapshot_month'])` as its primary key, since the combination of customer and month is the natural grain and provides a stable key for incremental merges without requiring a sequence or UUID from any source system.
+The agent also records in `decisions.md` that `wh_finance__subscription_mrr_fact` uses `dbt_utils.generate_surrogate_key(['customer_natural_key', 'snapshot_month'])` as its primary key, since the combination of customer and month is the natural grain and provides a stable key for incremental merges without requiring a sequence or UUID from any source system.
 
 ### Validation and dbt run
 
@@ -390,7 +425,7 @@ The deployment runbook covers two dbt Cloud jobs:
 | Source definitions | `_sources.yml`: Stripe, Salesforce, product database raw schemas |
 | Staging models | 6 SQL files with field normalisation and type casting |
 | Integration model | `int__customer_unified`: cross-system identity resolution |
-| Warehouse models | `customer_dim`, `opportunity_fct`, `charge_fct`, `subscription_mrr_fct` |
+| Warehouse models | `wh_core__customer_dim`, `wh_sales__opportunity_fact`, `wh_finance__charge_fact`, `wh_finance__subscription_mrr_fact` |
 | Schema tests | 38 tests: `not_null`, `unique`, `relationships`, accepted values |
 | Documentation YAML | Description fields for all 11 models and every column |
 | Data quality checks | Source freshness + row count reconciliation, Slack alerting |

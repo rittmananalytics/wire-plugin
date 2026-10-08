@@ -1,6 +1,6 @@
 ---
 name: dbt-development
-description: Proactive skill for validating dbt models against coding conventions. Auto-activates when creating, reviewing, or refactoring dbt models in staging, integration, or warehouse layers. Validates naming, SQL structure, field conventions, testing coverage, and documentation. Supports project-specific convention overrides and sqlfluff integration.
+description: Proactive skill for validating dbt models against coding conventions. Auto-activates when creating, reviewing, or refactoring dbt models in staging, integration, or warehouse layers, and when writing base models, snapshots, seeds, macros or source declarations. Validates naming, SQL structure, field conventions, testing coverage, and documentation on new and changed code. Supports project-specific convention overrides, recorded form rulings, and sqlfluff integration.
 ---
 
 # dbt Development Skill
@@ -19,7 +19,17 @@ If `.wire/execution_log.md` does not exist, create it with the standard header f
 
 ## Purpose
 
-This skill automatically activates when working with dbt models to ensure adherence to coding conventions and best practices. It provides validation and recommendations for model structure, naming, SQL style, testing, and documentation.
+This skill activates when working with dbt models. It applies the Rittman Analytics dbt conventions to the models Wire writes, and checks new and changed models against them. It covers model structure, naming, SQL style, testing and documentation.
+
+**Where the rules come from.** The authority for people is the `ra_fw_core` dbt development reference: `analytics_warehouse/docs/development_reference_dbt.md`, version 0.0.1 (ra_fw_core#21). `wire/conventions/dbt.yml` is its machine-checkable form; its `reference:` block records the reference version it follows. Where the two disagree, the reference wins and the registry is corrected, with two exceptions that Wire holds until the reference adds them (see "Where Wire differs from the reference" below).
+
+The reference states rules as facts and leaves out the reasons by design. This skill keeps the reasons, because a rule applied without its reason gets applied in the wrong place.
+
+## The one rule
+
+Wire applies the conventions to **new and changed** code. Wire **never renames or moves** an existing model, column, seed, snapshot or schema. Existing projects keep passing `/wire:dbt-validate`.
+
+Why: downstream consumers (LookML views, dashboards, reverse ETL syncs, analysts' saved SQL, other teams' models) reference objects by name. A dbt rename builds a new relation and leaves the old one in the warehouse, stale. Renaming for convention alone has a cost and no benefit to the client. A rename is a separate decision, made in a refactor release (`/wire:data_refactor-generate`), never a side effect of adding a feature.
 
 ## When This Skill Activates
 
@@ -29,15 +39,16 @@ This skill should activate when users:
 - **Create new dbt models:** "Create a staging model for users from Salesforce"
 - **Review existing models:** "Review this dbt model for issues"
 - **Refactor models:** "Refactor this integration model to follow best practices"
-- **Work with .sql files in models/:** Any read/write operations on dbt model files
+- **Work with .sql files in models/, snapshots/ or macros/:** any read or write of dbt model, snapshot or macro files
 - **Ask about dbt conventions:** "What are the naming conventions for warehouse models?"
-- **Request schema/test files:** "Add tests to this model"
+- **Request schema, source or test files:** "Add tests to this model", "Declare this source"
 
 **Keywords to watch for:**
-- "dbt model", "staging", "integration", "warehouse", "intermediate"
+- "dbt model", "staging", "integration", "warehouse", "intermediate", "base model"
+- "snapshot", "seed", "macro", "_sources.yml", "field_descriptions"
 - "refactor", "review", "validate", "check conventions"
-- "stg_", "int_", "_dim", "_fact"
-- "schema.yml", "tests", "dbt test"
+- "stg_", "base_", "int_", "_dim", "_fact", "_xa", "snapshot_", "seed__", "macro__"
+- "schema.yml", "_schema.yml", "tests", "data_tests", "dbt test"
 - "multi-source", "entity resolution", "deduplication", "merge sources"
 - "enable source", "disable source", "add source", "remove source"
 - "source array", "dbt_project.yml vars"
@@ -45,225 +56,266 @@ This skill should activate when users:
 ### Self-Triggered Activation (Proactive)
 
 **Activate BEFORE creating or modifying dbt SQL when:**
-- You're about to suggest creating a model from scratch
+- You are about to suggest creating a model from scratch
 - You detect .sql files in a models/ directory structure
 - User asks to "write SQL" in a dbt project context
-- You're reviewing changes in a dbt project
-- Working with files that match dbt patterns (stg_, int_, _dim, _fact)
+- You are reviewing changes in a dbt project
+- Working with files that match dbt patterns (stg_, base_, int_, _dim, _fact, _xa)
 
 **Example internal triggers:**
-- "I'll create a staging model for..." → Activate skill first
-- User shows dbt SQL file → Validate against conventions
-- "Let me write this transformation..." in dbt context → Check conventions first
+- "I'll create a staging model for..." → activate the skill first
+- User shows dbt SQL file → validate against conventions
+- "Let me write this transformation..." in dbt context → check conventions first
 
 ## Instructions
 
-### 0. Load Convention Source and Run the Deterministic Lint
+### 0. Establish the Situation Before Writing Anything
 
-**Priority order (3-tier system) for the narrative conventions you apply by judgment:**
+Answer three questions first. They decide which rules apply and how findings are reported.
+
+**0.1 New project or existing project?**
+
+- **New project**: no `dbt_project.yml` yet, or one Wire is creating in this release. Every file is new. Wire writes the new forms throughout, including the `dbt_project.yml` and `packages.yml` template (Step 6) and the `ra_type_date()` macro file.
+- **Existing project**: the client already has models. Wire writes new forms only in files it adds or changes, and leaves everything else as it is.
+
+**0.2 Which files are new or changed?**
+
+"Changed" means models added or modified on the current branch compared with the base of the release branch, from git:
+
+```bash
+git merge-base HEAD <release base branch>
+git diff --name-status <merge-base> -- models/ snapshots/ seeds/ macros/
+```
+
+Section A rules (below) apply to changed files only. File-naming rules for the new kinds (base model, snapshot, macro, seed) apply to **added** files only, so editing an existing macro never asks for a rename. Where git history is not available, section A findings are warnings, not failures.
+
+**0.3 Has the project recorded a form ruling?**
+
+A project may keep an old form for consistency with its existing models. That choice is a **ruling**: it is recorded in the release's `decisions.md` and set in the project's `.wire/conventions/dbt.yml` override under `form_choices:`:
+
+```yaml
+form_choices:
+  model_name_number: singular     # plural | singular
+  column_prefix: none             # entity | none
+  test_key: tests                 # data_tests | tests
+  source_file_name: _<source>__sources   # _sources | _<source>__sources
+```
+
+Generate follows the recorded ruling. With no ruling, generate writes the new form. Recording it in both places means the next session, or another lane, writes the same form without asking again.
+
+Mixed naming inside one project is allowed where new models use the new form. Do not propose renaming old models to make a project uniform; the inconsistency costs less than the rename.
+
+### 0.4 Load Convention Sources
+
+**Priority order for the narrative conventions you apply by judgment:**
 1. **Project-specific conventions** (highest priority)
-   - Check for `.dbt-conventions.md` in project root
-   - Check for `dbt_coding_conventions.md` in project root
-   - Check for `docs/dbt_conventions.md` in project
-
+   - `.dbt-conventions.md` in project root
+   - `dbt_coding_conventions.md` in project root
+   - `docs/dbt_conventions.md` in project
+   - `analytics_warehouse/docs/development_reference_dbt.md` (a project built from `ra_fw_core` carries the reference itself)
 2. **Embedded RA conventions** (fallback)
    - Conventions: `conventions-reference.md` (relative to this skill file)
    - Testing: `testing-reference.md` (relative to this skill file)
 
-**Detection:**
-- Use `Glob` to search for convention files in project root
-- If found, use `Read` to load project conventions
-- If not found, read `conventions-reference.md` and `testing-reference.md` from this skill's directory
-- Note which source is being used in validation output
+Use `Glob` to search for convention files, `Read` to load them, and note in your output which source you used.
 
-**Machine-checkable rules — run the linter, don't re-derive it by eye.**
-Naming patterns, forbidden constructs, and the other mechanical checks in
-this skill also live in a machine-readable convention file, checked by a
-script rather than your own semantic read of the model. Resolve which
-convention file applies (client override wins, same precedence idea as
-above):
+### 0.5 Run the Checker
 
-1. `.wire/conventions/dbt.yml` in the client project, if present (client
-   house style always wins).
-2. `wire/conventions/dbt.yml` next to this skill's framework installation
-   (synced from the private `wire-process-registry` — see
-   `wire/schemas/convention-schema.md`).
+Naming patterns, forbidden constructs and the other mechanical checks live in a machine-readable convention file, checked by a script rather than by your own reading of the model. Resolve the convention file (client override wins):
 
-Run it against the model(s) you're about to validate or have just written:
+1. `.wire/conventions/dbt.yml` in the client project, if present.
+2. `wire/conventions/dbt.yml` next to this skill's framework installation (synced from the private `wire-process-registry`; see `wire/schemas/convention-schema.md`).
+
+Run it against the models you are about to validate or have just written.
+
+New project (every file treated as new):
 
 ```
 python3 wire/scripts/lint_conventions.py --domain dbt \
-  --convention <resolved dbt.yml path> --path <model file or models/ dir> \
-  --format json
+  --convention <resolved dbt.yml path> --path <models dir> \
+  --new-project --format json
 ```
 
-Treat its findings as ground truth for the rules it covers (filename
-patterns, column-alias suffixes tied to type-cast macros, bare `join`,
-`union distinct`, the `final` CTE, layer boundary violations, missing
-primary-key tests) — don't re-argue a pass/fail the linter already gave you.
-Everything the linter doesn't cover (documented in the YAML as advisory —
-grain choice, CTE quality, whether a join direction makes sense) is still
-your call, applied through Steps 1–5 below. If the linter isn't available
-(no Python/PyYAML in the environment), fall back to the fully manual review
-below and say so in your output.
+Existing project (section A rules checked on changed files only):
+
+```
+python3 wire/scripts/lint_conventions.py --domain dbt \
+  --convention <resolved dbt.yml path> --path <models dir> \
+  --changed-from <merge-base ref> --format json
+```
+
+With neither `--new-project` nor `--changed-from`, section A rules report as warnings.
+
+Treat its findings as ground truth for the rules it covers (filename patterns, column suffixes tied to type-cast macros, bare `join`, `union distinct`, the `final` CTE, layer boundaries, missing primary-key tests, the `Grain:` line, the test key). Do not re-argue a pass or fail the checker already gave. Everything it does not cover (grain choice, CTE quality, whether a join direction makes sense, whether a staging filter is about correctness) is your call, applied through Steps 1 to 10. If the checker is not available (no Python or PyYAML), fall back to the manual review below and say so in your output.
 
 ---
 
-### 1. Identify Model Type and Context
+### 1. Identify the Kind of File
 
-When working with a dbt model, determine:
+| Kind | Path | Filename |
+|---|---|---|
+| Base model | `models/staging/stg_<source>/` | `base_<source>__<entity>.sql` |
+| Staging model | `models/staging/stg_<source>/` | `stg_<source>__<entities>.sql` |
+| Intermediate model | `models/integration/int_<group>/intermediate/` | `int_<group>__<entities>__<verb>.sql` |
+| Integration model | `models/integration/int_<group>/` | `int_<group>__<entities>.sql` |
+| Dimension | `models/warehouse/wh_<group>/` | `wh_<group>__<entity>_dim.sql` |
+| Fact | `models/warehouse/wh_<group>/` | `wh_<group>__<entity>_fact.sql` |
+| Extended aggregate | `models/warehouse/wh_<group>/` | `wh_<group>__<entity>_xa.sql` |
+| Snapshot | `snapshots/snapshot_<source>/` | `snapshot_<source>__<source_table>.sql` |
+| Seed | `seeds/` | `seed__<description>.csv` |
+| Macro | `macros/` (utility macros in `macros/utility/`) | `macro__<name>.sql` |
+| Source declarations | `models/staging/stg_<source>/` | `_sources.yml` |
 
-**Model Type:**
-- **Staging** (`stg_<group>__<table>`): First transformation layer, selects from sources only
-- **Integration** (`int_<group>__<entity>`): Joins lower-layer models to enrich entities
-- **Warehouse — Dimension** (`wh_<group>__<entity>_dim`): Mutable, noun-based entities
-- **Warehouse — Fact** (`wh_<group>__<entity>_fact`): Immutable, verb-based events
-- **Warehouse — Cross-attribute** (`wh_<group>__<entity>_xa`): Bridge / many-to-many / cross-entity attribute models
-
-**Context Information:**
-- File location in directory structure
-- Source system (for staging models)
-- Entity/object name
-- Related models (refs)
-- Expected materialization
-
-**How to identify:**
-- Check filename prefix/suffix
-- Review directory structure (staging/, integration/, warehouse/)
-- Read model content for `ref()` and `source()` calls
-- Look at model configuration blocks
+Also note: source system (staging), entity, related models (refs), expected materialization, and whether the file is new, changed or unchanged (Step 0.2).
 
 ---
 
-### 2. Validate Naming Conventions
+### 2. Apply the Layer Design Rules
 
-File naming, column-suffix, and layer-boundary violations are already
-reported by the Step 0 lint run (`file_naming`, `naming`, `layer_rules` in
-`dbt.yml`) — pull those findings in rather than re-deriving them here. What
-follows is the full convention for context and for anything the lint
-couldn't check (e.g. singular/plural entity names).
+**Staging** (`models/staging/stg_<source>/`)
+- Only staging models read sources, snapshots and seeds. If a source changes shape, one model changes.
+- A staging model is the reusable version of one source concept, at one grain, from one source.
+- Joins are avoided. A join or union is allowed only within one source system, and only where the concept cannot be staged without it (a separate delete or status table, symmetrical tables from the same system). A join across source systems is integration logic.
+- A join that derives a new value from another concept, even within one source, is a derivation and belongs in a later model. Staging keeps a clear line to one source concept.
+- Filtering is limited to correctness: deduplication, and rows known to be wrong. A CTE that removes rows carries a comment saying why. Filtering to a business subset here hides rows from every later model that might need them.
+- The population and grain of the source are kept. Transactions are staged as transactions, not filtered to orders and named orders.
+- Natural keys are extracted. Primary and foreign keys are **not** created here; they belong to the warehouse, where the entity is defined. Where no single column identifies a row, the natural key is a compound of the columns that do.
+- Timestamps are cast to UTC. A timestamp held in another zone carries the zone in its name (`_cet_ts`).
+- A nested record is flattened, one column per field. A repeated field (array) is carried through unchanged unless something downstream queries or tests its contents.
+- Single-row derivations happen here: unit conversion, `case when` classification, resolving the meaning of null in a boolean, conforming a label the source changed over time. A derivation that needs a second model belongs in integration.
+- Repeated transformation logic becomes a macro, not copied text.
+- Materialized as a view.
 
-**Check the following:**
+**Base models** (`base_<source>__<entity>.sql`, beside the staging models of that source)
+- Hold the join or union a source concept needs, within one source system only.
+- Select from the source and apply the staging conventions.
+- Only the staging model reads a base model. Later layers never do, so each concept has one staged version that everything else depends on.
+- Use a base model where the shaping is repeated across models or tested on its own. Otherwise a base CTE inside the staging model is a judgement call. A simple join intrinsic to one concept sits in the staging model.
 
-**File and Model Naming:**
-- ✓ Models are organised into entity groups (`core`, `entity`, or domain-specific groups like `finance`, `risk`, etc.)
-- ✓ File names use the pattern `<layer>_<group>__<entity>.sql` — double underscore separates group from entity
-- ✓ Staging: `stg_<group>__<table>.sql` (e.g., `stg_core__users.sql`, `stg_entity__entity_a.sql`)
-- ✓ Integration: `int_<group>__<entity>.sql` (e.g., `int_core__users.sql`, `int_core__geographies.sql`)
-- ✓ Warehouse dimension: `wh_<group>__<entity>_dim.sql` (e.g., `wh_core__user_dim.sql`, `wh_core__country_dim.sql`)
-- ✓ Warehouse fact: `wh_<group>__<entity>_fact.sql` (e.g., `wh_entity_group__entity_name_b_fact.sql`)
-- ✓ Warehouse cross-attribute: `wh_<group>__<entity>_xa.sql` for bridge / many-to-many / cross-entity attribute models
+**Integration** (`models/integration/int_<group>/`)
+- Exists only where needed. Where nothing needs combining, filtering or deriving, the warehouse model reads staging directly. An empty pass-through model adds a build step and nothing else.
+- Joins across source systems happen here.
+- Filtering to the concept the warehouse exposes happens here. Exception: where two or more warehouse models read one integration model, each exposing a different subset, each warehouse model filters to its own subset.
+- Derived fields are created here, under the same rules as staging: attribute strings lowercased, casting through macros.
+- Materialized as a view.
 
-**Directory Structure:**
+**Intermediate models** (`int_<group>__<entities>__<verb>.sql` in `models/integration/int_<group>/intermediate/`)
+- Combine the same concept from more than one source, so the integration model receives one input per concept.
+- The verb says what the model does to its inputs: `unioned`, `deduplicated`, `pivoted`.
+- Materialized as a view, set by the folder config. Existing ephemeral intermediate models stay accepted.
+
+**Warehouse** (`models/warehouse/wh_<group>/`)
+- Dimension and fact models read integration models, or staging where no integration model is needed.
+- Primary and foreign keys are created here and only here, with `dbt_utils.generate_surrogate_key`. Keys built in one place stay consistent; keys built in several drift.
+- An entity's attributes live on its dimension. Other models reference it by foreign key. Copying an attribute onto a second entity is a modelling decision taken per case and recorded in `decisions.md`.
+- A warehouse model filters its input only where it exposes one subset of an integration model that other warehouse models also read.
+- `_xa` means **extended aggregate**: a denormalised table built from fact and dimension models, either aggregated to a summary grain (a daily summary) or combining several facts at a shared grain (an event stream). It exists only in the warehouse layer. An `_xa` model that reads an integration model may mean a dimension or fact is missing. `_xa` applies to new models; existing `_agg` models and existing `_xa` models built as bridge tables keep their names.
+- Incremental materialization is allowed per model. The client decides when, and the strategy, unique key and lookback window.
+- Materialized as a table.
+
+**Snapshots** (`snapshots/snapshot_<source>/snapshot_<source>__<source_table>.sql`)
+- A snapshot targets a source. Staging reads it the same way it reads a source.
+- The `{% snapshot %}` block name equals the filename without extension, so the relation and the file can be found from each other.
+- `timestamp` strategy by default, on the source's modified timestamp. Use `check` with `check_cols` only where the source has no reliable modified timestamp; `check` compares every listed column on every run, which costs more and misses nothing only if the list is complete.
+- `unique_key` names the column(s) identifying a row in the source. It is not unique in the snapshot; `dbt_scd_id` is.
+- Source columns are held unchanged. The dbt meta columns (`dbt_valid_from`, `dbt_valid_to`, `dbt_scd_id`, `dbt_updated_at`) keep their names. Renaming happens in staging, so a naming change never touches captured history.
+- New projects and new releases write snapshots to the `snapshots` schema. Existing snapshots keep their schema.
+- `dbt_valid_to_current` is set once per client project and applied to every snapshot.
+
+**Seeds** (`seeds/seed__<description>.csv`)
+- Static reference data only. Only staging reads a seed.
+- The `seed__` prefix tells a reader the table is static reference data, not loaded data.
+- Seed columns keep the CSV's names; staging renames them.
+- Seed naming and the `seeds` schema apply to **new projects and new releases only**. Dashboard-first mock seeds in releases already under way keep their names, so `/wire:data_refactor-generate` still finds them.
+
+---
+
+### 3. Validate Naming
+
+File naming and layer-boundary findings come from the Step 0.5 checker. What follows is the full convention and the reasons.
+
+**Model names, new form (generate):**
+- Staging and integration models are **plural**: `stg_source_a__users`, `int_core__users`. A staging or integration model holds the set of source rows for a concept, and its name describes that set.
+- Warehouse models are **singular**: `wh_core__user_dim`. A dimension or fact names the entity type each row is.
+- Double underscore separates group (or source) from entity.
+
+**Old forms still accepted (never renamed):**
+- Singular staging and integration names (`stg_source_a__user`).
+- `_<source>__sources.yml` source files.
+- Existing schema file names (`stg_<source>.yml`, `integration.yml`, `wh_<group>.yml`).
+- `_agg` warehouse aggregates.
+- Ephemeral intermediate models.
+- Existing seed names and schemas, existing snapshot schemas.
+
+`/wire:dbt-validate` no longer reports "use singular names".
+
+**Directory structure (new projects):**
 ```
 models/
-│
-├── schema.yml                   # Schema YAML — auto-generated, do not hand-edit
-├── field_descriptions.md         # Centralised dbt doc blocks for shared field descriptions
-│
-├── warehouse/
-│   ├── wh_core/
-│   │   ├── wh_core__user_dim.sql
-│   │   └── wh_core__country_dim.sql
-│   └── wh_entity_group/
-│       ├── wh_entity_group__entity_name_a_dim.sql
-│       ├── wh_entity_group__entity_name_b_fact.sql
-│       └── wh_entity_group__entity_name_d_xa.sql
-│
+├── field_descriptions.md            # doc blocks for model columns, every layer
+├── droughty_schema.yml              # only where the project uses droughty
+├── staging/
+│   └── stg_source_a/
+│       ├── _sources.yml
+│       ├── _schema.yml              # without droughty
+│       ├── base_source_a__users.sql
+│       └── stg_source_a__users.sql
 ├── integration/
-│   ├── int_core/
-│   │   ├── int_core__users.sql
-│   │   └── int_core__geographies.sql
-│   └── int_entity_group/
-│       └── int_entity_group__entity_name.sql
-│
-└── staging/
-    ├── stg_core/
-    │   ├── _sources.yml
-    │   ├── stg_core__users.sql
-    │   └── stg_core__geographies.sql
-    └── stg_entity/
-        ├── _sources.yml
-        ├── stg_entity__entity_a.sql
-        └── stg_entity__entity_b.sql
+│   └── int_core/
+│       ├── _schema.yml
+│       ├── int_core__users.sql
+│       └── intermediate/
+│           └── int_core__users__unioned.sql
+└── warehouse/
+    └── wh_core/
+        ├── _schema.yml
+        ├── wh_core__user_dim.sql
+        ├── wh_core__order_fact.sql
+        └── wh_core__order_xa.sql
+snapshots/
+└── snapshot_source_a/
+    └── snapshot_source_a__users.sql
+seeds/
+└── seed__sku_category_lookup.csv
+macros/
+├── _schema_macros.yml
+├── macro__geo_country.sql
+└── utility/
+    └── macro__type_date.sql
 ```
 
-**Layer Rules:**
-- Only **staging** models select from raw data sources (`{{ source(...) }}`)
-- **Integration** and **warehouse** models select from lower-layer models via `{{ ref(...) }}`
-- A warehouse model can select directly from staging if an integration model isn't required
-- Integration models exist primarily to join models and enrich data
-
-**Violations to Flag:**
-- Plural object names
-- Missing or incorrect prefixes/suffixes
-- Non-standard directory structure
-- Mismatched filename and directory location
+**Findings to report on new and changed files:**
+- Missing or wrong layer prefix or suffix
+- File in the wrong directory for its kind
+- A later layer reading a base model, or a non-staging model reading a source, snapshot or seed
 
 ---
 
-### 3. Validate SQL Structure
+### 4. Validate SQL Structure and Style
 
-**Required Structure:**
+**Required structure:**
 
-1. **All refs / sources at top in CTEs, prefixed with `s_`:**
-```sql
-with s_users as (
+1. Every `ref()` and `source()` sits in an import CTE at the top, prefixed `s_`. A reader sees every dependency in one place.
+2. One logical unit of work per CTE where performance permits. CTE names say what the CTE does, as long as needed. A CTE with notable logic carries a comment.
+3. The last CTE is `final`, and the model ends with `select * from final`. To debug, change that one line to select from any earlier CTE; nothing else needs editing. Every model ends the same way, so reviewers and tools know where the output is defined.
+4. Columns take their output names in the CTE before `final`, so a column can be traced back to its source.
+5. Aggregated columns lead with the function: `sum_invoice_line_item_amount`, `max_by_activity_user_name`. The name shows the value is no longer one row's, and the trace to the source column stays unbroken.
+6. Every model's `config()` has a `description` that opens with a `Grain:` line: "Grain: One row per user." Grain is the first thing a reader needs to join or aggregate a model correctly; most fan-out and double-counting errors start with a wrong guess about grain. Putting it first means it is found by people and by tools.
 
-    select * from {{ source('back_office', 'user_accounts') }}
-
-),
-
-s_accounts as (
-
-    select * from {{ ref('stg_core__accounts') }}
-
-),
-```
-
-2. **CTE Naming:**
-   - ✓ Prefix with `s_` for CTEs that select from refs/sources
-   - ✓ Descriptive names for transformation CTEs (e.g., `rename_and_cast`, `filtered_events`, `aggregated_metrics`)
-   - ✓ One logical unit of work per CTE where performance permits
-   - ✓ Comment CTEs that contain confusing or notable logic
-
-3. **Final CTE Pattern — every model must have a `final` CTE:**
-```sql
-final as (
-
-    select * from rename_and_cast
-
-)
-
-select * from final
-```
-
-   The `final` CTE makes models easier to debug — you can comment out the final `select * from final` and select from any intermediate CTE without having to comment out code.
-
-4. **Configuration Block — model-specific attributes (unique keys, partitioning, description):**
+**Canonical staging model:**
 ```sql
 {{
-  config(
-    description = 'A description of the model to help developers',
-    materialized = 'table',
-    unique_key = 'user_pk'
-  )
-}}
-```
-
-   Global configurations (materialisation defaults per directory) should live in `dbt_project.yml`, not in individual models. If a config applies to every model in a folder, set it at the project level.
-
-5. **Reference staging model — combines all of the above:**
-```sql
-{{
-  config(
-    description = 'A description of the model to help developers'
+    config(
+        description = """
+            Grain: One row per user account.
+            User accounts as received from source system A.
+        """
     )
 }}
 
 with s_users as (
 
-    select * from {{ source('back_office', 'user_accounts') }}
+    select * from {{ source('source_a', 'users') }}
 
 ),
 
@@ -271,17 +323,17 @@ rename_and_cast as (
 
     select
 
-        {# keys #}
-        lower(cast(id as {{ dbt.type_string() }} )) as user_natural_key,
+        {# natural keys #}
+        cast(id as {{ dbt.type_string() }}) as user_natural_key,
         {# attributes #}
-        lower(cast(name as {{ dbt.type_string() }} )) as user_name,
+        lower(cast(name as {{ dbt.type_string() }})) as user_name,
         {# metrics #}
-        cast(account_balance as {{ dbt.type_numeric() }} ) as user_account_balance_amount,
+        cast(account_balance as {{ dbt.type_numeric() }}) as user_account_balance_amount,
         {# booleans #}
-        cast(status as {{ dbt.type_boolean() }} ) as user_status,
-        {# temporal data types #}
-        cast(created_date as {{ type_date() }} ) as user_created_dt,
-        cast(update_at as {{ dbt.type_timestamp() }} ) as user_update_ts,
+        cast(active as {{ dbt.type_boolean() }}) as user_is_active,
+        {# temporal #}
+        cast(created_date as {{ ra_type_date() }}) as user_created_dt,
+        cast(updated_at as {{ dbt.type_timestamp() }}) as user_updated_ts
 
     from s_users
 
@@ -296,1063 +348,681 @@ final as (
 select * from final
 ```
 
-   Note the `{# … #}` comments grouping fields by category (keys / attributes / metrics / booleans / temporal data types) — this is the canonical staging-model shape.
+Note that `user_natural_key` is not lowercased. See Step 5.
 
-**Style Requirements:**
-- ✓ 4-space indentation (not tabs)
-- ✓ Lines no longer than 80 characters
-- ✓ Lowercase field and function names
-- ✓ Use `as` keyword for aliases
-- ✓ Fields before aggregates/window functions
-- ✓ Group by column name, not number
-- ✓ Prefer `union all` to `union distinct`
-- ✓ Explicit joins (`inner join`, `left join`, never just `join`)
-- ✓ If joining 2+ tables, always prefix column names with table alias
-- ✓ No table alias initialisms (use `customer`, not `c`)
-- ✓ Comments for confusing CTEs
+**SQL style:**
+- Four-space indentation. Predicates line up with `where`.
+- Lines up to **120** characters. The old 80 forced Jinja macro calls and surrogate key lists onto several lines for no gain in reading.
+- Lowercase field and function names.
+- `as` for every field and table alias.
+- Trailing commas.
+- Aggregate as early as possible, before joining.
+- Group and order by column name, not number.
+- `union all`, not `union distinct`.
+- Explicit joins: `inner join`, `left join`, never bare `join`.
+- No table alias initialisms. `customer` is clearer than `c`.
+- A model selecting from two or more tables prefixes every column with its table name.
+- Readability over a smaller line count.
+- Comments in plain English, with full column names and the business's own terms (invoices, not bills). No new term for a thing the project already names.
 
-**Violations to Flag:**
-- `ref()` or `source()` calls outside of top CTEs
-- Missing final CTE
-- Improper indentation or line length
-- Uppercase SQL keywords or functions
-- Implicit joins or missing join qualifiers
-- Hard-to-understand table aliases
+**YAML style:** two-space indentation, list items indented, lines up to 80 characters, a blank line between dictionary list items where it helps reading.
 
----
+**Jinja style:** delimiters carry inner spaces (`{{ this }}`, not `{{this}}`), newlines separate logical blocks, and column groups use the Jinja comment form (`{# attributes #}`) so the markers do not reach the compiled SQL.
 
-### 4. Validate Field Naming and Ordering
-
-**Field Naming Conventions:**
-
-**Primary Keys:**
-- ✓ Named `<entity>_pk` (e.g., `user_pk`, `subscription_pk`)
-- ✓ Generated using `{{ dbt_utils.generate_surrogate_key(...) }}`
-- ✓ Never look up PKs in separate queries
-
-**Foreign Keys:**
-- ✓ Named `<referenced_entity>_fk` (e.g., `user_fk`, `subscription_fk`)
-- ✓ Generated using `{{ dbt_utils.generate_surrogate_key(...) }}`
-
-**Natural Keys:**
-- ✓ Source-system identifiers renamed `<descriptive_name>_natural_key`
-- ✓ Example: `subscription_natural_key`, `user_natural_key`
-
-**Timestamps:**
-- ✓ Named `<event>_ts` (e.g., `created_ts`, `updated_ts`, `order_placed_ts`)
-- ✓ Always assumed UTC unless otherwise indicated
-- ✓ If timezone is **not** UTC, insert the timezone tag between event and `_ts`: `created_cet_ts`, `created_pt_ts`
-- ✓ Dates use `_dt` suffix: `user_created_dt`
-
-**Booleans:**
-- ✓ Prefixed with `is_`, `has_`, or `was_` (e.g., `is_active`, `has_subscription`, `was_refunded`)
-
-**Revenue / Money:**
-- ✓ Revenue columns use the suffix `_amount` (e.g., `user_account_balance_amount`, `subscription_revenue_amount`)
-- ✓ Stored as decimal currency (e.g., 19.99 for $19.99) — convert from cents at the staging layer
-- ✓ If a column must remain in integer cents for legacy reasons, document it explicitly
-
-**Type Casting:**
-- ✓ **Always** use dbt's type-cast macros — never raw SQL types:
-  - `{{ dbt.type_string() }}`
-  - `{{ dbt.type_numeric() }}`
-  - `{{ dbt.type_boolean() }}`
-  - `{{ dbt.type_timestamp() }}`
-  - `{{ type_date() }}` (no `dbt.` prefix — it's a community macro)
-- ✓ This keeps models portable across warehouses (BigQuery / Snowflake / Databricks / Postgres)
-
-**Common Fields:**
-- ✓ Prefix with entity name (e.g., `customer_name`, `carrier_name`, not just `name`)
-- ✓ Rename source columns to business-friendly `snake_case` names at the staging layer
-
-**General Rules:**
-- ✓ All names in `snake_case`
-- ✓ Use business terminology, not source terminology
-- ✓ Avoid SQL reserved words
-- ✓ Consistency across models (same field names for same concepts)
-
-**Field Ordering (in `select` lists):**
-1. **Keys** — pk, fks, natural keys
-2. **Attributes** — dimensions, slicing fields, descriptive columns
-3. **Indexes / ranks** — `row_number()`, rank columns, sequence positions
-4. **Metrics** — measures, aggregatable values, `_amount` columns
-5. **Booleans** — `is_*`, `has_*`, `was_*` flags
-6. **Temporal data types** — `_dt`, `_ts` columns last
-
-Use `{# keys #}`, `{# attributes #}`, `{# metrics #}`, `{# booleans #}`, `{# temporal data types #}` Jinja comment markers to visually separate the groups in staging models (see the staging model example above).
-
-**Violations to Flag:**
-- Inconsistent naming patterns
-- Missing `_pk` / `_fk` suffixes; PKs/FKs not generated via `dbt_utils.generate_surrogate_key`
-- Timestamps without `_ts` suffix; non-UTC timestamps without timezone tag in the middle
-- Booleans without `is_` / `has_` / `was_` prefix
-- Revenue columns without `_amount` suffix
-- Raw SQL type casts instead of `dbt.type_*()` macros
-- Reserved words as column names
-- Incorrect field ordering (e.g. metrics before attributes, temporal columns mid-list)
+**Findings:**
+- `ref()` or `source()` outside the top CTEs
+- Missing `final` CTE or a model not ending `select * from final`
+- Missing `Grain:` line at the start of the config description
+- Lines over 120, tabs, uppercase keywords, bare `join`, `union distinct`, alias initialisms
 
 ---
 
-### 5. Validate Model Configuration
+### 5. Validate Column Naming and Order
 
-**Configuration Rules:**
+**Suffixes:**
 
-**Warehouse Models:**
-- ✓ Always materialised as `table`
-- ✓ Consider partitioning / clustering / sort keys for performance
+| Suffix or prefix | Applies to | Example |
+|---|---|---|
+| `_pk` | Primary key | `subscription_pk` |
+| `_fk` | Foreign key | `subscription_fk` |
+| `_natural_key` | Source system identifier | `subscription_natural_key` |
+| `_count` | Count of things | `order_line_count` |
+| `_rank` | Ordinal position | `revenue_rank` |
+| `_amount` | Value in the project's base currency | `revenue_amount` |
+| `_amount_<currency>` | Value in another currency, ISO 4217 code lowercased | `revenue_amount_usd` |
+| `_<measure>_<unit>` | Measured quantity with its unit | `package_weight_kg`, `call_duration_seconds` |
+| `_pct` | Percentage, 0 to 100 | `discount_pct` |
+| `_ratio` | Proportion, 0 to 1 | `conversion_ratio` |
+| `<entity>_is_` / `_has_` / `_was_` | Boolean | `user_is_active` |
+| `_dt` | Date | `user_created_dt` |
+| `_ts` | Timestamp in UTC | `user_created_ts` |
+| `_<timezone>_ts` | Timestamp outside UTC | `user_created_cet_ts` |
 
-**Other Layers (Staging, Integration):**
-- ✓ Prefer `view` or ephemeral (CTE) materialisation
-- ✓ Use `table` only if performance requires it
+Reasons for the less obvious ones:
+- **`_pct` and `_ratio` are kept apart.** A value of 0.5 is half a percent on one scale and half on the other. Mixing them gives errors of a factor of 100 that look plausible on a chart. The suffix tells the reader and the semantic layer which scale to format.
+- **Every measure states its unit, except currency.** `duration` could be seconds or minutes; `duration_seconds` cannot be misread. The unit is the SI symbol lowercased where one exists (`kg`, `km`, `ml`), otherwise spelled out (`seconds`, `days`). Base currency is implicit in `_amount` because a project has one base currency; any other currency carries its code.
+- **`_count` and `_rank`** mark values that must not be summed or averaged as if they were measures of the same kind.
+- **Attributes carry no suffix.**
+- Price columns are decimal currency (19.99, not 1999 cents), converted in staging.
 
-**Configuration Placement:**
-- ✓ Model-specific attributes (unique keys, partitioning, description) live in the model's `{{ config() }}` block
-- ✓ Global configurations (materialisation defaults, schema layout) live in `dbt_project.yml`
-- ✓ If a configuration applies to **all** models in a directory, put it in `dbt_project.yml` — not repeated in every model
-- ✓ Every model should include a `description` in its config so developers can scan the project
+**Column prefixes (new form):**
+- Every output column carries the prefix of the thing the model holds: a users model gives `user_name`, `user_is_active`. After a join in the warehouse or BI tool, an unprefixed `name` is ambiguous; a prefixed one says where it came from.
+- A column arriving from a model about a different thing takes this model's prefix on the way out. A column from a model about the same thing keeps its name.
+- Where two columns describe the same thing, the relationship follows the prefix: `order_shipping_country_name`, `order_billing_country_name`.
+- Foreign keys keep the referenced entity's prefix: `user_pk` becomes `user_fk`.
+- A natural key surfaced on another entity takes that model's prefix: `order_user_natural_key`.
+- Booleans follow the same rule: `user_is_active`, not `is_active`.
 
-**Example:**
-```sql
-{{
-  config(
-    materialized = 'table',
-    sort = 'user_pk',
-    dist = 'user_pk'
-  )
-}}
-```
+**Old form still accepted:** unprefixed columns (`name`, `is_active`) in existing models. Wire never renames them. In a changed model, new columns take the new form unless the project has a `column_prefix: none` ruling. Where a changed model uses unprefixed columns throughout, ask the consultant whether to record a ruling before adding prefixed columns beside them.
 
-**Violations to Flag:**
-- Warehouse models not materialized as tables
-- Unnecessary table materializations in staging/integration
-- Config that should be in dbt_project.yml but is in model
+**Lowercasing (Wire holds an exception to the reference):**
+- Wire lowercases **attribute strings only**. `London` and `london` group as one value in a BI tool only if they are stored the same way.
+- **Natural keys and source identifiers are never lowercased.** Some are case-sensitive: Salesforce 15-character IDs differ only by case, so lowercasing merges different records and breaks joins back to the source. The reference lowercases every staging string; Wire holds this exception until the reference adds it.
+
+**Casting:**
+- Always through macros, never a bare warehouse type, so models stay portable across BigQuery, Snowflake, Databricks and Postgres: `{{ dbt.type_string() }}`, `{{ dbt.type_numeric() }}`, `{{ dbt.type_boolean() }}`, `{{ dbt.type_timestamp() }}`, `{{ dbt.type_int() }}`.
+- Dates: new projects use `{{ ra_type_date() }}`, defined in `macros/utility/macro__type_date.sql`. dbt has no cross-database date type macro; this one asks the adapter for its date type:
+  ```sql
+  {% macro ra_type_date() %}
+      {{ return(api.Column.translate_type("date")) }}
+  {% endmacro %}
+  ```
+- An existing project keeps the date macro it already uses (`type_date()` or its own). Switching would change every model that casts a date, for no change in output.
+
+**Column order (eight groups, each opened by a Jinja comment):**
+1. `{# primary key #}`
+2. `{# foreign keys #}`
+3. `{# natural keys #}`
+4. `{# attributes #}`
+5. `{# indexes and ranks #}`
+6. `{# metrics #}`
+7. `{# booleans #}`
+8. `{# temporal #}`
+
+This refines the old six groups (keys, attributes, indexes/ranks, metrics, booleans, temporal). Splitting keys into three shows at a glance which keys Wire generated and which came from the source. Omit a group's comment where the model has no columns of that kind.
+
+**General:** snake_case, business terms rather than source terms, no SQL reserved words, the same name for the same concept across models.
+
+**Findings (new and changed columns):**
+- Missing `_pk` / `_fk`, or keys not built with `dbt_utils.generate_surrogate_key`
+- Keys created below the warehouse layer
+- Measures without a unit, `_pct` values on a 0 to 1 scale or the reverse
+- Natural keys lowercased
+- Bare warehouse types in casts
+- Columns out of group order, or groups without their Jinja comment
 
 ---
 
-### 6. Validate Testing Coverage
+### 6. Validate Model Configuration
 
-Primary-key test coverage and warehouse-column documentation gaps are
-already reported by the Step 0 lint run against the model's `schema.yml`
-(`testing` / `documentation` in `dbt.yml`) — check those findings before
-re-scanning by hand.
+**Materialization by kind:**
 
-**Minimum Testing Requirements:**
+| Kind | Materialization | Schema |
+|---|---|---|
+| Base, staging | `view` | `staging` |
+| Intermediate, integration | `view` | `integration` |
+| Warehouse | `table` (incremental allowed per model) | project default |
+| Snapshot | `snapshot` | `snapshots` |
+| Seed | `table` | `seeds` |
 
-**Every Model:**
-- ✓ Has a corresponding entry in the schema YAML
-- ✓ Primary key has `unique` and `not_null` tests
-- ✓ Integration models with multiple sources: use `dbt_utils.unique_combination_of_columns`
+Base and intermediate models take their materialization from their folder and carry no entry of their own in `dbt_project.yml`. `ephemeral` applies per model, for a model that only exists to be inlined; dbt cannot select an ephemeral model directly and `dbt run-operation` cannot reference one.
 
-**Schema YAML is auto-generated:**
+**Where a config belongs:** anything that applies to every model in a directory, and materialization, goes in `dbt_project.yml`. The developer description, unique key, partitioning and clustering go in the model's `config()` block. The end-user description goes in the schema file.
 
-The dbt schema file (`schema.yml`) is **auto-generated** in our projects from the compiled SQL and project-level configuration. This means:
+**New projects: `dbt_project.yml` template.** Layer configs sit under the real project name. A config under any other key is silently ignored by dbt.
 
-- ✓ **Do not hand-create `schema.yml` files.** The generator produces type-aware, test-aware schema entries derived from compiled SQL.
-- ✓ Tests, descriptions, and column metadata managed by the generator should be set through its configuration, not by editing the generated file directly (it will be overwritten on the next run).
-- ✓ Hand-authored `_sources.yml` files inside `stg_<group>/` folders are still valid — they define the upstream source mapping, not the model schema, and are not regenerated.
-- ✓ A missing schema entry for a model typically means the generator has not been re-run after the model was added.
-
-**Schema.yml Location:**
-- ✓ Every subdirectory should contain a `.yml` file
-- ✓ Filename typically matches directory (e.g., `stg_salesforce.yml`, `integration.yml`)
-
-**Example:**
 ```yaml
-version: 2
-
 models:
-  - name: stg_salesforce__user
-    description: Salesforce user records
-    columns:
-      - name: user_pk
-        description: Unique identifier for user
-        tests:
-          - unique
-          - not_null
+  +persist_docs:
+    relation: true
+    columns: true
+  <project_name>:
+    staging:
+      +materialized: view
+      +schema: staging
+    integration:
+      +materialized: view
+      +schema: integration
+    warehouse:
+      +materialized: table
+      +meta:
+        required_docs: true
+        required_tests: {"unique": 1, "not_null": 1}
 
-      - name: email
-        description: User email address
-        tests:
-          - not_null
+seeds:
+  <project_name>:
+    +schema: seeds
+
+snapshots:
+  <project_name>:
+    +schema: snapshots
 ```
 
-**Additional Tests:**
-- ✓ `relationships` tests for foreign keys
-- ✓ `accepted_values` for enums/status fields
-- ✓ `not_null_where` for conditional requirements
-- ✓ Custom data tests in `tests/` directory for KPI validation
+`+persist_docs` sends descriptions to the warehouse, so analysts see them in the warehouse console as well as in dbt docs.
 
-**Violations to Flag:**
-- Missing schema.yml file
-- Models without test coverage
-- Primary keys without unique/not_null tests
-- Missing relationships tests on foreign keys
+**New projects: `packages.yml`:**
+```yaml
+packages:
+  - package: dbt-labs/dbt_utils
+    version: ">=1.3.0"
+  - package: tnightengale/dbt_meta_testing
+    version: ">=0.4.0"
+```
+
+**Projects that use droughty** set `required_docs: false`. droughty does not write model descriptions and rewrites `models/droughty_schema.yml` on every run, so `required_docs` would fail every warehouse model. `required_tests` stays on. The documentation rule is met through doc blocks in `models/field_descriptions.md`, which droughty writes into column descriptions.
+
+**Existing projects: suggest, never apply.** Compare the project's `dbt_project.yml` and `packages.yml` with the template and report the differences as suggestions. Do not edit them. Correcting the project key in an existing project can change which models build as tables or views: configs that were silently ignored start to apply on the next run.
+
+**Findings:**
+- Warehouse models not materialized as tables (incremental is allowed)
+- Materialization set in a model where the folder config already sets it
+- `config()` without a `description`
 
 ---
 
-### 7. Validate Documentation Coverage
+### 7. Validate Testing
 
-**Documentation Requirements:**
+Primary-key test coverage comes from the Step 0.5 checker. Testing strategy is project specific; what follows is the Wire default.
 
-**Warehouse Models (Required):**
-- ✓ **All columns in the warehouse layer must be documented.** No exceptions — this is the layer end-users and BI consumers touch.
-- ✓ End-user focused descriptions written in business terminology
+**Generated tests:**
+- Primary keys: `unique` and `not_null`. Always.
+- Other columns that are populated in every row: `not_null`.
+- Wire adds `dbt_utils.at_least_one` **alongside** `not_null`, never in place of it. `at_least_one` only checks that a column is not entirely empty, which also catches an empty table or a column that broke upstream. `not_null` checks every row. Replacing one with the other would let partial nulls through. The reference makes `at_least_one` the default column test; Wire holds this exception until the reference adds it.
+- Foreign keys: `relationships`. Enums: `accepted_values`. Multi-source integration models: `dbt_utils.unique_combination_of_columns`.
 
-**Staging / Integration Models:**
-- ✓ Model `description` in the `{{ config() }}` block — helps developers
-- ✓ Document complex logic / non-obvious transformations
-- ✓ Coverage at the column level is encouraged but not enforced
+**Test key:**
+- `data_tests:` on dbt 1.8 and later. dbt renamed schema tests to data tests to tell them apart from unit tests.
+- `tests:` for dbt before 1.8.
+- In a schema file that already uses `tests:`, keep `tests:`, so one file reads one way and the diff shows only the real change.
+- Never both keys on one resource; dbt rejects it.
+- A `test_key:` ruling in `form_choices` overrides the default.
 
-**Doc Blocks — centralised field descriptions:**
-- ✓ Field descriptions live in `models/field_descriptions.md` as `{% docs %}` blocks
-- ✓ Reference them in schema YAML via `description: "{{ doc('<doc_block_name>') }}"`
-- ✓ This avoids duplicate descriptions for the same logical column across multiple models
+**Enforcement:** where `packages.yml` includes `dbt_meta_testing`, run:
+```bash
+dbt run-operation required_docs
+dbt run-operation required_tests
+```
+They do not run as part of `dbt run` or `dbt build`. Skip them where the package is not installed.
 
-**Example `field_descriptions.md`:**
-```jinja
+See `testing-reference.md` for patterns, severity and troubleshooting.
+
+---
+
+### 8. Validate Documentation
+
+- **Every column in every layer** is documented: base, staging, intermediate, integration and warehouse. (Previously only warehouse and staging.)
+- Model column descriptions are held once, as doc blocks in `models/field_descriptions.md`. Schema files reference them: `description: '{{ doc("user_pk") }}'`. A column that keeps its name across layers uses one doc block, so its meaning is written once and cannot drift.
+- Source columns are the exception: their descriptions are written inline in `_sources.yml` (Step 9).
+- Every model's `config()` description opens with the `Grain:` line (Step 4). That description is for developers; the schema file description is for end users. A `config()` description does not satisfy `required_docs`, which reads the schema file.
+
+**Schema files:**
+- **With droughty:** `models/droughty_schema.yml` is generated from the warehouse. Do not hand-edit it; write doc blocks and re-run droughty.
+- **Without droughty:** new directories get a `_schema.yml` per subdirectory. Existing schema file names are kept.
+
+```markdown
 {% docs user_pk %}
-Surrogate primary key for the user entity, generated from the source system
-natural key. Stable across loads.
-{% enddocs %}
-
-{% docs user_account_balance_amount %}
-The user's current account balance in decimal currency (e.g. 19.99 = $19.99).
-Sourced from the back-office `user_accounts.account_balance` column.
+The surrogate primary key of the user entity.
 {% enddocs %}
 ```
 
-**Example schema entry referencing doc blocks:**
 ```yaml
 models:
   - name: wh_core__user_dim
-    description: |
-      User dimension containing profile information.
-      Refreshed nightly from the back-office source.
+    description: >
+      Grain: One row per user.
+      The user dimension. Current users, plus users seen on activity who
+      have left.
     columns:
       - name: user_pk
-        description: "{{ doc('user_pk') }}"
-      - name: user_account_balance_amount
-        description: "{{ doc('user_account_balance_amount') }}"
+        description: '{{ doc("user_pk") }}'
+        data_tests:
+          - unique
+          - not_null
 ```
 
-**Enforcement:**
-- ✓ Documentation coverage can be enforced via [dbt-meta-testing](https://github.com/tnightengale/dbt-meta-testing) — if the package is installed in `packages.yml`, expect a `dbt run-operation` step to fail CI when warehouse-layer columns lack descriptions.
-
-**Violations to Flag:**
-- Warehouse-layer columns without descriptions
-- Duplicate descriptions for the same logical column across models (should use a shared doc block)
-- Missing `description` in a model's `{{ config() }}` block
-- Vague or unhelpful descriptions ("the user", "an ID")
+**Findings (new and changed models):** undocumented columns in any layer, the same column described twice instead of one doc block, vague descriptions ("the user", "an ID").
 
 ---
 
-### 8. Run sqlfluff Validation (if available)
+### 9. Validate Source Declarations (`_sources.yml`)
 
-**Check for sqlfluff:**
+- One `_sources.yml` per `stg_<source>/` directory, declaring one source named for the directory without `stg_`: `stg_source_a/_sources.yml` declares `source_a`.
+- `schema` (the dataset the loading tool writes to) and `loader` (the loading tool) are set.
+- The source description states facts shared by its tables: system, loader, table groups, the date data starts, units, the columns that join tables.
+- A table is declared only where a staging model, base model or snapshot reads it.
+- Table `name` is the business name of the concept. `identifier` holds the raw table name where different, so models read in business terms and a raw rename touches one line.
+- Table description opens `Grain: ...`, then `Source table group:` where the source has groups, then what the table holds and how it is loaded (full refresh, re-read window, deletes marked), and ends with a `Use it for ...` sentence.
+- Every column of a declared table is declared, under its source name, unchanged.
+- Column descriptions are written inline, not as doc blocks. A source column describes the raw system, not a staged column, and is not reused elsewhere.
+- A column description states what the column means in the source system, and where they apply: unit, time zone, what a null means, the fields of a JSON object or array, the allowed values.
+- An identifier column's description says it identifies a row and names the columns elsewhere that hold the same value.
+- A column holding personal data carries "Personal data." so a privacy review can find every one by search.
+- A profiled figure carries the date measured: "Null on 30% of rows as at 2026-09." Without the date, the figure cannot be checked later.
+- Loader columns (`_fivetran_synced`, `_loaded_at`) are declared.
+- `freshness` (with `loaded_at_field`) is the only test in `_sources.yml`. Assumptions about data shape are tested on the staging model, where the project can act on a failure. `warn_after` and `error_after` are set per client project.
+- New source files are `_sources.yml`. Existing `_<source>__sources.yml` files keep their names.
+
+```yaml
+version: 2
+
+sources:
+  - name: source_a
+    description: >
+      Source system A, loaded by Fivetran. Data starts on 1 January 2024.
+      Durations are in seconds.
+    schema: fivetran_source_a
+    loader: fivetran
+    tables:
+      - name: users
+        identifier: user_accounts
+        description: >
+          Grain: One row per user account.
+          Holds the current state of each account. Fivetran replaces the
+          table in full on every run.
+          Use it for user attributes such as name and email address.
+        config:
+          loaded_at_field: _fivetran_synced
+          freshness:
+            warn_after: {count: 24, period: hour}
+            error_after: {count: 48, period: hour}
+        columns:
+          - name: id
+            description: >
+              Source system identifier for the account. One row per id.
+              The same value is held in orders.account_id.
+          - name: email
+            description: >
+              The account holder's email address. Personal data.
+              Null on 5% of rows as at 2026-09.
+          - name: _fivetran_synced
+            description: When Fivetran loaded the row. UTC.
+```
+
+---
+
+### 10. Validate Macros
+
+- New macros: one per file, `macros/macro__<name>.sql`; utility macros in `macros/utility/`. Adapter versions (`default__`, `bigquery__`, `snowflake__`) sit in the same file as the macro they implement, so one file holds everything about one macro.
+- Every macro has an entry in `macros/_schema_macros.yml`: `name`, `description` (what it does and returns; a macro run as an operation includes its `dbt run-operation` command), and `arguments`, each with `name`, `type`, `description`. The `name` must match the macro as defined in the file, because dbt attaches the entry by name.
+- A change that adds a macro or changes its arguments or behaviour updates its `_schema_macros.yml` entry in the same change.
+- dbt override macros such as `generate_schema_name` keep their dbt names; dbt finds them by name.
+- Existing macro files are never renamed.
+
+```yaml
+macros:
+  - name: macro__geo_country
+    description: >
+      Converts a country name or code to its ISO 3166-1 alpha-3 code, for
+      Looker map fields. Returns the lowercased input when no match is found.
+    arguments:
+      - name: country
+        type: string
+        description: The country name or code to convert.
+```
+
+---
+
+### 11. Run sqlfluff (if available)
+
 ```bash
 which sqlfluff
 ```
 
-**If available:**
-1. Check for `.sqlfluff` config in project root
-2. Run: `sqlfluff lint <model_file> --dialect <dialect>`
-3. Include sqlfluff violations in validation output
-4. Note: sqlfluff enforces many style conventions automatically
+If available: check for a `.sqlfluff` config in the project root, run `sqlfluff lint <model_file> --dialect <dialect>`, and include its findings. A project `.sqlfluff` that sets `max_line_length = 80` is the project's choice; report the difference from 120 as a suggestion only.
 
-**If not available:**
-- Note in output: "sqlfluff not detected - recommend installing for automated linting"
-- Provide manual validation of style conventions
+If not available: note "sqlfluff not detected; recommend installing for automated linting" and check style by hand.
 
 ---
 
-### 9. Output Validation Report
-
-Structure your validation feedback as:
+### 12. Output the Validation Report
 
 ```
 ## dbt Model Validation Report
 
 **Model:** `<model_name>.sql`
-**Type:** <staging/integration/warehouse-dim/warehouse-fct>
-**Convention Source:** <project-specific / RA defaults>
+**Kind:** <base / staging / intermediate / integration / dim / fact / xa / snapshot / macro>
+**Scope:** <new / changed / unchanged>   (from git; "unknown" if no history)
+**Convention source:** <project-specific / RA defaults> | checker run with <--new-project / --changed-from <ref> / no scope flag>
+**Form rulings:** <none / form_choices values in force>
 
 ### Summary
-- ✓ X checks passed
-- ⚠️ Y issues found (N critical, M important, P nice-to-have)
+- X checks passed
+- Y issues (N errors, M warnings, P suggestions)
 
-### Naming Conventions
-[✓/⚠️] **File naming:** <details>
-[✓/⚠️] **Field naming:** <details>
-
-### SQL Structure
-[✓/⚠️] **CTE structure:** <details>
-[✓/⚠️] **Style compliance:** <details>
-[✓/⚠️] **Field ordering:** <details>
-
+### Naming
+### SQL structure and style
+### Columns
 ### Configuration
-[✓/⚠️] **Materialization:** <details>
-[✓/⚠️] **Performance settings:** <details>
-
 ### Testing
-[✓/⚠️] **Schema.yml exists:** <details>
-[✓/⚠️] **Primary key tests:** <details>
-[✓/⚠️] **Foreign key tests:** <details>
-
 ### Documentation
-[✓/⚠️] **Model description:** <details>
-[✓/⚠️] **Column descriptions:** <details>
-
+### Source declarations / macros (where relevant)
 ### sqlfluff
-[✓/⚠️/N/A] **Linter results:** <details>
-
----
 
 ## Recommendations
-
-### Critical Issues (must fix)
-1. <issue description>
-   - **Location:** <file:line or section>
+### Errors (must fix before merge)
+1. <issue>
+   - **Location:** <file:line>
    - **Current:** `<current code>`
    - **Should be:** `<correct pattern>`
    - **Reason:** <why this matters>
+### Warnings (should fix)
+### Suggestions (project-level, never applied automatically)
+```
 
-### Important Issues (should fix)
-<same format>
-
-### Nice-to-have Improvements
-<same format>
+Severity rules:
+- A section A rule broken in a new or changed file is an error.
+- A section A rule broken in an unchanged file is not reported.
+- Where scope is unknown (no git history), section A findings are warnings.
+- An old form that is still accepted is never a finding.
+- `dbt_project.yml` and `packages.yml` differences in an existing project are suggestions.
 
 ---
 
-## Examples
+## 13. Multi-Source Data Warehouse Framework
 
-See `skills/dbt-development/examples/` for reference implementations:
-- `staging-model-example.sql` - Compliant staging model
-- `integration-model-example.sql` - Compliant integration model
-- `warehouse-model-example.sql` - Compliant warehouse model
-- `schema-example.yml` - Proper testing setup
-```
+Use this pattern when the same entities (companies, contacts, products) arrive from several source systems with different IDs and attributes. Full examples are in `examples/multi-source-*`.
 
----
+### Layers in the pattern
 
-## 10. Multi-Source Data Warehouse Framework
+| Layer | Purpose | New-form name | Materialization |
+|---|---|---|---|
+| Staging | Source-specific shaping, standard column names, ID prefixing | `stg_<source>__<entities>.sql` | view |
+| Intermediate | Union of the same concept across enabled sources | `int_<group>__<entities>__unioned.sql` | view |
+| Integration | Entity resolution, deduplication, merge-list handling | `int_<group>__<entities>.sql` | view (table if performance needs it) |
+| Warehouse | Dimensions and facts with surrogate keys | `wh_<group>__<entity>_dim.sql` / `_fact.sql` | table |
 
-This section describes the design pattern for building scalable, multi-source data warehouse frameworks. Use this pattern when integrating data from multiple source systems where the same entities (companies, contacts, products, locations) exist across sources with different IDs and attributes.
+Projects built on the older pattern (`models/sources/`, `int__company.sql`, `company_dim.sql`, `merge_sources.sql`) keep those names. New models in such a project follow the table above unless a `form_choices` ruling says otherwise.
 
-### Architecture Overview
+### Configuration-driven source management
 
-The multi-source framework uses a three-layer architecture:
-
-```
-Sources Layer (stg_*) → Integration Layer (int_*) → Warehouse Layer (wh_*)
-```
-
-| Layer | Purpose | Naming | Materialization |
-|-------|---------|--------|-----------------|
-| **Sources** | Source-specific transformations, column standardization, ID prefixing | `stg_<source>__<object>.sql` | view |
-| **Integration** | Cross-source entity resolution, deduplication, merging | `int__<object>.sql` | view or table |
-| **Warehouse** | Final dimensional models with surrogate keys | `<object>_dim.sql`, `<object>_fact.sql` | table |
-
-### Configuration-Driven Source Management
-
-A key feature is the ability to **enable or disable data sources** through dbt variables. This allows selective deployment, gradual rollout, and environment-specific configurations.
-
-#### Variable-Based Source Control (dbt_project.yml)
+Sources are enabled or disabled through variables in `dbt_project.yml`:
 
 ```yaml
-# dbt_project.yml
 vars:
-  # Source enablement arrays - add/remove sources as needed
-  crm_warehouse_company_sources: ['hubspot_crm', 'xero_accounting', 'harvest_projects', 'stripe_payments']
-  crm_warehouse_contact_sources: ['hubspot_crm', 'mailchimp_email', 'harvest_projects', 'jira_projects']
-  finance_warehouse_invoice_sources: ['xero_accounting', 'harvest_projects']
-  projects_warehouse_delivery_sources: ['asana_projects', 'jira_projects']
-  
-  # Per-source configuration
+  crm_warehouse_company_sources:
+    - 'hubspot_crm'
+    - 'xero_accounting'
+    - 'harvest_projects'
+  finance_warehouse_invoice_sources:
+    - 'xero_accounting'
+    - 'harvest_projects'
+
   stg_hubspot_crm_id-prefix: 'hubspot-'
   stg_hubspot_crm_etl: 'fivetran'
   stg_hubspot_crm_schema: 'fivetran_hubspot'
-  
-  stg_xero_accounting_id-prefix: 'xero-'
-  stg_xero_accounting_etl: 'fivetran'
-  stg_xero_accounting_schema: 'fivetran_xero'
-  
-  stg_harvest_projects_id-prefix: 'harvest-'
-  stg_harvest_projects_etl: 'stitch'
-  stg_harvest_projects_schema: 'stitch_harvest'
-  
-  # Feature flags
+
   enable_companies_merge_file: true
-  enable_ip_geo_enrichment: false
 ```
 
-#### Conditional Model Compilation
-
-Models check if their source is enabled before compiling:
+### Conditional compilation in staging
 
 ```sql
--- models/sources/stg_hubspot_crm/stg_hubspot_crm__company.sql
+{% if 'hubspot_crm' in var('crm_warehouse_company_sources', []) %}
 
--- Only compile if hubspot_crm is in the company sources list
-{% if var("crm_warehouse_company_sources") %}
-{% if 'hubspot_crm' in var("crm_warehouse_company_sources") %}
+{{
+    config(
+        description = """
+            Grain: One row per HubSpot company.
+            HubSpot companies with source-prefixed natural keys, ready to union with other sources.
+        """
+    )
+}}
 
-with source as (
+with s_companies as (
+
     select * from {{ source('hubspot_crm', 'companies') }}
+
 ),
 
-renamed as (
+-- Removes companies Fivetran has marked deleted in HubSpot.
+remove_deleted as (
+
+    select * from s_companies
+
+    where not coalesce(_fivetran_deleted, false)
+
+),
+
+rename_and_cast as (
+
     select
-        -- Prefix ID with source identifier to prevent collisions
-        concat('{{ var("stg_hubspot_crm_id-prefix") }}', cast(companyid as string)) as company_id,
-        
-        -- Standardize names for matching
-        trim(regexp_replace(
-            regexp_replace(properties_name, r'(?i)\s*(Limited|Ltd\.?|Inc\.?|LLC|Corp\.?)$', ''),
-            r'\s+', ' '
-        )) as company_name,
-        
-        lower(properties_website) as company_website,
-        properties_industry as company_industry,
-        properties_phone as company_phone,
-        properties_createdate as company_created_ts,
-        properties_hs_lastmodifieddate as company_last_modified_ts
-    from source
-)
 
-select * from renamed
+        {# natural keys #}
+        concat('{{ var("stg_hubspot_crm_id-prefix") }}', cast(id as {{ dbt.type_string() }})) as company_natural_key,
+        {# attributes #}
+        lower(trim(cast(property_name as {{ dbt.type_string() }}))) as company_name,
+        lower(trim(cast(property_website as {{ dbt.type_string() }}))) as company_website,
+        'hubspot_crm' as company_source_system,
+        {# temporal #}
+        cast(property_createdate as {{ dbt.type_timestamp() }}) as company_created_ts
 
-{% endif %}
-{% else %} {{ config(enabled=false) }} {% endif %}
-```
+    from remove_deleted
 
-#### Multi-ETL Support
-
-Support multiple ETL pipelines in the same model:
-
-```sql
--- models/sources/stg_hubspot_crm/stg_hubspot_crm__company.sql
-
-{% if var("crm_warehouse_company_sources") %}
-{% if 'hubspot_crm' in var("crm_warehouse_company_sources") %}
-
-{% if var("stg_hubspot_crm_etl") == 'stitch' %}
-
-with source as (
-    select * from {{ source('stitch_hubspot_crm', 'companies') }}
-),
--- Stitch-specific transformations...
-
-{% elif var("stg_hubspot_crm_etl") == 'fivetran' %}
-
-with source as (
-    select * from {{ source('fivetran_hubspot_crm', 'company') }}
-),
--- Fivetran-specific transformations...
-
-{% elif var("stg_hubspot_crm_etl") == 'airbyte' %}
-
-with source as (
-    select * from {{ source('airbyte_hubspot_crm', 'companies') }}
-),
--- Airbyte-specific transformations...
-
-{% endif %}
-
-renamed as (
-    -- Common transformation logic
-)
-
-select * from renamed
-
-{% endif %}
-{% else %} {{ config(enabled=false) }} {% endif %}
-```
-
-### Entity Deduplication and Merging
-
-#### Step 1: Source Layer - ID Prefixing
-
-Each source view must prefix all IDs to prevent collisions:
-
-```sql
--- Each source uses its own prefix
-concat('{{ var("stg_hubspot_crm_id-prefix") }}', cast(id as string)) as company_id    -- 'hubspot-12345'
-concat('{{ var("stg_xero_accounting_id-prefix") }}', cast(id as string)) as company_id  -- 'xero-67890'
-concat('{{ var("stg_harvest_projects_id-prefix") }}', cast(id as string)) as company_id -- 'harvest-abc123'
-```
-
-#### Step 2: Integration Layer - Pre-Merge Union
-
-Use the `merge_sources` macro to dynamically union enabled sources:
-
-```sql
--- macros/merge_sources.sql
-
-{% macro merge_sources(sources, model_suffix) %}
-(
-    {% set relations_list = [] %}
-    {% for source in sources %}
-      {% do relations_list.append(ref("stg_" ~ source ~ model_suffix)) %}
-    {% endfor %}
-
-    {{ dbt_utils.union_relations(relations=relations_list) }}
-)
-{% endmacro %}
-```
-
-```sql
--- models/integration/int__company_pre_merged.sql
-
-{% if var('crm_warehouse_company_sources') %}
-
-with companies_pre_merged as (
-    {{ merge_sources(sources=var('crm_warehouse_company_sources'), model_suffix='__company') }}
-),
-
--- Collect all source IDs into arrays grouped by company name
-all_company_ids as (
-    select
-        company_name,
-        array_agg(distinct company_id ignore nulls) as all_company_ids
-    from companies_pre_merged
-    where company_name is not null and trim(company_name) != ''
-    group by 1
-),
-
--- Deduplicate attributes by taking best/max values
-companies_grouped as (
-    select
-        company_name,
-        max(company_website) as company_website,
-        max(company_industry) as company_industry,
-        max(company_phone) as company_phone,
-        min(company_created_ts) as company_created_ts,
-        max(company_last_modified_ts) as company_last_modified_ts,
-        count(distinct _dbt_source_relation) as source_count
-    from companies_pre_merged
-    where company_name is not null and trim(company_name) != ''
-    group by 1
 ),
 
 final as (
-    select
-        g.*,
-        a.all_company_ids
-    from companies_grouped g
-    join all_company_ids a on g.company_name = a.company_name
+
+    select * from rename_and_cast
+
 )
 
 select * from final
-
-{% else %} {{ config(enabled=false) }} {% endif %}
-```
-
-#### Step 3: Manual Merge Resolution (Optional)
-
-For complex merges where name matching isn't sufficient, use a seed file:
-
-```csv
-# data/companies_merge_list.csv
-company_id,old_company_id
-hubspot-12345,xero-67890
-hubspot-12345,harvest-abc123
-hubspot-99999,xero-88888
-```
-
-```sql
--- models/integration/int__company.sql
-
-{% if var('crm_warehouse_company_sources') %}
-
-with companies_pre_merged as (
-    select * from {{ ref('int__company_pre_merged') }}
-),
-
-{% if var('enable_companies_merge_file', false) %}
--- Apply manual merge mappings
-merge_list as (
-    select * from {{ ref('companies_merge_list') }}
-),
-
--- Identify companies to be merged
-merged_ids as (
-    select
-        c2.company_name,
-        array_concat_agg(
-            case 
-                when c1.company_name is not null then c1.all_company_ids
-                else c2.all_company_ids
-            end
-        ) as all_company_ids
-    from companies_pre_merged c2
-    left join merge_list m on m.company_id in unnest(c2.all_company_ids)
-    left join companies_pre_merged c1 on m.old_company_id in unnest(c1.all_company_ids)
-    group by 1
-),
-
--- Exclude companies that were merged INTO another company
-excluded_companies as (
-    select distinct c1.company_name
-    from merge_list m
-    join companies_pre_merged c1 on m.old_company_id in unnest(c1.all_company_ids)
-),
-
-final as (
-    select
-        c.company_name,
-        c.company_website,
-        c.company_industry,
-        c.company_phone,
-        c.company_created_ts,
-        c.company_last_modified_ts,
-        c.source_count,
-        coalesce(m.all_company_ids, c.all_company_ids) as all_company_ids
-    from companies_pre_merged c
-    left join merged_ids m on c.company_name = m.company_name
-    where c.company_name not in (select company_name from excluded_companies)
-)
 
 {% else %}
--- No merge file, use pre-merged directly
-final as (
-    select * from companies_pre_merged
-)
+
+{{ config(enabled = false) }}
+
 {% endif %}
-
-select * from final
-
-{% else %} {{ config(enabled=false) }} {% endif %}
 ```
 
-#### Step 4: Warehouse Layer - Dimension with Surrogate Key
+The ID prefix stops `12345` in HubSpot colliding with `12345` in Xero. The prefix is added; the source ID itself is not lowercased.
 
-```sql
--- models/warehouse/core/company_dim.sql
+Where one source can arrive through more than one loader (Stitch, Fivetran, Airbyte), branch the import CTE on `var("stg_<source>_etl")` inside the same model so the rest of the model is shared.
 
-{% if var("crm_warehouse_company_sources") %}
+### Intermediate union, integration merge, warehouse keys
 
-{{
-    config(
-        materialized='table',
-        unique_key='company_pk'
-    )
-}}
+1. **Intermediate** (`int_crm__companies__unioned.sql`): the `merge_sources` macro unions the staging model of every enabled source. See `examples/merge-sources-macro.sql`.
+2. **Integration** (`int_crm__companies.sql`): group by the matching key, collect every source ID into an array (`company_natural_keys`), keep the best attribute values, count sources. Where name matching is not enough, a merge-list seed (`seeds/seed__company_merge_list.csv` in new projects) maps one company ID to another. See `examples/multi-source-integration-example.sql`.
+3. **Warehouse dimension** (`wh_crm__company_dim.sql`): generate the surrogate key from the business key, not from a source ID, so the key is stable when sources are added or removed. Keep the source ID array. See `examples/multi-source-dimension-example.sql`.
+4. **Warehouse fact** (`wh_finance__invoice_fact.sql`): join to the dimension through the source ID array (`in unnest(...)` on BigQuery). See `examples/multi-source-fact-example.sql`.
 
-with companies as (
-    select * from {{ ref('int__company') }}
-),
-
-final as (
-    select
-        {{ dbt_utils.generate_surrogate_key(['company_name']) }} as company_pk,
-        company_name,
-        company_website,
-        company_industry,
-        company_phone,
-        company_created_ts,
-        company_last_modified_ts,
-        source_count,
-        all_company_ids
-    from companies
-)
-
-select * from final
-
-{% else %} {{ config(enabled=false) }} {% endif %}
-```
-
-#### Step 5: Fact Table Joins Using Source ID Arrays
-
-Join fact tables to dimensions using the array of source IDs:
-
-```sql
--- models/warehouse/finance/invoice_fact.sql
-
-{% if var("finance_warehouse_invoice_sources") %}
-
-{{
-    config(
-        materialized='table',
-        unique_key='invoice_pk'
-    )
-}}
-
-with invoices as (
-    select * from {{ ref('int__invoice') }}
-),
-
-companies_dim as (
-    select * from {{ ref('company_dim') }}
-),
-
-final as (
-    select
-        {{ dbt_utils.generate_surrogate_key(['i.invoice_number']) }} as invoice_pk,
-        c.company_pk as company_fk,
-        
-        -- Invoice attributes
-        i.invoice_number,
-        i.invoice_amount,
-        i.invoice_currency,
-        i.invoice_status,
-        i.invoice_created_ts,
-        i.invoice_due_ts,
-        i.invoice_paid_ts,
-        
-        -- Calculated fields
-        row_number() over (partition by c.company_pk order by i.invoice_created_ts) as invoice_seq,
-        datediff('day', i.invoice_created_ts, i.invoice_paid_ts) as days_to_pay
-        
-    from invoices i
-    -- JOIN using UNNEST to match any source system ID
-    left join companies_dim c
-        on i.company_id in unnest(c.all_company_ids)
-)
-
-select * from final
-
-{% else %} {{ config(enabled=false) }} {% endif %}
-```
-
-### Multi-Source Framework Checklist
-
-When implementing the multi-source pattern:
+### Multi-source checklist
 
 **Configuration**
-- [ ] Source arrays defined in `dbt_project.yml` for each entity type
-- [ ] ID prefix variables defined for each source
-- [ ] ETL type variables defined if supporting multiple pipelines
-- [ ] Feature flags for optional behaviors (merge files, enrichment)
+- [ ] Source arrays in `dbt_project.yml` for each entity
+- [ ] ID prefix variable for each source
+- [ ] ETL variable where more than one loader is supported
+- [ ] Feature flags for optional behaviour (merge files, enrichment)
 
-**Source Layer**
-- [ ] Each source model checks if enabled before compiling
-- [ ] All IDs prefixed with unique source identifier
-- [ ] Column names standardized across all sources
-- [ ] Entity names normalized (trim, remove Ltd/Inc suffixes)
-- [ ] Multi-ETL support if applicable
+**Staging**
+- [ ] Each model checks its source is enabled before compiling
+- [ ] Natural keys prefixed with the source identifier, case kept
+- [ ] Column names the same across all sources for one concept
 
-**Integration Layer**
-- [ ] `merge_sources` macro used for dynamic unions
-- [ ] Pre-merge model collects IDs into arrays
-- [ ] Attributes deduplicated using MAX/MIN logic
-- [ ] Manual merge file configured if needed
-- [ ] Source count tracked for data quality
+**Intermediate and integration**
+- [ ] `merge_sources` used for the union
+- [ ] Source IDs collected into arrays
+- [ ] Attribute choice rule stated in a comment on the CTE
+- [ ] Merge-list seed configured if needed
+- [ ] Source count kept for data quality
 
-**Warehouse Layer**
-- [ ] Surrogate keys generated from business keys (not source IDs)
-- [ ] Source ID arrays preserved in dimension tables
-- [ ] Fact tables join using `IN UNNEST()` pattern
-- [ ] All conditional config blocks in place
+**Warehouse**
+- [ ] Surrogate keys from business keys, not source IDs
+- [ ] Source ID arrays kept on dimensions
+- [ ] Facts join through the array
 
-### Directory Structure for Multi-Source Projects
+### Adding a source
 
-```
-models/
-├── sources/
-│   ├── stg_hubspot_crm/
-│   │   ├── _hubspot_crm__sources.yml
-│   │   ├── stg_hubspot_crm__company.sql
-│   │   ├── stg_hubspot_crm__contact.sql
-│   │   └── stg_hubspot_crm__deal.sql
-│   ├── stg_xero_accounting/
-│   │   ├── _xero_accounting__sources.yml
-│   │   ├── stg_xero_accounting__company.sql
-│   │   ├── stg_xero_accounting__contact.sql
-│   │   └── stg_xero_accounting__invoice.sql
-│   └── stg_harvest_projects/
-│       ├── _harvest_projects__sources.yml
-│       ├── stg_harvest_projects__company.sql
-│       ├── stg_harvest_projects__contact.sql
-│       └── stg_harvest_projects__invoice.sql
-├── integration/
-│   ├── _integration__schema.yml
-│   ├── int__company_pre_merged.sql
-│   ├── int__company.sql
-│   ├── int__contact_pre_merged.sql
-│   ├── int__contact.sql
-│   └── int__invoice.sql
-└── warehouse/
-    ├── core/
-    │   ├── _core__schema.yml
-    │   ├── company_dim.sql
-    │   └── contact_dim.sql
-    └── finance/
-        ├── _finance__schema.yml
-        ├── invoice_fact.sql
-        └── payment_fact.sql
+1. Add it to the source array and add its prefix, ETL and schema variables.
+2. Declare it in `models/staging/stg_<source>/_sources.yml` (Step 9).
+3. Create the staging model with the conditional compilation check.
+4. Build and test the staging model alone before the integration models pick it up.
 
-macros/
-└── merge_sources.sql
+### Removing a source
 
-data/
-├── companies_merge_list.csv
-└── contacts_merge_list.csv
-```
-
-### Adding a New Source
-
-To add a new data source:
-
-1. **Add source configuration to `dbt_project.yml`:**
-```yaml
-vars:
-  crm_warehouse_company_sources: ['hubspot_crm', 'xero_accounting', 'NEW_SOURCE']
-  stg_new_source_id-prefix: 'newsource-'
-  stg_new_source_etl: 'fivetran'
-  stg_new_source_schema: 'fivetran_new_source'
-```
-
-2. **Create source definition (`_new_source__sources.yml`):**
-```yaml
-version: 2
-sources:
-  - name: new_source
-    database: "{{ var('stg_new_source_database', target.database) }}"
-    schema: "{{ var('stg_new_source_schema') }}"
-    tables:
-      - name: companies
-      - name: contacts
-```
-
-3. **Create staging model with conditional compilation:**
-```sql
-{% if var("crm_warehouse_company_sources") %}
-{% if 'new_source' in var("crm_warehouse_company_sources") %}
--- Model SQL here
-{% endif %}
-{% else %} {{ config(enabled=false) }} {% endif %}
-```
-
-4. **Test the source independently before enabling in integration**
-
-### Removing a Source
-
-1. **Remove from source array in `dbt_project.yml`:**
-```yaml
-vars:
-  # 'harvest_projects' removed from list
-  crm_warehouse_company_sources: ['hubspot_crm', 'xero_accounting']
-```
-
-2. **The source models will automatically disable due to conditional compilation**
-
-3. **Historical source IDs remain in dimension arrays for audit purposes**
+1. Remove it from the source array. Its staging models disable themselves.
+2. Historical source IDs stay in the dimension arrays for audit.
 
 ### Troubleshooting
 
 | Issue | Cause | Solution |
-|-------|-------|----------|
-| Model not compiling | Source not in enablement array | Add source to `*_sources` variable |
-| Duplicate dimension records | Inconsistent name normalization | Ensure identical cleaning logic in all sources |
-| Missing fact-dimension joins | Source ID not in array | Verify ID prefix is consistent |
-| Orphaned fact records | Company exists in fact but not dim source | Add source to dimension source list |
-| Array contains duplicates | Missing DISTINCT in ARRAY_AGG | Add `distinct` keyword |
-| Wrong ETL source used | ETL variable incorrect | Check `stg_*_etl` variable value |
+|---|---|---|
+| Model not compiling | Source not in enablement array | Add source to the `*_sources` variable |
+| Duplicate dimension rows | Matching key cleaned differently per source | Use one cleaning rule (or macro) in every source |
+| Missing fact-to-dimension joins | Source ID not in the array | Check the ID prefix is the same in staging and fact |
+| Array contains duplicates | Missing `distinct` in `array_agg` | Add `distinct` |
+| Wrong loader used | ETL variable wrong | Check `stg_*_etl` |
 
 ---
 
-## 11. Creating New Models
+## 14. Creating and Changing Models
 
-When creating a new dbt model from scratch:
+**Creating a new model:**
+1. Settle the kind with Step 1 and the layer maps in Step 2. Ask if unclear.
+2. Name and place it by Step 3, following any `form_choices` ruling.
+3. Write the `config()` description with the `Grain:` line first.
+4. Import CTEs (`s_`), one unit of work per CTE, `final`, `select * from final`.
+5. Apply Step 5: suffixes, entity prefixes, eight column groups, casting macros, attribute strings lowercased, natural keys left as they are.
+6. Add doc blocks to `field_descriptions.md` for every new column, and the schema entry with tests (Step 7) under the project's test key.
+7. For a staging model on a new table, declare the table in `_sources.yml`.
+8. Run the checker (Step 0.5) and present the model for review before writing.
 
-**Step-by-step Process:**
-
-1. **Determine Model Type**
-   - Ask user if not clear: staging/integration/warehouse?
-   - What source system (for staging)?
-   - What entity/object?
-
-2. **Generate File Structure**
-   - Correct filename following conventions
-   - Proper directory location
-   - Configuration block if needed
-
-3. **Build SQL Structure**
-   - Refs/sources in CTEs at top
-   - Transformation CTEs for logic
-   - Final CTE
-   - Select from final
-
-4. **Apply Field Conventions**
-   - Generate _pk using `dbt_utils.generate_surrogate_key`
-   - Name foreign keys with _fk suffix (also generate_surrogate_key)
-   - Timestamp fields with _ts suffix (UTC) or _<tz>_ts (non-UTC); dates with _dt
-   - Revenue / money columns with _amount suffix
-   - Booleans with is_/has_/was_ prefix
-   - Use dbt.type_*() macros for all type casting
-   - Field ordering: keys → attributes → indexes/ranks → metrics → booleans → temporal
-
-5. **Create/Update schema.yml**
-   - Model description
-   - Column descriptions
-   - Minimum tests (unique/not_null on pk)
-
-6. **Validate Against Conventions**
-   - Run through validation checklist
-   - Provide preview before writing
+**Changing an existing model:**
+1. Keep its file name, location, materialization and every existing column name.
+2. Apply section A rules to the model as changed: `Grain:` line, `select * from final`, column groups, documentation of every column, tests on new columns.
+3. New columns follow Step 5, subject to any ruling.
+4. Do not "tidy" unrelated parts of the file. Unrelated edits widen the diff, the review and the risk.
+5. Run the checker with `--changed-from`.
 
 ---
 
-## 12. Supporting References
+## 15. Supporting References
 
-**In This Skill Directory:**
-- `conventions-reference.md` - Quick reference for naming, style, structure
-- `testing-reference.md` - Test requirements and transformation layers
-- `examples/staging-model-example.sql` - Staging model template
-- `examples/integration-model-example.sql` - Integration model template
-- `examples/warehouse-model-example.sql` - Warehouse model template
-- `examples/schema-example.yml` - Testing and documentation example
-- `examples/multi-source-staging-example.sql` - Multi-source staging model with conditional compilation
-- `examples/multi-source-integration-example.sql` - Entity deduplication and merging
-- `examples/multi-source-dimension-example.sql` - Dimension with source ID arrays
-- `examples/multi-source-fact-example.sql` - Fact table with UNNEST joins
-- `examples/merge-sources-macro.sql` - Dynamic source union macro
-- `examples/multi-source-dbt-project-example.yml` - Configuration-driven source management
+**In this skill directory:**
+- `conventions-reference.md`: quick reference for naming, style and structure, with reasons
+- `testing-reference.md`: test requirements, test key, patterns, troubleshooting
+- `examples/staging-model-example.sql`, `examples/base-model-example.sql`
+- `examples/intermediate-model-example.sql`, `examples/integration-model-example.sql`
+- `examples/warehouse-model-example.sql`, `examples/extended-aggregate-example.sql`
+- `examples/snapshot-example.sql`
+- `examples/sources-example.yml`, `examples/schema-example.yml`, `examples/field-descriptions-example.md`
+- `examples/new-project-dbt_project.yml`
+- `examples/multi-source-staging-example.sql`, `examples/multi-source-integration-example.sql`
+- `examples/multi-source-dimension-example.sql`, `examples/multi-source-fact-example.sql`
+- `examples/merge-sources-macro.sql`, `examples/multi-source-dbt-project-example.yml`
+- `examples/before-after-refactor.md`: changing an existing model without renaming it
+- `examples/validation-report-pass.md`, `examples/validation-report-fail.md`
 
-**Convention Sources (2-tier system):**
-- Project-specific: `.dbt-conventions.md` (if exists in project)
-- Embedded RA conventions: `conventions-reference.md` and `testing-reference.md` (relative to this skill file)
+**Convention sources:**
+- Reference for people: `ra_fw_core` `analytics_warehouse/docs/development_reference_dbt.md` (0.0.1)
+- Machine-checkable form: `wire/conventions/dbt.yml`, or the project's `.wire/conventions/dbt.yml`
+- Project-specific narrative: `.dbt-conventions.md` and the other files in Step 0.4
 
----
+### Where Wire differs from the reference
 
-## 13. Important Guidelines
+| Topic | Reference | Wire | Why |
+|---|---|---|---|
+| Lowercasing in staging | Every string, natural keys included | Attribute strings only | Case-sensitive source IDs would merge records |
+| Default column test | `dbt_utils.at_least_one` | `at_least_one` alongside `not_null`; PKs keep `unique` + `not_null` | `at_least_one` misses partial nulls |
 
-**Always Validate When:**
-- Creating new dbt models
-- Reviewing changes to existing models
-- User asks for dbt guidance
-- Working with .sql files in models/ directory
-- Refactoring or cleaning up code
-
-**Validation Mode (Not Auto-fix):**
-- Provide clear, actionable feedback
-- Show correct patterns with examples
-- Explain WHY conventions matter
-- Offer to make specific changes if user approves
-- Never silently modify without explaining
-
-**Project Awareness:**
-- Always check for project-specific conventions first
-- Note which convention source is being used
-- Respect project overrides while suggesting RA best practices
-
-**Priority Levels:**
-- **Critical:** Breaks functionality, violates core principles, missing required tests
-- **Important:** Inconsistent with conventions, maintainability issues, missing documentation
-- **Nice-to-have:** Style preferences, minor optimizations, enhanced documentation
+Both are held until the reference adds the exceptions.
 
 ---
 
-## 14. Examples of Activation
+## 16. Important Guidelines
 
-**Example 1: Creating a Staging Model**
+**Always validate when:** creating models, reviewing changes, refactoring, or giving dbt guidance in a project.
+
+**Validation mode, not auto-fix:**
+- Give clear findings with the correct pattern and the reason
+- Offer to make specific changes if the user approves
+- Never modify silently
+- Never rename or move an existing object as part of a fix
+
+**Project awareness:**
+- Check project conventions and `form_choices` rulings first
+- Say which convention source and checker scope you used
+- Respect project overrides while noting the RA default
+
+**Priority levels:**
+- **Error:** breaks functionality, breaks a section A rule in new or changed code, missing primary key tests
+- **Warning:** section A findings where scope is unknown; maintainability; missing documentation on unchanged code the user asked about
+- **Suggestion:** project-level configuration, style preferences
+
+---
+
+## 17. Examples of Activation
+
+**Example 1: Creating a staging model in an existing project**
 ```
-User: "Create a staging model for Hubspot contacts"
+User: "Create a staging model for HubSpot contacts"
 
 Actions:
-1. Activate dbt Development skill
-2. Load convention source (project or RA defaults)
-3. Determine: staging model, Hubspot source, contact object
-4. Generate: stg_hubspot__contact.sql with proper structure
-5. Create schema.yml entry with tests
-6. Validate against all conventions
-7. Present model for review
+1. Activate the skill, log the activation
+2. Existing project: read .wire/conventions/dbt.yml for form_choices
+3. No ruling: name it stg_hubspot__contacts.sql (plural), prefix columns contact_
+4. Declare the contacts table in _sources.yml (or the existing _hubspot__sources.yml)
+5. Add doc blocks and schema entry with unique + not_null + at_least_one
+6. Run the checker with --changed-from <merge-base>
+7. Present the model for review
 ```
 
-**Example 2: Reviewing Existing Model**
+**Example 2: Reviewing an existing model**
 ```
 User: "Review this dbt model" [provides file]
 
 Actions:
-1. Activate dbt Development skill
-2. Load convention source
-3. Identify model type from filename/content
-4. Run through validation checklist (naming, structure, fields, tests, docs)
-5. Check sqlfluff if available
-6. Generate validation report with recommendations
+1. Activate the skill, load conventions
+2. Work out scope from git: new, changed or unchanged
+3. Run the checker with --changed-from
+4. Report section A findings only if the model is new or changed
+5. Do not report accepted old forms (singular names, unprefixed columns, tests:)
 ```
 
-**Example 3: Refactoring**
+**Example 3: Starting a new project**
 ```
-User: "This integration model needs refactoring to match conventions"
-
-Actions:
-1. Activate dbt Development skill
-2. Load conventions
-3. Analyze current model structure
-4. Identify violations
-5. Provide detailed refactoring plan with before/after examples
-6. Offer to apply changes section by section with user approval
-```
-
-**Example 4: Multi-Source Entity Resolution**
-```
-User: "I need to create a company dimension that combines data from HubSpot, Xero, and Harvest"
+User: "Set up the dbt project for this engagement"
 
 Actions:
-1. Activate dbt Development skill
-2. Load conventions
-3. Identify this as a multi-source entity resolution task
-4. Review dbt_project.yml for existing source configuration
-5. Create/update source arrays in vars section
-6. Generate staging models for each source with:
-   - Conditional compilation checks
-   - ID prefixing using source-specific prefix
-   - Standardized column names
-7. Create integration models:
-   - int__company_pre_merged.sql using merge_sources macro
-   - int__company.sql with optional merge list support
-8. Create warehouse model:
-   - company_dim.sql with surrogate key
-   - Preserved all_company_ids array
-9. Create merge_sources macro if not exists
-10. Create schema.yml with appropriate tests
-11. Validate all models against conventions
+1. Write dbt_project.yml and packages.yml from the Step 6 template under the real project name
+2. Add macros/utility/macro__type_date.sql and its _schema_macros.yml entry
+3. Create models/field_descriptions.md
+4. If droughty will be used, set required_docs: false
+5. Run the checker with --new-project
 ```
 
-**Example 5: Adding a New Source**
+**Example 4: Multi-source entity resolution**
 ```
-User: "We just connected Stripe and need to add it to our company dimension"
+User: "Create a company dimension combining HubSpot, Xero and Harvest"
 
 Actions:
-1. Activate dbt Development skill
-2. Load conventions
-3. Review existing source configuration in dbt_project.yml
-4. Add new source configuration:
-   - Add 'stripe_payments' to crm_warehouse_company_sources array
-   - Add stg_stripe_payments_id-prefix variable
-   - Add stg_stripe_payments_schema variable
-5. Create source definition file
-6. Create staging model stg_stripe_payments__company.sql with:
-   - Conditional compilation check
-   - ID prefixing
-   - Standardized columns matching other company sources
-7. Integration models will automatically include via merge_sources macro
-8. Validate new model against conventions
-9. Recommend testing new source independently before production
+1. Review dbt_project.yml for source arrays; add them if missing
+2. Staging per source: stg_<source>__companies.sql with conditional compilation and ID prefixing
+3. Intermediate: int_crm__companies__unioned.sql using merge_sources
+4. Integration: int_crm__companies.sql with source ID arrays and optional merge-list seed
+5. Warehouse: wh_crm__company_dim.sql with surrogate key from the business key
+6. Schema entries, doc blocks and tests; run the checker
 ```
 
 ---
 
 ### Command Execution Tips
 
-When running dbt commands:
-- **Use `--quiet` flag** for cleaner output — reduces noise from `dbt run` and `dbt build`
-- **Preview selectors first** with `dbt list --select <selector>` before running `dbt build` or `dbt run` — avoids accidentally running more models than intended
-- **Use `dbt show --limit N`** instead of writing `SELECT ... LIMIT N` queries — lets you preview model output without running the full model
-- **Check `target/run_results.json`** after runs to get per-model timing, status, and row counts — useful for performance analysis and debugging
-- **Prefer `dbt build` over separate `dbt run` + `dbt test`** — `build` runs models and their tests together in dependency order, catching failures earlier
-- **Use `--warn-error-options`** to promote specific warnings to errors — prevents silent issues from accumulating
-- **dbt Fusion** (`dbtf`): if the project uses the Fusion runtime, invoke with `dbtf` or `~/.local/bin/dbt` (not the venv `dbt`). Fusion is faster and has stricter SQL parsing — see the `dbt-fusion` skill for migration guidance.
-- **Fetching dbt documentation**: append `.md` to any `docs.getdbt.com` URL to get clean markdown (e.g. `https://docs.getdbt.com/reference/commands/run.md`). Use `https://docs.getdbt.com/llms.txt` to find available pages, or `https://docs.getdbt.com/llms-full.txt` for full-text search.
+- **Use `--quiet`** for cleaner `dbt run` and `dbt build` output.
+- **Preview selectors** with `dbt list --select <selector>` before `dbt build` or `dbt run`.
+- **Use `dbt show --limit N`** to preview model output.
+- **Check `target/run_results.json`** after runs for per-model timing, status and row counts.
+- **Prefer `dbt build`** over separate `dbt run` and `dbt test`; it runs models and tests in dependency order.
+- **Use `--warn-error-options`** to promote specific warnings to errors.
+- **Named runs**: where the client project has a `selectors.yml`, use `dbt build --selector <name>`.
+- **dbt Fusion** (`dbtf`): if the project uses the Fusion runtime, invoke with `dbtf` or `~/.local/bin/dbt` (not the venv `dbt`). See the `dbt-fusion` skill.
+- **dbt documentation**: append `.md` to any `docs.getdbt.com` URL for clean markdown. `https://docs.getdbt.com/llms.txt` lists pages.
 
 ---
 
-## 15. Skill Deactivation
+## 18. Skill Deactivation
 
 Do NOT activate this skill when:
-- Working with non-dbt SQL (raw queries, database migrations, etc.)
+- Working with non-dbt SQL (raw queries, database migrations)
 - User explicitly says "ignore conventions" or "quick prototype"
-- Files outside models/ directory (analyses, macros have different conventions)
-- User is asking about dbt Cloud, dbt Core installation, or infrastructure (not model development)
+- User is asking about dbt Cloud, dbt Core installation, or infrastructure rather than model development

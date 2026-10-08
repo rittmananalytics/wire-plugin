@@ -213,7 +213,19 @@ delegates_to:
 
 ## Purpose
 
-Generate the warehouse layer: dimension tables (`_dim`), fact tables (`_fact`), aggregate tables (`_agg`), and cross-attribute / bridge tables (`_xa`) that reference only integration models. These are the final materialized tables consumed by the semantic layer and BI tools.
+Generate the warehouse layer: dimension tables (`_dim`), fact tables (`_fact`) and extended aggregate tables (`_xa`). They read integration models, or staging models where no integration model is needed. Primary and foreign keys are created here. These are the final materialized tables consumed by the semantic layer and BI tools. Existing `_agg` models stay as they are.
+
+## Existing projects
+
+These rules apply before every other rule in this spec.
+
+- Never rename or move an existing model, column, seed, snapshot or schema. The conventions below apply to new and changed code only.
+- Where the project keeps an old form (for example singular staging names, unprefixed columns, `tests:`, or `_<source>__sources.yml`), follow the ruling recorded in the release's `decisions.md` and the `form_choices:` block in the project's `.wire/conventions/dbt.yml`. Generate new models in that form. Keys: `model_name_number: plural|singular`, `column_prefix: entity|none`, `test_key: data_tests|tests`, `source_file_name: _sources|_<source>__sources`.
+- Where no ruling exists, generate new models in the new form. Mixed naming inside one project is allowed.
+- Do not change `dbt_project.yml` or `packages.yml` in an existing project. Report differences from the new-project templates in `specs/development/dbt_generate.md` (Step 8) as suggestions only.
+- Keep the date-cast macro the project already uses (`type_date()` or similar). `ra_type_date()` is for new projects.
+
+A project is new when this command creates its `dbt_project.yml`; otherwise it is existing.
 
 ## Prerequisites
 
@@ -229,6 +241,20 @@ This is the third and final step of the per-layer alternative to the monolithic 
 1. Read `.wire/<project_id>/design/data_model_specification.md` for warehouse layer design
 2. Read `.wire/<project_id>/dev/dbt_integration_summary.md` for available integration models
 
+### Step 1.5: Load Conventions
+
+Priority order: rulings in `decisions.md` and `form_choices:` in the project's `.wire/conventions/dbt.yml`, then project convention files, then the conventions in `specs/development/dbt_generate.md`, Step 3.
+
+Warehouse-layer rules:
+- Model names are singular: `wh_<group>__<entity>_dim`, `wh_<group>__<entity>_fact`, `wh_<group>__<entity>_xa`.
+- Dimension and fact models read integration models, or staging where no integration model is needed. Never base models or sources.
+- Primary keys (`<entity>_pk`) and foreign keys (`<referenced_entity>_fk`) are created here, and only here, via `dbt_utils.generate_surrogate_key`. A foreign key is built from the same inputs as the primary key it references.
+- An entity's attributes live on its dimension. Other models reference the entity by foreign key.
+- Every output column carries the entity prefix; foreign keys keep the referenced entity's prefix. Booleans are `<entity>_is_`, `<entity>_has_`, `<entity>_was_`. Aggregated columns lead with the function (`sum_`, `count_`, `max_by_`).
+- Columns in eight groups, each opened by a Jinja comment: `{# primary key #}`, `{# foreign keys #}`, `{# natural keys #}`, `{# attributes #}`, `{# indexes and ranks #}`, `{# metrics #}`, `{# booleans #}`, `{# temporal #}`.
+- Every model's `config()` `description` opens with `Grain: One row per ...`. Lines up to 120 characters. Last CTE `final`; model ends with `select * from final`.
+- Materialized as a table by the folder config. A model may be `incremental` where the client decides; the client sets the strategy.
+
 ### Step 2: Generate Dimension Tables
 
 **File:** `dbt/models/warehouse/wh_<group>/wh_<group>__<entity>_dim.sql`
@@ -237,40 +263,51 @@ This is the third and final step of the per-layer alternative to the monolithic 
 ```sql
 {{
     config(
-        materialized='table',
-        tags=['warehouse', 'dimension'],
-        cluster_by=['<entity>_pk']
+        description = """
+            Grain: One row per <entity>.
+            <What the dimension holds.>
+        """,
+        tags = ['warehouse', 'dimension'],
+        cluster_by = ['<entity>_pk']
     )
 }}
 
-with
+with s_<entities> as (
 
-s_<entity> as (
-    select * from {{ ref('int_<group>__<entity>') }}
+    select * from {{ ref('int_<group>__<entities>') }}
+
+),
+
+add_primary_key as (
+
+    select
+
+        {# primary key #}
+        {{ dbt_utils.generate_surrogate_key(['<entity>_natural_key']) }} as <entity>_pk,
+        {# natural keys #}
+        <entity>_natural_key,
+        {# attributes #}
+        <entity>_<attribute_1>,
+        <entity>_<attribute_2>,
+        {# booleans #}
+        <entity>_is_<state>,
+        {# temporal #}
+        <entity>_created_ts
+
+    from s_<entities>
+
 ),
 
 final as (
-    select
-        -- Keys
-        <entity>_pk,
-        <entity>_natural_key,
 
-        -- Attributes
-        <attribute_1>,
-        <attribute_2>,
+    select * from add_primary_key
 
-        -- Booleans
-        is_current,
-
-        -- Temporal data types
-        current_timestamp() as dbt_updated_ts
-    from s_<entity>
 )
 
 select * from final
 ```
 
-**SCD Type 2 (historical tracking):** Use `materialized='incremental'`, `unique_key='<entity>_pk'` with `valid_from`, `valid_to`, `is_current` columns.
+**SCD Type 2 (historical tracking):** prefer a snapshot of the source (`snapshots/snapshot_<source>/snapshot_<source>__<source_table>.sql`, read by staging). The dimension holds one row per version, with the primary key built from `<entity>_natural_key` and `<entity>_valid_from_ts`, plus `<entity>_valid_to_ts` and `<entity>_is_current`. Where a snapshot is not possible, use `materialized='incremental'` with `unique_key='<entity>_pk'`. Full template in `specs/development/dbt_generate.md`, Step 5.
 
 ### Step 3: Generate Fact Tables
 
@@ -279,94 +316,163 @@ select * from final
 ```sql
 {{
     config(
-        materialized='table',
-        tags=['warehouse', 'fact'],
-        cluster_by=['<date_fk>', '<dimension_fk>']
+        description = """
+            Grain: One row per <event>.
+            <What the fact holds.>
+        """,
+        tags = ['warehouse', 'fact'],
+        cluster_by = ['<event>_<event>_dt', '<dimension>_fk']
     )
 }}
 
-with
+with s_<events> as (
 
-s_<event> as (
-    select * from {{ ref('int_<group>__<event>') }}
+    select * from {{ ref('int_<group>__<events>') }}
+
 ),
 
-s_<dim> as (
-    select * from {{ ref('wh_<group>__<dim>_dim') }}
+add_keys as (
+
+    select
+
+        {# primary key #}
+        {{ dbt_utils.generate_surrogate_key(['<event>_natural_key']) }} as <event>_pk,
+        {# foreign keys #}
+        {{ dbt_utils.generate_surrogate_key(['<event>_<dimension>_natural_key']) }} as <dimension>_fk,
+        {# natural keys #}
+        <event>_natural_key,
+        <event>_<dimension>_natural_key,
+        {# metrics #}
+        <event>_<measure>_amount,
+        <event>_<thing>_count,
+        {# booleans #}
+        <event>_is_<state>,
+        {# temporal #}
+        <event>_<event>_dt
+
+    from s_<events>
+
 ),
 
 final as (
-    select
-        -- Keys
-        {{ dbt_utils.generate_surrogate_key(['<id_columns>']) }} as <fact>_pk,
-        s_<dim>.<dim>_pk as <dim>_fk,
 
-        -- Metrics
-        s_<event>.<measure_1>,
-        s_<event>.<measure_2_amount>,
+    select * from add_keys
 
-        -- Temporal data types
-        current_timestamp() as dbt_updated_ts
-    from s_<event>
-    left join s_<dim> on s_<event>.<dim>_id = s_<dim>.<dim>_id
 )
 
 select * from final
 ```
 
-### Step 4: Generate Aggregate Tables (if required)
+### Step 4: Generate Extended Aggregate Tables (if required)
 
-**File:** `dbt/models/warehouse/wh_<group>/wh_<group>__<entity>_agg.sql`
+**File:** `dbt/models/warehouse/wh_<group>/wh_<group>__<entity>_xa.sql`
+
+`_xa` means extended aggregate: a denormalised table built from fact and dimension models. It either aggregates to a summary grain (such as a daily summary) or combines several facts at a shared grain (such as an event stream).
 
 ```sql
 {{
     config(
-        materialized='table',
-        tags=['warehouse', 'aggregate']
+        description = """
+            Grain: One row per <dimension> per day.
+            Daily summary of <events>.
+        """,
+        tags = ['warehouse', 'extended_aggregate']
     )
 }}
 
-with
+with s_<event>_facts as (
 
-s_fact as (
-    select * from {{ ref('wh_<group>__<entity>_fact') }}
+    select * from {{ ref('wh_<group>__<event>_fact') }}
+
+),
+
+aggregated as (
+
+    select
+
+        <dimension>_fk,
+        <event>_<event>_dt,
+        count(*) as count_<event>_pk,
+        sum(<event>_<measure>_amount) as sum_<event>_<measure>_amount
+
+    from s_<event>_facts
+
+    group by <dimension>_fk, <event>_<event>_dt
+
+),
+
+add_primary_key as (
+
+    select
+
+        {# primary key #}
+        {{ dbt_utils.generate_surrogate_key(['<dimension>_fk', '<event>_<event>_dt']) }} as <entity>_pk,
+        {# foreign keys #}
+        <dimension>_fk,
+        {# metrics #}
+        count_<event>_pk,
+        sum_<event>_<measure>_amount,
+        {# temporal #}
+        <event>_<event>_dt
+
+    from aggregated
+
 ),
 
 final as (
-    select
-        <dimension_fk>,
-        count(*) as total_count,
-        sum(<measure>) as total_<measure>_amount
-    from s_fact
-    group by 1
+
+    select * from add_primary_key
+
 )
 
 select * from final
 ```
 
-### Step 4.5: Generate Cross-Attribute / Bridge Tables (if required)
+### Step 4.5: Existing Aggregate and Bridge Models
 
-**File:** `dbt/models/warehouse/wh_<group>/wh_<group>__<entity>_xa.sql` — for bridge / many-to-many / cross-entity attribute models (e.g. user-to-role, product-to-category).
+New aggregate models use `_xa`. Existing `_agg` models keep their names, and an existing `_xa` model built as a cross-attribute or bridge table keeps its name and shape. Do not rename either.
 
 ### Step 5: Generate Macros (if needed)
 
-**File:** `dbt/macros/<macro_name>.sql` — for shared business logic (e.g., date spine helpers, derived field calculations).
+**File:** `dbt/macros/macro__<name>.sql` (utility macros in `dbt/macros/utility/`), one macro per file, named `macro__<name>`, with adapter versions in the same file. Describe each new macro in `dbt/macros/_schema_macros.yml` (`name`, `description`, `arguments` with `name`, `type`, `description`). dbt override macros such as `generate_schema_name` keep their dbt names. Existing macros keep their names.
 
 ### Step 6: Generate Schema Documentation
 
-**File:** `dbt/models/warehouse/wh_<group>/wh_<group>.yml` — dimensions, facts, aggregates, and cross-attribute tables with relationship tests.
+**File:** `dbt/models/warehouse/wh_<group>/_schema.yml` (not where the project uses droughty, which writes `models/droughty_schema.yml`). An existing project adds entries to its current schema file (for example `wh_<group>.yml`).
 
-Include relationship tests: `relationships: to: ref('wh_<group>__<dim>_dim'), field: <dim>_pk`.
+- Every model has a description opening `Grain: One row per ...`. Every column is documented with a doc block in `models/field_descriptions.md`, referenced as `'{{ doc("<column>") }}'`.
+- Primary keys: `unique` + `not_null`.
+- Foreign keys: `not_null` + `dbt_utils.at_least_one` + `relationships: to: ref('wh_<group>__<dim>_dim'), field: <dim>_pk`.
+- Other columns: `not_null` + `dbt_utils.at_least_one`. `at_least_one` never replaces `not_null`. Drop `not_null` only where the column can be null, and note why.
+- Test key: `data_tests:` on dbt 1.8 or later, `tests:` before (find the version from `dbt --version`, `require-dbt-version`, or the pinned dbt or adapter version). A `form_choices: test_key` ruling wins. Keep `tests:` in a schema file that already uses it. If the version cannot be found, write `tests:`. Never both on one resource.
+- In a new project, `dbt_project.yml` sets `+meta` `required_docs: true` and `required_tests: {"unique": 1, "not_null": 1}` on the warehouse layer (`required_docs: false` where the project uses droughty). Where `packages.yml` includes `dbt_meta_testing`, check with `dbt run-operation required_docs` and `dbt run-operation required_tests`. In an existing project, do not add these; list them as suggestions in the summary.
 
-**Type Casting:** always use dbt's type-cast macros, never raw SQL types: `{{ dbt.type_string() }}`, `{{ dbt.type_numeric() }}`, `{{ dbt.type_boolean() }}`, `{{ dbt.type_timestamp() }}`, `{{ type_date() }}` (community macro, no `dbt.` prefix).
+**Type Casting:** always use cast macros, never raw SQL types: `{{ dbt.type_string() }}`, `{{ dbt.type_numeric() }}`, `{{ dbt.type_int() }}`, `{{ dbt.type_boolean() }}`, `{{ dbt.type_timestamp() }}`. Dates use `{{ ra_type_date() }}` in new projects; an existing project keeps its date macro (for example `{{ type_date() }}`).
 
-**Field ordering in `select` lists:** keys → attributes → indexes/ranks → metrics → booleans → temporal data types (dates/timestamps last).
+**Field ordering in `select` lists:** primary key → foreign keys → natural keys → attributes → indexes and ranks → metrics → booleans → temporal, each group opened by its `{# group #}` comment.
+
+### Step 6.5: Convention Self-Check
+
+Resolve the convention file: the project's `.wire/conventions/dbt.yml` if present, else the plugin's `conventions/dbt.yml`. Then run:
+
+```bash
+# New project
+python3 <plugin>/scripts/lint_conventions.py --domain dbt \
+  --convention <resolved convention> --path <dbt_project_path>/models/warehouse --new-project
+
+# Existing project (added and changed models only)
+python3 <plugin>/scripts/lint_conventions.py --domain dbt \
+  --convention <resolved convention> --path <dbt_project_path>/models/warehouse \
+  --changed-from "$(git merge-base HEAD <release branch>)"
+```
+
+Fix every `error` finding in the generated models without renaming or moving anything that already existed. List warnings in the summary with a reason.
 
 ### Step 7: Create Summary Document
 
 **File:** `.wire/<project_id>/dev/dbt_warehouse_summary.md`
 
-Include: list of dimensions, facts, aggregates, and cross-attribute tables created with row-grain descriptions.
+Include: whether the project is new or existing, the convention file and any `form_choices:` rulings applied, the test key used, dimensions, facts and extended aggregates created with their grain, any column where `not_null` was dropped (with the reason), the convention lint result, and, for an existing project, the `dbt_project.yml` / `packages.yml` suggestions.
 
 ### Step 8: Update Status
 
@@ -392,8 +498,7 @@ If docstore sync fails, log the error and continue — do not block the generate
 
 - <count> dimension tables in dbt/models/warehouse/wh_<group>/
 - <count> fact tables in dbt/models/warehouse/wh_<group>/
-- <count> aggregate tables in dbt/models/warehouse/wh_<group>/
-- <count> cross-attribute / bridge tables in dbt/models/warehouse/wh_<group>/
+- <count> extended aggregate (_xa) tables in dbt/models/warehouse/wh_<group>/
 
 Next steps:
 1. /wire:dbt-warehouse-validate <project_id>
