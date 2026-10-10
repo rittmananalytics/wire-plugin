@@ -2,6 +2,8 @@
 
 The second pair for the `bi_migration` release type (`bi_pair: looker_studio_to_omni`, added in 4.2.2, wire#278). It moves Looker Studio (formerly Data Studio) reports to Omni.
 
+> **Experimental.** This pair reads undocumented Looker Studio endpoints. Capture, extraction, cataloguing and the metric catalogue have been run on real client reports; the model, content and parity steps have been tested on fixtures only and not yet run end to end into Omni on a client estate. Review every output before presenting it to a client.
+
 ## How this pair differs from Looker to Omni
 
 Looker has a semantic model (LookML) that a script can convert. Looker Studio does not: each report's data sources and charts carry their own formulas. So this pair does not convert a model. It does three things instead:

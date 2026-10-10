@@ -1,9 +1,9 @@
 ---
-description: Client ruling on the metric catalogue: one agreed definition and name per metric
+description: Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric
 argument-hint: <release-folder>
 ---
 
-# Client ruling on the metric catalogue: one agreed definition and name per metric
+# Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric
 
 ## User Input
 
@@ -138,7 +138,7 @@ preconditions:
     outcome: PASS
 delegates_to:
   - utils/precondition_gate
-description: "Client ruling on the metric catalogue: one agreed definition and name per metric, recorded as decisions the Omni model implements"
+description: "Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric, recorded as decisions the Omni model implements"
 argument-hint: <release-folder>
 
 ---
@@ -152,6 +152,8 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 # Metric Catalogue: Review
 
 ## Purpose
+
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 The client's ruling on what each metric means. This is the gate that turns report-level definitions into one agreed set. The person ruling is the owner of the definitions (often a head of marketing or finance), not only the consultant. Under the release director model the orchestrating session presents each conflict as a ruling and records the outcome.
 

@@ -9,11 +9,19 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.2.3: Looker Studio source marked experimental
+
+**Released**: October 2026
+
+**Experimental.** The Looker Studio to Omni pair added in 4.2.2 is now marked experimental wherever it appears: when it is offered at release creation, in its profile name and command descriptions, at the start of each of its commands, in its pair files and in the docs. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate.
+
+---
+
 ## v4.2.2: Looker Studio as a BI migration source
 
 **Released**: October 2026
 
-**Looker Studio to Omni.** The BI Tool Migration release type has a second pair, `looker_studio_to_omni`. Looker Studio has no API for report definitions, so Wire reads them from the editor in a Chrome window signed in as the consultant: pages, layout, components, data sources, calculated fields, blends and filters. It navigates only and changes nothing. It also records the values each chart showed, which become the expected results for parity on every connector, including Funnel.io, GA4 and Sheets, and reads BigQuery job history for the SQL and usage of BigQuery charts where access allows.
+**Looker Studio to Omni (experimental).** The BI Tool Migration release type has a second pair, `looker_studio_to_omni`. Looker Studio has no API for report definitions, so Wire reads them from the editor in a Chrome window signed in as the consultant: pages, layout, components, data sources, calculated fields, blends and filters. It navigates only and changes nothing. It also records the values each chart showed, which become the expected results for parity on every connector, including Funnel.io, GA4 and Sheets, and reads BigQuery job history for the SQL and usage of BigQuery charts where access allows.
 
 **Metric catalogue.** Looker Studio reports often define the same metric several ways. A new metric catalogue step groups every calculated field by name, marks copies, aliases and conflicts, flags charts that add up per-row ratios, and asks the client to rule on one definition per metric before the Omni model is built.
 

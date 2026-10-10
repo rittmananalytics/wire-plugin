@@ -18,8 +18,8 @@ profiles:
     # target is audited alongside the Looker estate.
 
   - id: looker_studio_to_omni
-    name: "Looker Studio to Omni"
-    description: "Looker Studio reports and data sources are captured from the editor (definitions, layout, chart data), their calculated fields are consolidated in a metric catalogue, and the Omni model is built from the warehouse model and the catalogue's rulings. Added in 4.2.2 (wire#278)."
+    name: "Looker Studio to Omni (experimental)"
+    description: "Experimental in 4.2.2: tested on synthetic fixtures and on capture and audit of real reports, not yet run end to end into Omni. Looker Studio reports and data sources are captured from the editor (definitions, layout, chart data), their calculated fields are consolidated in a metric catalogue, and the Omni model is built from the warehouse model and the catalogue's rulings. Added in 4.2.2 (wire#278)."
     enable_phases:
       - looker_studio_audit
       - metric_catalogue

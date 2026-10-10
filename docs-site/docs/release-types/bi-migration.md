@@ -21,11 +21,11 @@ a full release this way and names the command Wire runs at each step.
 
 :::
 
-Moving a reporting layer from one BI tool to another is a different job from moving a warehouse: the warehouse and the dbt layer stay where they are, and what has to be rebuilt, checked and switched over is the semantic model and the content that sits on it. The BI Tool Migration release type is for that job. It has two pairs. **Looker to Omni** (since 4.0.0): LookML views and explores become Omni views and topics on a model branch, Looker dashboards and Looks become Omni dashboards, every migrated tile is proven equivalent before users are switched and Looker is decommissioned after a parallel run. **Looker Studio to Omni** (since 4.2.2): Looker Studio reports are captured from the editor, their calculated fields are consolidated into one agreed set in a metric catalogue, and the Omni model is built from the warehouse rather than from the reports. See [Looker Studio to Omni](#looker-studio-to-omni) below.
+Moving a reporting layer from one BI tool to another is a different job from moving a warehouse: the warehouse and the dbt layer stay where they are, and what has to be rebuilt, checked and switched over is the semantic model and the content that sits on it. The BI Tool Migration release type is for that job. It has two pairs. **Looker to Omni** (since 4.0.0): LookML views and explores become Omni views and topics on a model branch, Looker dashboards and Looks become Omni dashboards, every migrated tile is proven equivalent before users are switched and Looker is decommissioned after a parallel run. **Looker Studio to Omni** (experimental, since 4.2.2): Looker Studio reports are captured from the editor, their calculated fields are consolidated into one agreed set in a metric catalogue, and the Omni model is built from the warehouse rather than from the reports. See [Looker Studio to Omni](#looker-studio-to-omni) below.
 
 It is not the same as migrating an Omni estate between warehouses. That is `platform_migration` with `migration.reporting_tool: omni`, where the pivot is the Omni connection, whereas here the pivot is the semantic model itself.
 
-**Supported pairs**: `looker_to_omni` (default), `looker_studio_to_omni`
+**Supported pairs**: `looker_to_omni` (default), `looker_studio_to_omni` (experimental)
 
 The flow, from the Looker estate at the start to Looker retired at the end, is as follows:
 
@@ -129,6 +129,12 @@ Both client repositories keep changing while the migration runs, and the release
 Text and markdown tiles, styling and colour themes, table calculations that reference runtime values and anything written in Liquid. Each is listed by the content batch for hand finishing, and each skipped tile appears in the parity report as `not_compared`.
 
 ## Looker Studio to Omni
+
+:::caution[Experimental]
+
+The Looker Studio to Omni pair is experimental. It reads undocumented Looker Studio endpoints, which Google can change without notice. Capture, extraction, cataloguing and the metric catalogue have been run on real client reports. The model, dashboard and parity steps have been tested on synthetic fixtures only and have not yet been run end to end into Omni on a client estate. Review every output before presenting it to a client, and read the [limitations](../tutorials/looker-studio-to-omni#limitations) first.
+
+:::
 
 Looker Studio has no semantic model to convert. Each report's data sources and charts hold their own formulas, so the same metric is often defined several ways across reports. A one-for-one migration would carry those silos into Omni. The `looker_studio_to_omni` pair (`bi_pair: looker_studio_to_omni` in the release's status file) changes the front of the release:
 

@@ -938,7 +938,7 @@ Store `warehouse` and `droughty_context`.
 
 **For `bi_migration` release type**:
 
-First ask: "Is the source **Looker** or **Looker Studio** (Data Studio)?" Looker records `bi_pair: looker_to_omni` and asks the questions below. Looker Studio records `bi_pair: looker_studio_to_omni` and asks instead: the report URLs in scope; a short client slug for object identities (`looker_studio_namespace`); who approved automated read-only access to the reports and when (`looker_studio_capture_consent`, may be left empty until the audit); the Omni base URL, model id and CLI profile; the parallel-run days. It writes them under `bi_migration` in the status file and skips the LookML and Looker questions.
+First ask: "Is the source **Looker** or **Looker Studio** (Data Studio)?" Looker records `bi_pair: looker_to_omni` and asks the questions below. Looker Studio records `bi_pair: looker_studio_to_omni` (experimental in 4.2.2: say so when offering it, in one sentence, and point to the tutorial's limitations) and asks instead: the report URLs in scope; a short client slug for object identities (`looker_studio_namespace`); who approved automated read-only access to the reports and when (`looker_studio_capture_consent`, may be left empty until the audit); the Omni base URL, model id and CLI profile; the parallel-run days. It writes them under `bi_migration` in the status file and skips the LookML and Looker questions.
 
 For Looker, ask the following additional questions (one at a time):
 

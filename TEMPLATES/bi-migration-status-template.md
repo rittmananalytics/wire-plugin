@@ -9,7 +9,7 @@ last_updated: "{{LAST_UPDATED}}"
 current_phase: "audit"
 
 # Profile: which tool pair this release migrates. Read by precondition_gate.md Step 0
-# and by runnable_set.md. looker_to_omni (default) or looker_studio_to_omni (4.2.2).
+# and by runnable_set.md. looker_to_omni (default) or looker_studio_to_omni (4.2.2, experimental).
 # looker_studio_to_omni replaces the Looker audit phase with looker_studio_audit and
 # metric_catalogue; the Looker-only fields below are then left null.
 bi_pair: looker_to_omni

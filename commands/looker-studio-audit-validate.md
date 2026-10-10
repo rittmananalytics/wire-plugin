@@ -1,9 +1,9 @@
 ---
-description: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored
+description: Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored
 argument-hint: <release-folder>
 ---
 
-# Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored
+# Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored
 
 ## User Input
 
@@ -133,7 +133,7 @@ preconditions:
     outcome: complete
 delegates_to:
   - utils/precondition_gate
-description: "Validate the Looker Studio audit: every report captured and extracted, every component and data source classified, gaps and access requests listed, captures git-ignored, no secrets committed, counts match status.md"
+description: "Experimental: Validate the Looker Studio audit: every report captured and extracted, every component and data source classified, gaps and access requests listed, captures git-ignored, no secrets committed, counts match status.md"
 argument-hint: <release-folder>
 
 ---
@@ -147,6 +147,8 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 # Looker Studio Audit: Validate
 
 ## Purpose
+
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Checks the Looker Studio audit for completeness and safety before the metric catalogue and the plan are built on it. Produces a PASS/FAIL report with the gaps to fix.
 

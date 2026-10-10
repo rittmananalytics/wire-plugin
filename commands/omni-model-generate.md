@@ -280,6 +280,8 @@ Omni differs from Looker in ways the emitted YAML must respect: there is no `${T
 
 ## Pair: looker_studio_to_omni
 
+This pair is experimental in 4.2.2 (see `specs/migration/looker_studio_audit/generate.md`).
+
 Looker Studio has no semantic model to convert, so there is no converter step and no `needs_human.json` from a script. For a model batch (one subject area):
 
 - **Source of the model.** The warehouse tables named by the plan's model route: the existing modelled tables (`map`), or the linked `dbt_development` release's warehouse models (`build`, which must have passed `dbt-validate`). Never the Looker Studio data sources themselves.

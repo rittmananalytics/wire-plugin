@@ -66,6 +66,8 @@ python3 scripts/looker_studio_metrics.py --reports <reports>/*/report.json --out
 
 ## Limitations
 
+- The pair is experimental in 4.2.2: not yet run end to end into Omni on a client estate.
+
 - Routes B and C use undocumented endpoints. Google can change them without notice. Each capture records the app version; the extractor fails loudly on structure it does not know.
 - The capture needs an interactive Google sign-in and a desktop session. It cannot run unattended or in CI.
 - Route A covers BigQuery only, charts that ran in the last 180 days, and not results served from Looker Studio's cache.

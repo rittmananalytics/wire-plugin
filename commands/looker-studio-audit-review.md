@@ -1,9 +1,9 @@
 ---
-description: Internal RA review of the Looker Studio audit
+description: Experimental: Internal RA review of the Looker Studio audit
 argument-hint: <release-folder>
 ---
 
-# Internal RA review of the Looker Studio audit
+# Experimental: Internal RA review of the Looker Studio audit
 
 ## User Input
 
@@ -135,7 +135,7 @@ preconditions:
     outcome: PASS
 delegates_to:
   - utils/precondition_gate
-description: "Internal RA review of the Looker Studio audit before the metric catalogue is built on it"
+description: "Experimental: Internal RA review of the Looker Studio audit before the metric catalogue is built on it"
 argument-hint: <release-folder>
 
 ---
@@ -149,6 +149,8 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 # Looker Studio Audit: Review
 
 ## Purpose
+
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Internal RA review of the Looker Studio audit. The reviewer confirms the estate is fully captured, agrees the classes, decides what to do about access gaps and data sources with no warehouse copy, and checks that the report families are right. Under the release director model the orchestrating session presents this review as a ruling and records the outcome; the questions below are what it asks.
 

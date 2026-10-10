@@ -282,6 +282,8 @@ What the rebuild can and cannot do is fixed by Omni's document API and by what t
 
 ## Pair: looker_studio_to_omni
 
+This pair is experimental in 4.2.2 (see `specs/migration/looker_studio_audit/generate.md`).
+
 For a content batch (one report family), Step 2 reads `audit/looker_studio/reports/<report_id>/report.json` in place of the Looker API, and the mapping follows `wire/bi_pairs/looker_studio_to_omni/content_mapping.md`:
 
 - **One document per report family.** The family's copies become one Omni dashboard; the field that split them (for example a client id filter) becomes a dashboard control or a user attribute, per the plan's ruling.

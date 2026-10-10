@@ -216,6 +216,8 @@ Only `pass`, `pass_qualified` and `pass_declared_deviation` satisfy the gate. `B
 
 ## Pair: looker_studio_to_omni
 
+This pair is experimental in 4.2.2 (see `specs/migration/looker_studio_audit/generate.md`).
+
 The source side is not re-run. Looker Studio offers no query API, so the expected result for each chart is its Route C recording, made during the audit capture:
 
 - **Contracts.** Use `migration/parity/looker_studio/<report_id>/recordings/<key>/contract.yaml` (written by `looker_studio_parity.py`, `target_object` and `field_map` filled by `omni-content-generate`). The source result is the recording's `source.csv`.

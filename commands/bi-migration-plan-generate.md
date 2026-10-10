@@ -258,6 +258,8 @@ Five things happen here:
 
 ## Pair: looker_studio_to_omni
 
+This pair is experimental in 4.2.2 (see `specs/migration/looker_studio_audit/generate.md`).
+
 When `bi_pair: looker_studio_to_omni`, the gate resolves this command's preconditions from the profile: `looker_studio_audit` review approved and `metric_catalogue` review approved (blocking), `business_rules` review approved (advisory). The workflow below applies with these differences, step by step:
 
 - **Inputs.** Read `audit/looker_studio_audit.md`, `audit/looker_studio/content_catalog.csv`, `audit/looker_studio/datasource_catalog.csv` and the ruled `audit/metric_catalogue.csv` in place of the Looker catalogs. A `conflict` still parked in the catalogue stops the plan: the model has nothing agreed to build.

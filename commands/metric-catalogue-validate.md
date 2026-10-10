@@ -1,9 +1,9 @@
 ---
-description: Validate the metric catalogue: reproducible, every group proposed, every conflict parked or ruled
+description: Experimental: Validate the metric catalogue: reproducible, every group proposed, every conflict parked or ruled
 argument-hint: <release-folder>
 ---
 
-# Validate the metric catalogue: reproducible, every group proposed, every conflict parked or ruled
+# Experimental: Validate the metric catalogue: reproducible, every group proposed, every conflict parked or ruled
 
 ## User Input
 
@@ -133,7 +133,7 @@ preconditions:
     outcome: complete
 delegates_to:
   - utils/precondition_gate
-description: "Validate the metric catalogue: reproducible from the audit, every group proposed, every conflict parked or ruled, every finding dispositioned, no sum of ratios proposed"
+description: "Experimental: Validate the metric catalogue: reproducible from the audit, every group proposed, every conflict parked or ruled, every finding dispositioned, no sum of ratios proposed"
 argument-hint: <release-folder>
 
 ---
@@ -147,6 +147,8 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 # Metric Catalogue: Validate
 
 ## Purpose
+
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Checks the metric catalogue before the client rules on it. Produces a PASS/FAIL report with the gaps to fix.
 

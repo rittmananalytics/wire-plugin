@@ -1,9 +1,9 @@
 ---
-description: Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
+description: Experimental: Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
 argument-hint: <release-folder>
 ---
 
-# Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
+# Experimental: Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
 
 ## User Input
 
@@ -217,7 +217,7 @@ delegates_to:
   - utils/precondition_gate
   - utils/migration_agent_delegate
   - utils/stale_artifact_check
-description: "Capture and catalog the Looker Studio estate (report definitions, layout, data sources, calculated fields, chart data and BigQuery job history) and classify every component and data source for the move to Omni"
+description: "Experimental: Capture and catalog the Looker Studio estate (report definitions, layout, data sources, calculated fields, chart data and BigQuery job history) and classify every component and data source for the move to Omni"
 argument-hint: <release-folder>
 
 ---
@@ -233,6 +233,8 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: looker_studio_au
 # Looker Studio Audit: Generate
 
 ## Purpose
+
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Catalogs the client's Looker Studio (formerly Data Studio) reports so the metric catalogue and the migration plan can decide what moves to Omni and how. Looker Studio has no supported API for report definitions, so the audit reads them from the editor itself through three evidence routes:
 
