@@ -256,6 +256,18 @@ Five things happen here:
 - `.wire/releases/$ARGUMENTS/status.md` (`bi_migration.stale_after_days`, `bi_migration.parallel_run_days`, `bi_migration.parity_scope`)
 - `wire/bi_pairs/looker_to_omni/translation_guide.md` and `content_mapping.md`
 
+## Pair: tableau_to_looker
+
+This pair is experimental (see `specs/migration/tableau_audit/generate.md`).
+
+When `bi_pair: tableau_to_looker`, the gate resolves this command's preconditions from the profile: `tableau_audit` review approved (blocking), `business_rules` review approved (advisory). The workflow applies with these differences:
+
+- **Inputs.** `audit/tableau_audit.md`, `audit/bi_model_catalog.csv`, `audit/bi_content_catalog.csv`, `audit/datasource_fingerprints.csv`.
+- **Step 3 (rulings).** Add a **data source consolidation** ruling per fingerprint group ("Build one shared explore for these N embedded data sources?", default: yes for groups of two or more) and an **extract disposition** per extract-backed data source ("Rebuild as a dbt model, read the warehouse live, or drop?", no default). LOD expressions and table calculations take a per-field ruling (derived table, Looker table calculation, or drop).
+- **Step 5 (batches).** Model batches are fingerprint groups in dependency order; content batches are Tableau dashboards by usage, each depending on the model batches of the data sources its sheets use.
+- **Step 6 (register).** Identities from the audit (`tableau:<site>:workbook:<luid>`, `.../sheet:<name>`, `.../dashboard:<name>`, `tableau:<site>:datasource:<luid>`); `source_updated_at` from `inventory.json` `updated_at` (or the SHA-256 in files mode); no `last_migrated_commit`.
+- **Step 6b (baseline).** Record the snapshot (`exported_at`, edition, API version, SHA-256 per object) in place of `lookml_commit`, and the converter version from `twb_to_lookml.py`.
+
 ## Pair: looker_studio_to_omni
 
 This pair is experimental in 4.2.2 (see `specs/migration/looker_studio_audit/generate.md`).

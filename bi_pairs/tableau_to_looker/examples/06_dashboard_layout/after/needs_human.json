@@ -1,0 +1,16 @@
+[
+ {
+  "class": "drop",
+  "construct": "device_layout",
+  "object": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary",
+  "proposal": null,
+  "reason": "device layouts dropped: Phone"
+ },
+ {
+  "class": "drop",
+  "construct": "bitmap_zone",
+  "object": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary/zone:6",
+  "proposal": null,
+  "reason": "bitmap zone not migrated"
+ }
+]

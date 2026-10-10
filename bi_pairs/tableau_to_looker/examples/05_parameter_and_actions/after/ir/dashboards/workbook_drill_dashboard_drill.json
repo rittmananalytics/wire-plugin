@@ -1,0 +1,51 @@
+{
+ "actions": [
+  "Drill to orders"
+ ],
+ "class": "mechanical",
+ "dropped": [],
+ "id": "tableau:halcyon:workbook:Drill/dashboard:Drill",
+ "kind": "dashboard",
+ "name": "Drill",
+ "size": {
+  "height": 600,
+  "width": 1200
+ },
+ "source": {
+  "file": "workbooks/Drill.twb",
+  "fragment": "<dashboard name=\"Drill\"><size maxheight=\"600\" maxwidth=\"1200\" /><zones><zone h=\"100000\" id=\"1\" type-v2=\"layout-basic\" w=\"100000\" x=\"0\" y=\"0\"><zone h=\"10000\" id=\"2\" type-v2=\"filter\" param=\"[federated.p].[none:region:nk]\" w=\"100000\" x=\"0\" y=\"0\" /><zone h=\"90000\" id=\"3\" name=\"Regions\" w=\"50000\" x=\"0\" y=\"10000\" /><zone h=\"90000\" id=\"4\" name=\"Orders\" w=\"50000\" x=\"50000\" y=\"10000\" /></zone></zones></dashboard>"
+ },
+ "tiles": [
+  {
+   "id": "tableau:halcyon:workbook:Drill/dashboard:Drill/zone:2",
+   "position": {
+    "h": 10000,
+    "w": 100000,
+    "x": 0,
+    "y": 0
+   },
+   "report": null
+  },
+  {
+   "id": "tableau:halcyon:workbook:Drill/dashboard:Drill/zone:3",
+   "position": {
+    "h": 90000,
+    "w": 50000,
+    "x": 0,
+    "y": 10000
+   },
+   "report": "tableau:halcyon:workbook:Drill/sheet:Regions"
+  },
+  {
+   "id": "tableau:halcyon:workbook:Drill/dashboard:Drill/zone:4",
+   "position": {
+    "h": 90000,
+    "w": 50000,
+    "x": 50000,
+    "y": 10000
+   },
+   "report": "tableau:halcyon:workbook:Drill/sheet:Orders"
+  }
+ ],
+ "workbook": "tableau:halcyon:workbook:Drill"
+}

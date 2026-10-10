@@ -21,11 +21,11 @@ a full release this way and names the command Wire runs at each step.
 
 :::
 
-Moving a reporting layer from one BI tool to another is a different job from moving a warehouse: the warehouse and the dbt layer stay where they are, and what has to be rebuilt, checked and switched over is the semantic model and the content that sits on it. The BI Tool Migration release type is for that job. It has two pairs. **Looker to Omni** (since 4.0.0): LookML views and explores become Omni views and topics on a model branch, Looker dashboards and Looks become Omni dashboards, every migrated tile is proven equivalent before users are switched and Looker is decommissioned after a parallel run. **Looker Studio to Omni** (experimental, since 4.2.2): Looker Studio reports are captured from the editor, their calculated fields are consolidated into one agreed set in a metric catalogue, and the Omni model is built from the warehouse rather than from the reports. See [Looker Studio to Omni](#looker-studio-to-omni) below.
+Moving a reporting layer from one BI tool to another is a different job from moving a warehouse: the warehouse and the dbt layer stay where they are, and what has to be rebuilt, checked and switched over is the semantic model and the content that sits on it. The BI Tool Migration release type is for that job. It has three pairs. **Looker to Omni** (since 4.0.0): LookML views and explores become Omni views and topics on a model branch, Looker dashboards and Looks become Omni dashboards, every migrated tile is proven equivalent before users are switched and Looker is decommissioned after a parallel run. **Looker Studio to Omni** (experimental, since 4.2.2): Looker Studio reports are captured from the editor, their calculated fields are consolidated into one agreed set in a metric catalogue, and the Omni model is built from the warehouse rather than from the reports. See [Looker Studio to Omni](#looker-studio-to-omni) below. **Tableau to Looker** (experimental): Tableau Cloud, Server or Desktop workbooks become LookML views, explores and LookML dashboards on a branch of the client's Looker repo. See [Tableau to Looker](#tableau-to-looker) below.
 
 It is not the same as migrating an Omni estate between warehouses. That is `platform_migration` with `migration.reporting_tool: omni`, where the pivot is the Omni connection, whereas here the pivot is the semantic model itself.
 
-**Supported pairs**: `looker_to_omni` (default), `looker_studio_to_omni` (experimental)
+**Supported pairs**: `looker_to_omni` (default), `looker_studio_to_omni` (experimental), `tableau_to_looker` (experimental)
 
 The flow, from the Looker estate at the start to Looker retired at the end, is as follows:
 
@@ -156,6 +156,25 @@ The model, content, parity and cutover phases keep their commands. The Omni mode
 
 **Limitations.** Routes B and C use undocumented endpoints that Google can change without notice; each capture records the Looker Studio app version and the extractor stops on structure it does not know. The capture needs an interactive Google sign-in and recorded client consent, so it cannot run unattended. Route A covers BigQuery only. Recorded chart values reflect the data at capture time. Parameters, custom SQL data sources and extracted data sources had not been seen in a real capture when 4.2.2 shipped and are handled generically. The full list is in the [Looker Studio to Omni tutorial](../tutorials/looker-studio-to-omni#limitations).
 
+## Tableau to Looker
+
+:::caution[Experimental]
+
+The Tableau to Looker pair is experimental. It has run end to end once, on a Tableau Cloud trial site: one BigQuery sheet converted, deployed to Looker and matched row for row. It has not run on a client estate. See the [limitations](../tutorials/tableau-to-looker#limitations).
+
+:::
+
+The `tableau_to_looker` pair (`bi_pair: tableau_to_looker`) replaces four phases. The plan, parity, drift and cutover phases are shared and branch on the pair.
+
+| Phase | Artifact | Commands | What it produces |
+|---|---|---|---|
+| Tableau audit | `tableau_audit` | `/wire:tableau-audit-generate`, `-validate`, `-review` | A snapshot of the site (REST API or Desktop files), catalogs with a class per construct, data source fingerprint groups, the tool-neutral IR |
+| Looker target | `looker_target_setup` | `/wire:looker-target-setup-*` | Connection check, LookML migration branch, folders, groups, user attributes |
+| LookML model | `lookml_model` | `/wire:lookml-model-generate --batch N`, `-lint`, `-validate`, `-review` | LookML views, explores and parameters from a deterministic converter; `needs_human.json` for LOD expressions, table calculations, blends, sets and join cardinality |
+| Looker content | `looker_content` | `/wire:looker-content-*` | LookML dashboards on the branch: zones on the 24-column grid, quick filters with `listen` |
+
+Duplicate embedded data sources are fingerprinted (connection, tables, joins, columns) and become one shared explore under a plan ruling. Parity reads each Tableau sheet's rows through REST Query View Data; a sheet on an extract that refreshed after the parity run is `INCONCLUSIVE`. The record uses the tool-neutral IR in `wire/schemas/bi_ir-schema.md`. The full walkthrough is the [Tableau to Looker tutorial](../tutorials/tableau-to-looker).
+
 ## Prerequisites
 
 - The LookML repo cloned locally, and Looker API credentials with System Activity access for usage.
@@ -167,6 +186,7 @@ The model, content, parity and cutover phases keep their commands. The Omni mode
 
 - [Tutorial: Looker to Omni Migration](../tutorials/looker-to-omni-migration): a complete release, directed in prose, with every command Wire runs named
 - [Looker to Omni: A Real Run](../tutorials/looker-to-omni-real-run): a real migration of three dashboards on Rittman Analytics' own estate, as it was run, with the prompts, the counts and the 52 rulings
+- [Tutorial: Tableau to Looker](../tutorials/tableau-to-looker) (experimental): snapshot, classification, fingerprints, LookML conversion, parity from Query View Data, and the limitations
 - [Tutorial: Looker Studio to Omni](../tutorials/looker-studio-to-omni): capture, metric catalogue, model route, parity from recorded chart values, and the limitations
 - [The Release Director Model](../advanced/release-director)
 - [Platform Migration](./platform-migration): the same register and drift mechanisms applied to a warehouse move

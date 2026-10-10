@@ -1,0 +1,50 @@
+{
+ "blended": false,
+ "class": "mechanical",
+ "datasets": [
+  "federated.d"
+ ],
+ "id": "tableau:halcyon:workbook:Exec/sheet:Trend",
+ "kind": "report",
+ "name": "Trend",
+ "query": {
+  "cols": [
+   [
+    "federated.d",
+    "[tmn:order_date:qk]"
+   ]
+  ],
+  "encodings": [],
+  "filter_details": [],
+  "filters": [],
+  "instances": [
+   {
+    "column": "[order_date]",
+    "datasource": "federated.d",
+    "derivation": "Month-Trunc",
+    "instance": "[tmn:order_date:qk]"
+   },
+   {
+    "column": "[sales]",
+    "datasource": "federated.d",
+    "derivation": "Sum",
+    "instance": "[sum:sales:qk]"
+   }
+  ],
+  "rows": [
+   [
+    "federated.d",
+    "[sum:sales:qk]"
+   ]
+  ],
+  "sorts": []
+ },
+ "source": {
+  "file": "workbooks/Exec.twb",
+  "fragment": "<worksheet name=\"Trend\"><table><view><datasources><datasource name=\"federated.d\" /></datasources><datasource-dependencies datasource=\"federated.d\"><column-instance column=\"[order_date]\" derivation=\"Month-Trunc\" name=\"[tmn:order_date:qk]\" pivot=\"key\" type=\"quantitative\" /><column-instance column=\"[sales]\" derivation=\"Sum\" name=\"[sum:sales:qk]\" pivot=\"key\" type=\"quantitative\" /></datasource-dependencies></view><panes><pane><mark class=\"Area\" /></pane></panes><rows>[federated.d].[sum:sales:qk]</rows><cols>[federated.d].[tmn:order_date:qk]</cols></table></worksheet>"
+ },
+ "visualisation": {
+  "mark": "Area"
+ },
+ "workbook": "tableau:halcyon:workbook:Exec"
+}

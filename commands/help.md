@@ -509,6 +509,19 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N ` | Present migration batch acceptance pack for stakeholder sign-off |
 | `/wire:migration-source-register` | `<release-folder> <source_type> <github_url>` | Register a source repository for a given migration source type |
 | `/wire:migration-source-refresh` | `<release-folder> <source_type>` | Pull a fresh local snapshot of a registered migration source |
+| `/wire:tableau-audit-generate` | `<release-folder>` | Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker, with data source fingerprints |
+| `/wire:tableau-audit-validate` | `<release-folder>` | Experimental: Validate the Tableau audit: reproducible, every construct classified, every data source in one fingerprint group, IR valid |
+| `/wire:tableau-audit-review` | `<release-folder>` | Experimental: Internal RA review of the Tableau audit |
+| `/wire:looker-target-setup-generate` | `<release-folder>` | Experimental: Prepare the Looker target: connection, LookML migration branch, folders, groups and user attributes |
+| `/wire:looker-target-setup-validate` | `<release-folder>` | Experimental: Validate the Looker target: branch, connection, project validates, permission objects exist |
+| `/wire:looker-target-setup-review` | `<release-folder>` | Experimental: Internal RA review of the Looker target setup |
+| `/wire:lookml-model-generate` | `<release-folder> [--batch N ` | Experimental: Translate a batch of Tableau data sources to LookML views and explores on the migration branch (deterministic converter plus agent judgement) |
+| `/wire:lookml-model-lint` | `<release-folder> [--batch N]` | Experimental: Lint emitted LookML: no Tableau expression left, LookML conventions, primary keys on joined views |
+| `/wire:lookml-model-validate` | `<release-folder> [--batch N]` | Experimental: Validate a LookML batch on the branch: Looker validator clean, fields present, one smoke query per explore |
+| `/wire:lookml-model-review` | `<release-folder> [--batch N]` | Experimental: Release director review of a translated LookML batch |
+| `/wire:looker-content-generate` | `<release-folder> [--batch N ` | Experimental: Write a batch of Tableau dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons |
+| `/wire:looker-content-validate` | `<release-folder> [--batch N]` | Experimental: Validate a LookML dashboard batch: fields exist, dashboards validate, every skipped tile has a reason |
+| `/wire:looker-content-review` | `<release-folder> [--batch N]` | Experimental: Release director review of a migrated LookML dashboard batch |
 | `/wire:looker-studio-audit-generate` | `<release-folder>` | Experimental: Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified |
 | `/wire:looker-studio-audit-validate` | `<release-folder>` | Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored |
 | `/wire:looker-studio-audit-review` | `<release-folder>` | Experimental: Internal RA review of the Looker Studio audit |

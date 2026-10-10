@@ -1,0 +1,50 @@
+{
+ "blended": false,
+ "class": "mechanical",
+ "datasets": [
+  "federated.s"
+ ],
+ "id": "tableau:halcyon:workbook:Sales/sheet:Sales%20by%20Region",
+ "kind": "report",
+ "name": "Sales by Region",
+ "query": {
+  "cols": [
+   [
+    "federated.s",
+    "[sum:sales:qk]"
+   ]
+  ],
+  "encodings": [],
+  "filter_details": [],
+  "filters": [],
+  "instances": [
+   {
+    "column": "[region]",
+    "datasource": "federated.s",
+    "derivation": "None",
+    "instance": "[none:region:nk]"
+   },
+   {
+    "column": "[sales]",
+    "datasource": "federated.s",
+    "derivation": "Sum",
+    "instance": "[sum:sales:qk]"
+   }
+  ],
+  "rows": [
+   [
+    "federated.s",
+    "[none:region:nk]"
+   ]
+  ],
+  "sorts": []
+ },
+ "source": {
+  "file": "workbooks/Sales.twb",
+  "fragment": "<worksheet name=\"Sales by Region\"><table><view><datasources><datasource name=\"federated.s\" /></datasources><datasource-dependencies datasource=\"federated.s\"><column-instance column=\"[region]\" derivation=\"None\" name=\"[none:region:nk]\" pivot=\"key\" type=\"nominal\" /><column-instance column=\"[sales]\" derivation=\"Sum\" name=\"[sum:sales:qk]\" pivot=\"key\" type=\"quantitative\" /></datasource-dependencies></view><panes><pane><mark class=\"Bar\" /></pane></panes><rows>[federated.s].[none:region:nk]</rows><cols>[federated.s].[sum:sales:qk]</cols></table></worksheet>"
+ },
+ "visualisation": {
+  "mark": "Bar"
+ },
+ "workbook": "tableau:halcyon:workbook:Sales"
+}

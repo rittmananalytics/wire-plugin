@@ -1,0 +1,30 @@
+[
+ {
+  "class": "assisted",
+  "construct": "primary_key",
+  "object": "looker:halcyon:view:customers",
+  "proposal": null,
+  "reason": "joined view with no primary key: totals across joins are wrong until one is set"
+ },
+ {
+  "class": "assisted",
+  "construct": "primary_key",
+  "object": "looker:halcyon:view:orders",
+  "proposal": null,
+  "reason": "joined view with no primary key: totals across joins are wrong until one is set"
+ },
+ {
+  "class": "assisted",
+  "construct": "physical_join",
+  "object": "tableau:halcyon:workbook:Customers/datasource:federated.j/join:orders%3Acustomers",
+  "proposal": "relationship: many_to_one; set primary_key on customers",
+  "reason": "no cardinality in Tableau; many_to_one proposed; set primary keys"
+ },
+ {
+  "class": "assisted",
+  "construct": "worksheet_standalone",
+  "object": "tableau:halcyon:workbook:Customers/sheet:Sales%20by%20Segment",
+  "proposal": "keep it, make it a Look through the Looker API (looker_content), or drop",
+  "reason": "worksheet on no dashboard: emitted as a one-tile LookML dashboard"
+ }
+]

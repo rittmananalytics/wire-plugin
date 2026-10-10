@@ -1,0 +1,9 @@
+[
+ {
+  "class": "assisted",
+  "construct": "filter_action",
+  "object": "tableau:halcyon:workbook:Drill/action:Drill%20to%20orders",
+  "proposal": "source sheet Regions on dashboard Drill",
+  "reason": "filter action: becomes dashboard filter listen or cross-filtering"
+ }
+]

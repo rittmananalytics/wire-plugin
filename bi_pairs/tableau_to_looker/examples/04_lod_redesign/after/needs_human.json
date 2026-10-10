@@ -1,0 +1,16 @@
+[
+ {
+  "class": "assisted",
+  "construct": "aggregate_calculation",
+  "object": "tableau:halcyon:field:federated.l:Calculation_10",
+  "proposal": "Tableau: SUM([sales]) / SUM([Calculation_9])",
+  "reason": "not translated: reference to calculation [Calculation_9] (redesign)"
+ },
+ {
+  "class": "redesign",
+  "construct": "lod",
+  "object": "tableau:halcyon:field:federated.l:Calculation_9",
+  "proposal": "Tableau: { FIXED [region] : SUM([sales]) }",
+  "reason": "LOD expression: derived table or symmetric aggregate, plan ruling"
+ }
+]

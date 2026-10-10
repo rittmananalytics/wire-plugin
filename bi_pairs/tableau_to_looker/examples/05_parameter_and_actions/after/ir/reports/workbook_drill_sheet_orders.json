@@ -1,0 +1,57 @@
+{
+ "blended": false,
+ "class": "mechanical",
+ "datasets": [
+  "federated.p"
+ ],
+ "id": "tableau:halcyon:workbook:Drill/sheet:Orders",
+ "kind": "report",
+ "name": "Orders",
+ "query": {
+  "cols": [
+   [
+    "federated.p",
+    "[sum:sales:qk]"
+   ]
+  ],
+  "encodings": [],
+  "filter_details": [
+   {
+    "column": "[federated.p].[none:region:nk]",
+    "value": null
+   }
+  ],
+  "filters": [
+   "[federated.p].[none:region:nk]"
+  ],
+  "instances": [
+   {
+    "column": "[order_id]",
+    "datasource": "federated.p",
+    "derivation": "None",
+    "instance": "[none:order_id:ok]"
+   },
+   {
+    "column": "[sales]",
+    "datasource": "federated.p",
+    "derivation": "Sum",
+    "instance": "[sum:sales:qk]"
+   }
+  ],
+  "rows": [
+   [
+    "federated.p",
+    "[none:order_id:ok]"
+   ]
+  ],
+  "sorts": []
+ },
+ "source": {
+  "file": "workbooks/Drill.twb",
+  "fragment": "<worksheet name=\"Orders\"><table><view><datasources><datasource name=\"federated.p\" /></datasources><datasource-dependencies datasource=\"federated.p\"><column-instance column=\"[order_id]\" derivation=\"None\" name=\"[none:order_id:ok]\" pivot=\"key\" type=\"ordinal\" /><column-instance column=\"[sales]\" derivation=\"Sum\" name=\"[sum:sales:qk]\" pivot=\"key\" type=\"quantitative\" /></datasource-dependencies><filter class=\"categorical\" column=\"[federated.p].[none:region:nk]\"><groupfilter function=\"level-members\" level=\"[none:region:nk]\" /></filter></view><panes><pane><mark class=\"Text\" /></pane></panes><rows>[federated.p].[none:order_id:ok]</rows><cols>[federated.p].[sum:sales:qk]</cols></table></worksheet>"
+ },
+ "visualisation": {
+  "mark": "Text"
+ },
+ "workbook": "tableau:halcyon:workbook:Drill"
+}

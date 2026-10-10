@@ -1,0 +1,24 @@
+{
+ "converter": "twb_to_lookml",
+ "counts": {
+  "aggregate_calculation": {
+   "assisted": 1
+  },
+  "column": {
+   "mechanical": 3
+  },
+  "dataset": {
+   "mechanical": 1
+  },
+  "lod": {
+   "redesign": 1
+  }
+ },
+ "dashboards": 0,
+ "dialect": "bigquery",
+ "explores": 1,
+ "model": "halcyon",
+ "needs_human": 2,
+ "version": "0.1.0",
+ "views": 1
+}

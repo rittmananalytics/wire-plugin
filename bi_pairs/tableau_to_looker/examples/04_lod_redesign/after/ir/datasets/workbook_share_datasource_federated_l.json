@@ -1,0 +1,118 @@
+{
+ "class": "mechanical",
+ "connection": {
+  "class": "bigquery",
+  "database": null,
+  "project": "halcyon-analytics",
+  "schema": "retail",
+  "server": null
+ },
+ "fields": [
+  {
+   "aggregation": null,
+   "class": "mechanical",
+   "data_type": "integer",
+   "dataset": "tableau:halcyon:workbook:Share/datasource:federated.l",
+   "expression": "[orders].[order_id]",
+   "field_kind": "dimension",
+   "format": null,
+   "hidden": false,
+   "id": "tableau:halcyon:field:federated.l:order_id",
+   "label": "order_id",
+   "name": "order_id",
+   "reason": "",
+   "source_type": "integer",
+   "target": "looker:halcyon:field:orders.order_id"
+  },
+  {
+   "aggregation": null,
+   "class": "mechanical",
+   "data_type": "string",
+   "dataset": "tableau:halcyon:workbook:Share/datasource:federated.l",
+   "expression": "[orders].[region]",
+   "field_kind": "dimension",
+   "format": null,
+   "hidden": false,
+   "id": "tableau:halcyon:field:federated.l:region",
+   "label": "region",
+   "name": "region",
+   "reason": "",
+   "source_type": "string",
+   "target": "looker:halcyon:field:orders.region"
+  },
+  {
+   "aggregation": "sum",
+   "class": "mechanical",
+   "data_type": "real",
+   "dataset": "tableau:halcyon:workbook:Share/datasource:federated.l",
+   "expression": "[orders].[sales]",
+   "field_kind": "measure",
+   "format": null,
+   "hidden": false,
+   "id": "tableau:halcyon:field:federated.l:sales",
+   "label": "sales",
+   "name": "sales",
+   "reason": "",
+   "source_type": "real",
+   "target": "looker:halcyon:field:orders.sales"
+  },
+  {
+   "class": "redesign",
+   "data_type": "real",
+   "dataset": "tableau:halcyon:workbook:Share/datasource:federated.l",
+   "expression": "{ FIXED [region] : SUM([sales]) }",
+   "field_kind": "calculation",
+   "format": null,
+   "hidden": false,
+   "id": "tableau:halcyon:field:federated.l:Calculation_9",
+   "label": "Region Total",
+   "name": "Calculation_9",
+   "reason": "LOD expression: derived table or symmetric aggregate, plan ruling",
+   "references": [
+    "tableau:halcyon:field:federated.l:region",
+    "tableau:halcyon:field:federated.l:sales"
+   ],
+   "source_type": "real"
+  },
+  {
+   "class": "assisted",
+   "data_type": "real",
+   "dataset": "tableau:halcyon:workbook:Share/datasource:federated.l",
+   "expression": "SUM([sales]) / SUM([Calculation_9])",
+   "field_kind": "calculation",
+   "format": null,
+   "hidden": false,
+   "id": "tableau:halcyon:field:federated.l:Calculation_10",
+   "label": "Share of Region",
+   "name": "Calculation_10",
+   "reason": "aggregate calculation: type number measure over emitted measures",
+   "references": [
+    "tableau:halcyon:field:federated.l:Calculation_9",
+    "tableau:halcyon:field:federated.l:sales"
+   ],
+   "source_type": "real"
+  }
+ ],
+ "fingerprint": "b14bbc6c89caa121",
+ "id": "tableau:halcyon:workbook:Share/datasource:federated.l",
+ "joins": [],
+ "kind": "dataset",
+ "label": "Orders",
+ "materialisation": "live",
+ "name": "federated.l",
+ "published": false,
+ "reason": "",
+ "relations": [
+  {
+   "name": "orders",
+   "table": "[retail].[orders]",
+   "type": "table"
+  }
+ ],
+ "source": {
+  "file": "workbooks/Share.twb",
+  "fragment": "<datasource caption=\"Orders\" inline=\"true\" name=\"federated.l\" version=\"18.1\"><connection class=\"federated\"><named-connections><named-connection caption=\"BigQuery\" name=\"bigquery.1\"><connection class=\"bigquery\" project=\"halcyon-analytics\" schema=\"retail\" /></named-connection></named-connections><relation connection=\"bigquery.1\" name=\"orders\" table=\"[retail].[orders]\" type=\"table\" /><cols><map key=\"[order_id]\" value=\"[orders].[order_id]\" /><map key=\"[region]\" value=\"[orders].[region]\" /><map key=\"[sales]\" value=\"[orders].[sales]\" /></cols><metadata-records><metadata-record class=\"column\"><remote-name>order_id</remote-name><local-name>[order_id]</local-name><parent-name>[orders]</parent-name><local-type>integer</local-type><aggregation>Count</aggregation></metadata-record><metadata-record class=\"column\"><remote-name>region</remote-name><local-name>[region]</local-name><parent-name>[orders]</parent-name><local-type>string</local-type><aggregation>Count</aggregation></metadata-record><metadata-record class=\"column\"><remote-name>sales</remote-name><local-name>[sales]</local-name><parent-name>[orders]</parent-name><local-type>real</local-type><aggregation>Sum</aggregation></metadata-record></metadata-records></connection><column caption=\"Region Total\" datatype=\"real\" name=\"[Calculation_9]\" role=\"measure\" type=\"quantitative\"><calculation class=\"tableau\" formula=\"{ FIXED [region] : SUM([sales]) }\" /></column><column caption=\"Share of Region\" datatype=\"real\" name=\"[Calculation_10]\" role=\"measure\" type=\"quantitative\"><calculation class=\"tableau\" formula=\"SUM([sales]) / SUM([Calculation_9])\" /></column></datasource>"
+ },
+ "unsupported": [],
+ "workbook": "tableau:halcyon:workbook:Share"
+}

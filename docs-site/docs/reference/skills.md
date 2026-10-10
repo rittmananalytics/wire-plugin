@@ -129,6 +129,14 @@ This skill connects to a Metabase instance (metabase-cli serialization export, t
 
 ---
 
+### `tableau`
+
+**Activates when**: auditing a Tableau estate or migrating it to Looker on the experimental `tableau_to_looker` pair of a BI Tool Migration release, or reading `.twb`, `.twbx`, `.tds` or `.tdsx` files.
+
+This skill covers signing in to Tableau Cloud or Server with a personal access token, what each surface gives (REST API, usage, parity rows), how the workbook XML is laid out, the calculation language in one page (row-level and aggregate calculations, LOD expressions, table calculations) and Wire's three scripts: `tableau_export.py` for the snapshot and drift, `twb_to_lookml.py` for the audit, the LookML conversion and the lint, and `bi_ir.py` for the tool-neutral record. Experimental: run end to end once on a Tableau Cloud trial site; not on a client estate.
+
+---
+
 ### `cube`
 
 **Activates when**: building or reviewing a Cube.dev semantic-layer model (cubes, views, dimensions, measures, joins or pre-aggregations) or connecting to a live Cube deployment via its MCP server; also activates for semantic-layer work in other release types where the client's semantic layer is Cube rather than LookML.

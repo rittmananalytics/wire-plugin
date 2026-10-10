@@ -1,0 +1,4 @@
+{"from": "looker:halcyon:explore:orders", "kind": "uses_dataset", "to": "tableau:halcyon:workbook:Share/datasource:federated.l"}
+{"from": "tableau:halcyon:field:federated.l:order_id", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.l:region", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.l:sales", "kind": "contains", "to": "looker:halcyon:view:orders"}

@@ -1,0 +1,9 @@
+{"from": "looker:halcyon:explore:orders", "kind": "uses_dataset", "to": "tableau:halcyon:workbook:Calcs/datasource:federated.c"}
+{"from": "tableau:halcyon:field:federated.c:Calculation_1", "kind": "references", "to": "tableau:halcyon:field:federated.c:profit"}
+{"from": "tableau:halcyon:field:federated.c:Calculation_1", "kind": "references", "to": "tableau:halcyon:field:federated.c:sales"}
+{"from": "tableau:halcyon:field:federated.c:Calculation_2", "kind": "references", "to": "tableau:halcyon:field:federated.c:sales"}
+{"from": "tableau:halcyon:field:federated.c:Calculation_3", "kind": "references", "to": "tableau:halcyon:field:federated.c:region"}
+{"from": "tableau:halcyon:field:federated.c:order_id", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.c:profit", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.c:region", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.c:sales", "kind": "contains", "to": "looker:halcyon:view:orders"}

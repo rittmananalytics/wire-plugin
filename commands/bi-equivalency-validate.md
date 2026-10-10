@@ -214,6 +214,14 @@ Only `pass`, `pass_qualified` and `pass_declared_deviation` satisfy the gate. `B
 
 **Evidence invalidation.** Each tile verdict carries an `evidence_fingerprint` (`scripts/bi_evidence.py fingerprint`, SHA-256 over seven components: the LookML definition, the emitted Omni definition, the dependency closure, the policy context, the data context, the test contract and the adapter versions), recorded in `migration/parity/evidence.csv`. `migration-drift-generate` recomputes it and writes `stale_kinds`; a tile whose row lists `numeric_parity` there is `NOT_RUN` for the gate until this command re-runs it. A presentation-only Omni edit stales `presentation_fidelity` alone and costs no warehouse query.
 
+## Pair: tableau_to_looker
+
+This pair is experimental (see `specs/migration/tableau_audit/generate.md`).
+
+- **Source side.** Each Tableau sheet's rows through REST Query View Data (`python3 <plugin-root>/scripts/tableau_export.py view-data --view-luid <luid> --filter <field>=<value> ... --out <file>.csv`), with the dashboard's default filter values and the date pinned at `parity_as_of`. On Server from 2025.1 and on Cloud, the VizQL Data Service may be used for published data sources. The view LUID is the sheet's `view_luid` in `bi_content_catalog.csv`; a sheet with no LUID is not published as a view, so read it through a dashboard that shows it. Query View Data returns values as the sheet displays them: currency symbols and thousands separators (which the comparator reads) and rounding to the sheet's number format (which it cannot undo), so set each measure's `precision` to the displayed precision. In files mode there is no headless source side: export each sheet by hand and record `method_class: manual_export`.
+- **Target side.** The LookML dashboard element's query through the Looker API `run_inline_query` or the Looker MCP `query` tool, on the migration branch.
+- **Extracts.** For a sheet on an extract-backed data source, record the extract's last refresh time in the contract's `data_context` with `parity_as_of`. If the extract refreshed after the parity run, the tile is `INCONCLUSIVE`, not `PASS` (`tableau_export.py diff` flags it as `extract_refreshed_after_parity`).
+
 ## Pair: looker_studio_to_omni
 
 This pair is experimental in 4.2.2 (see `specs/migration/looker_studio_audit/generate.md`).

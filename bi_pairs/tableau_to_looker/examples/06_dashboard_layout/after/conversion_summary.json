@@ -1,0 +1,30 @@
+{
+ "converter": "twb_to_lookml",
+ "counts": {
+  "bitmap_zone": {
+   "drop": 1
+  },
+  "column": {
+   "mechanical": 4
+  },
+  "dataset": {
+   "mechanical": 1
+  },
+  "device_layout": {
+   "drop": 1
+  },
+  "text_zone": {
+   "mechanical": 1
+  },
+  "worksheet": {
+   "mechanical": 3
+  }
+ },
+ "dashboards": 1,
+ "dialect": "bigquery",
+ "explores": 1,
+ "model": "halcyon",
+ "needs_human": 2,
+ "version": "0.1.0",
+ "views": 1
+}

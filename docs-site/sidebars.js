@@ -89,6 +89,7 @@ const sidebars = {
             'tutorials/looker-to-omni-migration',
             'tutorials/looker-to-omni-real-run',
             'tutorials/looker-studio-to-omni',
+            'tutorials/tableau-to-looker',
             'tutorials/agentic-data-stack',
             'tutorials/droughty',
             'tutorials/custom',

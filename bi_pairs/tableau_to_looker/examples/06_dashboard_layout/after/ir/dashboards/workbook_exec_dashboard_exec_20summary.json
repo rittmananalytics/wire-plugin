@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "class": "mechanical",
+ "dropped": [
+  "Phone"
+ ],
+ "id": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary",
+ "kind": "dashboard",
+ "name": "Exec Summary",
+ "size": {
+  "height": 900,
+  "width": 1600
+ },
+ "source": {
+  "file": "workbooks/Exec.twb",
+  "fragment": "<dashboard name=\"Exec Summary\"><size maxheight=\"900\" maxwidth=\"1600\" /><zones><zone h=\"100000\" id=\"1\" type-v2=\"layout-basic\" w=\"100000\" x=\"0\" y=\"0\"><zone h=\"11111\" id=\"2\" type-v2=\"text\" w=\"100000\" x=\"0\" y=\"0\"><formatted-text><run>Executive summary</run></formatted-text></zone><zone h=\"22222\" id=\"3\" name=\"Total\" w=\"25000\" x=\"0\" y=\"11111\" /><zone h=\"22222\" id=\"4\" name=\"By Region\" w=\"75000\" x=\"25000\" y=\"11111\" /><zone h=\"66667\" id=\"5\" name=\"Trend\" w=\"100000\" x=\"0\" y=\"33333\" /><zone h=\"5000\" id=\"6\" type-v2=\"bitmap\" param=\"logo.png\" w=\"10000\" x=\"90000\" y=\"95000\" /></zone></zones><devicelayouts><devicelayout name=\"Phone\"><zones /></devicelayout></devicelayouts></dashboard>"
+ },
+ "tiles": [
+  {
+   "id": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary/zone:2",
+   "position": {
+    "h": 11111,
+    "w": 100000,
+    "x": 0,
+    "y": 0
+   },
+   "report": null
+  },
+  {
+   "id": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary/zone:3",
+   "position": {
+    "h": 22222,
+    "w": 25000,
+    "x": 0,
+    "y": 11111
+   },
+   "report": "tableau:halcyon:workbook:Exec/sheet:Total"
+  },
+  {
+   "id": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary/zone:4",
+   "position": {
+    "h": 22222,
+    "w": 75000,
+    "x": 25000,
+    "y": 11111
+   },
+   "report": "tableau:halcyon:workbook:Exec/sheet:By%20Region"
+  },
+  {
+   "id": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary/zone:5",
+   "position": {
+    "h": 66667,
+    "w": 100000,
+    "x": 0,
+    "y": 33333
+   },
+   "report": "tableau:halcyon:workbook:Exec/sheet:Trend"
+  },
+  {
+   "id": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary/zone:6",
+   "position": {
+    "h": 5000,
+    "w": 10000,
+    "x": 90000,
+    "y": 95000
+   },
+   "report": null
+  }
+ ],
+ "workbook": "tableau:halcyon:workbook:Exec"
+}

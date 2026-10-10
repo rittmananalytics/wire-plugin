@@ -1,0 +1,30 @@
+{
+ "converter": "twb_to_lookml",
+ "counts": {
+  "column": {
+   "mechanical": 6
+  },
+  "dataset": {
+   "assisted": 1
+  },
+  "physical_join": {
+   "assisted": 1
+  },
+  "primary_key": {
+   "assisted": 2
+  },
+  "worksheet": {
+   "mechanical": 1
+  },
+  "worksheet_standalone": {
+   "assisted": 1
+  }
+ },
+ "dashboards": 1,
+ "dialect": "bigquery",
+ "explores": 1,
+ "model": "halcyon",
+ "needs_human": 4,
+ "version": "0.1.0",
+ "views": 2
+}

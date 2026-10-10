@@ -63,6 +63,11 @@ specs:
   - migration/looker_studio_audit-validate
   - migration/metric_catalogue-generate
   - migration/metric_catalogue-validate
+  # bi_migration, Tableau to Looker (wire#287, experimental)
+  - migration/tableau_audit-generate
+  - migration/tableau_audit-validate
+  - migration/looker_target_setup-generate
+  - migration/looker_target_setup-validate
 skills: []
 mcp_requirements:
   - bigquery

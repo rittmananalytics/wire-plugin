@@ -1,0 +1,30 @@
+{
+ "converter": "twb_to_lookml",
+ "counts": {
+  "column": {
+   "mechanical": 3
+  },
+  "dataset": {
+   "mechanical": 1
+  },
+  "filter_action": {
+   "assisted": 1
+  },
+  "quick_filter": {
+   "mechanical": 1
+  },
+  "row_calculation": {
+   "assisted": 1
+  },
+  "worksheet": {
+   "mechanical": 2
+  }
+ },
+ "dashboards": 1,
+ "dialect": "bigquery",
+ "explores": 1,
+ "model": "halcyon",
+ "needs_human": 1,
+ "version": "0.1.0",
+ "views": 1
+}

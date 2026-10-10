@@ -1,0 +1,39 @@
+{
+ "blended": false,
+ "class": "mechanical",
+ "datasets": [
+  "federated.d"
+ ],
+ "id": "tableau:halcyon:workbook:Exec/sheet:Total",
+ "kind": "report",
+ "name": "Total",
+ "query": {
+  "cols": [],
+  "encodings": [
+   [
+    "text",
+    "[federated.d].[sum:sales:qk]"
+   ]
+  ],
+  "filter_details": [],
+  "filters": [],
+  "instances": [
+   {
+    "column": "[sales]",
+    "datasource": "federated.d",
+    "derivation": "Sum",
+    "instance": "[sum:sales:qk]"
+   }
+  ],
+  "rows": [],
+  "sorts": []
+ },
+ "source": {
+  "file": "workbooks/Exec.twb",
+  "fragment": "<worksheet name=\"Total\"><table><view><datasources><datasource name=\"federated.d\" /></datasources><datasource-dependencies datasource=\"federated.d\"><column-instance column=\"[sales]\" derivation=\"Sum\" name=\"[sum:sales:qk]\" pivot=\"key\" type=\"quantitative\" /></datasource-dependencies></view><panes><pane><mark class=\"Automatic\" /></pane></panes><rows /><cols /><encodings><text column=\"[federated.d].[sum:sales:qk]\" /></encodings></table></worksheet>"
+ },
+ "visualisation": {
+  "mark": "Automatic"
+ },
+ "workbook": "tableau:halcyon:workbook:Exec"
+}

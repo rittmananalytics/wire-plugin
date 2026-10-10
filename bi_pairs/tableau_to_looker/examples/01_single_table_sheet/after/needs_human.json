@@ -1,0 +1,9 @@
+[
+ {
+  "class": "assisted",
+  "construct": "worksheet_standalone",
+  "object": "tableau:halcyon:workbook:Sales/sheet:Sales%20by%20Region",
+  "proposal": "keep it, make it a Look through the Looker API (looker_content), or drop",
+  "reason": "worksheet on no dashboard: emitted as a one-tile LookML dashboard"
+ }
+]

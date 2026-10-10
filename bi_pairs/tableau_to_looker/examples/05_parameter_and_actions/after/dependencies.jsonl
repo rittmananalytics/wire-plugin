@@ -1,0 +1,8 @@
+{"from": "looker:halcyon:explore:orders", "kind": "uses_dataset", "to": "tableau:halcyon:workbook:Drill/datasource:federated.p"}
+{"from": "tableau:halcyon:field:federated.p:Calculation_5", "kind": "references", "to": "tableau:halcyon:field:Parameters:Parameter%201"}
+{"from": "tableau:halcyon:field:federated.p:Calculation_5", "kind": "references", "to": "tableau:halcyon:field:federated.p:sales"}
+{"from": "tableau:halcyon:field:federated.p:order_id", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.p:region", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.p:sales", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:workbook:Drill/dashboard:Drill", "kind": "contains", "to": "tableau:halcyon:workbook:Drill/sheet:Orders"}
+{"from": "tableau:halcyon:workbook:Drill/dashboard:Drill", "kind": "contains", "to": "tableau:halcyon:workbook:Drill/sheet:Regions"}

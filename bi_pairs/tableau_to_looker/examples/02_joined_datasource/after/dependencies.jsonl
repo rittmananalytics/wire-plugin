@@ -1,0 +1,8 @@
+{"from": "looker:halcyon:explore:orders_and_customers", "kind": "joins", "to": "looker:halcyon:view:customers"}
+{"from": "looker:halcyon:explore:orders_and_customers", "kind": "uses_dataset", "to": "tableau:halcyon:workbook:Customers/datasource:federated.j"}
+{"from": "tableau:halcyon:field:federated.j:customer_id", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.j:customer_id%20(customers)", "kind": "contains", "to": "looker:halcyon:view:customers"}
+{"from": "tableau:halcyon:field:federated.j:order_id", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.j:region", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.j:sales", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.j:segment", "kind": "contains", "to": "looker:halcyon:view:customers"}

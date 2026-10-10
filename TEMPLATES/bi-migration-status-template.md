@@ -9,7 +9,8 @@ last_updated: "{{LAST_UPDATED}}"
 current_phase: "audit"
 
 # Profile: which tool pair this release migrates. Read by precondition_gate.md Step 0
-# and by runnable_set.md. looker_to_omni (default) or looker_studio_to_omni (4.2.2, experimental).
+# and by runnable_set.md. looker_to_omni (default), looker_studio_to_omni (4.2.2, experimental)
+# or tableau_to_looker (experimental, wire#287: uses the bi_migration.source and .target blocks).
 # looker_studio_to_omni replaces the Looker audit phase with looker_studio_audit and
 # metric_catalogue; the Looker-only fields below are then left null.
 bi_pair: looker_to_omni
@@ -36,6 +37,24 @@ bi_migration:
                                            #   approved_by: "<client name and role>"
                                            #   date: "YYYY-MM-DD"
   chart_recordings_tracked: true           # false when Route C recordings must stay out of git (data handling rules)
+  # Tableau source and Looker target (bi_pair: tableau_to_looker, experimental) only. The tool-keyed
+  # source/target shape is the neutral form the other pairs are expected to move to later.
+  source:
+    tool: null                             # tableau
+    edition: null                          # cloud | server | desktop_files
+    server_url: null                       # Tableau Cloud or Server URL
+    site: null                             # site content URL (also the identity scope: tableau:<site>:...)
+    files_path: null                       # desktop_files only: directory of .twb/.twbx/.tds/.tdsx
+    snapshot_source: null                  # rest | files (set by tableau-audit-generate)
+    usage_source: null                     # admin_insights | repository | unavailable
+    usage_csv: null                        # Cloud: path to an Admin Insights export
+  target:
+    tool: null                             # looker
+    base_url: null                         # Looker instance URL
+    project: null                          # LookML project name
+    model: null                            # LookML model the migrated explores go in
+    connection: null                       # Looker connection name
+    branch: null                           # set by looker-target-setup-generate
   client_repos: []                         # Downstream repos this migration writes into, one entry per repo:
                                            #   - role: bi_target_model            # the git-connected Omni model repo (Omni writes YAML back via `omni models commit`)
                                            #     url: "git@github.com:org/omni-model.git"
@@ -120,6 +139,49 @@ artifacts:
     rulings_made: null
     generated_files: []
     revision_history: []
+
+  tableau_audit:               # bi_pair: tableau_to_looker only (experimental)
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null                 # audit/tableau_audit.md
+    generated_date: null
+    experimental: true
+    workbook_count: null
+    datasource_count: null
+    fingerprint_group_count: null
+    mechanical_count: null
+    assisted_count: null
+    redesign_count: null
+    drop_count: null
+    usage_source: null
+    snapshot_source: null
+    generated_files: []
+    revision_history: []
+
+  looker_target_setup:         # bi_pair: tableau_to_looker only (experimental)
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null                 # migration/looker_target_setup.md
+    generated_date: null
+    experimental: true
+
+  lookml_model:                # bi_pair: tableau_to_looker only (experimental)
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null                 # migration/lookml_model/lookml_model.md
+    experimental: true
+    batches_complete: []
+    needs_human_open: null
+
+  looker_content:              # bi_pair: tableau_to_looker only (experimental)
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null                 # migration/looker_content/looker_content.md
+    experimental: true
 
   omni_audit:                  # optional: only when the client already has Omni content (brownfield target)
     generate: not_started

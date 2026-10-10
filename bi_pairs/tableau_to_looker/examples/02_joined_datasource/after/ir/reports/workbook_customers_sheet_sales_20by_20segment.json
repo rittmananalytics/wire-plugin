@@ -1,0 +1,50 @@
+{
+ "blended": false,
+ "class": "mechanical",
+ "datasets": [
+  "federated.j"
+ ],
+ "id": "tableau:halcyon:workbook:Customers/sheet:Sales%20by%20Segment",
+ "kind": "report",
+ "name": "Sales by Segment",
+ "query": {
+  "cols": [
+   [
+    "federated.j",
+    "[sum:sales:qk]"
+   ]
+  ],
+  "encodings": [],
+  "filter_details": [],
+  "filters": [],
+  "instances": [
+   {
+    "column": "[segment]",
+    "datasource": "federated.j",
+    "derivation": "None",
+    "instance": "[none:segment:nk]"
+   },
+   {
+    "column": "[sales]",
+    "datasource": "federated.j",
+    "derivation": "Sum",
+    "instance": "[sum:sales:qk]"
+   }
+  ],
+  "rows": [
+   [
+    "federated.j",
+    "[none:segment:nk]"
+   ]
+  ],
+  "sorts": []
+ },
+ "source": {
+  "file": "workbooks/Customers.twb",
+  "fragment": "<worksheet name=\"Sales by Segment\"><table><view><datasources><datasource name=\"federated.j\" /></datasources><datasource-dependencies datasource=\"federated.j\"><column-instance column=\"[segment]\" derivation=\"None\" name=\"[none:segment:nk]\" pivot=\"key\" type=\"nominal\" /><column-instance column=\"[sales]\" derivation=\"Sum\" name=\"[sum:sales:qk]\" pivot=\"key\" type=\"quantitative\" /></datasource-dependencies></view><panes><pane><mark class=\"Bar\" /></pane></panes><rows>[federated.j].[none:segment:nk]</rows><cols>[federated.j].[sum:sales:qk]</cols></table></worksheet>"
+ },
+ "visualisation": {
+  "mark": "Bar"
+ },
+ "workbook": "tableau:halcyon:workbook:Customers"
+}

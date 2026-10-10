@@ -1,0 +1,8 @@
+{"from": "looker:halcyon:explore:orders", "kind": "uses_dataset", "to": "tableau:halcyon:workbook:Exec/datasource:federated.d"}
+{"from": "tableau:halcyon:field:federated.d:order_date", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.d:order_id", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.d:region", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:field:federated.d:sales", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary", "kind": "contains", "to": "tableau:halcyon:workbook:Exec/sheet:By%20Region"}
+{"from": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary", "kind": "contains", "to": "tableau:halcyon:workbook:Exec/sheet:Total"}
+{"from": "tableau:halcyon:workbook:Exec/dashboard:Exec%20Summary", "kind": "contains", "to": "tableau:halcyon:workbook:Exec/sheet:Trend"}

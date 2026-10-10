@@ -113,8 +113,13 @@ def to_decimal(v) -> Decimal | None:
     s = norm_null(v)
     if s is None:
         return None
+    # Exported values can carry display formatting (Tableau's Query View Data: "$3,338", "-2,948.956").
+    # Thousands separators and a leading currency symbol are removed; a percent sign is not (12% is ambiguous).
+    s = s.replace(",", "")
+    neg = s.startswith("-")
+    s = s.lstrip("-").lstrip("$£€¥").strip()
     try:
-        return Decimal(s.replace(",", ""))
+        return -Decimal(s) if neg else Decimal(s)
     except InvalidOperation:
         raise ValueError(f"not numeric: {v!r}")
 
