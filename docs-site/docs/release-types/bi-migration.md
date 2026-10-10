@@ -173,7 +173,7 @@ The `tableau_to_looker` pair (`bi_pair: tableau_to_looker`) replaces four phases
 | LookML model | `lookml_model` | `/wire:lookml-model-generate --batch N`, `-lint`, `-validate`, `-review` | LookML views, explores and parameters from a deterministic converter; `needs_human.json` for LOD expressions, table calculations, blends, sets and join cardinality |
 | Looker content | `looker_content` | `/wire:looker-content-*` | LookML dashboards on the branch: zones on the 24-column grid, quick filters with `listen` |
 
-Duplicate embedded data sources are fingerprinted (connection, tables, joins, columns) and become one shared explore under a plan ruling. Parity reads each Tableau sheet's rows through REST Query View Data; a sheet on an extract that refreshed after the parity run is `INCONCLUSIVE`. The record uses the tool-neutral IR in `wire/schemas/bi_ir-schema.md`. The full walkthrough is the [Tableau to Looker tutorial](../tutorials/tableau-to-looker).
+Duplicate embedded data sources are fingerprinted (connection, tables, joins, columns) and become one shared explore under a plan ruling. Parity reads each Tableau sheet's rows through REST Query View Data; a sheet on an extract that refreshed after the parity run is `INCONCLUSIVE`. Into a LookML project that already has views, the converter writes to its own folder (`--include-root`) under a separate model. The record uses the tool-neutral IR in `wire/schemas/bi_ir-schema.md`. The full walkthrough is the [Tableau to Looker tutorial](../tutorials/tableau-to-looker).
 
 ## Prerequisites
 
@@ -181,6 +181,7 @@ Duplicate embedded data sources are fingerprinted (connection, tables, joins, co
 - The Omni CLI configured, an API key that can create a model branch and documents, plus the `omni-analytics` agent skills installed (`/plugin marketplace add exploreomni/omni-agent-skills`, `/plugin install omni-analytics@omni-analytics`).
 - `/wire:new` with release type "BI tool migration". It asks whether the source is Looker or Looker Studio. For Looker it asks for the LookML path, the Looker and Omni URLs, the Omni model id and the parallel-run length. For Looker Studio it asks for the report URLs, a client slug, who approved automated read-only access, and the Omni details.
 - For Looker Studio: Python with Playwright (`python3 -m pip install playwright`) and Google Chrome on the consultant's machine, and the access listed above.
+- For Tableau: `python3 -m pip install tableauserverclient`; a Tableau personal access token (a site administrator may need to allow token creation) kept in a file outside the repository that only the consultant can read; Site Role Explorer or higher with download permission; the client's LookML repo and a Looker developer and admin to deploy and configure the new model. See [Tutorial: Tableau to Looker](../tutorials/tableau-to-looker#before-you-start).
 
 ## See also
 

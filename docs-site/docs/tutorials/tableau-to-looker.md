@@ -85,13 +85,17 @@ Ran: `tableau-audit-generate`, `tableau-audit-validate`, `tableau-audit-review`.
 
 - `looker-target-setup-generate` checks the Looker connection and creates the migration branch, folders, groups and user attributes. It never merges.
 - `lookml-model-generate` runs the converter for each batch and resolves its needs-human items from the rulings. Hand-written LookML (the derived table) goes in a separate `hand/` folder, so the converter's output stays regenerable. `lookml-model-lint` fails if any Tableau expression is left, and checks primary keys on joined views; `lookml-model-validate` runs Looker's validator and one smoke query per explore.
-- `looker-content-generate` commits the LookML dashboards. Zones land on Looker's 24-column grid, quick filters become dashboard filters with `listen`, text zones become text elements, and images and device layouts are listed for hand finishing.
+- `looker-content-generate` commits the LookML dashboards. Zones land on Looker's 24-column grid, quick filters become dashboard filters with `listen`, text zones become text elements, and images and device layouts are listed for hand finishing. A sheet on no dashboard becomes a one-tile dashboard that keeps the sheet's sort and filters; the plan keeps it, makes it a Look, or drops it.
+
+**Deploying into an existing LookML project.** Most clients already have a LookML project, often with views of the same name (`companies_dim`, `invoices_fact`). Wire then converts with `--include-root <folder>` (for example `tableau_migration`) and a model name not in use. The views and dashboards go under that folder and the new model includes only it, so the project's own views are not pulled in and the existing models are untouched. The work goes on a branch; the client's Looker developer validates it in development mode, merges and deploys. A Looker admin configures the new model (Admin, Projects) before it can be queried in production. To undo, delete the folder and the model file and remove the model configuration.
+
+**Primary keys.** Tableau's relationships record no keys, so joins arrive as `many_to_many`. Wire proposes each view's single `*_pk` column as its `primary_key`, for a person to confirm. Looker then uses symmetric aggregates, so totals stay correct across the joins; a joined view with no key is listed, because its totals can be wrong until one is set.
 
 ## Step 5: Parity and cutover
 
 `bi-equivalency-validate` takes each Tableau sheet's rows through Query View Data (`tableau_export.py view-data`, with the view ID from the `view_luid` column of `bi_content_catalog.csv`) and the Looker element's rows through the Looker API, then compares them with the standard comparator. If an extract refreshed after the parity run, the tile is `INCONCLUSIVE`, not `PASS`. `migration-drift-generate` compares a fresh snapshot with the pinned one: a workbook whose `updatedAt` moved is `content_drifted`.
 
-## What the first live run found
+## What the live runs found
 
 In October 2026 the pair ran against a Tableau Cloud trial site holding two sample workbooks (Superstore, World Indicators) and one published data source. The snapshot, audit, conversion, lint and Query View Data all ran. The run found eight faults that the hand-written fixtures had missed. Each is now fixed and covered by a test.
 
