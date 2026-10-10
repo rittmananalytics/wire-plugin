@@ -102,3 +102,16 @@ pre.state { font-family: var(--mono); font-size: 12px; background: var(--ground)
   .kpis, .two, .split { grid-template-columns: minmax(0, 1fr); }
   header.top, .content { padding-left: 16px; padding-right: 16px; }
 }
+
+/* Releases built from tickets (4.2.0) */
+table.slices td.cell { white-space: nowrap; font-size: 13px; }
+table.slices td.cell.complete { background: var(--ok-soft); color: var(--ok-ink); }
+table.slices td.cell.in_progress { background: var(--accent-soft); }
+table.slices td.cell.blocked { background: var(--bad-soft); color: var(--bad-ink); }
+.badge.runnable { background: var(--accent-soft); color: var(--accent); }
+.badge.blocked { background: var(--wait-soft); color: var(--wait-ink); }
+.badge.parked { background: var(--wait-soft); color: var(--wait-ink); }
+.badge.na { background: var(--line); color: var(--muted); }
+
+/* The hidden attribute must win over .group and .group a display rules. */
+[hidden] { display: none !important; }

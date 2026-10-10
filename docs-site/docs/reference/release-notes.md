@@ -9,6 +9,16 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.2.1: Wire Studio shows releases built from tickets
+
+**Released**: October 2026
+
+**Tickets view.** For a release built from tickets, Wire Studio shows one row per slice with each step's state and covering tickets, every ticket with whether it can start or what it waits on, and the tracker's missing "blocked by" links, with a `/wire:work` directive per ticket. The overview shows tickets closed and tickets that can start, and merged tickets waiting to be rolled up appear in the decision inbox. Studio uses the same script as the Wire session, so the answers match.
+
+**Docs.** The Working a Ticket chapter now walks through a whole release built from tickets, from setting it up from the tracker to the roll-up after each merge.
+
+---
+
 ## v4.2.0: releases built from tickets
 
 **Released**: October 2026

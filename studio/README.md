@@ -6,6 +6,7 @@ A local console for the release director that never writes to the release record
 |---|---|
 | Releases | Every release in the engagement: type, artifacts complete, decisions waiting, live lanes. Flags pre-3.4 layouts and records that cannot be read. |
 | Overview | The artifact graph for the release type and profile, each artifact's state and generate/validate/review steps, and the runnable set within `budget.lanes_max`. |
+| Tickets | Only for a release built from tickets (`delivery: tickets`, 4.2.0). The slice table (one row per slice, one column per Wire step, each cell's state and tickets), each step's progress across slices, every ticket with what it waits on or why it is blocked, the tracker link check, and a `/wire:work <release> <ticket>` directive per ticket. A merged ticket whose log rows are not yet in the release record goes to the decision inbox with `/wire:status-sync`. |
 | Decision inbox | Parked decisions, review gates and advisory gates waiting on the director, each with an editable directive to copy or to run in Claude Code. |
 | Lanes | Each lane's state file, last write and state. A lane not marked complete with no write for 30 minutes is shown as stalled. |
 | Record and rulings | Rulings from `decisions.md`, iterations, and the execution log, newest first. |
@@ -40,6 +41,7 @@ Recording decisions from Studio without opening a session needs a request queue 
 
 - **Same rule as the commands.** `wire_studio/runnable.py` implements `specs/utils/runnable_set.md`. `wire/tests/studio/validate_studio.py` runs every case in the core runnable-set fixture through it and compares the result with the core test's expected output.
 - **No copy of the method.** Studio reads release types, the command registry and `auto_validate` flags from the framework it ships with, in either layout (repository checkout or built plugin). The 3.x Studio bundled its own copy of the specs, which drifted.
+- **Same rules for tickets.** For a release built from tickets, Studio imports `scripts/ticket_delivery.py` from the framework it ships with, the script the Wire session uses, rather than keeping its own copy. The test runs the core ticket-delivery fixtures through Studio and compares ticket states, waits and the tracker link check with the core test's expected output. A framework older than 4.2.0 has no script, and Studio says so.
 - **Local, and no writes to the repository.** Binds to 127.0.0.1, refuses requests whose Host header is not this machine, answers GET and HEAD plus the one token-protected launch endpoint, and serves files only from inside the repository (not `.git`, not `.env`, text files under 2 MB).
 
 ## Layout
@@ -51,6 +53,7 @@ studio/
     ├── framework.py          release types, command registry, auto_validate flags
     ├── runnable.py           runnable set (specs/utils/runnable_set.md)
     ├── record.py             reads .wire/: status, log, decisions, lanes, iterations; builds the inbox
+    ├── tickets.py            releases built from tickets, through scripts/ticket_delivery.py
     ├── launcher.py           opens claude "<directive>" in a new terminal (stage 1)
     ├── server.py             HTTP server (standard library)
     └── static/               index.html, app.js, app.css (no build step)

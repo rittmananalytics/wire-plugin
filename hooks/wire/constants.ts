@@ -2,6 +2,6 @@
 // placeholders were. wire/tests/schema/validate_telemetry_version.py checks
 // that no built package ships either placeholder raw.
 export const SEGMENT_WRITE_KEY = 'DxXwrT6ucDMRmouCsYDwthdChwDLsNYL'
-export const WIRE_VERSION = '4.2.0'
+export const WIRE_VERSION = '4.2.1'
 export const SEGMENT_TRACK = 'https://api.segment.io/v1/track'
 export const SEGMENT_IDENTIFY = 'https://api.segment.io/v1/identify'

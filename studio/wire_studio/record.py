@@ -11,6 +11,7 @@ from pathlib import Path
 import yaml
 
 from .runnable import resolve
+from .tickets import read_tickets, ticket_inbox, ticket_next
 
 STALL_MINUTES = 30  # director_operating_model.md: lane state files and the release claim
 TEXT_SUFFIXES = {".md", ".markdown", ".txt", ".yml", ".yaml", ".json", ".jsonl", ".csv",
@@ -188,7 +189,8 @@ def read_iterations(body, release_dir):
         lines = [l for l in m.group(1).splitlines() if l.strip().startswith("|")]
         if lines:
             rows = parse_markdown_table("\n".join(lines), _cells(lines[0])[0])
-    files = sorted(p.name for p in (Path(release_dir) / "iterations").glob("*.md"))
+    files = sorted(p.name for p in (Path(release_dir) / "iterations").glob("*.md")
+                   if not p.name.endswith(".execution_log.md"))
     return {"rows": rows, "files": files}
 
 
@@ -290,14 +292,27 @@ def load_release(framework, repo, name, now=None):
         "spend": None,
         "lanes": read_lanes(rel["dir"], now),
         "iterations": read_iterations(body, rel["dir"]),
+        "delivery": status.get("delivery") or "artifacts",
+        "tickets": None,
+        "ticket_next": None,
         "error": status.get("_error"),
     }
+    try:
+        out["tickets"] = read_tickets(framework, name, rel["dir"], status, now, parse_markdown_table)
+    except Exception as e:  # a broken ticket map must not hide the rest of the release
+        out["tickets"] = {"error": f"Could not read the ticket map: {e}"}
     out["spend"] = spend_of(out["execution_log"])
     try:
         resolved = resolve(framework, status, decisions_md)
         out["resolved"] = resolved
         out["inbox"] = build_inbox(name, status, resolved)
         out["run_plan"] = run_plan_directive(name, resolved)
+        if out["tickets"]:
+            # In a ticket-built release the work starts from tickets, not from
+            # the whole-release runnable set (specs/utils/ticket_delivery.md).
+            out["inbox"] += ticket_inbox(name, out["tickets"])
+            out["ticket_next"] = ticket_next(name, out["tickets"])
+            out["run_plan"] = None
     except (ValueError, KeyError) as e:
         out["resolved"], out["inbox"], out["run_plan"] = None, [], None
         out["error"] = out["error"] or str(e)
@@ -319,6 +334,8 @@ def release_summaries(framework, repo, now=None):
             "total": sum(1 for s in states.values() if s != "not applicable"),
             "waiting": len(rel["inbox"]),
             "lanes_live": sum(1 for l in rel["lanes"] if l["state"] != "complete"),
+            "delivery": rel["delivery"],
+            "tickets": (rel["tickets"] or {}).get("counts"),
             "error": rel["error"],
         })
     return out

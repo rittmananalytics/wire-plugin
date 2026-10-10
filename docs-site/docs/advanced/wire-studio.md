@@ -15,10 +15,13 @@ Studio 4.x runs on your own machine against a client repository you have checked
 |---|---|
 | Releases | Every release in the engagement: release type, artifacts complete, decisions waiting on you, live lanes. A release whose `status.md` cannot be read is flagged, not hidden. |
 | Overview | The artifact graph for the release type, with any profile applied, each artifact's generate, validate and review state, the runnable set (what can start now, in order, within the release's lane budget), and the AI spend the execution log records for the release |
+| Tickets | Only for a release built from tickets. One row per slice of the release and one column per Wire step, each cell showing its state and the tickets covering it; how far each step has got across the slices; every ticket with whether it can start, what it waits on or why it is blocked; the tracker's missing "blocked by" links; and a `/wire:work` directive for each ticket. On the overview, the runnable set gives way to the tickets that can start. |
 | Decision inbox | Parked decisions, review gates and advisory gates waiting on you, each with a directive you can edit and then copy or run |
 | Lanes | Each lane's state file and when it was last written. A lane not marked complete with no write for 30 minutes is shown as stalled, with a re-dispatch directive. |
 | Record and rulings | Rulings from `decisions.md`, the tickets worked inside the release (iterations), and the execution log, newest first |
 | Documents | Any artifact file, with Markdown tables and Mermaid diagrams rendered |
+
+For a release built from tickets, Studio reads the ticket map and the ticket records through the same script the Wire session uses (`scripts/ticket_delivery.py`), so its slice table and its list of what can start match `/wire:status`. A merged ticket whose work is not yet in the release record appears in the decision inbox with `/wire:status-sync`.
 
 Studio works out the runnable set with the same rule `/wire:start`, `/wire:delegate` and the release-director skill use (`specs/utils/runnable_set.md`), and reads release types and the command registry from the Wire plugin it ships with. So Studio cannot show a different answer from the one the commands act on.
 
@@ -27,6 +30,8 @@ Studio works out the runnable set with the same rule `/wire:start`, `/wire:deleg
 These screenshots are of Studio 4.x running against the sample release in Wire's own test suite.
 
 ![Wire Studio release overview: the artifact graph for a full_platform release grouped by phase, with complete, runnable, waiting and blocked artifacts, and the runnable set with a directive box](/img/wire-studio/studio-overview.png)
+
+![Wire Studio tickets view for a release built from tickets: the slice table with each step's state and covering tickets, the ticket list with can start, waiting and blocked states, and a /wire:work directive for the selected ticket](/img/wire-studio/studio-tickets.png)
 
 ![Wire Studio decision inbox: a parked ruling on revenue currency and a dbt review gate, with an editable directive and the Run in Claude Code and Copy buttons](/img/wire-studio/studio-decision-inbox.png)
 

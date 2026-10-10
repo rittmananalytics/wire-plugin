@@ -10,4 +10,4 @@ rule 6), so every action in Studio produces a directive for the director to
 paste into that session.
 """
 
-__version__ = "4.0.0-studio.1"
+__version__ = "4.2.1-studio.2"
