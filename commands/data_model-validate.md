@@ -128,6 +128,9 @@ inputs:
   required:
     - name: release_folder
       description: "Path to the release folder"
+  optional:
+    - name: slice
+      description: "--slice <slice>. In a release built from tickets, work on one slice of the release only (specs/utils/ticket_delivery.md)"
 preconditions:
   - artifact: data_model
     action: generate
@@ -135,7 +138,7 @@ preconditions:
 delegates_to:
   - utils/precondition_gate
 description: Validate data model specification and physical ERD
-argument-hint: <project-folder>
+argument-hint: <project-folder> [--slice <slice>]
 
 ---
 
@@ -166,6 +169,30 @@ Validate the generated data model specification and embedded Physical ERD agains
 ## Prerequisites
 
 - `data_model`: `generate: complete`
+
+## Sliced runs (`--slice`)
+
+In a release built from tickets (`delivery: tickets` in `status.md`), this
+command takes `--slice <slice>` and checks the slice's table section of `design/data_model.md` only
+(`specs/utils/ticket_delivery.md`, "The `--slice` option"). Without
+`--slice`, the workflow below runs as written.
+
+1. The slice must be in `tickets.yaml`. If it is not, stop and list the valid
+   slices.
+2. Run every check below against the slice's part. A check that needs the
+   whole release (a cross-model consistency check) runs against the slice and
+   the parts it depends on, and says so in the report.
+3. On a ticket branch, write the result (`pass` or `fail`) to the ticket
+   record's front matter (`results:`) and the log row to the ticket run log
+   (`iterations/<ticket>.execution_log.md`), not to `status.md` and
+   `execution_log.md`.
+
+**Design source.** A slice whose design is recorded from the Modality physical
+model (a **Source: Modality** line) is checked against Wire's rules like any
+other. Every gap the generate step listed must be resolved in the design
+section (adopted, or kept with a recorded decision and reason) for a PASS. An
+unresolved gap is a FAIL naming the table and column. The Modality file is
+never written.
 
 ## Workflow
 

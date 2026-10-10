@@ -202,11 +202,14 @@ inputs:
   required:
     - name: release_folder
       description: "Path to the release folder"
+  optional:
+    - name: slice
+      description: "--slice <slice>. In a release built from tickets, work on one slice of the release only (specs/utils/ticket_delivery.md)"
 preconditions: dynamic
 delegates_to:
   - utils/precondition_gate
 description: Generate data quality from design and requirements
-argument-hint: <project-folder>
+argument-hint: <project-folder> [--slice <slice>]
 
 ---
 
@@ -234,6 +237,26 @@ Generate a data quality test plan for the release: confirm the baseline dbt sche
 
 - Requirements must be approved
 - `dbt.generate` should be complete (this command reads the actual dbt project's models and `schema.yml` files — see Edge Cases if dbt isn't generated yet)
+
+## Sliced runs (`--slice`)
+
+In a release built from tickets (`delivery: tickets` in `status.md`), this
+command takes `--slice <slice>` and reads and writes the tests for the slice's tables only
+(`specs/utils/ticket_delivery.md`, "The `--slice` option"). Without
+`--slice`, the workflow below runs as written.
+
+1. The slice must be in `tickets.yaml`. If it is not, stop and list the valid
+   slices.
+2. The precondition gate evaluates this slice's dependencies, not the whole
+   release's (`specs/utils/precondition_gate.md`, "Sliced runs").
+3. Add or replace the slice's part only. Never regenerate the whole document
+   or project to change one slice; every other line stays as it is.
+4. On a ticket branch, write the step's result to the ticket record's front
+   matter (`results:`) and the log row to the ticket run log
+   (`iterations/<ticket>.execution_log.md`), not to `status.md` and
+   `execution_log.md`. The status and Jira or Linear updates in the workflow
+   below are made by `/wire:status-sync`'s ticket roll-up when the pull request
+   merges.
 
 ## Workflow
 

@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.1.2 | **Date**: October 2026
+**Version**: 4.2.0 | **Date**: October 2026
 
 ---
 
@@ -4622,6 +4622,48 @@ linear:
       validate_id: "mno-345"
       review_id: "pqr-678"
 ```
+
+### Releases built from tickets (4.2.0)
+
+Most delivery teams build a release ticket by ticket from Linear or Jira. Each ticket covers one part of the release, runs on its own branch and merges back by pull request. From 4.2.0 Wire supports this as a second way of working, set per release with `delivery: tickets` in `status.md`. The default, building artifact by artifact, is unchanged.
+
+| Word | Meaning |
+|---|---|
+| Slice | The part of the release a ticket covers: one table, one source, one layer, one deliverable, one batch, or the whole release |
+| Ticket map | `tickets.yaml` in the release folder: each ticket with its kind, slices and Wire steps |
+| Ticket record | `iterations/<ticket>.md`, with a front matter block holding the ticket's progress |
+| Ticket run log | `iterations/<ticket>.execution_log.md`, the ticket's own execution log |
+
+**Set up.** The lead consultant runs the import once the platform design is agreed and the release is cut into tickets:
+
+```bash
+/wire:tickets-import 02-customer-core --tracker linear
+/wire:tickets-import 03-acquisition --tracker jira --project GRO
+```
+
+Wire reads the tracker project and proposes, for each ticket, its kind (requirements, business rules, design, build, test, review, plain work), its slices and the Wire steps it covers. A build ticket's steps follow from what it builds: a source gets `dbt` and `data_quality`; a table gets `data_model`, `dbt` and `data_quality` (without `data_model` when a design ticket covers it); a metric or report gets `semantic_layer`; a dashboard gets `dashboards`. Nothing is written until you confirm. Tracker projects that match no release are listed with three choices: start a release, add to one, or ignore. Run it again with `--refresh` to see new, changed and removed tickets.
+
+**With or without Modality.** If the release reads its design from Modality (`model_source: modality`), each build ticket's slice is the Modality object it builds, and the model's own ticket links are used where they exist. Without Modality, Wire proposes each slice from the ticket's title and text and asks you to check it. Nothing needs Modality.
+
+**Status per slice.** `/wire:status` shows one row per slice and one column per step, each cell with its state and the tickets covering it, then which tickets can start now, which wait and on what, and any "blocked by" link the tracker is missing. A step is complete for the release when it is complete in every slice.
+
+**Working a ticket.** `/wire:work <release> <ticket>` works as before, with four differences:
+
+1. A ticket that builds a new table is accepted when the table is one of its slices in the ticket map. Work outside the map (a new source, another table) is still refused, with options.
+2. Every command step runs with `--slice <slice>`, so it reads and writes that slice only: one table's section of `design/data_model.md`, one table's models and tests.
+3. On the ticket branch Wire writes only the ticket record, the ticket run log and the code. It does not write `status.md` or `execution_log.md`, so ticket branches no longer clash on those files.
+4. When the pull request merges, `/wire:status-sync` on the release branch adds the ticket's log rows to `execution_log.md` (each row's original time kept in its Detail), copies its decisions to `decisions.md` and updates the slice table, with your confirmation.
+
+**Where the table design comes from.**
+
+| Release has | Design used to build the table |
+|---|---|
+| No design model (default) | Wire's `data_model` document, one slice at a time |
+| Modality, with the table in `modality/models/physical/` | The Modality physical model. `/wire:data_model-generate` records it and lists gaps against Wire's naming rules; it does not design the table again |
+| Modality, with no table there | Wire's `data_model` document, designed from the Modality conceptual and logical layers |
+
+Wire never writes Modality files. The fixed rules (the import's recipes, the slice table, what can start, the roll-up and the design source) are in `scripts/ticket_delivery.py`, a plain script with no AI call. The convention is `specs/utils/ticket_delivery.md`.
+
 
 ---
 

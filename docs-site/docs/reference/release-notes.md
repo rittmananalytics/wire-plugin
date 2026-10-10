@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.2.0: releases built from tickets
+
+**Released**: October 2026
+
+**Tickets as slices of a release.** A release can now be set up from its Linear or Jira tickets with `/wire:tickets-import`. Wire proposes, for each ticket, the part of the release it covers and the Wire steps it covers, and writes the ticket map once the lead consultant confirms. The release status then shows one row per slice, and what can start next is worked out per slice, with missing tracker "blocked by" links reported.
+
+**One record per ticket.** `/wire:work` accepts a ticket that builds a new table when the table is in the ticket map, runs each command with `--slice`, and on the ticket branch writes only the ticket's own record and log. When the pull request merges, `/wire:status-sync` adds the ticket's work to the release record. Ticket branches no longer clash on the record files.
+
+**Modality optional.** Where the design is in Modality, Wire reads the physical model as the table design and lists gaps against its naming rules. Without Modality, Wire proposes slices from ticket text and designs each table one slice at a time.
+
+---
+
 ## v4.1.2: dbt development reference adopted for new and changed code
 
 **Released**: October 2026

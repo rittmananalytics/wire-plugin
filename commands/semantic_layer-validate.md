@@ -128,6 +128,9 @@ inputs:
   required:
     - name: release_folder
       description: "Path to the release folder"
+  optional:
+    - name: slice
+      description: "--slice <slice>. In a release built from tickets, work on one slice of the release only (specs/utils/ticket_delivery.md)"
 preconditions:
   - artifact: semantic_layer
     action: generate
@@ -135,7 +138,7 @@ preconditions:
 delegates_to:
   - utils/precondition_gate
 description: Validate semantic layer (LookML) against standards, schema references, and best practices
-argument-hint: <project-folder>
+argument-hint: <project-folder> [--slice <slice>]
 
 ---
 
@@ -161,6 +164,23 @@ Validate generated LookML files against quality standards, verify all table and 
 
 - Semantic layer must be generated (`/wire:semantic_layer-generate` complete)
 - Source schema files available (DDL, dbt schema.yml, or schema specs)
+
+## Sliced runs (`--slice`)
+
+In a release built from tickets (`delivery: tickets` in `status.md`), this
+command takes `--slice <slice>` and checks the views, explores or measures for the slice only
+(`specs/utils/ticket_delivery.md`, "The `--slice` option"). Without
+`--slice`, the workflow below runs as written.
+
+1. The slice must be in `tickets.yaml`. If it is not, stop and list the valid
+   slices.
+2. Run every check below against the slice's part. A check that needs the
+   whole release (a cross-model consistency check) runs against the slice and
+   the parts it depends on, and says so in the report.
+3. On a ticket branch, write the result (`pass` or `fail`) to the ticket
+   record's front matter (`results:`) and the log row to the ticket run log
+   (`iterations/<ticket>.execution_log.md`), not to `status.md` and
+   `execution_log.md`.
 
 ## Workflow
 

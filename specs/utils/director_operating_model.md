@@ -99,6 +99,16 @@ orchestrator sets `WIRE_INVOKED_BY=lane` in the lane's environment, and the
 lane brief states the rule; a lane that finds itself with `WIRE_INVOKED_BY=lane`
 does not write `status.md` or `execution_log.md`.
 
+**Rule 6 in a release built from tickets** (`delivery: tickets`,
+`specs/utils/ticket_delivery.md`). Each ticket runs on its own branch, so two
+sessions can work two tickets of one release at the same time without a
+lane. On a ticket branch the session writes only the ticket record, the ticket
+run log and the files its commands produce; it never writes `status.md`,
+`execution_log.md`, `tickets.yaml` or `decisions.md` there. The release record
+is written on the release branch, by `/wire:status-sync`'s ticket roll-up after
+the ticket's pull request merges. The single-writer rule holds per branch, and
+ticket branches no longer clash on the record files.
+
 **Rule 7 is what makes direction teachable.** Direction drives typed-command
 counts down by design, so the only place a consultant meets the command names
 is in Wire's own replies. The form is one trailing line carrying each command in

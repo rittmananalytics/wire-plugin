@@ -5,9 +5,11 @@ description: Shared convention — reading Modality `.mml` model files as an inp
 # MML Import — Shared Reading Convention
 
 Cited by `specs/design/conceptual_model/generate.md`,
-`specs/design/logical_model/generate.md` and
-`specs/design/pipeline_design/generate.md` when `status.md` has
-`model_source: modality`. Read this before reading any `.mml` file.
+`specs/design/logical_model/generate.md`,
+`specs/design/pipeline_design/generate.md` and, for the physical layer,
+`specs/design/data_model/generate.md` and `specs/tickets/import.md`, when
+`status.md` has `model_source: modality`. Read this before reading any `.mml`
+file.
 
 ## What Modality is, and why this exists
 
@@ -155,12 +157,45 @@ it is not guessed from the id string.
 | `entity_resolution` | `logical_model.md` Section 4 |
 | `logical_relationship.foreign_key` | `logical_model.md` Section 3 |
 | `type = metric`, `derived-from` | Semantic-layer measure candidates. Out of scope for the design artifacts |
-| `physical_model` | Out of scope. MML writes one flat table per entity with `uuid` keys; Wire's warehouse layer is a different design, and `data_model` owns it |
+| `physical_model` | Read by `data_model-generate` as the table design when the physical layer holds tables (see "The physical layer as a design source"). When it holds none, out of scope, and `data_model` designs the tables from the conceptual and logical layers |
 | `exposure`, `data_product`, `entity_estimate`, `task` | Out of scope |
 
 **MML adds fields Wire's templates have no column for**: `pii`, `sensitivity`,
 `owner`. Carry them into the entity inventory as extra columns rather than
 dropping them; they are the kind of thing that is expensive to re-gather.
+
+## The physical layer as a design source
+
+Added in 4.2.0 (wire#279). On some engagements discovery designs the tables in
+Modality (`modality/models/physical/*.mml`) and the build tickets are written
+against that design. Wire reads it rather than designing the tables again.
+
+`python3 <wire>/scripts/ticket_delivery.py design-source <release> [--slice <s>]`
+says which design applies (`specs/utils/ticket_delivery.md`, "Where a slice's
+table design comes from"):
+
+| Physical layer | Design source |
+|---|---|
+| Holds the slice's table | `modality_physical`: `data_model-generate` records the table from the model |
+| Holds tables, but not this slice's | `wire_data_model_from_modality`, and the gap is named |
+| Holds no tables | `wire_data_model_from_modality`, as before 4.2.0 |
+
+Reading a table from the physical layer:
+
+1. A `table` (or `physical_table`) block, or a `physical_model` block's
+   per-entity tables, gives the table name, its columns (`column` blocks or
+   `columns` keys, with `type`, `description`, `pii`), its key (`primary_key`
+   or a column marked `pk`) and its references (`references "<table>.<column>"`
+   or a column marked `fk`).
+2. Ids resolve to names as in "Physical id resolution". An unresolved id is
+   named, never guessed.
+3. The table is recorded in `design/data_model.md` under its warehouse model
+   name, with a **Source: Modality** line naming the file and block, and every
+   column carried as written.
+4. Differences from Wire's rules (naming, key suffixes, the `Grain:` line,
+   `uuid` keys where Wire uses `_pk`) are listed as **gaps**, one row each,
+   with the Wire form proposed. A gap is never fixed silently in the design:
+   the consultant decides, and the Modality file is never written.
 
 ## What absence means
 
@@ -172,7 +207,7 @@ specification does not define every block the export writes:
 | `logical_relationships.mml` | Not an error. Fall through to `relationship` then the inline verb |
 | `entity_resolutions.mml` | Not an error, and **not** a coverage failure. The specification does not define the block, so a spec-written model never has one. A multi-source entity with no resolution becomes an open question on `logical_model`, answered by asking |
 | `sources.mml` | Not an error. `pipeline_design` and `logical_model` ask for sources instead |
-| `physical/schema.mml` | Expected. Out of scope |
+| `physical/*.mml` | Expected on most models. `data_model` designs the tables from the conceptual and logical layers |
 | A `type` on an entity | Default to `entity`, and record the default as an assumption |
 
 ## The `modality_coverage` check

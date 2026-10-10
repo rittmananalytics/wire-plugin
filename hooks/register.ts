@@ -10,8 +10,10 @@
 // - Metrics: each Wire command opens a run; every model request in its loop
 //   adds its measured usage; when the loop's turn ends the run closes and the
 //   mod fills that command's Duration / Tokens / Cost cells in
-//   execution_log.md. A row an orchestrator writes later is filled when it
-//   is written.
+//   execution_log.md, or in a ticket's own run log
+//   (iterations/<ticket>.execution_log.md, 4.2.0) when the command ran on a
+//   ticket branch. A row an orchestrator writes later is filled when it is
+//   written.
 // - /wire-usage prints this session's runs, with no model turn.
 // - /wire-studio start|restart|stop|status runs Wire Studio for the session's
 //   repository as a detached local process (one per repository, ports
@@ -213,38 +215,57 @@ async function closeRuns($: any, agentId: string | null, turnId: string, turnUsa
   await saveRuns($, runs)
 }
 
-async function logFor($: any, cwd: string, release: string | null): Promise<string | null> {
-  if (release) {
-    const named = `${cwd}/.wire/releases/${release}/execution_log.md`
+// The logs a run's row may be in, newest first: the release's execution log
+// and, in a release built from tickets, each ticket's own run log
+// (iterations/<ticket>.execution_log.md, specs/utils/ticket_delivery.md).
+async function logsFor($: any, cwd: string, release: string | null): Promise<string[]> {
+  const found: { path: string; mtime: number }[] = []
+  const now = await $.clock.now()
+  const add = async (path: string, windowed: boolean) => {
     try {
-      if (await $.fs.exists(named)) {
-        return named
+      const st = await $.fs.stat(path)
+      if (!windowed || now - st.mtimeMs <= LOG_WINDOW_MS) {
+        found.push({ path, mtime: st.mtimeMs })
       }
     } catch {
-      // fall through to the newest log
+      // no such log
     }
   }
-  let best: { path: string; mtime: number } | null = null
-  const now = await $.clock.now()
-  try {
-    for (const dir of await $.fs.list(`${cwd}/.wire/releases`)) {
-      if (dir.kind !== 'dir') {
-        continue
-      }
-      const path = `${cwd}/.wire/releases/${dir.name}/execution_log.md`
-      try {
-        const st = await $.fs.stat(path)
-        if (now - st.mtimeMs <= LOG_WINDOW_MS && (!best || st.mtimeMs > best.mtime)) {
-          best = { path, mtime: st.mtimeMs }
+  const addRelease = async (dir: string, windowed: boolean) => {
+    await add(`${dir}/execution_log.md`, windowed)
+    try {
+      for (const f of await $.fs.list(`${dir}/iterations`)) {
+        if (f.kind === 'file' && f.name.endsWith('.execution_log.md')) {
+          await add(`${dir}/iterations/${f.name}`, windowed)
         }
-      } catch {
-        // no log in this release
       }
+    } catch {
+      // no ticket run logs in this release
     }
-  } catch {
-    return null
   }
-  return best?.path ?? null
+  const named = release ? `${cwd}/.wire/releases/${release}` : null
+  let namedExists = false
+  if (named) {
+    try {
+      namedExists = await $.fs.exists(`${named}/execution_log.md`) || await $.fs.exists(`${named}/iterations`)
+    } catch {
+      namedExists = false
+    }
+  }
+  if (named && namedExists) {
+    await addRelease(named, false)
+  } else {
+    try {
+      for (const dir of await $.fs.list(`${cwd}/.wire/releases`)) {
+        if (dir.kind === 'dir') {
+          await addRelease(`${cwd}/.wire/releases/${dir.name}`, true)
+        }
+      }
+    } catch {
+      return []
+    }
+  }
+  return found.sort((a, b) => b.mtime - a.mtime).map(f => f.path)
 }
 
 async function backfillPending($: any, options: Options): Promise<void> {
@@ -259,27 +280,26 @@ async function backfillPending($: any, options: Options): Promise<void> {
     if (!r || r.filled || r.endedAt === null || totalTokens(r.usage) === 0) {
       continue
     }
-    const path = await logFor($, cwd, r.release)
-    if (!path) {
-      continue
-    }
-    let text: string
-    try {
-      text = String(await $.fs.read(path))
-    } catch {
-      continue
-    }
-    const updated = backfillLog(text, {
-      command: r.command,
-      usage: r.usage,
-      model: r.model,
-      durationSeconds: Math.round((r.endedAt - r.startedAt) / 1000),
-      notBefore: logStamp(r.startedAt, 24 * 60).slice(0, 10),
-    })
-    if (updated !== null && updated !== text) {
-      await $.fs.write(path, updated)
-      runs[i] = { ...r, filled: true }
-      changed = true
+    for (const path of await logsFor($, cwd, r.release)) {
+      let text: string
+      try {
+        text = String(await $.fs.read(path))
+      } catch {
+        continue
+      }
+      const updated = backfillLog(text, {
+        command: r.command,
+        usage: r.usage,
+        model: r.model,
+        durationSeconds: Math.round((r.endedAt - r.startedAt) / 1000),
+        notBefore: logStamp(r.startedAt, 24 * 60).slice(0, 10),
+      })
+      if (updated !== null && updated !== text) {
+        await $.fs.write(path, updated)
+        runs[i] = { ...r, filled: true }
+        changed = true
+        break
+      }
     }
   }
   if (changed) {

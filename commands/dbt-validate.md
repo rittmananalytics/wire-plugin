@@ -128,6 +128,9 @@ inputs:
   required:
     - name: release_folder
       description: "Path to the release folder"
+  optional:
+    - name: slice
+      description: "--slice <slice>. In a release built from tickets, work on one slice of the release only (specs/utils/ticket_delivery.md)"
 preconditions:
   - artifact: dbt
     action: generate
@@ -135,7 +138,7 @@ preconditions:
 delegates_to:
   - utils/precondition_gate
 description: Validate dbt models - run tests, check conventions, verify documentation and testing coverage
-argument-hint: <project-folder>
+argument-hint: <project-folder> [--slice <slice>]
 
 ---
 
@@ -196,6 +199,23 @@ Three kinds of rule apply. Each check in Step 3 onward is marked with its kind w
 - dbt models must be generated (`/wire:dbt-generate` complete)
 - dbt models must be run successfully (`/wire:utils-run-dbt` complete)
 - dbt Cloud or dbt Core configured
+
+## Sliced runs (`--slice`)
+
+In a release built from tickets (`delivery: tickets` in `status.md`), this
+command takes `--slice <slice>` and checks the slice's models, seeds and tests, with `dbt build --select` limited to them only
+(`specs/utils/ticket_delivery.md`, "The `--slice` option"). Without
+`--slice`, the workflow below runs as written.
+
+1. The slice must be in `tickets.yaml`. If it is not, stop and list the valid
+   slices.
+2. Run every check below against the slice's part. A check that needs the
+   whole release (a cross-model consistency check) runs against the slice and
+   the parts it depends on, and says so in the report.
+3. On a ticket branch, write the result (`pass` or `fail`) to the ticket
+   record's front matter (`results:`) and the log row to the ticket run log
+   (`iterations/<ticket>.execution_log.md`), not to `status.md` and
+   `execution_log.md`.
 
 ## Workflow
 

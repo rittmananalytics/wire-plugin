@@ -315,6 +315,25 @@ Same artifact lifecycle table, plus a Highlights section with additional context
 - If the report itself reveals drift — an execution-log row or artifact file newer than the recorded state, or a `last_updated` older than recent activity — add a line suggesting `/wire:status-sync <release-folder>` (the reconciler in `specs/utils/status_sync.md`)
 - Keep to 2-5 bullet points max
 
+**Releases built from tickets** (`delivery: tickets` in `status.md`,
+`specs/utils/ticket_delivery.md`). In detail mode, after the artifact table:
+
+1. Say the release is built from tickets, and how many of its tickets are
+   closed (`3 of 15 tickets closed`).
+2. Show the per-slice table from
+   `python3 <wire>/scripts/ticket_delivery.py status <release> --markdown`:
+   one row per slice, one column per step, each cell's state and the tickets
+   covering it.
+3. From `ticket_delivery.py runnable <release>`: **Can start now** (tickets
+   whose steps' dependencies are met, with their sprint or milestone),
+   **Waiting** (each ticket and what it waits on, by ticket, with any blocker
+   and the date it was recorded), and **Check** (each "blocked by" link the
+   tracker is missing, with the reason from the design and an offer to add
+   it).
+
+In overview mode, add one line per such release: tickets closed of total, and
+the number that can start now.
+
 ### Step 4: Determine Next Action
 
 **Logic for next action** — fully data-driven from whatever the release's own `status.md` documents. Do not hardcode a fixed artifact list here; different release types genuinely differ (see Step 2's "Reading artifacts generically").
@@ -325,6 +344,10 @@ Same artifact lifecycle table, plus a Highlights section with additional context
    - If that step's local state is not yet in its "done" value (`generate` ≠ `complete`, `validate` ≠ `pass`, `review` ≠ `approved`): that artifact key and step is the next action — derive the command using the "Command derivation" table in Step 2, and stop.
    - If every present step on this artifact is done, move to the next artifact.
 3. If every artifact's every present step is done, the release is complete — say so, and suggest starting or resuming the next release (`/wire:status` overview will show what's next) or, if this is the last configured release, wrapping up the engagement.
+
+**For releases built from tickets**: the next action is the first ticket that
+can start, in tracker order, as `/wire:work <release> <ticket>`. If none can
+start, name what the earliest waiting ticket waits on.
 
 **For `droughty` releases**: walk the `droughty:` steps in template order (setup → introspect → dbml → docs → qa → stage → dbt_tests → lookml, skipping any marked `not_applicable`); the first step whose `status` isn't `complete` is the next action — derive its command from the "Command derivation" table in Step 2.
 

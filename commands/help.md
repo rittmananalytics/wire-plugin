@@ -469,6 +469,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 |---------|-----------|-------------|
 | `/wire:delegate` | `<release-folder>` | Decompose a release's pending work into typed tasks and dispatch to specialist local subagents |
 | `/wire:status-sync` | `[release-folder]` | Reconcile recorded release state against evidence (git, execution log, disk, sprint plan) and repair the record with confirmation |
+| `/wire:tickets-import` | `<release-folder> [--tracker linear` | Read a release's tickets from Linear or Jira and propose the ticket map (kind, slices, Wire steps per ticket), using the Modality model where linked; turns on ticket delivery for the release |
 | `/wire:work` | `<release-folder> [ticket-or-description]` | Work a ticket inside an existing release — plan with a command or skill named per step, run only the approved plan, publish via the client's PR, patch stale documents and reconcile the record |
 | `/wire:playbook-generate` | `<release-folder>` | Generate a step-by-step BPMN delivery playbook for any Wire release |
 | `/wire:business-rules-generate` | `<release-folder> [--domain <name>] [--import <path>]` | Discover, define and agree the business rules for one domain, from legacy systems and from the people who own the definitions, before design starts |

@@ -43,6 +43,7 @@ Before any artifact can be generated a release has to exist, and once several re
 | `/wire:release-spawn <release>` | Spawn one or more new delivery releases from an approved discovery release. Reads the discovery outputs to pre-populate the new release context. |
 | `/wire:session-plan <release>` | Enter Plan Mode and propose a 3–5 step session plan in which every step names the Wire command or skill that performs it. Optional, and never required. |
 | `/wire:work <release> [ticket]` | Work a ticket inside an existing release: read the release for what bears on it, refuse requests larger than a ticket, plan with a command per step, run only the approved plan, publish through the client's PR, then patch stale release documents and reconcile the record. The ticket is recorded as an iteration of the release. |
+| `/wire:tickets-import <release> [--tracker linear\|jira] [--refresh]` | Read a release's tickets from Linear or Jira and propose the ticket map: each ticket's kind, slices and Wire steps. Turns on ticket delivery for the release: status, what can start next and `--slice` runs work per slice, and ticket branches write only their own record. |
 | `/wire:mcp [list/view/update/auth]` | Manage MCP server connections: list configured servers, view details, update URLs or guide re-authentication. |
 | `/wire:help` | Display available commands for the current release type and phase. |
 | `/wire:migrate <release>` | Migrate a release from an older Wire spec format to the current version. |

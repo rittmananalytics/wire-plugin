@@ -126,6 +126,7 @@ description: Reconcile a release's recorded state — status.md, execution log, 
 argument-hint: [release-folder]
 delegates_to:
   - utils/execution_log
+  - utils/ticket_delivery
 ---
 
 # Status Sync Utility
@@ -164,6 +165,7 @@ These rules are binding on every step below:
 | The governing `sprint_plan.md` | Sprint-plan story Status columns and sprint/epic totals |
 | | Session History rows |
 | | The Next Action section |
+| Ticket records and ticket run logs (`iterations/`), in a release with `delivery: tickets` | `execution_log.md` rows rolled up from merged tickets, `decisions.md`, the `## Slices` table, `## Iterations` rows (Step 4g) |
 
 ## Workflow
 
@@ -252,6 +254,26 @@ Legacy five-column rows are compared on their Timestamp column like any other
 row; missing `By`/`Session` columns are not a defect
 (`specs/utils/execution_log.md`, "Legacy five-column rows").
 
+**4g. Ticket roll-up** (only when `status.md` has `delivery: tickets`;
+`specs/utils/ticket_delivery.md`). Run on the release branch. For each ticket
+whose pull request has merged into the release branch (front matter
+`merged: true`, or `gh pr view` says merged and the record does not yet say
+so) and whose run log has rows not yet in `execution_log.md`:
+
+| Condition | Category | Proposal |
+|---|---|---|
+| Ticket merged, record says `merged: false` or nothing | `ticket_merge_unrecorded` | Set `merged: true` in the ticket record |
+| Ticket run log has rows not yet rolled up | `ticket_rows_pending` | Append the rows from `python3 <wire>/scripts/ticket_delivery.py merge-log <release> <ticket>` (roll-up timestamp, `ticket <key>, ran <original time>:` in Detail, ticket order, no duplicates) |
+| Ticket record has decisions not in `decisions.md` | `ticket_decisions_pending` | Copy them, next ids in sequence, citing the ticket |
+| `## Slices` table differs from `ticket_delivery.py status <release> --markdown` | `slices_stale` | Replace the table |
+| A step is complete for the release (every slice that has it) and `artifacts.<id>` does not say so | `record_behind` | Set the artifact's present lifecycle steps to done, with a `revision_history` entry: `complete across <n> slices (ticket roll-up)` |
+| A step is complete in some slices only | `in_sync` | None. Note `<k> of <n> slices` in the report; never mark the artifact done early |
+
+A ticket open on its branch is never rolled up: its rows stay in its own run
+log until it merges. Rows already rolled up are recognised by their Detail
+prefix and never added twice. The roll-up rows are appended after every other
+backfilled row, in the order `merge-log` returns them.
+
 ### Step 5: Present the Drift Report
 
 Present all findings before asking anything. Suggested shape:
@@ -304,6 +326,7 @@ After applying (and only then — a declined or empty sync writes nothing), appe
 - **`last_updated` missing or unparseable**: treat the evidence window as unbounded and propose setting `last_updated` as part of the repair.
 - **Shallow clone / no git history**: fall back to log and disk evidence; say so in the report.
 - **Droughty releases**: steps are single-action (`status: not_started | complete`), so only rule 4a's file branch and 4c/4e apply — evidenced output on disk proposes `status: complete`.
+- **Ticket delivery on a ticket branch**: do not repair the release record from a ticket branch. Say that the roll-up runs on the release branch after the pull request merges, and report drift only.
 - **Uncommitted changes on disk**: files on disk count as evidence even when uncommitted; note "uncommitted" in the report so the consultant knows the PR still needs them.
 
 Execute the complete workflow as specified above.

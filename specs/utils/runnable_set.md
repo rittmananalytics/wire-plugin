@@ -189,6 +189,32 @@ the value exists and is never produced.
    request: a director who asks for one gets it, and the request is what
    enables it.
 
+## Releases built from tickets
+
+When `status.md` has `delivery: tickets` (`specs/utils/ticket_delivery.md`),
+the same rules apply to each slice of the release, and the answer is given per
+ticket. `python3 <wire>/scripts/ticket_delivery.py runnable <release>`
+computes it; do not work it out by hand. In short:
+
+1. A dependency resolves to the same slice's cell first, then the slice's
+   upstream slices, then the `whole_release` slice. A step other slices have
+   and this one does not is not required for this slice. A step no slice has
+   resolves to the release-level state in `artifacts:` as above.
+2. A cell meets a dependency only when complete. The build for one table waits
+   for that table's design, not every table's.
+3. A build step also waits for the same step in each upstream slice.
+4. Advisory entries and rulings work as in Step 3, once per release. A ruling
+   covers every slice and never meets a blocking entry.
+5. Each ticket is `done`, `in_progress`, `blocked`, `waiting` (on named
+   tickets), `parked` or `can_start`. A ticket that can start is offered to
+   `/wire:work`, never dispatched as a lane: a ticket is one foreground piece
+   of work.
+
+The release-level `artifacts:` block still answers this procedure for callers
+that do not read slices, and is only marked done when a step is complete in
+every slice. Wire's order is also compared with the tracker's "blocked by"
+links, and every missing link is reported with its reason.
+
 ## Worked example
 
 `dashboard_first`, `seeded` profile, requirements approved and nothing else

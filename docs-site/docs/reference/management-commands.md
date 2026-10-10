@@ -71,6 +71,20 @@ The record is `iterations/<ticket>.md` in the release folder (ticket text, what 
 
 ---
 
+## `/wire:tickets-import`
+
+What if the whole release is built from tickets? Many teams cut a release into tickets in Linear or Jira before any code is written, and build it ticket by ticket, each on its own branch. `/wire:tickets-import` (v4.2.0, #279) sets a release up that way. The lead consultant runs it once the platform design is agreed and the release is cut into tickets.
+
+```
+/wire:tickets-import <release-folder> [--tracker linear|jira] [--project <name-or-key>] [--refresh]
+```
+
+It reads the tracker project and proposes, for each ticket, its kind, the slices of the release it covers (one table, one source, one layer, one deliverable, one batch or the whole release) and the Wire steps it covers. Where the release reads its design from Modality, each build ticket's slice is the Modality object it builds; without Modality, slices are proposed from the ticket's text and marked for checking. Plain work (a ticket no Wire command builds) and tracker projects with no matching release are listed for a decision. Nothing is written until you confirm; then Wire writes `tickets.yaml`, a ticket record per ticket in `iterations/` and `delivery: tickets` in `status.md`. `--refresh` lists new, changed and removed tickets and asks before changing anything.
+
+From then on `/wire:status` shows one row per slice, what can start next is worked out per slice, `/wire:work` accepts a ticket that builds a table in the ticket map and runs each command with `--slice`, and a ticket branch writes only the ticket's own record and log. `/wire:status-sync` adds a merged ticket's work to the release record. The convention is `specs/utils/ticket_delivery.md`; its fixed rules are in `scripts/ticket_delivery.py` and tested by `wire/tests/core/validate_ticket_delivery.py`. See [Releases built from tickets](../advanced/issue-tracking#releases-built-from-tickets-420).
+
+---
+
 ## `/wire:status-sync`
 
 What happens to the record when work is done outside a command run? Status tracking updates automatically only when work runs through Wire commands, and work done conversationally or with an agent's help, which is common in `custom` releases, leaves `status.md`, the execution log and the sprint plan behind. `/wire:status-sync` is the repair path for that (v3.11.8, #204): it reconciles a release's recorded state against evidence and then repairs the record with your confirmation, so that where `/wire:status` reports the record as it stands, `status-sync` fixes it when it has drifted.

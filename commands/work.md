@@ -137,6 +137,7 @@ delegates_to:
   - utils/commit
   - utils/meeting_context
   - utils/director_operating_model
+  - utils/ticket_delivery
 workload: planning
 ---
 
@@ -154,6 +155,8 @@ Most work on a live platform arrives as a ticket against a release that already 
 6. Close in two stages: patch the release documents the change made stale (with confirmation), then run `/wire:status-sync`.
 
 The release is the durable work stream (an epic, a deliverable, a platform). The ticket is an **iteration** inside it. Do not create a release for a ticket; the context a ticket needs lives in the release it changes (wire#265).
+
+**Releases built from tickets** (`delivery: tickets` in `status.md`, 4.2.0, wire#279). When a release is built ticket by ticket from a tracker, `/wire:work` is how each ticket is worked, including the main build tickets. The ticket map (`tickets.yaml`, written by `/wire:tickets-import`) says which slices and Wire steps each ticket covers, and `specs/utils/ticket_delivery.md` holds the rules. Four things change, each marked **Ticket delivery** in the steps below: the scope check reads the ticket map, every command step runs with `--slice`, the ticket branch writes only the ticket's own files, and the release record is updated when the pull request merges. Without `delivery: tickets`, nothing below changes.
 
 The rules of `specs/utils/director_operating_model.md` apply unchanged: one writer of `status.md` and `execution_log.md`, decisions recorded with a name and reason, nothing approved on the consultant's behalf. `/wire:work` is a way of planning from a ticket instead of from the release-type graph; it is not a way round the record.
 
@@ -202,6 +205,13 @@ Do **not** treat a request as an iteration when any of the following is true. St
    - Omitted: list the `## Iterations` table rows whose state is not `closed`, and ask which to resume or whether to open a new one.
 3. If `.wire/releases/<release-folder>/iterations/<id>.md` exists, this is a **resume**: read it and go to Step 8. Otherwise create it from the template in "Iteration file" below, add a row to `## Iterations` in `status.md` with state `open`, and append an execution-log row: `/wire:work | complete | iteration <id> opened: <title, 80 chars>`.
 
+**Ticket delivery.** When `status.md` has `delivery: tickets`:
+
+- Read `tickets.yaml`. A ticket in the map has a record with `state: planned` from the import: this is its first open, not a resume. Set `state: open` in the record's front matter and continue at Step 2.
+- A ticket not in the map: say so, and offer `/wire:tickets-import <release> --refresh` to add it. If the consultant goes on without it, it is an ordinary iteration and Step 3's ordinary boundary check applies.
+- Cut the ticket branch from the release branch (`specs/utils/git_workflow.md`), named from the ticket key and title. Everything from here to Step 6 is written on that branch.
+- On the ticket branch, write only the ticket record (`iterations/<id>.md`), the ticket run log (`iterations/<id>.execution_log.md`) and the files the plan's commands produce. Do not write `status.md`, `execution_log.md`, `tickets.yaml` or `decisions.md` there; the `## Iterations` row and the opened log row go to the ticket run log and are added to the release record when the pull request merges (`specs/utils/ticket_delivery.md`, "One record per ticket"). This is what stops ticket branches clashing on the record files.
+
 ### Step 2: Read the release for what bears on the ticket
 
 Read, in this order, and keep notes for Step 4:
@@ -213,11 +223,19 @@ Read, in this order, and keep notes for Step 4:
 5. Conventions: `.wire/conventions/<domain>.yml` if present, else the framework defaults.
 6. The client repository: the models, views and dashboards named by the ticket, and whether the repository has a pull request template (`.github/PULL_REQUEST_TEMPLATE.md` or similar).
 
+**Ticket delivery.** Also read, for each of the ticket's slices: its row in the `## Slices` table and the tickets that covered it before; the slice's design, from `python3 <wire>/scripts/ticket_delivery.py design-source <release> --slice <slice>` (Wire's `data_model` section, or the table in the Modality physical model, named with its file and columns); and which ticket approved that design. Say whether the ticket's own steps can start (`ticket_delivery.py runnable <release>`): what it waits on, by ticket, and any blocker on record.
+
 Then say what you found, in plain words, before planning: what has changed on the release since it was last opened, which earlier decisions bear on this ticket (with dates and reasons), whether the definition the ticket needs exists in the register, and which documents the change will touch. Ask one question only if the plan depends on it (for example, a definition the ticket leaves ambiguous), propose the reading most consistent with the release, and flag it for the owner. Do not ask what the release already answers.
 
 ### Step 3: Boundary check
 
 Test the ticket against the trigger table in "When to use it, and when not". Behavioural test: `wire/tests/core/validate_work_iteration.py` (iteration boundary).
+
+**Ticket delivery.** For a ticket in the ticket map, the check reads the map, not the release's original design. Run `ticket_delivery.py scope <release> <request.json>` with the objects the request adds (each with its trigger) and any other trigger:
+
+- A new source or a new table that is one of this ticket's slices is **planned work**: accepted. Say so: "the ticket builds a new table; the table is in the ticket map, so this is planned work".
+- A new source or table that is not one of this ticket's slices is refused, with options: a new ticket in the tracker (then `/wire:tickets-import --refresh`), or a new ticket in this release, which widens the release and is agreed with the lead consultant first. Offer to start the ticket without it (outcome `partial`).
+- The other triggers (grain change with dependants, security or residency, cutover, spanning deliverables, unbounded) apply as below, ticket map or not.
 
 - **No trigger:** continue to Step 4.
 - **Any trigger:** do not plan it as an iteration. Say which trigger(s) apply and why, in the ticket's own terms, then offer two shapes with a recommendation: a new release alongside this one (name the release type that fits and the first step it would take), or a formal phase added to this release (which reopens the design documents). Record the outcome on the iteration file as `state: escalated`, with the trigger(s), and in the execution log: `/wire:work | complete | iteration <id> escalated: <trigger>`. Stop. Whatever the consultant chooses runs through `/wire:new` or the release's formal commands, not through `/wire:work`.
@@ -233,6 +251,8 @@ Follow `specs/session/plan.md` with the ticket as the objective, and the notes f
 | Command or skill | For `command`: the exact `/wire:` command. For `skill`: the skill identifier, and the reason no command covers the step. For `human`, `external`, `decision`: who. For `investigation`: what is read and that nothing is written |
 | Scope | The objects the step is allowed to touch, named (one model, one view, one dashboard, one rule). "Only" is the default; widening is a plan amendment |
 | Produces | The file, register entry, report, PR or decision the step leaves behind |
+
+**Ticket delivery.** Every command step that makes or checks release documents or code carries `--slice <slice>` (`specs/utils/ticket_delivery.md`, "The `--slice` option"), and the plan covers the ticket's steps from the ticket map. Steps other tickets cover for the same slice (a requirements ticket for the whole release, a design ticket for four tables) are left out and named as such. Where the slice's design source is `modality_physical`, step 1 records the design from the Modality model (`/wire:data_model-generate <release> --slice <slice>`) instead of designing the table; where it is Wire's own, the plan designs the table and adds a `decision` step for the lead consultant to approve the design before the build. Name the branch and the release branch it is cut from.
 
 Then state what the plan deliberately leaves out and why ("the ticket does not add a concept or change a grain, so the requirements and the data model are not redrafted; the lines this changes are patched at close and shown first"). A plan that omits a build or a test step for a code change must say why.
 
@@ -262,6 +282,7 @@ Run the steps in order. For each `command` step:
 3. The command's own precondition gate runs as normal (`specs/utils/precondition_gate.md`). If it blocks on a **design-document** precondition that the release never produced (a `custom` release with no data model, for instance), present the gate's override prompt with the reason pre-filled: `ticket-scoped change under /wire:work, iteration <id>`; the consultant confirms or declines; the override is recorded exactly as the gate records any override. A blocking precondition on a **technical** artifact (validate PASS before review, a runbook before cutover) is never pre-filled; it stops the plan.
 4. The command's auto-validate runs as normal. Report the result in the command's own terms (checks passed, tests failed and on which rows).
 5. Each command writes its own execution-log row as it always does. In orchestrated mode `/wire:work` is the single writer and appends them from the command's report.
+6. **Ticket delivery.** The row goes to the ticket run log, `iterations/<id>.execution_log.md`, not to `execution_log.md`. After each step, write the step's result to `results:` in the ticket record's front matter (`dbt: pass`). A blocker found during the run is written to `blocked:` with its reason, and cleared when it lifts.
 
 For `skill` steps: activate the skill, log the activation row (`skill | <identifier> | activated | iteration <id> step <n>`), and do the work under the skill's conventions with the plan's scope.
 
@@ -275,6 +296,7 @@ For `human`, `external` and `decision` steps: do nothing but record that the ste
 
 1. Run `/wire:utils-commit <release> work <id>` then `/wire:utils-pr-create <release>` on the client repository's own template where one exists. The PR body carries: the ticket, the plan steps, the validate result, the convention lint result, the business rules cited, the decisions made during the work with their reasons, and the document patches from Step 7 once applied.
 2. Record the PR number and URL on the iteration file and in the `## Iterations` row. State: `awaiting_review`.
+   **Ticket delivery.** The pull request goes into the release branch. Record the PR on the ticket record only; say that `status.md` and `execution_log.md` are updated when the pull request merges. If the tracker is connected, move the ticket to its review state with a link to the pull request.
 3. Keep **technical acceptance** (PR review and merge by the client's engineer) and **business acceptance** (confirmation of a definition or a number by the person who owns it) separate on the iteration file. A PR approval satisfies the first. It never satisfies the second, whoever approved it, because a code reviewer does not own a business definition. Say so in the report if both are outstanding.
 
 ### Step 7: Close, in two stages
@@ -288,6 +310,8 @@ For `human`, `external` and `decision` steps: do nothing but record that the ste
 5. Applied patches are committed on the ticket branch and listed in the PR body.
 
 **Stage 2: state sync.** Run `/wire:status-sync <release>`. It reconciles `status.md`, the execution log, sprint-plan state and the next action against the evidence the iteration produced, with the consultant's confirmation as it always does.
+
+**Ticket delivery.** Stage 1 runs on the ticket branch before merge where it can; patches found after merge are committed to the release branch. When the pull request has merged, set `merged: true` in the ticket record, then run `/wire:status-sync <release>` on the release branch. Its Step 4g rolls the ticket up: the ticket run log's rows are added to `execution_log.md`, the ticket's decisions to `decisions.md`, and the `## Slices` table and `## Iterations` row are rewritten, all on confirmation. A merged ticket whose business acceptance is outstanding stays `awaiting_owner`; its cells still show complete, because the code is built and tested.
 
 **Definition of done** (tested by `wire/tests/core/validate_work_iteration.py`). An iteration is `closed` only when all four hold:
 
@@ -313,6 +337,8 @@ On a resume (Step 1 found the iteration file):
 
 `.wire/releases/<release-folder>/iterations/<id>.md`:
 
+In a ticket-built release the file starts with the front matter block in `specs/utils/ticket_delivery.md` ("The ticket record's front matter"): `ticket`, `state`, `merged`, `blocked`, `results`.
+
 ```markdown
 # Iteration <id>: <title>
 
@@ -320,7 +346,7 @@ On a resume (Step 1 found the iteration file):
 |---|---|
 | Ticket | <key or slug>, <tracker URL if any> |
 | Opened | YYYY-MM-DD HH:MM by <name> |
-| State | open \| awaiting_review \| awaiting_owner \| closed \| escalated \| cancelled |
+| State | planned \| open \| awaiting_review \| awaiting_owner \| closed \| escalated \| cancelled |
 | Branch | <branch> |
 | PR | #<n> <url> |
 | Technical acceptance | pending \| approved by <login> on <date> (PR #<n>) |

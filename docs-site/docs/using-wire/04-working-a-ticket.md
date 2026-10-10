@@ -112,6 +112,23 @@ Not every request that arrives as a ticket is one. The following week the direct
 
 Wire refused to treat the request as a small change, said exactly which of its properties made it larger than it looked, and offered the two sensible shapes for it with a recommendation. That boundary is one you will lean on. A ticket that quietly grows into a redesign is how a fortnight becomes a quarter, and it is far cheaper to notice at the planning step than in the third week.
 
+## When the Whole Release Is Built from Tickets
+
+Northwind's ticket arrived after go-live, against a release that Wire had built artifact by artifact. Many teams work the other way round from the start. Discovery agrees the platform design, the design is cut into releases, and each release is cut into tickets in the team's tracker before any code is written: one ticket to stage the CRM, one per table, one for the semantic model, one for the metrics. Each ticket runs on its own branch and merges back into the release branch by pull request. If Wire tracked only the whole release, finishing a ticket would change nothing in its record, and two ticket branches would fight over the same status file.
+
+So the lead consultant tells Wire, once, that the release is built from tickets. Wire reads the tracker project and proposes, for every ticket, the part of the release it covers (its slice) and the Wire steps it covers.
+
+| You say | Wire replies |
+|---|---|
+| "Set up the Customer Core release from its Linear tickets." | "Linear project Customer Core 1.0: 12 tickets. This release reads its design from the client's Modality model, so each build ticket's slice is the table it builds, taken from the model's own links where it has them. Ticket CUS-216, Build legal entity, has no link; I have matched it to the legal entity table, please check. CUS-213, a customer list page in a notebook, has nothing in the model and no Wire command builds it: track it as plain work? One order check: the customer master is built from Organisation and from legal entity, but the tracker has CUS-11 blocked by CUS-8 only. Add the link to CUS-216? confirm / adjust / cancel?<br/><br/>Running: `/wire:tickets-import 02-customer-core --tracker linear`" |
+| "Confirm. Plain work for CUS-213, and add the link." | "Ticket map written: 12 tickets, 8 slices, one plain. The release status now has one row per slice. Can start now: CUS-10 Build Market and CUS-216 Build legal entity. CUS-8 waits for the CRM staging, which is in progress.<br/><br/>Ran: `/wire:tickets-import 02-customer-core --tracker linear`" |
+
+From here each ticket is worked exactly as NWR-31 was, with three differences you will notice. A ticket that builds a new table is not refused, because the table is in the ticket map and so the work is planned; a request to add something that is not in the map, a new source say, is still refused with options. Every step in the plan works on the ticket's slice alone, one table's design section and one table's models, so it never rewrites another ticket's work. And while the ticket is open Wire writes only to the ticket's own record, so the release's status and log are brought up to date once, on the release branch, when the pull request merges.
+
+:::note
+Where the table design lives in Modality, Wire reads it rather than designing the table again, records it as the design for that table, and lists anything that does not match its naming rules for you to decide. Where there is no Modality model, Wire designs each table as part of its ticket and asks the lead consultant to approve the design before the build. Wire never writes to the Modality model.
+:::
+
 ## What You Should Now Have
 
 | Produced | Detail |

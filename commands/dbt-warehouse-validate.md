@@ -128,11 +128,14 @@ inputs:
   required:
     - name: release_folder
       description: "Path to the release folder"
+  optional:
+    - name: slice
+      description: "--slice <slice>. In a release built from tickets, work on one slice of the release only (specs/utils/ticket_delivery.md)"
 preconditions: dynamic
 delegates_to:
   - utils/precondition_gate
 description: Validate dbt warehouse models — compile, test referential integrity, and check dimensional conventions (_dim/_fact/_agg/_xa)
-argument-hint: <project-folder>
+argument-hint: <project-folder> [--slice <slice>]
 ---
 
 ## Auto-Delegation
@@ -152,6 +155,23 @@ Scope and severity follow `specs/development/dbt_validate.md` (**Scope and Sever
 ## Prerequisites
 
 - `dbt_warehouse: generate: complete` in status.md
+
+## Sliced runs (`--slice`)
+
+In a release built from tickets (`delivery: tickets` in `status.md`), this
+command takes `--slice <slice>` and checks the slice's warehouse models only
+(`specs/utils/ticket_delivery.md`, "The `--slice` option"). Without
+`--slice`, the workflow below runs as written.
+
+1. The slice must be in `tickets.yaml`. If it is not, stop and list the valid
+   slices.
+2. Run every check below against the slice's part. A check that needs the
+   whole release (a cross-model consistency check) runs against the slice and
+   the parts it depends on, and says so in the report.
+3. On a ticket branch, write the result (`pass` or `fail`) to the ticket
+   record's front matter (`results:`) and the log row to the ticket run log
+   (`iterations/<ticket>.execution_log.md`), not to `status.md` and
+   `execution_log.md`.
 
 ## Workflow
 

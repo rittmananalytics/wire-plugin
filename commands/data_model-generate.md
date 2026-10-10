@@ -202,11 +202,14 @@ inputs:
   required:
     - name: release_folder
       description: "Path to the release folder"
+  optional:
+    - name: slice
+      description: "--slice <slice>. In a release built from tickets, work on one slice of the release only (specs/utils/ticket_delivery.md)"
 preconditions: dynamic
 delegates_to:
   - utils/precondition_gate
 description: Generate dbt data model specification and physical ERD
-argument-hint: <project-folder>
+argument-hint: <project-folder> [--slice <slice>]
 
 ---
 
@@ -242,6 +245,45 @@ The data model specification narrows the LLM's generation space for the dbt phas
 **Dashboard-first** (`dashboard_first` project type):
 - `requirements`: `review: approved`
 - `viz_catalog`: `generate: complete` — provides the measures, dimensions, and dashboard structure
+
+## Sliced runs (`--slice`)
+
+In a release built from tickets (`delivery: tickets` in `status.md`), this
+command takes `--slice <slice>` and reads and writes the slice's table section of `design/data_model.md` only
+(`specs/utils/ticket_delivery.md`, "The `--slice` option"). Without
+`--slice`, the workflow below runs as written.
+
+1. The slice must be in `tickets.yaml`. If it is not, stop and list the valid
+   slices.
+2. The precondition gate evaluates this slice's dependencies, not the whole
+   release's (`specs/utils/precondition_gate.md`, "Sliced runs").
+3. Add or replace the slice's part only. Never regenerate the whole document
+   or project to change one slice; every other line stays as it is.
+4. On a ticket branch, write the step's result to the ticket record's front
+   matter (`results:`) and the log row to the ticket run log
+   (`iterations/<ticket>.execution_log.md`), not to `status.md` and
+   `execution_log.md`. The status and Jira or Linear updates in the workflow
+   below are made by `/wire:status-sync`'s ticket roll-up when the pull request
+   merges.
+
+**Design source.** Before Step 1, run
+`python3 <wire>/scripts/ticket_delivery.py design-source <release> --slice <slice>`:
+
+- `wire_data_model`: design the slice's tables as the workflow below does.
+- `modality_physical`: the slice's table is designed in the Modality physical
+  model. Read it per `specs/utils/mml_import.md` ("The physical layer as a
+  design source") and record it as the slice's section of
+  `design/data_model.md`, with a **Source: Modality** line naming the file and
+  block. Do not design the table again. List every gap against Wire's naming
+  rules (`wire/conventions/dbt.yml`) as a row: what the model says, the Wire
+  form, and that the consultant decides. Never write the Modality file.
+- `wire_data_model_from_modality`: design the slice's tables from the Modality
+  conceptual and logical layers as the workflow below does, and say that the
+  physical layer has no table for this slice.
+
+The same applies to an unsliced run in a release with `model_source: modality`
+whose physical layer holds tables: each table found there is recorded, not
+redesigned.
 
 ## Workflow
 

@@ -202,11 +202,14 @@ inputs:
   required:
     - name: release_folder
       description: "Path to the release folder"
+  optional:
+    - name: slice
+      description: "--slice <slice>. In a release built from tickets, work on one slice of the release only (specs/utils/ticket_delivery.md)"
 preconditions: dynamic
 delegates_to:
   - utils/precondition_gate
 description: Generate dashboards from design and requirements
-argument-hint: <project-folder>
+argument-hint: <project-folder> [--slice <slice>]
 
 ---
 
@@ -251,6 +254,26 @@ Enforced by the precondition gate (`preconditions: dynamic` — see
 | `design/visualization_catalog.md` | `viz_catalog-generate` | `dashboard_first` |
 | the semantic layer files | `semantic_layer-generate` | `full_platform`, `dbt_development` |
 | `bi_tool`, `semantic_layer_project`, `semantic_layer_model` | `status.md` frontmatter | always |
+
+## Sliced runs (`--slice`)
+
+In a release built from tickets (`delivery: tickets` in `status.md`), this
+command takes `--slice <slice>` and reads and writes the named dashboard or tiles of the slice only
+(`specs/utils/ticket_delivery.md`, "The `--slice` option"). Without
+`--slice`, the workflow below runs as written.
+
+1. The slice must be in `tickets.yaml`. If it is not, stop and list the valid
+   slices.
+2. The precondition gate evaluates this slice's dependencies, not the whole
+   release's (`specs/utils/precondition_gate.md`, "Sliced runs").
+3. Add or replace the slice's part only. Never regenerate the whole document
+   or project to change one slice; every other line stays as it is.
+4. On a ticket branch, write the step's result to the ticket record's front
+   matter (`results:`) and the log row to the ticket run log
+   (`iterations/<ticket>.execution_log.md`), not to `status.md` and
+   `execution_log.md`. The status and Jira or Linear updates in the workflow
+   below are made by `/wire:status-sync`'s ticket roll-up when the pull request
+   merges.
 
 ## Workflow
 

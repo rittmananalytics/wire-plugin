@@ -131,6 +131,16 @@ outcome}` entry in the (possibly Step-0-resolved) `preconditions`:
 If every precondition is met, return to the calling spec immediately with no
 output — this gate adds no friction to the compliant path.
 
+**Sliced runs.** When the command runs with `--slice <slice>` in a release with
+`delivery: tickets`, evaluate each precondition for that slice by the rules in
+`specs/utils/ticket_delivery.md` ("What can start next, per slice"), not
+against `artifacts.<artifact>` alone: the slice's own cell, then its upstream
+slices, then `whole_release`, then the release-level state. Run
+`ticket_delivery.py runnable <release>` and read the ticket's entry. An unmet
+precondition is reported with the ticket that covers it ("`data_model` for
+`core.legal_entity`, covered by CUS-199, not merged"). Overrides, advisory
+gates and rulings then work exactly as below.
+
 ### Step 1b: Separate blocking preconditions from advisory ones
 
 A `depends_on` entry may carry `enforcement: blocking` (the default, and the value

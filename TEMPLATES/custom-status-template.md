@@ -6,6 +6,13 @@ client_name: "{{CLIENT_NAME}}"
 created_date: "{{CREATED_DATE}}"
 last_updated: "{{LAST_UPDATED}}"
 current_phase: "active"
+
+# How this release is built. `artifacts` (default): artifact by artifact, each
+# for the whole release. `tickets`: ticket by ticket from Linear or Jira, each
+# ticket covering slices of the release (specs/utils/ticket_delivery.md). Set
+# by /wire:tickets-import, which also writes tickets.yaml.
+delivery: artifacts
+
 custom_commands_path: ".wire/releases/{{RELEASE_FOLDER}}/custom-commands"
 
 jira:
@@ -123,6 +130,10 @@ Ticket-sized work done inside this release through `/wire:work` (`specs/work.md`
 
 | Ticket | Title | Branch | PR | State | Opened | Closed |
 |--------|-------|--------|----|-------|--------|--------|
+
+## Slices
+
+Only in a release built from tickets (`delivery: tickets`, `specs/utils/ticket_delivery.md`). One row per slice, one column per step; each cell shows the step's state and the tickets covering it. Written by `/wire:tickets-import` and `/wire:status-sync` from `scripts/ticket_delivery.py status <release> --markdown`. Do not edit by hand.
 
 ## Notes
 
