@@ -119,6 +119,19 @@ Most delivery teams build a release ticket by ticket from Linear or Jira. Each t
 
 Wire reads the tracker project and proposes, for each ticket, its kind (requirements, business rules, design, build, test, review, plain work), its slices and the Wire steps it covers. A build ticket's steps follow from what it builds: a source gets `dbt` and `data_quality`; a table gets `data_model`, `dbt` and `data_quality` (without `data_model` when a design ticket covers it); a metric or report gets `semantic_layer`; a dashboard gets `dashboards`. Nothing is written until you confirm. Tracker projects that match no release are listed with three choices: start a release, add to one, or ignore. Run it again with `--refresh` to see new, changed and removed tickets.
 
+**Setting up a release for ticket delivery, step by step.**
+
+1. Create the release as usual with `/wire:new`, and get its upstream design approved (for most release types, the conceptual model). The tickets should be cut from that design, one per deliverable, not from statement-of-work deliverables.
+2. Connect the tracker: the Linear or Atlassian MCP server must be reachable, because Wire reads the tickets itself.
+3. If the design is in Modality, link it first with `/wire:utils-modality-link <release>`. Skip this step otherwise.
+4. As lead consultant, run `/wire:tickets-import <release> --tracker linear|jira [--project <name-or-key>]`.
+5. Check the proposal: the Slice column (always, without Modality), any plain work, any ticket whose steps Wire asks you to name, missing "blocked by" links, and tracker projects in no release. Answer, then **confirm**.
+6. Wire writes `tickets.yaml`, one ticket record per ticket in `iterations/` (state `planned`), `delivery: tickets` and the `## Slices` table in `status.md`, and a decision for each scoping answer.
+7. Run `/wire:status <release>` to see what can start, then work each ticket with `/wire:work <release> <ticket>`.
+8. After each pull request merges, run `/wire:status-sync <release>` on the release branch. When the tracker changes, run `/wire:tickets-import <release> --refresh`.
+
+The "Working a Ticket" chapter of the docs site, Part Two, walks through a whole release set up and built this way.
+
 **With or without Modality.** If the release reads its design from Modality (`model_source: modality`), each build ticket's slice is the Modality object it builds, and the model's own ticket links are used where they exist. Without Modality, Wire proposes each slice from the ticket's title and text and asks you to check it. Nothing needs Modality.
 
 **Status per slice.** `/wire:status` shows one row per slice and one column per step, each cell with its state and the tickets covering it, then which tickets can start now, which wait and on what, and any "blocked by" link the tracker is missing. A step is complete for the release when it is complete in every slice.
