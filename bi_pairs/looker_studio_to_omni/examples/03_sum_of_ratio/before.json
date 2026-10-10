@@ -1,0 +1,6 @@
+{
+  "datasource_field": {"name": "calc_rowcpc", "label": "Row CPC", "formula": "t0._cost_ / t0._clicks_", "calculated": true},
+  "component": {"id": "cd-cpc", "type": "kpi-metric",
+    "metrics": [{"name": "qt_cpc", "source_field": "calc_rowcpc", "aggregation": 6, "aggregation_name": "SUM", "label": "Avg CPC"}]},
+  "finding": {"finding": "sum_of_ratio", "location": "p_overview/cd-cpc"}
+}

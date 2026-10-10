@@ -1,0 +1,11 @@
+# marketing/web_sessions_daily.view (Omni)
+measures:
+  cost_per_click_amount:
+    label: Avg CPC
+    description: "Total cost divided by total clicks. Replaces a sum of daily CPC values (decision D-14)."
+    sql: ${cost_amount} / NULLIF(${clicks}, 0)
+
+# migration/parity/accepted.yaml (entry)
+- test_id: p_overview__cd-cpc__1
+  reason: "sum_of_ratio corrected to a ratio of totals; ruling D-14"
+  approver: "<client definition owner>"

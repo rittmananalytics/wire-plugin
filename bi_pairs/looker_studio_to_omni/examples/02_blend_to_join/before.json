@@ -1,0 +1,6 @@
+{
+  "blend": {"id": "dataViewResourceblend0001", "name": "Cost and orders",
+    "tree": {"join_type": 2, "join_type_name": "full_outer", "keys": [{"left": "_Date_", "right": "order_date"}],
+      "left": {"datasource_id": "aaaaaaa1-0000-4000-8000-000000000001", "fields": [{"source_field": "_cost_", "aggregation": 6}]},
+      "right": {"datasource_id": "aaaaaaa2-0000-4000-8000-000000000002", "fields": [{"source_field": "orders", "aggregation": 6}]}}}
+}

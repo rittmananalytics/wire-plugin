@@ -509,6 +509,12 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N ` | Present migration batch acceptance pack for stakeholder sign-off |
 | `/wire:migration-source-register` | `<release-folder> <source_type> <github_url>` | Register a source repository for a given migration source type |
 | `/wire:migration-source-refresh` | `<release-folder> <source_type>` | Pull a fresh local snapshot of a registered migration source |
+| `/wire:looker-studio-audit-generate` | `<release-folder>` | Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified |
+| `/wire:looker-studio-audit-validate` | `<release-folder>` | Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored |
+| `/wire:looker-studio-audit-review` | `<release-folder>` | Internal RA review of the Looker Studio audit |
+| `/wire:metric-catalogue-generate` | `<release-folder>` | Group every calculated field by metric name, flag copies, aliases and conflicts, and propose one definition per metric |
+| `/wire:metric-catalogue-validate` | `<release-folder>` | Validate the metric catalogue: reproducible, every group proposed, every conflict parked or ruled |
+| `/wire:metric-catalogue-review` | `<release-folder>` | Client ruling on the metric catalogue: one agreed definition and name per metric |
 | `/wire:ads-audit-all` | `<release-folder>` | Run all three agentic data stack audits in parallel |
 | `/wire:ads_dataset-audit-generate` | `<release-folder>` | Inventory warehouse tables, identify duplicates, grade governance maturity |
 | `/wire:ads_dataset-audit-validate` | `<release-folder>` | Verify dataset audit completeness and tier classifications |

@@ -9,11 +9,13 @@ last_updated: "{{LAST_UPDATED}}"
 current_phase: "audit"
 
 # Profile: which tool pair this release migrates. Read by precondition_gate.md Step 0
-# and by runnable_set.md. looker_to_omni is the only pair in 4.0.0.
+# and by runnable_set.md. looker_to_omni (default) or looker_studio_to_omni (4.2.2).
+# looker_studio_to_omni replaces the Looker audit phase with looker_studio_audit and
+# metric_catalogue; the Looker-only fields below are then left null.
 bi_pair: looker_to_omni
 
 bi_migration:
-  source_tool: looker                      # looker (the only source in 4.0.0)
+  source_tool: looker                      # looker | looker_studio
   target_tool: omni                        # omni (the only target in 4.0.0)
   lookml_repo_path: "{{LOOKML_REPO_PATH}}"   # local checkout of the LookML project (default ./lookml)
   looker_base_url: "{{LOOKER_BASE_URL}}"     # Looker API host, e.g. https://client.cloud.looker.com
@@ -27,6 +29,13 @@ bi_migration:
   parity_as_of: null                       # pinned as-of for bi-equivalency-validate; null = set on first run
   stale_after_days: 180                    # content with views_90d = 0 and last_viewed older than this is a drop candidate
   warehouse: null                          # bigquery | snowflake | databricks; both tools read this warehouse
+  # Looker Studio source (bi_pair: looker_studio_to_omni) only:
+  looker_studio_reports: []                # report URLs in scope, one per entry
+  looker_studio_namespace: null            # short client slug for identities: lookerstudio:<namespace>:report:<id>
+  looker_studio_capture_consent: null      # required before the first capture:
+                                           #   approved_by: "<client name and role>"
+                                           #   date: "YYYY-MM-DD"
+  chart_recordings_tracked: true           # false when Route C recordings must stay out of git (data handling rules)
   client_repos: []                         # Downstream repos this migration writes into, one entry per repo:
                                            #   - role: bi_target_model            # the git-connected Omni model repo (Omni writes YAML back via `omni models commit`)
                                            #     url: "git@github.com:org/omni-model.git"
@@ -73,6 +82,42 @@ artifacts:
     assisted_count: null
     redesign_count: null
     drop_count: null
+    generated_files: []
+    revision_history: []
+
+  looker_studio_audit:         # bi_pair: looker_studio_to_omni only
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null                 # audit/looker_studio_audit.md
+    generated_date: null
+    report_count: null
+    page_count: null
+    hidden_page_count: null
+    component_count: null
+    datasource_count: null
+    datasources_blocked: null
+    datasources_pipeline: null
+    chart_recordings: null
+    usage_source: null         # bigquery_jobs | partial | unavailable
+    app_versions: []           # Looker Studio app version per capture
+    generated_files: []
+    revision_history: []
+
+  metric_catalogue:            # bi_pair: looker_studio_to_omni only
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null                 # audit/metric_catalogue.md
+    data_file: null            # audit/metric_catalogue.csv
+    generated_date: null
+    definition_count: null
+    group_count: null
+    conflict_count: null
+    alias_count: null
+    finding_count: null
+    rulings_parked: null
+    rulings_made: null
     generated_files: []
     revision_history: []
 

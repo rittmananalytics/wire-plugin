@@ -938,7 +938,9 @@ Store `warehouse` and `droughty_context`.
 
 **For `bi_migration` release type**:
 
-Ask the following additional questions (one at a time):
+First ask: "Is the source **Looker** or **Looker Studio** (Data Studio)?" Looker records `bi_pair: looker_to_omni` and asks the questions below. Looker Studio records `bi_pair: looker_studio_to_omni` and asks instead: the report URLs in scope; a short client slug for object identities (`looker_studio_namespace`); who approved automated read-only access to the reports and when (`looker_studio_capture_consent`, may be left empty until the audit); the Omni base URL, model id and CLI profile; the parallel-run days. It writes them under `bi_migration` in the status file and skips the LookML and Looker questions.
+
+For Looker, ask the following additional questions (one at a time):
 
 1. "Where is the **LookML repo** checked out locally?" (Default: `./lookml`. Accept if the user presses Enter. The path must exist.)
 2. "What is the **Looker base URL**?" (e.g. `https://client.looker.com`)
@@ -969,7 +971,7 @@ Store `lookml_repo_path`, `looker_base_url`, `omni_base_url`, `omni_model_id`, `
    - `migration_sources.omni_model` and `migration.client_repos[]` (`role: bi_target_model`) → when an Omni model git repo URL was given; otherwise leave `null` and `[]`
 3. Write to `.wire/releases/[release_folder]/status.md`
 
-The `bi_pair` field is written by the profile step below (the release type declares one profile, `looker_to_omni`, which is also its default). When the orchestrating session runs this command from a directive, it derives these answers from the directive and the SOW where it can and asks only for what is missing, per `specs/utils/director_operating_model.md`.
+The `bi_pair` field is written by the profile step below (the release type declares two profiles, `looker_to_omni`, which is the default, and `looker_studio_to_omni`). When the orchestrating session runs this command from a directive, it derives these answers from the directive and the SOW where it can and asks only for what is missing, per `specs/utils/director_operating_model.md`.
 
 **For all other release types**:
 1. Read `TEMPLATES/status-template.md`

@@ -1,18 +1,48 @@
 wire_schema: "1.0"
 id: bi_migration
 name: "BI Tool Migration"
-description: "Migrate a reporting layer from one BI tool to another on the same warehouse: audit the source estate, decide what moves and how, build the target model on a branch, move the content, prove tile-level parity, cut over. First pair: Looker to Omni."
+description: "Migrate a reporting layer from one BI tool to another: audit the source estate, decide what moves and how, build the target model on a branch, move the content, prove tile-level parity, cut over. Pairs: Looker to Omni, and Looker Studio to Omni. A Looker Studio source has no semantic model to convert, so its plan decides per subject area whether the Omni model maps onto an existing warehouse model or needs a linked modelling release first."
 applicable_when:
   - "The client is replacing their BI tool and the warehouse and dbt layer stay where they are"
   - "The source is Looker (LookML in git plus content via the Looker API) and the target is Omni"
   - "Content must be proven equivalent before users are switched, and the source is decommissioned after a parallel run"
+  - "The source is Looker Studio (formerly Data Studio) and the target is Omni; report definitions are read from the Looker Studio editor, and metric definitions held in report-level data sources are consolidated through a metric catalogue before the Omni model is built"
 
 profile_field: bi_pair
 default_profile: looker_to_omni
 profiles:
   - id: looker_to_omni
     name: "Looker to Omni"
-    description: "LookML views and explores become Omni views and topics; dashboards and Looks become Omni dashboards. The only pair in 4.0.0."
+    description: "LookML views and explores become Omni views and topics; dashboards and Looks become Omni dashboards."
+    # Default graph. omni_audit sits in the audit phase, so a brownfield Omni
+    # target is audited alongside the Looker estate.
+
+  - id: looker_studio_to_omni
+    name: "Looker Studio to Omni"
+    description: "Looker Studio reports and data sources are captured from the editor (definitions, layout, chart data), their calculated fields are consolidated in a metric catalogue, and the Omni model is built from the warehouse model and the catalogue's rulings. Added in 4.2.2 (wire#278)."
+    enable_phases:
+      - looker_studio_audit
+      - metric_catalogue
+    disable_phases:
+      - audit
+    phase_overrides:
+      # The plan reads the Looker Studio audit and the ruled metric catalogue in
+      # place of the Looker audit. business_rules stays advisory.
+      - id: plan
+        requires_phase: metric_catalogue
+        artifacts:
+          - id: bi_migration_plan
+            depends_on:
+              - artifact: looker_studio_audit
+                action: review
+                outcome: approved
+              - artifact: metric_catalogue
+                action: review
+                outcome: approved
+              - artifact: business_rules
+                action: review
+                outcome: approved
+                enforcement: advisory
 
 phases:
   - id: business_rules
@@ -41,6 +71,33 @@ phases:
         required: false
         sequence: 2
         depends_on: []
+
+  # Looker Studio source (profile looker_studio_to_omni). Optional by default,
+  # enabled by that profile, which disables the Looker audit phase above.
+  - id: looker_studio_audit
+    name: "Looker Studio Audit"
+    required: false
+    requires_phase: null
+    artifacts:
+      - id: looker_studio_audit
+        command: looker-studio-audit
+        required: true
+        sequence: 1
+        depends_on: []
+
+  - id: metric_catalogue
+    name: "Metric Catalogue"
+    required: false
+    requires_phase: looker_studio_audit
+    artifacts:
+      - id: metric_catalogue
+        command: metric-catalogue
+        required: true
+        sequence: 1
+        depends_on:
+          - artifact: looker_studio_audit
+            action: review
+            outcome: approved
 
   - id: plan
     name: "Plan"

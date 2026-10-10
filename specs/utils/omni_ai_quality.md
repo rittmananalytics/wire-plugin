@@ -8,7 +8,7 @@ description: Internal utility — tune and gate Omni AI answer quality during en
 
 Omni's AI assistant answers only as well as the semantic model describes the data. This utility is the enablement-phase workflow that tunes the model's AI surface and gates the result against a set of real user questions. It operationalises Omni's own guidance (community.omni.co/t/improving-ai-answer-quality-a-practical-guide/356 and docs.omni.co/docs/ai/optimize-models, read 2026-09-06) as a repeatable Wire step.
 
-Used by `training-generate` on engagements whose BI tool is Omni (a `bi_migration` release with `bi_pair: looker_to_omni`, or any release with `reporting_tool: omni`). Drives the upstream **omni-ai-optimizer** and **omni-ai-eval** skills from `exploreomni/omni-agent-skills` (see `wire/skills/omni/SKILL.md`); everything here is model YAML and admin surfaces those skills already cover.
+Used by `training-generate` on engagements whose BI tool is Omni (a `bi_migration` release with `bi_pair: looker_to_omni` or `looker_studio_to_omni`, or any release with `reporting_tool: omni`). Drives the upstream **omni-ai-optimizer** and **omni-ai-eval** skills from `exploreomni/omni-agent-skills` (see `wire/skills/omni/SKILL.md`); everything here is model YAML and admin surfaces those skills already cover.
 
 ## Inputs
 

@@ -1,9 +1,9 @@
 ---
-description: Usage-ranked inventory, director rulings (parity or redesign, drop list, PDT disposition, permissions, topic design), model and content batches, register bootstrap
+description: Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
 argument-hint: <release-folder>
 ---
 
-# Usage-ranked inventory, director rulings (parity or redesign, drop list, PDT disposition, permissions, topic design), model and content batches, register bootstrap
+# Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
 
 ## User Input
 
@@ -69,7 +69,7 @@ event = {
     'ts': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
     'release': '<release_folder_or_null>',
     'release_type': '<release_type_or_null>',
-    'command': 'bi-migration-plan-generate',
+    'command': 'looker-studio-audit-generate',
     'event': '<command_start|step|command_end>',
     'step': '<step_number_or_null>',
     'step_name': '<step_heading_or_null>',
@@ -187,7 +187,7 @@ there.
 ---
 wire_schema: "1.0"
 command: generate
-artifact: bi_migration_plan
+artifact: looker_studio_audit
 domain: migration
 release_types:
   - bi_migration
@@ -197,217 +197,224 @@ inputs:
   required:
     - name: release_folder
       description: "Path to the release folder"
+mcp_contextual:
+  - bigquery
 produces:
   - type: document
-    path: "migration/bi_migration_plan.md"
-    description: "Usage-ranked inventory, the director's rulings, PDT disposition, permission map, topic architecture, parallel-run window and batches"
+    path: "audit/looker_studio_audit.md"
+    description: "Looker Studio estate audit: reports, pages, components, data sources, blends and calculated fields, each with a translation class, plus coverage gaps and access requests"
   - type: report
-    path: "migration/bi_migration_batches.csv"
-    description: "One row per in-scope object with its batch, kind, usage rank, ruling and batch dependency"
+    path: "audit/looker_studio/content_catalog.csv"
+    description: "One row per report, page, component and blend with translation_class, grid position and usage"
   - type: report
-    path: "migration/migration_register.csv"
-    description: "Register bootstrapped with one pending row per in-scope BI object"
-preconditions: dynamic
+    path: "audit/looker_studio/datasource_catalog.csv"
+    description: "One row per data source with connector, location, access and translation_class"
+  - type: report
+    path: "audit/looker_studio/reports/<report_id>/report.json"
+    description: "Extracted report definition per report (looker_studio_extract.py)"
+preconditions: []
 delegates_to:
   - utils/precondition_gate
   - utils/migration_agent_delegate
   - utils/stale_artifact_check
-description: "Build the Looker to Omni migration plan: rank content by usage, capture the director's rulings, set PDT disposition and permission mapping, cut model and content batches, bootstrap the register"
+description: "Capture and catalog the Looker Studio estate (report definitions, layout, data sources, calculated fields, chart data and BigQuery job history) and classify every component and data source for the move to Omni"
 argument-hint: <release-folder>
 
 ---
 
 ## Auto-Delegation
 
-Follow `specs/utils/precondition_gate.md` before proceeding. The gate resolves this command's preconditions from `release-types/bi_migration.yaml`: `looker_audit` review approved (blocking), `business_rules` review approved (advisory), `omni_audit` review approved (advisory). An advisory gate that is unmet asks for a skip reason, or reads one already recorded as a ruling in `decisions.md`, and continues.
+Follow `specs/utils/precondition_gate.md` before proceeding.
 Follow `specs/utils/migration_agent_delegate.md` before executing the workflow below.
-Follow `specs/utils/stale_artifact_check.md` with `artifact_id: bi_migration_plan` and `artifact_file_path: migration/bi_migration_plan.md` before proceeding.
+Follow `specs/utils/stale_artifact_check.md` with `artifact_id: looker_studio_audit` and `artifact_file_path: audit/looker_studio_audit.md` before proceeding.
 
 ---
 
-# BI Migration Plan: Generate
+# Looker Studio Audit: Generate
 
 ## Purpose
 
-Turns the approved Looker audit into a plan the rest of the release executes: which content moves, in what order, under what ruling, and what the Omni model will look like. It replaces three warehouse-migration artifacts (`migration_inventory`, `migration_strategy`, `migration_batching`) with one, because a BI migration has fewer object types and the decisions belong together.
+Catalogs the client's Looker Studio (formerly Data Studio) reports so the metric catalogue and the migration plan can decide what moves to Omni and how. Looker Studio has no supported API for report definitions, so the audit reads them from the editor itself through three evidence routes:
 
-Five things happen here:
+| Route | What it gives | Source | Access needed |
+|---|---|---|---|
+| B | Report definition: pages, layout, components, fields, chart-level formulas, filters, blends, parameters; each data source's connection and calculated fields | Looker Studio editor calls (`getReport`, `getSchema`, `getBlockDatasource`), recorded in a headed Chrome session | View on each report; Edit on each data source |
+| C | Each chart's query specification and the values it displayed, for every connector, plus the BigQuery job link for BigQuery charts | Looker Studio chart data calls (`batchedDataV2`), recorded on the same page visits | View on each report |
+| A | The SQL each BigQuery chart ran, and usage over the last 180 days | `INFORMATION_SCHEMA.JOBS` in the billing project, jobs labelled `looker_studio_report_id` | BigQuery Resource Viewer on the billing project |
 
-1. **Rank by usage.** Dashboards and Looks are ranked by `views_90d`. The plan records the set that carries 80% of views (the Omni migration guide's observation: 20% of content gets 80% of use) and the set with no views in the stale window.
-2. **Capture rulings.** The release director decides, per dashboard tier, parity or redesign; what to drop; what happens to each PDT; how Looker groups and user attributes map to Omni; the topic architecture; the parallel-run window; the parity scope. A ruling that has not been made is written as a parked decision, never guessed.
-3. **Cut batches.** Model batches follow explore dependency order (a topic's views before the topic). Content batches follow usage rank, highest first. A content batch depends on the model batch that carries every explore its dashboards reference.
-4. **Bootstrap the register.** One `pending` row per in-scope object in `migration/migration_register.csv`, so every downstream command has a row to advance.
-5. **Write the plan** as one document plus the batches CSV.
+Routes B and C use undocumented endpoints that Google can change without notice. Route A is supported and is the fallback for SQL and usage. Every script is deterministic and makes no AI call; the agent runs them, reads their output and writes the audit report. It never hand-writes what a script emits.
+
+This is a **BI-tool** audit. It does not change the warehouse, and it changes nothing in Looker Studio: the capture script navigates only and never clicks, types or saves.
 
 ## Prerequisites
 
-- `looker_audit review: approved`
-- `business_rules review: approved` if the business rules phase was run (advisory: skipping is allowed with a recorded reason)
-- `omni_audit review: approved` if the target Omni instance already holds content (advisory)
+- Release folder with `project_type: bi_migration` and `bi_pair: looker_studio_to_omni` in `status.md`
+- `bi_migration.looker_studio_reports`: the report URLs in scope, one per line
+- `bi_migration.looker_studio_namespace`: a short client slug used in object identities (`lookerstudio:<namespace>:...`)
+- `bi_migration.looker_studio_capture_consent`: who approved automated read-only access to the reports, and when. Required before the first capture. Routes B and C use the consultant's own Google sign-in to read the editor's internal calls; the client must agree to that in writing
+- Python 3.10 or later with Playwright (`python3 -m pip install playwright`) and Google Chrome, on the consultant's machine
+- Access as listed above. Without Edit on a data source, its connection and formulas are not readable; the audit records the gap and continues
 
 ## Inputs
 
-- `.wire/releases/$ARGUMENTS/audit/looker_audit.md`
-- `.wire/releases/$ARGUMENTS/audit/looker_model_catalog.csv`
-- `.wire/releases/$ARGUMENTS/audit/looker_content_catalog.csv`
-- `.wire/releases/$ARGUMENTS/audit/omni_audit.md` (if present: existing Omni topics and content to reuse or avoid colliding with)
-- `.wire/releases/$ARGUMENTS/artifacts/business_rules.yaml` (if present: agreed metric definitions the Omni measures must implement)
-- `.wire/releases/$ARGUMENTS/decisions.md` (rulings already recorded)
-- `.wire/releases/$ARGUMENTS/status.md` (`bi_migration.stale_after_days`, `bi_migration.parallel_run_days`, `bi_migration.parity_scope`)
-- `wire/bi_pairs/looker_to_omni/translation_guide.md` and `content_mapping.md`
+- `.wire/releases/$ARGUMENTS/status.md`
+- The reports listed in `bi_migration.looker_studio_reports`
+- `wire/bi_pairs/looker_studio_to_omni/translation_guide.md` (classes and normalisation rules)
+- `wire/bi_pairs/looker_studio_to_omni/feature_detection.md` (what each response field means)
+- `wire/bi_pairs/looker_studio_to_omni/tooling.md` (setup, access requests, data handling)
+- `.wire/engagement/bi_pair_overrides/looker_studio_to_omni/` (optional engagement overrides)
 
-## Pair: looker_studio_to_omni
+## Workflow
 
-When `bi_pair: looker_studio_to_omni`, the gate resolves this command's preconditions from the profile: `looker_studio_audit` review approved and `metric_catalogue` review approved (blocking), `business_rules` review approved (advisory). The workflow below applies with these differences, step by step:
+### Step 1: Locate the release and check the gates
 
-- **Inputs.** Read `audit/looker_studio_audit.md`, `audit/looker_studio/content_catalog.csv`, `audit/looker_studio/datasource_catalog.csv` and the ruled `audit/metric_catalogue.csv` in place of the Looker catalogs. A `conflict` still parked in the catalogue stops the plan: the model has nothing agreed to build.
-- **Step 2 (usage).** Rank reports by Route A job counts per report (`jobs` summed over its components). With `usage_source: unavailable`, park the ranking decision as for Looker.
-- **Step 3 (rulings).** Add two rulings: "Merge each report family into one Omni dashboard with a filter (families listed)?" (default: merge) and "Carry hidden pages?" (default: no).
-- **Step 4 (model scope and route).** Group the in-scope data sources into subject areas (one per business process: paid media, web analytics, ecommerce, email and so on). For each subject area record a **model route**:
-  - `map`: every data source is `map` (or `assisted` custom SQL) and the warehouse already has modelled tables for it, and the metric catalogue's rulings can be written as measures over those tables. The Omni model is built directly.
-  - `build`: the warehouse has no model for it, or the source tables are wide per-source exports that need reshaping (one column per source and metric). Spawn a linked `dbt_development` release with `/wire:release-spawn`, scoped to that subject area, with the metric catalogue as its business rules. The model batch for that subject area depends on that release's warehouse models passing validation.
-  - Every `pipeline` data source is listed as a **pipeline task** (what must land in the warehouse, and where) with an owner. Its charts stay `blocked_by: pipeline` until the task closes; they are not parity gaps found at the end.
-- **Step 5 (batches).** Model batches are subject areas in dependency order. Content batches are report families, highest usage first; each depends on the model batches its data sources map to.
-- **Step 6 (register).** Register rows use the audit's identities: `report:<id>`, `page:<report_id>/<page_id>`, `component:<report_id>/<component_id>`, `datasource:<id>`, with `source_layer` `lookerstudio_content` or `lookerstudio_datasource`, and `source_updated_at` from the report's `modified_date`. There is no `last_migrated_commit`.
-- **Step 6b (baseline).** Record the captures in place of `lookml_commit`: per report, `captured_at`, `app_version` and revision read; the extractor, catalog and metrics script versions; and `parity_as_of` set to the latest capture time, because Route C recordings are the expected results and they reflect the data at capture.
+Confirm `project_type: bi_migration` and `bi_pair: looker_studio_to_omni`. Read the report list and the namespace. If `looker_studio_capture_consent` is empty, stop and output:
 
-
-### Step 1: Load the audit and existing rulings
-
-Read both catalogs and the audit report. Read `decisions.md` and collect every ruling whose `Applies to:` line names `bi_migration_plan` or one of the ruling kinds in Step 3. Read `bi_migration.stale_after_days` (default 180) and `bi_migration.parity_scope` (default `prioritised`) from `status.md`.
-
-### Step 2: Rank content by usage
-
-For every `dashboard` and `look` row:
-
-- Sort by `views_90d` descending. Assign `usage_rank` (1 = most viewed). Rows with `views_90d: unknown` sort last and carry `usage_rank: unknown`.
-- Compute the cumulative share of views. Mark the smallest set of rows that reaches 80% of total views as **tier 1**. The remainder with any views in the window is **tier 2**. Rows with zero views and `last_viewed` older than `stale_after_days` are **stale**.
-- Record in the plan: tier 1 count and share, tier 2 count, stale count, unknown count.
-
-If `usage_source: unavailable` in `status.md`, every row is `usage_rank: unknown`, no tiers can be computed, and the plan records a parked decision: "Usage is unavailable. Rank by hand, or accept all content as tier 1."
-
-### Step 3: Capture the director's rulings
-
-Each ruling below is read from `decisions.md` if present. If absent, write a `parked_decisions` entry in `status.md` (kind `ruling`, artifact `bi_migration_plan`, the question as worded here) and record `ruling: parked` in the plan. Do not invent a default for any of them except where a default is stated.
-
-| Ruling | Question | Default |
-|---|---|---|
-| Parity or redesign, per tier | "Tier 1: rebuild each dashboard as-is in Omni (parity), or redesign against the Omni model? Tier 2: same question." | none |
-| Drop list | "Drop the stale set (N dashboards, M Looks, no views in {{stale_after_days}} days)? Any exceptions?" | none |
-| PDT disposition | For each PDT in the redesign register: "Move this PDT's logic into a dbt model, rebuild it as an Omni query view, or drop it?" | none |
-| Permission mapping | "Map these Looker groups and user attributes to Omni groups, user attributes and access grants as listed?" (the plan proposes a one-to-one map; the director confirms or amends) | proposed one-to-one map, pending confirmation |
-| Topic architecture | "One Omni topic per Looker explore, or a schema, shared and workbook layering?" | one topic per explore |
-| Parallel-run window | "Run Looker and Omni side by side for {{parallel_run_days}} days?" | `bi_migration.parallel_run_days` |
-| Parity scope | "Compare every tile, or only tier 1 dashboards' tiles?" | `bi_migration.parity_scope` |
-
-A dashboard the director rules `redesign` still gets a register row and a content batch; its tiles are built against the redesigned topic rather than mapped field by field, and `bi_equivalency` compares only the measures the director names as the redesign's acceptance set.
-
-### Step 4: Decide the model scope
-
-The in-scope model is every view and explore referenced by any dashboard or Look that is not dropped, plus every view those explores join. A view referenced by nothing in scope is **out of scope** and listed under "Model not carried" with the reason `no in-scope content references it`. Fields inside an in-scope view are all carried unless the director rules otherwise; hidden fields are carried hidden.
-
-Every `redesign` model row in scope gets a disposition here: `redesign in Omni` (rebuild by hand on the branch), `drop` (no content needs it), or `defer` (carried as a `needs_human` item into the model batch). PDTs take the ruling from Step 3.
-
-### Step 5: Cut batches
-
-**Model batches** (`batch_kind: model`): group in-scope explores by shared views. Order batches so that a batch's views are all emitted before any topic that uses them; a view shared by several explores goes in the earliest batch that needs it. Target 5 to 15 views per batch. Name batches `b01`, `b02`, ...
-
-**Content batches** (`batch_kind: content`): tier 1 dashboards first, ordered by `usage_rank`, then tier 2, then Looks. Target 5 to 10 dashboards per batch. Each content batch's `depends_on_batch` is the last model batch that carries any explore in its dashboards' `explore_refs`. Schedules and alerts join the batch of the dashboard they belong to. Groups form one `permissions` batch (`batch_kind: model`, first in order) so access grants exist before content is published.
-
-Write `migration/bi_migration_batches.csv` with columns, in this order: `batch_id`, `batch_kind` (`model` | `content`), `object_type`, `object_id`, `object_name`, `explore_or_topic`, `usage_rank`, `ruling` (`parity` | `redesign` | `drop`), `depends_on_batch`. Dropped objects appear with `batch_id` empty and `ruling: drop`, so the drop list is in the same file as the plan.
-
-### Step 6: Bootstrap the register
-
-If `migration/migration_register.csv` does not exist, create it from `TEMPLATES/migration/migration_register.csv`. Insert one row per in-scope object (not dropped) with:
-
-| Column | Value for BI rows |
-|---|---|
-| `model` | `view:<name>`, `topic:<explore>`, `dashboard:<id>`, `tile:<dashboard_id>/<element_id>`, `look:<id>`, `schedule:<id>`, `group:<name>` |
-| `object_type` | `view` | `topic` | `dashboard` | `tile` | `look` | `schedule` | `group` |
-| `source_path` | the `lkml_file` for model rows; the Looker URL path for content rows |
-| `source_layer` | `looker_model` or `looker_content` |
-| `bq_target` | empty until `omni_model` or `omni_content` writes the Omni reference (model id, branch and file, or document identifier). BI rows are exempt from the three-segment physical-path rule, like `metabase_card` rows |
-| `state` | `pending` |
-| every other column | `null` |
-
-Every `view` and `topic` row carries `last_migrated_commit` = `looker_audit.lookml_commit` (the LookML commit the audit classified from; `omni-model-generate` advances it when the batch is emitted), and every `dashboard` and `look` row carries `source_updated_at` from the content catalog. These are the baselines `migration-drift-generate` compares against; a row without them cannot be drift-checked and is reported as `not_applicable`.
-
-Rows that already exist are left as they are. Record `register_rows` in `status.md`.
-
-### Step 6b: Write the baseline and the evidence file
-
-`migration/baseline.yaml` records what every later verdict is measured against. A verdict that does not name a baseline is not evidence.
-
-```yaml
-baseline_id: b001                       # increments on every re-baseline
-written_at: "{{TODAY}}"
-written_by: <consultant>
-lookml_commit: <migration_sources.lookml.last_commit>
-looker_deployed_revision: <the production LookML commit Looker reports for the project, when it differs from lookml_commit>
-looker_base_url: <bi_migration.looker_base_url>
-omni_model_id: <bi_migration.omni_model_id>
-omni_branch: <bi_migration.omni_branch>
-warehouse: <bi_migration.warehouse>
-converter_version: <from scripts/lookml_to_omni.py, recorded in conversion_summary.json>
-pair_ruleset_sha: <SHA-256 over bi_pairs/looker_to_omni/*.md plus the engagement's overrides directory>
-comparator_version: <from scripts/bi_parity.py>
-parity_as_of: <bi_migration.parity_as_of>   # pinned here; bi-equivalency-validate refuses to run unpinned
+```
+Looker Studio capture needs recorded client consent for automated, read-only access
+to the reports with your own Google account. Record it in status.md as
+bi_migration.looker_studio_capture_consent (approved_by, date), then re-run:
+/wire:looker-studio-audit-generate $ARGUMENTS
 ```
 
-Set `bi_migration.parity_as_of` now if it is null: the end of the last complete day before the first model batch, in the warehouse's timezone. Moving it later is a re-baseline (new `baseline_id`, every standing verdict invalidated), which is the point: a parity result at one instant is not evidence at another.
+Make sure `.wire/releases/*/audit/looker_studio/captures/` is in the repository's `.gitignore`; add the line if it is missing. Captures hold chart values and can hold credentials stored in connector settings, so they are never committed. The capture script refuses to write into a tracked folder.
 
-`migration/parity/evidence.csv` starts here with one row per `tile` and `view` register row. Compute `evidence_fingerprint` with `python3 <plugin-root>/scripts/bi_evidence.py fingerprint --components <json>` from the seven components; at bootstrap only `source_definition` (lookml_commit plus the object's `.lkml` file hash), `dependencies` (the object's closure from `audit/dependencies.jsonl`), `policy_context` (hash of the access filters, grants and user attributes the object is under), `data_context` (`parity_as_of`) and `adapters` (converter, pair ruleset and comparator versions) are known; `target_definition` and `test_contract` are the literal `absent` until `omni-model-generate` and `bi-equivalency-validate` fill them. `stale_kinds` is empty. `migration-drift-generate` is the only command that writes `stale_kinds`; `bi-equivalency-validate` is the only one that clears it.
+If `audit/looker_studio_audit.md` already exists, ask whether to re-generate (overwrite) or update (re-capture only the reports named).
 
-### Step 7: Write the plan
+### Step 2: Capture (Routes B and C)
 
-**Output location**: `.wire/releases/$ARGUMENTS/migration/bi_migration_plan.md`
+Run, from the repository root:
 
-Sections:
-- Summary: in scope by object type, dropped by object type, batches by kind, rulings made and parked
-- Usage ranking: the tier table and the 80% cut
-- Rulings: one subsection per ruling in Step 3, with the decision, who made it and when (from `decisions.md`), or `parked`
-- Model scope: carried views and explores per batch; model not carried, with reasons; redesign dispositions; PDT dispositions
-- Permission map: Looker group or user attribute to Omni group, user attribute or access grant
-- Topic architecture: the chosen design and the resulting topic list
-- Batches: the batch table with dependencies, and the order they run in
-- Parallel run and parity: window, `parity_scope`, the tiles that will be compared, the pinned as-of once set
-- Reference key: every code used (batch ids, ruling ids) with its meaning and defining document, per `specs/utils/reference_legibility.md`
+```bash
+python3 <plugin-root>/scripts/looker_studio_capture.py \
+  --out .wire/releases/$ARGUMENTS/audit/looker_studio/captures \
+  --screenshots <report_url> [<report_url> ...]
+```
+
+The first run opens Chrome on a separate profile under `~/.wire/looker_studio/` and waits up to 5 minutes for the consultant to sign in. Tell the consultant to sign in with the account that has the access listed above, and that the window will move between pages and data sources on its own. Later runs reuse the profile.
+
+The script visits every page (hidden pages included) so every data source's field list is requested, then opens each data source's editor. It writes `meta.json` per report with the capture time, the Looker Studio app version, the revision read (published or draft), the pages that failed to open and the data sources visited. A report that returns no definition is reported as `FAILED` and the script exits non-zero; record the failure and the likely cause (no access, wrong account) and continue with the others.
+
+### Step 3: Extract each report
+
+```bash
+python3 <plugin-root>/scripts/looker_studio_extract.py \
+  --capture .wire/releases/$ARGUMENTS/audit/looker_studio/captures/<report_id> \
+  --out .wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>
+```
+
+Writes `report.json` and `report.md`. The extractor redacts connector settings whose names look like secrets (password, token, API key) and keeps every unconfirmed enum code as a raw number. If it stops with `ERROR`, the capture's structure is not one it knows (an endpoint changed): record the app version from `meta.json`, stop, and raise it as a blocking issue. Do not hand-edit `report.json`.
+
+### Step 4: Record chart data (Route C)
+
+```bash
+python3 <plugin-root>/scripts/looker_studio_parity.py \
+  --capture .wire/releases/$ARGUMENTS/audit/looker_studio/captures/<report_id> \
+  --report .wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>/report.json \
+  --out .wire/releases/$ARGUMENTS/migration/parity/looker_studio/<report_id> \
+  --namespace <looker_studio_namespace>
+```
+
+Writes one folder per chart result (`source.csv`, optional `compare.csv` and `totals.csv`, `contract.yaml`) and `recordings.json`. These are the expected results `bi-equivalency-validate` compares Omni against. They hold aggregated values as users saw them on the dashboards; if the engagement's data handling rules do not allow those in the repository, add the folder to `.gitignore` and record that in `status.md` as `bi_migration.chart_recordings_tracked: false`.
+
+### Step 5: Read BigQuery job history (Route A, when access allows)
+
+`recordings.json` names the billing project and location of every BigQuery chart's job. For each distinct pair:
+
+```bash
+python3 <plugin-root>/scripts/looker_studio_jobs.py fetch --billing-project <project> --location <location> \
+  --report-id <report_id> --out .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/<report_id>
+python3 <plugin-root>/scripts/looker_studio_jobs.py link \
+  --jobs .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/<report_id>/jobs_raw.json \
+  --report .wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>/report.json \
+  --out .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/<report_id>
+```
+
+If `fetch` fails for lack of `bigquery.jobs.listAll`, record the billing project under "Access requests" and continue: usage is then `unknown` for that report. Never infer usage from anything else.
+
+### Step 6: Build the catalogs
+
+```bash
+python3 <plugin-root>/scripts/looker_studio_catalog.py \
+  --reports .wire/releases/$ARGUMENTS/audit/looker_studio/reports/*/report.json \
+  --chart-sql .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/*/chart_sql.json \
+  --namespace <looker_studio_namespace> \
+  --out .wire/releases/$ARGUMENTS/audit/looker_studio
+```
+
+Writes `content_catalog.csv` and `datasource_catalog.csv`. The classes are the rule in `translation_guide.md`, applied by the script:
+
+| Data source class | Meaning |
+|---|---|
+| `map` | BigQuery table or view; the Omni model can read the same table |
+| `assisted` | BigQuery custom SQL; becomes a dbt model or an Omni SQL view |
+| `pipeline` | Community connector, Google product connector or Sheets; no known warehouse copy, so the plan raises a pipeline task |
+| `blocked` | Definition not read (Edit refused, or not captured) |
+
+| Component class | Meaning |
+|---|---|
+| `mechanical` | Supported chart type, no chart-level formula, no comparison period, not on a blend |
+| `assisted` | Needs a decision: chart-level formula, comparison period, blend, combo or bullet chart, or a control |
+| `redesign` | No Omni equivalent (community visualisations and other types) |
+| `drop` | Decorative shapes and images; text boxes (recreated by hand) |
+
+### Step 7: Write the audit report
+
+**Output location**: `.wire/releases/$ARGUMENTS/audit/looker_studio_audit.md`
+
+Include:
+- Capture record: per report, the capture time, app version, revision read (published or draft, and whether unpublished changes exist), pages that failed to open
+- Summary table: reports, pages (visible and hidden), components by kind, report-level components, blends, parameters, filters, data sources by connector, data-source and chart-level calculated fields
+- Classification breakdown: components and data sources by class
+- Report families: reports whose visible page names match are copies of one template (for example one per client); list each family. The plan merges a family into one Omni template with filters
+- Data source register: every data source with connector, location (project, dataset, table, or the connector and its non-secret settings), class, and which reports and blends use it
+- Pipeline needs: every `pipeline` data source, with what would have to land in the warehouse
+- Blends: inputs, join type (named only where confirmed) and keys
+- Usage: from Route A, components and data sources by last run; `unknown` where Route A did not run
+- Coverage gaps: refused and uncaptured data sources, data sources without a field list, pages that failed, charts with no recording
+- Access requests: a ready-to-send list naming each missing permission and the object it is for (Edit on data source X; BigQuery Resource Viewer on billing project Y)
 
 ### Step 8: Update status
 
 ```yaml
 artifacts:
-  bi_migration_plan:
+  looker_studio_audit:
     generate: complete
-    file: migration/bi_migration_plan.md
-    data_file: migration/bi_migration_batches.csv
+    file: audit/looker_studio_audit.md
     generated_date: "{{TODAY}}"
-    batch_count: N
-    objects_in_scope: N
-    objects_dropped: N
-    register_rows: N
-    rulings_parked: N
+    report_count: N
+    page_count: N
+    hidden_page_count: N
+    component_count: N
+    datasource_count: N
+    datasources_blocked: N
+    datasources_pipeline: N
+    chart_recordings: N
+    usage_source: bigquery_jobs | partial | unavailable
+    app_versions: [<from meta.json>]
     generated_files:
-      - migration/bi_migration_plan.md
-      - migration/bi_migration_batches.csv
-      - migration/migration_register.csv
+      - audit/looker_studio_audit.md
+      - audit/looker_studio/content_catalog.csv
+      - audit/looker_studio/datasource_catalog.csv
 ```
 
 ### Step 9: Output summary
 
-Print the scope totals, the batch count by kind, the rulings made and parked (with their questions), and the next command:
+Print the totals, the class breakdown, the access requests, and the next command:
 
 ```
-/wire:bi-migration-plan-validate $ARGUMENTS
+/wire:looker-studio-audit-validate $ARGUMENTS
 ```
 
 ## Output Files
 
-- `.wire/releases/$ARGUMENTS/migration/bi_migration_plan.md`
-- `.wire/releases/$ARGUMENTS/migration/bi_migration_batches.csv`
-- `.wire/releases/$ARGUMENTS/migration/migration_register.csv` (created or extended)
-- `.wire/releases/$ARGUMENTS/migration/baseline.yaml`
-- `.wire/releases/$ARGUMENTS/migration/parity/evidence.csv` (created)
+- `.wire/releases/$ARGUMENTS/audit/looker_studio_audit.md`
+- `.wire/releases/$ARGUMENTS/audit/looker_studio/content_catalog.csv`
+- `.wire/releases/$ARGUMENTS/audit/looker_studio/datasource_catalog.csv`
+- `.wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>/report.json` and `report.md`
+- `.wire/releases/$ARGUMENTS/audit/looker_studio/jobs/<report_id>/chart_sql.json` (when Route A ran)
+- `.wire/releases/$ARGUMENTS/migration/parity/looker_studio/<report_id>/` (Route C recordings)
+- `.wire/releases/$ARGUMENTS/audit/looker_studio/captures/` (git-ignored, never committed)
 - Updated `.wire/releases/$ARGUMENTS/status.md`
 
 ## Post-Execution Hooks
@@ -416,11 +423,11 @@ After updating `status.md`, run these in sequence:
 
 1. **Execution log**: append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-2. **Jira sync**: follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `bi_migration_plan` as artifact, `generate` as action.
+2. **Jira sync**: follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `looker_studio_audit` as artifact, `generate` as action.
 
-3. **Document store**: follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `bi_migration_plan` as artifact_id, `BI Migration Plan` as artifact_name, and the `file` value from `artifacts.bi_migration_plan` in status.md as file_path.
+3. **Document store**: follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `looker_studio_audit` as artifact_id, `Looker Studio Audit` as artifact_name, and the `file` value from `artifacts.looker_studio_audit` in status.md as file_path.
 
-4. **Auto-commit**: follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `bi_migration_plan` as artifact, `generate` as action.
+4. **Auto-commit**: follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `looker_studio_audit` as artifact, `generate` as action.
 
 Execute the complete workflow as specified above.
 

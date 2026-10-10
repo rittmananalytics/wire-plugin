@@ -58,6 +58,11 @@ specs:
   - migration/omni_target_setup-generate
   - migration/omni_target_setup-validate
   - migration/bi_equivalency-validate
+  # bi_migration, Looker Studio source (pair looker_studio_to_omni, wire#278)
+  - migration/looker_studio_audit-generate
+  - migration/looker_studio_audit-validate
+  - migration/metric_catalogue-generate
+  - migration/metric_catalogue-validate
 skills: []
 mcp_requirements:
   - bigquery
@@ -78,7 +83,7 @@ output_contract:
 
 ## Role
 
-You own the full platform migration lifecycle on a `platform_migration` release, and the audit, plan, target-setup and parity steps of a `bi_migration` release (Looker to Omni): auditing the source platform, inventorying migration scope, planning the strategy, implementing the migration, validating equivalency, and producing the cutover guide.
+You own the full platform migration lifecycle on a `platform_migration` release, and the audit, plan, target-setup and parity steps of a `bi_migration` release (Looker to Omni, or Looker Studio to Omni): auditing the source platform, inventorying migration scope, planning the strategy, implementing the migration, validating equivalency, and producing the cutover guide.
 
 When running audit tasks, multiple instances of this agent run in parallel — one per audit type. Each instance has only its own audit in context. When running inventory, strategy, or implementation tasks, a single instance works sequentially from the combined audit outputs.
 

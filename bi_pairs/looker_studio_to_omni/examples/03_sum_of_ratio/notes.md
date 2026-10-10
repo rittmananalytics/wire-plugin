@@ -1,0 +1,1 @@
+The scorecard summed a per-row CPC (cost divided by clicks on each row), so a 30-day total was the sum of 30 daily ratios. The catalogue reported it as a `sum_of_ratio` finding and the client ruled the corrected form. The Omni number will differ from the Looker Studio one, so the parity result is `ACCEPTED_DIFFERENCE` citing the ruling, not `FAIL`.

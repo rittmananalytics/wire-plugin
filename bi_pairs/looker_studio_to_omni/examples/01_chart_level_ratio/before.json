@@ -1,0 +1,7 @@
+{
+  "component": {"id": "cd-ctr", "type": "kpi-metric", "dataset": {"id": "aaaaaaa1-0000-4000-8000-000000000001"},
+    "metrics": [{"name": "qt_ctr", "aggregation": 7, "aggregation_name": null, "label": "CTR",
+                 "formula": "SUM(t0._clicks_) / SUM(t0._impressions_)"}]},
+  "metric_catalogue_group": {"key": "ctr", "candidate_class": "conflict",
+    "ruling": "choose", "canonical_formula": "SUM(clicks) / SUM(impressions)", "target_name": "click_through_rate"}
+}

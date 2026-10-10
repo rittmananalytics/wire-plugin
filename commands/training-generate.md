@@ -649,7 +649,7 @@ Questions?
 
 ### Step 6b: Omni AI answer quality (Omni engagements only)
 
-When the engagement's BI tool is Omni (a `bi_migration` release with `bi_pair: looker_to_omni`, or `reporting_tool: omni`), run the AI answer-quality workflow in `specs/utils/omni_ai_quality.md` as part of enablement: gather 10 to 20 real user questions during training scoping (Step 1), tune the model's AI surface (topics, labels, `all_values`, synonyms, `ai_context`), run the question set and apply its deterministic gate (`PASS` / `ITERATE` / `FAIL` / `INSUFFICIENT`). Record the question set, outcomes and verdict in an "AI answer quality" section of the training materials, and include the prompt-log maintenance habit in the client-facing content. Skip this step silently for every other BI tool.
+When the engagement's BI tool is Omni (a `bi_migration` release with `bi_pair: looker_to_omni` or `looker_studio_to_omni`, or `reporting_tool: omni`), run the AI answer-quality workflow in `specs/utils/omni_ai_quality.md` as part of enablement: gather 10 to 20 real user questions during training scoping (Step 1), tune the model's AI surface (topics, labels, `all_values`, synonyms, `ai_context`), run the question set and apply its deterministic gate (`PASS` / `ITERATE` / `FAIL` / `INSUFFICIENT`). Record the question set, outcomes and verdict in an "AI answer quality" section of the training materials, and include the prompt-log maintenance habit in the client-facing content. Skip this step silently for every other BI tool.
 
 ### Step 7: Example Training Content by Type
 

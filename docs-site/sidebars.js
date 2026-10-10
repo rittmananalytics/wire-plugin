@@ -88,6 +88,7 @@ const sidebars = {
             'tutorials/platform-migration-tenant-carveout',
             'tutorials/looker-to-omni-migration',
             'tutorials/looker-to-omni-real-run',
+            'tutorials/looker-studio-to-omni',
             'tutorials/agentic-data-stack',
             'tutorials/droughty',
             'tutorials/custom',

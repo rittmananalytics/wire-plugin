@@ -21,11 +21,11 @@ a full release this way and names the command Wire runs at each step.
 
 :::
 
-Moving a reporting layer from one BI tool to another is a different job from moving a warehouse: the warehouse and the dbt layer stay where they are, and what has to be rebuilt, checked and switched over is the semantic model and the content that sits on it. The BI Tool Migration release type is for that job. The first and, in 4.0.0, only pair is **Looker to Omni**: LookML views and explores become Omni views and topics on a model branch, Looker dashboards and Looks become Omni dashboards, every migrated tile is proven equivalent before users are switched and Looker is decommissioned after a parallel run.
+Moving a reporting layer from one BI tool to another is a different job from moving a warehouse: the warehouse and the dbt layer stay where they are, and what has to be rebuilt, checked and switched over is the semantic model and the content that sits on it. The BI Tool Migration release type is for that job. It has two pairs. **Looker to Omni** (since 4.0.0): LookML views and explores become Omni views and topics on a model branch, Looker dashboards and Looks become Omni dashboards, every migrated tile is proven equivalent before users are switched and Looker is decommissioned after a parallel run. **Looker Studio to Omni** (since 4.2.2): Looker Studio reports are captured from the editor, their calculated fields are consolidated into one agreed set in a metric catalogue, and the Omni model is built from the warehouse rather than from the reports. See [Looker Studio to Omni](#looker-studio-to-omni) below.
 
 It is not the same as migrating an Omni estate between warehouses. That is `platform_migration` with `migration.reporting_tool: omni`, where the pivot is the Omni connection, whereas here the pivot is the semantic model itself.
 
-**Supported pairs**: `looker_to_omni`
+**Supported pairs**: `looker_to_omni` (default), `looker_studio_to_omni`
 
 The flow, from the Looker estate at the start to Looker retired at the end, is as follows:
 
@@ -128,15 +128,39 @@ Both client repositories keep changing while the migration runs, and the release
 
 Text and markdown tiles, styling and colour themes, table calculations that reference runtime values and anything written in Liquid. Each is listed by the content batch for hand finishing, and each skipped tile appears in the parity report as `not_compared`.
 
+## Looker Studio to Omni
+
+Looker Studio has no semantic model to convert. Each report's data sources and charts hold their own formulas, so the same metric is often defined several ways across reports. A one-for-one migration would carry those silos into Omni. The `looker_studio_to_omni` pair (`bi_pair: looker_studio_to_omni` in the release's status file) changes the front of the release:
+
+| Phase | Artifact | Commands | What it produces |
+|---|---|---|---|
+| Looker Studio audit (replaces the Looker audit) | `looker_studio_audit` | `/wire:looker-studio-audit-generate`, `-validate`, `-review` | Report definitions, layout, data sources and calculated fields captured from the Looker Studio editor; the values each chart showed; BigQuery job history where access allows; a content catalogue and a data source catalogue with translation classes |
+| Metric catalogue | `metric_catalogue` | `/wire:metric-catalogue-generate`, `-validate`, `-review` | Every calculated field grouped by metric name and classed as a copy, an alias or a conflict, with "sum of ratio" errors flagged; the review is the client's ruling on one definition per metric |
+| Plan | `bi_migration_plan` | as above | Adds a model route per subject area: *map* onto an existing warehouse model, or *build* one first in a linked `dbt_development` release. Data sources with no warehouse copy become pipeline tasks |
+
+The model, content, parity and cutover phases keep their commands. The Omni model is written from the warehouse model and the ruled catalogue (there is no converter for this pair). Parity compares each Omni tile with the values the Looker Studio chart showed when it was captured, which works for every connector, including Funnel.io, GA4 and Sheets.
+
+**Evidence routes.** The audit reads three sources:
+
+| Route | What | Access |
+|---|---|---|
+| B | Report and data source definitions, read from the Looker Studio editor's internal calls in a Chrome window signed in as the consultant | View on the report; Edit on each data source |
+| C | Each chart's query and the values it displayed, recorded on the same page visits | View on the report |
+| A | The SQL each BigQuery chart ran, and 180 days of usage, from BigQuery job history | BigQuery Resource Viewer on the billing project |
+
+**Limitations.** Routes B and C use undocumented endpoints that Google can change without notice; each capture records the Looker Studio app version and the extractor stops on structure it does not know. The capture needs an interactive Google sign-in and recorded client consent, so it cannot run unattended. Route A covers BigQuery only. Recorded chart values reflect the data at capture time. Parameters, custom SQL data sources and extracted data sources had not been seen in a real capture when 4.2.2 shipped and are handled generically. The full list is in the [Looker Studio to Omni tutorial](../tutorials/looker-studio-to-omni#limitations).
+
 ## Prerequisites
 
 - The LookML repo cloned locally, and Looker API credentials with System Activity access for usage.
 - The Omni CLI configured, an API key that can create a model branch and documents, plus the `omni-analytics` agent skills installed (`/plugin marketplace add exploreomni/omni-agent-skills`, `/plugin install omni-analytics@omni-analytics`).
-- `/wire:new` with release type "BI tool migration (Looker to Omni)". It asks for the LookML path, the Looker and Omni URLs, the Omni model id and the parallel-run length.
+- `/wire:new` with release type "BI tool migration". It asks whether the source is Looker or Looker Studio. For Looker it asks for the LookML path, the Looker and Omni URLs, the Omni model id and the parallel-run length. For Looker Studio it asks for the report URLs, a client slug, who approved automated read-only access, and the Omni details.
+- For Looker Studio: Python with Playwright (`python3 -m pip install playwright`) and Google Chrome on the consultant's machine, and the access listed above.
 
 ## See also
 
 - [Tutorial: Looker to Omni Migration](../tutorials/looker-to-omni-migration): a complete release, directed in prose, with every command Wire runs named
 - [Looker to Omni: A Real Run](../tutorials/looker-to-omni-real-run): a real migration of three dashboards on Rittman Analytics' own estate, as it was run, with the prompts, the counts and the 52 rulings
+- [Tutorial: Looker Studio to Omni](../tutorials/looker-studio-to-omni): capture, metric catalogue, model route, parity from recorded chart values, and the limitations
 - [The Release Director Model](../advanced/release-director)
 - [Platform Migration](./platform-migration): the same register and drift mechanisms applied to a warehouse move

@@ -214,7 +214,16 @@ Only `pass`, `pass_qualified` and `pass_declared_deviation` satisfy the gate. `B
 
 **Evidence invalidation.** Each tile verdict carries an `evidence_fingerprint` (`scripts/bi_evidence.py fingerprint`, SHA-256 over seven components: the LookML definition, the emitted Omni definition, the dependency closure, the policy context, the data context, the test contract and the adapter versions), recorded in `migration/parity/evidence.csv`. `migration-drift-generate` recomputes it and writes `stale_kinds`; a tile whose row lists `numeric_parity` there is `NOT_RUN` for the gate until this command re-runs it. A presentation-only Omni edit stales `presentation_fidelity` alone and costs no warehouse query.
 
-## Workflow
+## Pair: looker_studio_to_omni
+
+The source side is not re-run. Looker Studio offers no query API, so the expected result for each chart is its Route C recording, made during the audit capture:
+
+- **Contracts.** Use `migration/parity/looker_studio/<report_id>/recordings/<key>/contract.yaml` (written by `looker_studio_parity.py`, `target_object` and `field_map` filled by `omni-content-generate`). The source result is the recording's `source.csv`.
+- **Pinning.** Run the Omni tile with the contract's `execution.date_range` as fixed dates and `execution.timezone`, not with `parity_as_of`. A relative range in the report (for example "last 28 days") was resolved to fixed dates when it was recorded.
+- **Data that moved since capture.** If late-arriving data changes the warehouse after the capture, a FAIL can be vintage, not logic. Re-capture the report (`looker-studio-audit-generate`, update mode) and re-run before investigating; record it as `diff_vintage` when the re-capture resolves it.
+- **Ruled changes.** A tile whose metric changed under a metric catalogue ruling (including every `sum_of_ratio` finding) is `ACCEPTED_DIFFERENCE` with the ruling id from `decisions.md` as the reason.
+- **Blocked.** Tiles on `pipeline` or `blocked` data sources with no warehouse copy are `BLOCKED` with that reason. Tiles with no recording are `NOT_RUN`.
+
 
 ### Step 1: Resolve scope and the comparison sides
 

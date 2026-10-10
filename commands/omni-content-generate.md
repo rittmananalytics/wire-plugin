@@ -280,7 +280,18 @@ What the rebuild can and cannot do is fixed by Omni's document API and by what t
 - `wire/bi_pairs/looker_to_omni/content_mapping.md`, section "Rules from Omni's own dashboard migration guide": every control in every tile's map, no quarter-grained date keys, hidden fields left out of `fields`, table pivots in `query.pivots` and chart pivots as the series field, parameters as Mustache block templated filters, never delete by name
 - `.wire/releases/$ARGUMENTS/status.md`
 
-## Workflow
+## Pair: looker_studio_to_omni
+
+For a content batch (one report family), Step 2 reads `audit/looker_studio/reports/<report_id>/report.json` in place of the Looker API, and the mapping follows `wire/bi_pairs/looker_studio_to_omni/content_mapping.md`:
+
+- **One document per report family.** The family's copies become one Omni dashboard; the field that split them (for example a client id filter) becomes a dashboard control or a user attribute, per the plan's ruling.
+- **Pages.** Each visible page in scope becomes a tab or a section of the document, in navigation order. Hidden pages are carried only under the plan's ruling.
+- **Components.** `mechanical` and `assisted` components map to tiles by `omni_chart` in the content catalog. Report-level components appear once per dashboard, not once per page. Text boxes become `inline-text` items from `report.json` text; decorative shapes and images are dropped and listed in the hand-finish list.
+- **Layout.** Use the `grid_x`, `grid_y`, `grid_w`, `grid_h` columns (24-column grid, rule in `content_mapping.md`) to author the `containers` tree in full.
+- **Fields.** Each tile's metrics resolve to the Omni measure named by the metric catalogue's `target_name` for that metric; a chart-level formula with no ruled group is `unmapped_field` and skipped.
+- **Controls and comparison.** Date range and dimension filter controls become Omni controls; a scorecard comparison period becomes an Omni comparison on the KPI tile.
+- **Parity link.** For every created tile, fill `target_object` in the matching Route C contract under `migration/parity/looker_studio/<report_id>/recordings/<key>/contract.yaml`, and its `field_map` from recording column to Omni field.
+
 
 ### Step 1: Resolve the batch
 

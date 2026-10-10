@@ -1,0 +1,13 @@
+# marketing/web_sessions_daily.view (Omni)
+measures:
+  clicks:
+    aggregate_type: sum
+    sql: ${web_sessions_daily.clicks}
+  impressions:
+    aggregate_type: sum
+    sql: ${web_sessions_daily.impressions}
+  click_through_rate:
+    label: CTR
+    description: "Clicks divided by impressions. Ruled in the metric catalogue (decision D-12)."
+    sql: ${clicks} / NULLIF(${impressions}, 0)
+    format: percent_2

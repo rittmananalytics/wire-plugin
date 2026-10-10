@@ -278,7 +278,16 @@ Omni differs from Looker in ways the emitted YAML must respect: there is no `${T
 - The LookML repository: `migration_sources.lookml.local_snapshot_path` when registered and refreshed, otherwise `bi_migration.lookml_repo_path`
 - Pair files at `wire/bi_pairs/looker_to_omni/` and, when present, engagement overrides at `.wire/engagement/bi_pair_overrides/looker_to_omni/`
 
-## Workflow
+## Pair: looker_studio_to_omni
+
+Looker Studio has no semantic model to convert, so there is no converter step and no `needs_human.json` from a script. For a model batch (one subject area):
+
+- **Source of the model.** The warehouse tables named by the plan's model route: the existing modelled tables (`map`), or the linked `dbt_development` release's warehouse models (`build`, which must have passed `dbt-validate`). Never the Looker Studio data sources themselves.
+- **Measures.** One Omni measure per ruled metric-catalogue group in the subject area, named by `target_name`, implementing `canonical_formula` as a ratio of totals where it is a ratio. A ruled formula is written exactly; it is not improved.
+- **Joins.** Each blend in scope becomes a modelled join at a stated grain, with the join keys from `report.json` (`blends[].tree.keys`). A blend whose join type code is unconfirmed is a `needs_human` item.
+- **Authoring.** The agent writes the YAML with the `omni-model-builder` skill on the release branch. Because nothing deterministic emits it, every file must pass `/wire:omni-model-lint` and `/wire:omni-model-validate` before review; the batch summary lists each measure with the catalogue group it implements.
+- **needs_human.** Write the batch's open items (unconfirmed join codes, pipeline data sources not yet in the warehouse, catalogue groups still parked) to `migration/omni_model/<batch_id>/needs_human.json` in the same shape the converter uses, so review and lint read one format.
+
 
 ### Step 1: Resolve the batch
 

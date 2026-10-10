@@ -1,0 +1,16 @@
+# Built in the linked dbt release (model route: build), then read by Omni.
+# dbt: wh_marketing__daily_cost_and_orders_xa, grain one row per date, full outer join of
+# daily web cost and daily shop orders on date.
+
+# marketing/wh_marketing__daily_cost_and_orders_xa.view (Omni)
+dimensions:
+  date_dt:
+    primary_key: true
+    timeframes: [date, week, month]
+measures:
+  cost_amount:
+    aggregate_type: sum
+  order_count:
+    aggregate_type: sum
+  cost_per_order_amount:
+    sql: ${cost_amount} / NULLIF(${order_count}, 0)
