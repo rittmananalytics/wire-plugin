@@ -7,7 +7,7 @@ title: "Tutorial: Looker Studio to Looker (experimental)"
 
 :::caution[Experimental]
 
-The Looker Studio to Looker pair is experimental. It has run end to end once, on two reports: one on BigQuery tables and custom SQL, one on Looker Studio's Looker connector. Their charts were converted, deployed to Looker and matched. It has not run on a client estate. Review every output before presenting it to a client, and read the [limitations](#limitations) first.
+The Looker Studio to Looker pair is experimental. Review every output before presenting it to a client, and read the [limitations](#limitations) first.
 
 :::
 
@@ -88,7 +88,7 @@ Looker's validator also warned that a dashboard on the existing `analytics` mode
 
 | Limitation | Effect | What to do |
 |---|---|---|
-| Experimental | Run end to end once on two reports; not on a client estate, report families, community connectors or blends | Treat outputs as drafts for review |
+| Experimental | Outputs are drafts | Review them before presenting them to a client |
 | Undocumented endpoints | As for the Omni pair: the capture reads the editor's internal calls | See the [Looker Studio to Omni limitations](./looker-studio-to-omni#limitations) |
 | Blends | Not converted | Rule the join in the plan |
 | Unreachable connectors | Search Console, GA4, Sheets and community connectors are not converted | A pipeline task, or drop |

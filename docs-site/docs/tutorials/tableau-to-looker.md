@@ -7,7 +7,7 @@ title: "Tutorial: Tableau to Looker (experimental)"
 
 :::caution[Experimental]
 
-The Tableau to Looker pair is experimental. It has run end to end once, on a Tableau Cloud trial site: Tableau's sample workbooks, and one sheet on BigQuery that was converted, deployed to Looker and matched row for row. It has not run on a client estate. Review every output before presenting it to a client, and read the [limitations](#limitations) first.
+The Tableau to Looker pair is experimental. Review every output before presenting it to a client, and read the [limitations](#limitations) first.
 
 :::
 
@@ -131,8 +131,7 @@ The sheet's 34 rows from Query View Data were compared, with the standard compar
 
 | Limitation | Effect | What to do |
 |---|---|---|
-| Experimental | Run end to end once on a Tableau Cloud trial site: one BigQuery sheet converted, deployed to Looker and matched row for row. Not on a client estate, and not on a multi-tile dashboard | Treat outputs as drafts for review; report problems on wire#287 |
-| New estates hold new structures | Two live runs found fourteen faults the hand-written fixtures missed; a client estate will hold more | Run the audit early and read `needs_human.json` before planning |
+| Experimental | Outputs are drafts | Review them before presenting them to a client |
 | A client repo with views already | The default output assumes it owns the repo root | Use `--include-root <folder>` and a separate model |
 | Displayed values in parity | Query View Data returns values rounded to the sheet's number format | Set each measure's precision to the displayed precision |
 | Extract refresh history | The last refresh time comes from the site's job history, which keeps a limited period | An older refresh is recorded as unknown; check the extract's schedule |

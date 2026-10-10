@@ -7,7 +7,7 @@ title: "Tutorial: Metabase to Looker (experimental)"
 
 :::caution[Experimental]
 
-The Metabase to Looker pair is experimental. It has run end to end once, on a Metabase Cloud trial instance: four questions on BigQuery, two in native SQL and two built in the query builder, were converted, deployed to Looker and matched row for row. It has not run on a client estate. Review every output before presenting it to a client, and read the [limitations](#limitations) first.
+The Metabase to Looker pair is experimental. Review every output before presenting it to a client, and read the [limitations](#limitations) first.
 
 :::
 
@@ -100,7 +100,7 @@ The run confirmed the relative date translation both ways: "previous 12 months" 
 
 | Limitation | Effect | What to do |
 |---|---|---|
-| Experimental | Run end to end once on a Metabase Cloud trial: four BigQuery questions. Not on a client estate, another warehouse, large dashboards, or Metabase before version 50 | Treat outputs as drafts for review |
+| Experimental | Outputs are drafts | Review them before presenting them to a client |
 | Native SQL and models | Views on their SQL: exact, not reusable. The lift covers simple single-table SQL, never its `WHERE` clause | Rule remodel or keep per question in the plan |
 | Not converted | Binning by number of bins, multi-stage questions (other than a filter on an aggregation or a grouping column), share, offset, snippets, segments, custom columns over two tables | Each is a needs-human item with the reason |
 | Unsynced tables | No metadata, so no conversion | Sync first; narrow the connection to the datasets in scope |

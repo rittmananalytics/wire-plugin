@@ -7,7 +7,7 @@ title: "Tutorial: Looker Studio to Omni (experimental)"
 
 :::caution[Experimental]
 
-The Looker Studio to Omni pair is experimental. It reads undocumented Looker Studio endpoints, which Google can change without notice. Capture, extraction, cataloguing and the metric catalogue have been run on real client reports. The model, dashboard and parity steps have been tested on synthetic fixtures only and have not yet been run end to end into Omni on a client estate. Review every output before presenting it to a client, and read the [limitations](#limitations) first.
+The Looker Studio to Omni pair is experimental. Review every output before presenting it to a client, and read the [limitations](#limitations) first.
 
 :::
 
@@ -148,7 +148,7 @@ If a tile fails because data arrived after the capture, Wire re-captures that re
 
 | Limitation | Effect | What to do |
 |---|---|---|
-| The pair is experimental | Not yet run end to end into Omni on a client estate | Treat outputs as drafts for consultant review; report problems on wire#278 |
+| Experimental | Outputs are drafts | Review them before presenting them to a client |
 | Routes B and C read undocumented Looker Studio endpoints | Google can change them without notice; a capture or extraction then fails | Each capture records the app version; the extractor stops on structure it does not know. Route A (BigQuery job history) is supported and remains for SQL and usage |
 | The capture needs an interactive Google sign-in in a desktop Chrome window | It cannot run unattended or in CI | Run it during the audit, on the consultant's machine |
 | Client consent is required | The audit refuses to capture without a recorded approval | Record `looker_studio_capture_consent` in the status file |

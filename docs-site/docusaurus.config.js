@@ -11,7 +11,7 @@ const config = {
     v4: true,
   },
 
-  url: 'https://wire-plugin.readthedocs.io',
+  url: 'https://docs.rittmananalytics.com',
   baseUrl: '/en/latest/',
 
   organizationName: 'rittmananalytics',
