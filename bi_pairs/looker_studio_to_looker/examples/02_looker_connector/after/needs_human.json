@@ -1,0 +1,23 @@
+[
+ {
+  "class": "assisted",
+  "construct": "date_range_default",
+  "object": "lookerstudio:halcyon:report:22222222-bbbb-4bbb-8bbb-222222222222/page:q1",
+  "proposal": "set the default (the Route C recordings show the range at capture time)",
+  "reason": "date range control became a dashboard filter; its default range is not in the capture"
+ },
+ {
+  "class": "assisted",
+  "construct": "external_model_dashboard",
+  "object": "lookerstudio:halcyon:report:22222222-bbbb-4bbb-8bbb-222222222222/page:q1",
+  "proposal": "add include: \"/dashboards/halcyon/*.dashboard.lookml\" to the halcyon model",
+  "reason": "dashboard reads only the existing Looker model halcyon: written to dashboards/halcyon/"
+ },
+ {
+  "class": "assisted",
+  "construct": "looker_reaggregation",
+  "object": "lookerstudio:halcyon:report:22222222-bbbb-4bbb-8bbb-222222222222/page:q1/component:cd-lbar",
+  "proposal": null,
+  "reason": "the chart aggregates Looker field orders.total_revenue again (SUM)"
+ }
+]

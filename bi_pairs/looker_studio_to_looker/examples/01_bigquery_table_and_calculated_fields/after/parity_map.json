@@ -1,0 +1,20 @@
+[
+ {
+  "component": "cd-table",
+  "dashboard": "trading_snapshot",
+  "date_field": null,
+  "element": "simple_table_cd_table",
+  "explore": "orders",
+  "fields": {
+   "calc_margin_rate": "orders.total_margin_rate",
+   "calc_region_upper": "orders.region_upper",
+   "chart_margin": "orders.chart_margin",
+   "region": "orders.region"
+  },
+  "limit": 500,
+  "model": "halcyon_ls",
+  "page": "p2",
+  "report": "11111111-aaaa-4aaa-8aaa-111111111111",
+  "sorts": []
+ }
+]

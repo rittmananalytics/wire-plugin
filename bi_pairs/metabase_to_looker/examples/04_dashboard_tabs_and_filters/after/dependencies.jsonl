@@ -1,0 +1,10 @@
+{"from": "looker:halcyon:explore:orders", "kind": "joins", "to": "looker:halcyon:view:customers"}
+{"from": "looker:halcyon:explore:orders", "kind": "joins", "to": "looker:halcyon:view:products"}
+{"from": "metabase:halcyon:card:1", "kind": "contains", "to": "looker:halcyon:field:orders.revenue"}
+{"from": "metabase:halcyon:dashboard:1", "kind": "contains", "to": "metabase:halcyon:card:2"}
+{"from": "metabase:halcyon:dashboard:1", "kind": "contains", "to": "metabase:halcyon:card:3"}
+{"from": "metabase:halcyon:dashboard:1", "kind": "contains", "to": "metabase:halcyon:card:4"}
+{"from": "metabase:halcyon:dashboard:1", "kind": "contains", "to": "metabase:halcyon:card:5"}
+{"from": "metabase:halcyon:table:10", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "metabase:halcyon:table:11", "kind": "contains", "to": "looker:halcyon:view:customers"}
+{"from": "metabase:halcyon:table:12", "kind": "contains", "to": "looker:halcyon:view:products"}

@@ -1,0 +1,37 @@
+{
+ "converter": "ls_to_lookml",
+ "counts": {
+  "bigquery_custom_sql_datasource": {
+   "assisted": 1
+  },
+  "bigquery_table_datasource": {
+   "mechanical": 1
+  },
+  "calculated_field": {
+   "assisted": 3,
+   "redesign": 1
+  },
+  "chart": {
+   "assisted": 1,
+   "mechanical": 3
+  },
+  "date_range_control": {
+   "assisted": 1
+  },
+  "dimension_control": {
+   "mechanical": 1
+  },
+  "page": {
+   "mechanical": 1
+  },
+  "text": {
+   "mechanical": 1
+  }
+ },
+ "dashboards": 1,
+ "explores": 2,
+ "model": "halcyon_ls",
+ "needs_human": 10,
+ "version": "0.1.0",
+ "views": 2
+}

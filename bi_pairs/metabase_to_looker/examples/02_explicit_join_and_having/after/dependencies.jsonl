@@ -1,0 +1,3 @@
+{"from": "looker:halcyon:explore:orders", "kind": "joins", "to": "looker:halcyon:view:products"}
+{"from": "metabase:halcyon:table:10", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "metabase:halcyon:table:12", "kind": "contains", "to": "looker:halcyon:view:products"}

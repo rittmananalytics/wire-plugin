@@ -1,0 +1,24 @@
+{
+ "converter": "ls_to_lookml",
+ "counts": {
+  "chart": {
+   "assisted": 1,
+   "mechanical": 1
+  },
+  "date_range_control": {
+   "assisted": 1
+  },
+  "looker_datasource": {
+   "mechanical": 1
+  },
+  "page": {
+   "mechanical": 1
+  }
+ },
+ "dashboards": 1,
+ "explores": 0,
+ "model": "halcyon_ls",
+ "needs_human": 3,
+ "version": "0.1.0",
+ "views": 0
+}

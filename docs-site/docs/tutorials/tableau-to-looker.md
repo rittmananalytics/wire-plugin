@@ -19,6 +19,8 @@ The release is directed in prose, as in the [Looker to Omni tutorial](./looker-t
 
 Tableau keeps the model and the content together in one XML document per workbook, plus published data sources. There is no git repository, so Wire takes a snapshot through the REST API and pins each object by its `updatedAt` and a SHA-256 of the file. A converter then reads the XML, classifies every construct, translates what it can and lists the rest.
 
+![Each source item and the LookML it becomes: tables to typed views with primary keys, joins to the model's explores, calculations to measures and dimensions, SQL to derived-table views, dashboards and pages to LookML dashboards, filters and controls to dashboard filters with listen; every step also writes needs_human.json for plan rulings and review, and the output passes lint, Looker's validator and parity in that order](/img/bi-migration/source-items-to-lookml.png)
+
 | Step | Script | Output |
 |---|---|---|
 | Snapshot | `tableau_export.py` | Workbooks and data sources (without extracts), inventory with each workbook's views, usage |
@@ -145,6 +147,7 @@ The sheet's 34 rows from Query View Data were compared, with the standard compar
 
 ## See also
 
-- [BI Tool Migration](../release-types/bi-migration)
+- [BI Tool Migration](../release-types/bi-migration#migrating-to-looker)
+- [A session at the terminal: Tableau, Metabase and Looker Studio to Looker](./bi-to-looker-session)
 - Pair files: `bi_pairs/tableau_to_looker/` (translation guide, property mapping, feature detection, content mapping, tooling, worked examples)
 - IR schema: `wire/schemas/bi_ir-schema.md`

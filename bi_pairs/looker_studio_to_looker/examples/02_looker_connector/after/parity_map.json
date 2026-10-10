@@ -1,0 +1,35 @@
+[
+ {
+  "component": "cd-lbar",
+  "dashboard": "looker_pack",
+  "date_field": "orders.created_month",
+  "element": "simple_barchart_cd_lbar",
+  "explore": "orders",
+  "fields": {
+   "orders_region": "orders.region",
+   "orders_total_revenue": "orders.total_revenue"
+  },
+  "limit": 500,
+  "model": "halcyon",
+  "page": "q1",
+  "report": "22222222-bbbb-4bbb-8bbb-222222222222",
+  "sorts": [
+   "orders.total_revenue desc"
+  ]
+ },
+ {
+  "component": "cd-lkpi",
+  "dashboard": "looker_pack",
+  "date_field": "orders.created_month",
+  "element": "kpi_metric_cd_lkpi",
+  "explore": "orders",
+  "fields": {
+   "orders_total_revenue": "orders.total_revenue"
+  },
+  "limit": 500,
+  "model": "halcyon",
+  "page": "q1",
+  "report": "22222222-bbbb-4bbb-8bbb-222222222222",
+  "sorts": []
+ }
+]

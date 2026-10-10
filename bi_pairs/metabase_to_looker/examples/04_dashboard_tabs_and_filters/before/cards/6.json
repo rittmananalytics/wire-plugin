@@ -1,0 +1,45 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "database_id": 2,
+ "dataset_query": {
+  "database": 2,
+  "lib/type": "mbql/query",
+  "stages": [
+   {
+    "aggregation": [
+     [
+      "count",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000030"
+      }
+     ]
+    ],
+    "breakout": [
+     [
+      "field",
+      {
+       "base-type": "type/Float",
+       "binning": {
+        "num-bins": 10,
+        "strategy": "num-bins"
+       },
+       "lib/uuid": "00000000-0000-4000-8000-000000000031"
+      },
+      104
+     ]
+    ],
+    "lib/type": "mbql.stage/mbql",
+    "source-table": 10
+   }
+  ]
+ },
+ "description": null,
+ "display": "bar",
+ "id": 6,
+ "name": "Order value (auto bins)",
+ "result_metadata": [],
+ "type": "question",
+ "updated_at": "2026-09-06T10:00:00Z",
+ "visualization_settings": {}
+}

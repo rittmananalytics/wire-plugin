@@ -232,7 +232,7 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: metric_catalogue
 
 ## Purpose
 
-> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. The same steps serve `looker_studio_to_looker` (experimental), which has run end to end once into Looker on two reports, not on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Looker Studio has no shared semantic model. Each data source and each chart holds its own formulas, so one metric is often defined many ways (CTR as clicks over impressions in one data source, link clicks over reach times 100 in another). Migrating those definitions one for one rebuilds the silos in Omni. The metric catalogue turns many report-level definitions into one agreed set before the Omni model is built.
 

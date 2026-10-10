@@ -1,0 +1,43 @@
+{
+ "collections": [
+  {
+   "id": 5,
+   "location": "/",
+   "name": "Sales"
+  }
+ ],
+ "databases": [
+  {
+   "details": {
+    "project-id": "halcyon-prod",
+    "service-account-json": "[redacted]"
+   },
+   "engine": "bigquery-cloud-sdk",
+   "id": 2,
+   "name": "Halcyon BigQuery"
+  }
+ ],
+ "exported_at": "2026-10-01T09:00:00Z",
+ "exporter": "metabase_export.py 0.1.0",
+ "objects": [
+  {
+   "archived": false,
+   "card_type": "question",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "row",
+   "id": "4",
+   "kind": "card",
+   "name": "Return rate by category",
+   "path": "cards/4.json",
+   "query_kind": "mbql",
+   "sha256": "d963ce8928115e939f3040a848cb1e31738a6b45630b131289d86ac8001f1382",
+   "updated_at": "2026-09-04T10:00:00Z"
+  }
+ ],
+ "site": "halcyon",
+ "snapshot_source": "api",
+ "tool": "metabase",
+ "version": "v1.64.1"
+}

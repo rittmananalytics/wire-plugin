@@ -1,0 +1,144 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "database_id": 2,
+ "dataset_query": {
+  "database": 2,
+  "lib/type": "mbql/query",
+  "stages": [
+   {
+    "aggregation": [
+     [
+      "/",
+      {
+       "display-name": "Return rate",
+       "lib/uuid": "00000000-0000-4000-8000-000000000022",
+       "name": "return_rate"
+      },
+      [
+       "count-where",
+       {
+        "lib/uuid": "00000000-0000-4000-8000-000000000020"
+       },
+       [
+        "=",
+        {
+         "lib/uuid": "00000000-0000-4000-8000-000000000019"
+        },
+        [
+         "field",
+         {
+          "base-type": "type/Boolean",
+          "lib/uuid": "00000000-0000-4000-8000-000000000018"
+         },
+         106
+        ],
+        true
+       ]
+      ],
+      [
+       "count",
+       {
+        "lib/uuid": "00000000-0000-4000-8000-000000000021"
+       }
+      ]
+     ]
+    ],
+    "breakout": [
+     [
+      "field",
+      {
+       "base-type": "type/Text",
+       "join-alias": "Products",
+       "lib/uuid": "00000000-0000-4000-8000-000000000023"
+      },
+      121
+     ]
+    ],
+    "joins": [
+     {
+      "alias": "Products",
+      "conditions": [
+       [
+        "=",
+        {
+         "lib/uuid": "00000000-0000-4000-8000-000000000017"
+        },
+        [
+         "field",
+         {
+          "base-type": "type/BigInteger",
+          "lib/uuid": "00000000-0000-4000-8000-000000000015"
+         },
+         102
+        ],
+        [
+         "field",
+         {
+          "base-type": "type/BigInteger",
+          "join-alias": "Products",
+          "lib/uuid": "00000000-0000-4000-8000-000000000016"
+         },
+         120
+        ]
+       ]
+      ],
+      "lib/type": "mbql/join",
+      "stages": [
+       {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": 12
+       }
+      ],
+      "strategy": "left-join"
+     }
+    ],
+    "lib/type": "mbql.stage/mbql",
+    "source-table": 10
+   },
+   {
+    "filters": [
+     [
+      ">=",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000025"
+      },
+      [
+       "field",
+       {
+        "base-type": "type/Float",
+        "lib/uuid": "00000000-0000-4000-8000-000000000024"
+       },
+       "return_rate"
+      ],
+      0.05
+     ],
+     [
+      "!=",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000027"
+      },
+      [
+       "field",
+       {
+        "base-type": "type/Text",
+        "lib/uuid": "00000000-0000-4000-8000-000000000026"
+       },
+       "category"
+      ],
+      "Gift cards"
+     ]
+    ],
+    "lib/type": "mbql.stage/mbql"
+   }
+  ]
+ },
+ "description": null,
+ "display": "row",
+ "id": 4,
+ "name": "Return rate by category",
+ "result_metadata": [],
+ "type": "question",
+ "updated_at": "2026-09-04T10:00:00Z",
+ "visualization_settings": {}
+}

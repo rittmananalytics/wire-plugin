@@ -132,6 +132,16 @@ def recordings(cap: Path, report: dict):
             spec = rq.get("datasetSpec", {})
             dims = {d.get("name") for d in spec.get("queryFields", []) if "aggregation" not in d.get("dataTransformation", {})
                     and "textFormula" not in d.get("dataTransformation", {})}
+            # Record Count is a system field with no aggregation step in the request, but it is a count (COUNT(1)
+            # in the SQL Looker Studio sends): a measure, never a key
+            comp_fields = {f.get("name"): f for f in (idx.get(cid, (None, {}))[1].get("metrics", []) +
+                                                      idx.get(cid, (None, {}))[1].get("dimensions", []))}
+            dims = {n for n in dims if not re.match(r"datastudio_(blend_)?record_count",
+                                                    (comp_fields.get(n) or {}).get("source_field") or "")}
+            # A field the chart lists as a metric is a measure even when the request carries no aggregation step:
+            # a Looker data source returns its measures already aggregated
+            metric_names = {f.get("name") for f in idx.get(cid, (None, {}))[1].get("metrics", [])}
+            dims -= metric_names
             subsets = {}
             job = None
             for sub in rs.get("dataSubset", []):

@@ -1,0 +1,129 @@
+{
+ "collections": [
+  {
+   "id": 5,
+   "location": "/",
+   "name": "Sales"
+  }
+ ],
+ "databases": [
+  {
+   "details": {
+    "project-id": "halcyon-prod",
+    "service-account-json": "[redacted]"
+   },
+   "engine": "bigquery-cloud-sdk",
+   "id": 2,
+   "name": "Halcyon BigQuery"
+  }
+ ],
+ "exported_at": "2026-10-01T09:00:00Z",
+ "exporter": "metabase_export.py 0.1.0",
+ "objects": [
+  {
+   "archived": false,
+   "card_type": "metric",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "line",
+   "id": "1",
+   "kind": "card",
+   "name": "Revenue",
+   "path": "cards/1.json",
+   "query_kind": "mbql",
+   "sha256": "79bd65a503ebfedb8eb53b2675516eda095a513aa3e08095b4c54eba4565b3aa",
+   "updated_at": "2026-09-01T10:00:00Z"
+  },
+  {
+   "archived": false,
+   "card_type": "question",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "bar",
+   "id": "2",
+   "kind": "card",
+   "name": "Revenue by region",
+   "path": "cards/2.json",
+   "query_kind": "mbql",
+   "sha256": "4d70d163fb9246fe1ea68962545788bc3ff83d6c839b8dfbbe968fe59188b4b4",
+   "updated_at": "2026-09-02T10:00:00Z"
+  },
+  {
+   "archived": false,
+   "card_type": "question",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "line",
+   "id": "3",
+   "kind": "card",
+   "name": "Orders by month",
+   "path": "cards/3.json",
+   "query_kind": "mbql",
+   "sha256": "18f7e7d272b508c3a2f464c31a02a014c8e9c0c736c38a8baa5a45fb7e5b07e4",
+   "updated_at": "2026-09-03T10:00:00Z"
+  },
+  {
+   "archived": false,
+   "card_type": "question",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "row",
+   "id": "4",
+   "kind": "card",
+   "name": "Return rate by category",
+   "path": "cards/4.json",
+   "query_kind": "mbql",
+   "sha256": "d963ce8928115e939f3040a848cb1e31738a6b45630b131289d86ac8001f1382",
+   "updated_at": "2026-09-04T10:00:00Z"
+  },
+  {
+   "archived": false,
+   "card_type": "question",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "bar",
+   "id": "5",
+   "kind": "card",
+   "name": "Order value bands",
+   "path": "cards/5.json",
+   "query_kind": "mbql",
+   "sha256": "b6a7c78774b0ceeabfb52f64b8c5146cb5c29be979bdb342b9b1decab6f18fc1",
+   "updated_at": "2026-09-05T10:00:00Z"
+  },
+  {
+   "archived": false,
+   "card_type": "question",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "bar",
+   "id": "6",
+   "kind": "card",
+   "name": "Order value (auto bins)",
+   "path": "cards/6.json",
+   "query_kind": "mbql",
+   "sha256": "792e2570ba2daf3bb6eeb0d7829f399f7723554d6dfb2378d4b5a3feda576378",
+   "updated_at": "2026-09-06T10:00:00Z"
+  },
+  {
+   "archived": false,
+   "collection": "Sales",
+   "collection_id": 5,
+   "id": "1",
+   "kind": "dashboard",
+   "name": "Sales overview",
+   "path": "dashboards/1.json",
+   "sha256": "3325d7461d92425ec01a27c30d67f9e35a7ca99d94769b4fc3ddf5314496acd9",
+   "updated_at": "2026-09-20T10:00:00Z"
+  }
+ ],
+ "site": "halcyon",
+ "snapshot_source": "api",
+ "tool": "metabase",
+ "version": "v1.64.1"
+}

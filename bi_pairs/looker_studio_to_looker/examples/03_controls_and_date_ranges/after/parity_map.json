@@ -1,0 +1,73 @@
+[
+ {
+  "component": "cd-bar",
+  "dashboard": "trading_snapshot",
+  "date_field": "orders.order_date_date",
+  "element": "simple_barchart_cd_bar",
+  "explore": "orders",
+  "fields": {
+   "order_date": "orders.order_date_date",
+   "region": "orders.region",
+   "revenue": "orders.total_revenue"
+  },
+  "limit": 10,
+  "model": "halcyon_ls",
+  "page": "p1",
+  "report": "11111111-aaaa-4aaa-8aaa-111111111111",
+  "sorts": [
+   "orders.total_revenue desc"
+  ]
+ },
+ {
+  "component": "cd-kpi",
+  "dashboard": "trading_snapshot",
+  "date_field": "orders.order_date_date",
+  "element": "kpi_metric_cd_kpi",
+  "explore": "orders",
+  "fields": {
+   "revenue": "orders.total_revenue",
+   "revenue_2": "orders.total_revenue"
+  },
+  "limit": 500,
+  "model": "halcyon_ls",
+  "page": "p1",
+  "report": "11111111-aaaa-4aaa-8aaa-111111111111",
+  "sorts": []
+ },
+ {
+  "component": "cd-line",
+  "dashboard": "trading_snapshot",
+  "date_field": "weekly_sessions_sql.week_start_as_date_date",
+  "element": "simple_linechart_cd_line",
+  "explore": "weekly_sessions_sql",
+  "fields": {
+   "sessions": "weekly_sessions_sql.total_sessions",
+   "week_start": "weekly_sessions_sql.week_start"
+  },
+  "limit": 500,
+  "model": "halcyon_ls",
+  "page": "p1",
+  "report": "11111111-aaaa-4aaa-8aaa-111111111111",
+  "sorts": [
+   "weekly_sessions_sql.week_start asc"
+  ]
+ },
+ {
+  "component": "cd-pie",
+  "dashboard": "trading_snapshot",
+  "date_field": null,
+  "element": "simple_piechart_cd_pie",
+  "explore": "orders",
+  "fields": {
+   "datastudio_record_count_system_field_id_1": "orders.count",
+   "region": "orders.region"
+  },
+  "limit": 500,
+  "model": "halcyon_ls",
+  "page": "p1",
+  "report": "11111111-aaaa-4aaa-8aaa-111111111111",
+  "sorts": [
+   "orders.count desc"
+  ]
+ }
+]

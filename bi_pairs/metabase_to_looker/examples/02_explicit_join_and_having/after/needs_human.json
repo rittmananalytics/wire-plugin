@@ -1,0 +1,9 @@
+[
+ {
+  "class": "assisted",
+  "construct": "standalone_question",
+  "object": "metabase:halcyon:card:4",
+  "proposal": "keep it, make it a Look through the Looker API (looker_content), or drop",
+  "reason": "question on no dashboard: emitted as a one-tile LookML dashboard"
+ }
+]

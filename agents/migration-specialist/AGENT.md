@@ -68,6 +68,9 @@ specs:
   - migration/tableau_audit-validate
   - migration/looker_target_setup-generate
   - migration/looker_target_setup-validate
+  # bi_migration, Metabase to Looker (experimental)
+  - migration/metabase_source_audit-generate
+  - migration/metabase_source_audit-validate
 skills: []
 mcp_requirements:
   - bigquery

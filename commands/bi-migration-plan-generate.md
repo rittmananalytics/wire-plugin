@@ -268,6 +268,26 @@ When `bi_pair: tableau_to_looker`, the gate resolves this command's precondition
 - **Step 6 (register).** Identities from the audit (`tableau:<site>:workbook:<luid>`, `.../sheet:<name>`, `.../dashboard:<name>`, `tableau:<site>:datasource:<luid>`); `source_updated_at` from `inventory.json` `updated_at` (or the SHA-256 in files mode); no `last_migrated_commit`.
 - **Step 6b (baseline).** Record the snapshot (`exported_at`, edition, API version, SHA-256 per object) in place of `lookml_commit`, and the converter version from `twb_to_lookml.py`.
 
+## Pair: metabase_to_looker
+
+This pair is experimental (see `specs/migration/metabase_source_audit/generate.md`).
+
+When `bi_pair: metabase_to_looker`, the gate resolves this command's preconditions from the profile: `metabase_source_audit` review approved (blocking), `business_rules` review approved (advisory). The workflow applies with these differences:
+
+- **Inputs.** `audit/metabase_source_audit.md`, `audit/bi_model_catalog.csv`, `audit/bi_content_catalog.csv`, `audit/needs_human.json`.
+- **Step 3 (rulings).** A **SQL view** ruling per native SQL question and model ("Remodel onto shared views, or keep as a view on its SQL?", default: keep for models used by one question, remodel otherwise), a **lift** ruling per native question the converter lifted ("Keep the lifted fields on the table's view?"), and a per-question ruling for every question not converted (binning by number of bins: choose a width; multi-stage questions: derived table or drop). Content on a database Looker cannot connect to (Metabase's Sample Database) is ruled drop or move.
+- **Step 5 (batches).** Model batches are Metabase databases (one connection per LookML model); content batches are dashboards by view count, each depending on the model batch of its database.
+- **Step 6 (register).** Identities from the audit (`metabase:<instance>:card:<id>`, `metabase:<instance>:dashboard:<id>`, `metabase:<instance>:table:<id>`); `source_updated_at` from `inventory.json` `updated_at`; no `last_migrated_commit`.
+- **Step 6b (baseline).** Record the snapshot (`exported_at`, Metabase version, SHA-256 per object) in place of `lookml_commit`, and the converter version from `mb_to_lookml.py`.
+
+## Pair: looker_studio_to_looker
+
+This pair is experimental (see `specs/migration/looker_studio_audit/generate.md`). The preconditions, inputs and rulings are those of `looker_studio_to_omni` below, with Looker as the target, and these differences:
+
+- **Model route.** Charts on BigQuery tables and custom SQL convert to LookML views; charts on Looker Studio's Looker connector point at the existing Looker explore and need no model work. Rule each data source: convert, rebuild on the warehouse model (a linked `dbt_development` release), or drop.
+- **Rulings.** Add a ruling per blend (the join keys and grain for an explore, or drop) and per chart whose own date range ends today (accept Looker's nearest filter, or add a filter on the date).
+- **Batches and baseline.** Model batches are report families; record the converter version from `ls_to_lookml.py` in the baseline.
+
 ## Pair: looker_studio_to_omni
 
 This pair is experimental in 4.2.2 (see `specs/migration/looker_studio_audit/generate.md`).

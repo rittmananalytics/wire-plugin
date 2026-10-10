@@ -1,0 +1,72 @@
+[
+ {
+  "class": "assisted",
+  "construct": "calculated_field",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders/field:calc_margin_rate",
+  "proposal": "Looker Studio: t0._margin_ / t0._revenue_",
+  "reason": "calculated field 'Margin rate' translated to SQL"
+ },
+ {
+  "class": "redesign",
+  "construct": "calculated_field",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders/field:calc_north",
+  "proposal": "Looker Studio: CONTAINS_TEXT(t0._region_, \"North\")",
+  "reason": "calculated field 'Is North' not translated: CONTAINS_TEXT"
+ },
+ {
+  "class": "assisted",
+  "construct": "calculated_field",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders/field:calc_region_upper",
+  "proposal": "Looker Studio: UPPER(t0._region_)",
+  "reason": "calculated field 'Region (upper)' translated to SQL"
+ },
+ {
+  "class": "assisted",
+  "construct": "calculated_field",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders/field:calc_rev_per_order",
+  "proposal": "Looker Studio: SUM(t0._revenue_) / SUM(t0._orders_)",
+  "reason": "calculated field 'Revenue per order' translated to SQL"
+ },
+ {
+  "class": "assisted",
+  "construct": "custom_sql",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-sql",
+  "proposal": "rebuild as a dbt model or as a view on the tables it reads",
+  "reason": "custom SQL data source became a view on its SQL: exact, not reusable"
+ },
+ {
+  "class": "assisted",
+  "construct": "date_range_default",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p1",
+  "proposal": "set the default (the Route C recordings show the range at capture time)",
+  "reason": "date range control became a dashboard filter; its default range is not in the capture"
+ },
+ {
+  "class": "assisted",
+  "construct": "breakdown_series",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p1/component:cd-bar",
+  "proposal": "set a series limit or a filter",
+  "reason": "breakdown dimension became a pivot; Looker Studio draws only its top series (a style setting the capture does not hold), Looker draws every series"
+ },
+ {
+  "class": "assisted",
+  "construct": "chart_date_range",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p1/component:cd-bar",
+  "proposal": null,
+  "reason": "chart range: start of the month 12 months back to today; Looker '13 months' also takes in rows dated after today in the current month"
+ },
+ {
+  "class": "assisted",
+  "construct": "scorecard_comparison",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p1/component:cd-kpi",
+  "proposal": null,
+  "reason": "scorecard with a comparison metric: the comparison is hand-finished"
+ },
+ {
+  "class": "assisted",
+  "construct": "text_date_range",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p1/component:cd-line",
+  "proposal": null,
+  "reason": "date range field week_start is text: filtered through a cast to a date, as Looker Studio does"
+ }
+]

@@ -1,0 +1,4 @@
+{"from": "looker:halcyon:explore:orders", "kind": "joins", "to": "looker:halcyon:view:customers"}
+{"from": "metabase:halcyon:card:1", "kind": "contains", "to": "looker:halcyon:field:orders.revenue"}
+{"from": "metabase:halcyon:table:10", "kind": "contains", "to": "looker:halcyon:view:orders"}
+{"from": "metabase:halcyon:table:11", "kind": "contains", "to": "looker:halcyon:view:customers"}

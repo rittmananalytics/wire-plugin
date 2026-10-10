@@ -1,0 +1,209 @@
+{
+ "blends": [],
+ "datasources": [
+  {
+   "connection": {
+    "connector": "bigquery_table",
+    "dataset": "analytics",
+    "project": "halcyon-prod",
+    "table": "orders"
+   },
+   "fields": [
+    {
+     "calculated": false,
+     "data_type_code": 8,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": null,
+     "label": "order_date",
+     "name": "_order_date_"
+    },
+    {
+     "calculated": false,
+     "data_type_code": 0,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": null,
+     "label": "region",
+     "name": "_region_"
+    },
+    {
+     "calculated": false,
+     "data_type_code": 2,
+     "default_aggregation_name": "SUM",
+     "description": "",
+     "enabled": true,
+     "formula": null,
+     "label": "revenue",
+     "name": "_revenue_"
+    },
+    {
+     "calculated": false,
+     "data_type_code": 2,
+     "default_aggregation_name": "SUM",
+     "description": "",
+     "enabled": true,
+     "formula": null,
+     "label": "margin",
+     "name": "_margin_"
+    },
+    {
+     "calculated": false,
+     "data_type_code": 3,
+     "default_aggregation_name": "SUM",
+     "description": "",
+     "enabled": true,
+     "formula": null,
+     "label": "orders",
+     "name": "_orders_"
+    },
+    {
+     "calculated": false,
+     "data_type_code": 1,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": null,
+     "label": "is_returned",
+     "name": "_is_returned_"
+    },
+    {
+     "calculated": false,
+     "data_type_code": 0,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": null,
+     "label": "order code",
+     "name": "_order code_"
+    },
+    {
+     "calculated": true,
+     "data_type_code": 2,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": "t0._margin_ / t0._revenue_",
+     "label": "Margin rate",
+     "name": "calc_margin_rate"
+    },
+    {
+     "calculated": true,
+     "data_type_code": 2,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": "SUM(t0._revenue_) / SUM(t0._orders_)",
+     "label": "Revenue per order",
+     "name": "calc_rev_per_order"
+    },
+    {
+     "calculated": true,
+     "data_type_code": 1,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": "CONTAINS_TEXT(t0._region_, \"North\")",
+     "label": "Is North",
+     "name": "calc_north"
+    },
+    {
+     "calculated": true,
+     "data_type_code": 0,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": "UPPER(t0._region_)",
+     "label": "Region (upper)",
+     "name": "calc_region_upper"
+    },
+    {
+     "calculated": false,
+     "data_type_code": 3,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": null,
+     "label": "Record Count",
+     "name": "datastudio_record_count_system_field_id_1"
+    }
+   ],
+   "id": "ds-orders",
+   "name": "Orders"
+  }
+ ],
+ "filters": [],
+ "pages": [
+  {
+   "components": [
+    {
+     "chart_fields": [],
+     "dataset": {
+      "id": "ds-orders",
+      "type_code": 1
+     },
+     "date_range_dimension": null,
+     "dimensions": [
+      {
+       "aggregation": null,
+       "aggregation_name": null,
+       "formula": null,
+       "label": null,
+       "name": "qt_tr",
+       "source_field": "_region_"
+      },
+      {
+       "aggregation": null,
+       "aggregation_name": null,
+       "formula": null,
+       "label": null,
+       "name": "qt_up",
+       "source_field": "calc_region_upper"
+      }
+     ],
+     "filter_ids": [],
+     "grid": {
+      "h": 8,
+      "w": 24,
+      "x": 0,
+      "y": 0
+     },
+     "id": "cd-table",
+     "inherit_filters": true,
+     "kind": "data",
+     "metrics": [
+      {
+       "aggregation": 6,
+       "aggregation_name": "SUM",
+       "formula": null,
+       "label": null,
+       "name": "qt_mr",
+       "source_field": "calc_margin_rate"
+      },
+      {
+       "aggregation": null,
+       "aggregation_name": null,
+       "formula": "SUM(t0._margin_) / SUM(t0._revenue_)",
+       "label": "Chart margin",
+       "name": "qt_chart",
+       "source_field": "_revenue_"
+      }
+     ],
+     "sort": [],
+     "type": "simple-table"
+    }
+   ],
+   "hidden": false,
+   "id": "p2",
+   "name": "Overview"
+  }
+ ],
+ "report": {
+  "id": "11111111-aaaa-4aaa-8aaa-111111111111",
+  "name": "Trading Snapshot",
+  "revision": "draft"
+ },
+ "report_components": []
+}

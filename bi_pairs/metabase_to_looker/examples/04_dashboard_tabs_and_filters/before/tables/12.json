@@ -1,0 +1,55 @@
+{
+ "db_id": 2,
+ "display_name": "Products",
+ "entity_type": "entity/GenericTable",
+ "fields": [
+  {
+   "base_type": "type/BigInteger",
+   "coercion_strategy": null,
+   "description": null,
+   "display_name": "Id",
+   "effective_type": "type/BigInteger",
+   "fk_target_field_id": null,
+   "id": 120,
+   "name": "id",
+   "nfc_path": null,
+   "position": 0,
+   "semantic_type": "type/PK",
+   "table_id": 12,
+   "visibility_type": "normal"
+  },
+  {
+   "base_type": "type/Text",
+   "coercion_strategy": null,
+   "description": null,
+   "display_name": "Category",
+   "effective_type": "type/Text",
+   "fk_target_field_id": null,
+   "id": 121,
+   "name": "category",
+   "nfc_path": null,
+   "position": 1,
+   "semantic_type": "type/Category",
+   "table_id": 12,
+   "visibility_type": "normal"
+  },
+  {
+   "base_type": "type/Text",
+   "coercion_strategy": null,
+   "description": null,
+   "display_name": "Title",
+   "effective_type": "type/Text",
+   "fk_target_field_id": null,
+   "id": 122,
+   "name": "title",
+   "nfc_path": null,
+   "position": 2,
+   "semantic_type": "type/Title",
+   "table_id": 12,
+   "visibility_type": "normal"
+  }
+ ],
+ "id": 12,
+ "name": "products",
+ "schema": "analytics"
+}

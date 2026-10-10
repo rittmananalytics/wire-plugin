@@ -1,0 +1,5 @@
+{"from": "metabase:halcyon:card:10/dataset:sql", "kind": "contains", "to": "looker:halcyon:view:daily_orders_sql"}
+{"from": "metabase:halcyon:card:9/dataset:sql", "kind": "contains", "to": "looker:halcyon:view:top_customers_sql"}
+{"from": "metabase:halcyon:dashboard:2", "kind": "contains", "to": "metabase:halcyon:card:10"}
+{"from": "metabase:halcyon:dashboard:2", "kind": "contains", "to": "metabase:halcyon:card:9"}
+{"from": "metabase:halcyon:table:10", "kind": "contains", "to": "looker:halcyon:view:orders"}

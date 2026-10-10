@@ -1,0 +1,70 @@
+{
+ "db_id": 2,
+ "display_name": "Customers",
+ "entity_type": "entity/GenericTable",
+ "fields": [
+  {
+   "base_type": "type/BigInteger",
+   "coercion_strategy": null,
+   "description": null,
+   "display_name": "Id",
+   "effective_type": "type/BigInteger",
+   "fk_target_field_id": null,
+   "id": 110,
+   "name": "id",
+   "nfc_path": null,
+   "position": 0,
+   "semantic_type": "type/PK",
+   "table_id": 11,
+   "visibility_type": "normal"
+  },
+  {
+   "base_type": "type/Text",
+   "coercion_strategy": null,
+   "description": null,
+   "display_name": "Name",
+   "effective_type": "type/Text",
+   "fk_target_field_id": null,
+   "id": 111,
+   "name": "name",
+   "nfc_path": null,
+   "position": 1,
+   "semantic_type": "type/Name",
+   "table_id": 11,
+   "visibility_type": "normal"
+  },
+  {
+   "base_type": "type/Text",
+   "coercion_strategy": null,
+   "description": null,
+   "display_name": "Region",
+   "effective_type": "type/Text",
+   "fk_target_field_id": null,
+   "id": 112,
+   "name": "region",
+   "nfc_path": null,
+   "position": 2,
+   "semantic_type": "type/Category",
+   "table_id": 11,
+   "visibility_type": "normal"
+  },
+  {
+   "base_type": "type/BigInteger",
+   "coercion_strategy": "Coercion/UNIXSeconds->DateTime",
+   "description": null,
+   "display_name": "Signup Ts",
+   "effective_type": "type/DateTime",
+   "fk_target_field_id": null,
+   "id": 113,
+   "name": "signup_ts",
+   "nfc_path": null,
+   "position": 3,
+   "semantic_type": null,
+   "table_id": 11,
+   "visibility_type": "normal"
+  }
+ ],
+ "id": 11,
+ "name": "customers",
+ "schema": "analytics"
+}

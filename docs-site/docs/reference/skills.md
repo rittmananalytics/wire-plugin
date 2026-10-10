@@ -123,9 +123,9 @@ Clients find it easier to react to a dashboard they can click on than to a list 
 
 ### `metabase`
 
-**Activates when**: auditing or migrating a Metabase reporting layer: cataloguing collections, dashboards, cards/questions, database connections or permission groups, or repointing Metabase from one warehouse to another.
+**Activates when**: auditing or migrating a Metabase reporting layer: cataloguing collections, dashboards, cards/questions, database connections or permission groups, repointing Metabase from one warehouse to another, or replacing Metabase with Looker on the experimental `metabase_to_looker` pair of a BI Tool Migration release.
 
-This skill connects to a Metabase instance (metabase-cli serialization export, the REST API or a client-supplied query inventory) and maps the collection → dashboard → card hierarchy, each card's SQL and its warehouse dependencies, the database connections and the permission groups. It is used by the `metabase-audit-*` and `metabase-migration-*` platform-migration commands (gated on `migration.reporting_tool: metabase`, not on migration scope), and it wraps the upstream `metabase/agent-skills` (metabase-cli, metabase-representation-format, metabase-database-metadata).
+This skill connects to a Metabase instance (metabase-cli serialization export, the REST API or a client-supplied query inventory) and maps the collection → dashboard → card hierarchy, each card's SQL and its warehouse dependencies, the database connections and the permission groups. It is used by the `metabase-audit-*` and `metabase-migration-*` platform-migration commands (gated on `migration.reporting_tool: metabase`, not on migration scope), and it wraps the upstream `metabase/agent-skills` (metabase-cli, metabase-representation-format, metabase-database-metadata). For replacing Metabase with Looker it covers Wire's two scripts, `metabase_export.py` for the snapshot, drift and card data and `mb_to_lookml.py` for the audit, the LookML conversion and the lint, and what to know first: sync, MBQL 5, native SQL, relative dates and date grains. Experimental: run end to end once on a Metabase Cloud trial; not on a client estate.
 
 ---
 

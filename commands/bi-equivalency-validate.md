@@ -222,6 +222,19 @@ This pair is experimental (see `specs/migration/tableau_audit/generate.md`).
 - **Target side.** The LookML dashboard element's query through the Looker API `run_inline_query` or the Looker MCP `query` tool, on the migration branch.
 - **Extracts.** For a sheet on an extract-backed data source, record the extract's last refresh time in the contract's `data_context` with `parity_as_of`. If the extract refreshed after the parity run, the tile is `INCONCLUSIVE`, not `PASS` (`tableau_export.py diff` flags it as `extract_refreshed_after_parity`).
 
+## Pair: metabase_to_looker
+
+This pair is experimental (see `specs/migration/metabase_source_audit/generate.md`).
+
+- **Source side.** Each card's rows through the Metabase API, raw values rather than display formatting: `python3 <plugin-root>/scripts/metabase_export.py card-data --card <id> [--dashboard <id> --dashcard <id> --param <parameter id>=<value> ...] --out <file>.csv`. With `--dashboard` and `--dashcard` the card runs as it does on that dashboard, with the dashboard's filter values. The command writes `<file>.csv.status`: `truncated` when Metabase capped the rows (2,000 by default), which makes the tile `INCONCLUSIVE`.
+- **Target side.** The LookML dashboard element's query through the Looker API `run_inline_query` or the Looker MCP `query` tool, on the migration branch.
+- **Dates.** Metabase returns a date bucket as the timestamp of its first day (`2026-10-01T00:00:00Z`); Looker returns the bucket's label (`2026-10`). Declare each grouped date key in `comparison.dates.grain` (`day`, `week`, `month`, `quarter` or `year`) so both are compared at that grain.
+- **Relative date filters.** Metabase's "previous N units, including this one" is Looker's `N+1 units`; without the current unit it is `N units ago for N units`. Run both sides on the same day, and record `parity_as_of`.
+
+## Pair: looker_studio_to_looker
+
+This pair is experimental. The source side is the same as for `looker_studio_to_omni` below: each chart's Route C recording (`looker_studio_parity.py`), the expected rows for every connector. The target side is the LookML dashboard element's query through the Looker API or the Looker MCP `query` tool. Fill each contract from the model batch's `parity_map.json` (element, and recording column to Looker field), run the element with the recording's date range as an absolute filter, and declare grouped date keys in `comparison.dates.grain`. A chart with a breakdown dimension records only the series Looker Studio drew: compare that subset (every recorded row must be in the Looker result, with the same values) and record the series limit as an accepted difference.
+
 ## Pair: looker_studio_to_omni
 
 This pair is experimental in 4.2.2 (see `specs/migration/looker_studio_audit/generate.md`).

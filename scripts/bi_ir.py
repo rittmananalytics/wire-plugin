@@ -11,7 +11,8 @@ object builders, identity helpers, a stable writer and validate(), which fails o
 key the schema does not list, so a tool-shaped key (lookml_type, omni, explore) cannot
 creep into the neutral record unnoticed.
 
-Used by wire/scripts/twb_to_lookml.py (Tableau reader, LookML writer, experimental).
+Used by wire/scripts/twb_to_lookml.py (Tableau reader, LookML writer, experimental) and
+wire/scripts/mb_to_lookml.py (Metabase reader, LookML writer, experimental).
 wire/scripts/lookml_to_omni.py keeps its own IR in 4.2.x; moving it onto this module
 is a later, deliberate change (it would regenerate the Looker to Omni expected files).
 
@@ -30,7 +31,7 @@ SCHEMA_VERSION = "1.0"
 
 # identity: <tool>:<scope>:<kind>:<id>[/<kind>:<id>]...
 IDENTITY = re.compile(r"^[a-z][a-z0-9_]*:[^:/\s]+:[a-z_]+:[^\s]+$")
-TOOLS = {"tableau", "looker", "lookerstudio", "omni"}
+TOOLS = {"tableau", "looker", "lookerstudio", "omni", "metabase"}
 
 CLASSES = {"mechanical", "assisted", "redesign", "drop"}
 

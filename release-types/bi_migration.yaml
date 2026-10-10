@@ -1,12 +1,14 @@
 wire_schema: "1.0"
 id: bi_migration
 name: "BI Tool Migration"
-description: "Migrate a reporting layer from one BI tool to another: audit the source estate, decide what moves and how, build the target model on a branch, move the content, prove tile-level parity, cut over. Pairs: Looker to Omni, and Looker Studio to Omni. A Looker Studio source has no semantic model to convert, so its plan decides per subject area whether the Omni model maps onto an existing warehouse model or needs a linked modelling release first."
+description: "Migrate a reporting layer from one BI tool to another: audit the source estate, decide what moves and how, build the target model on a branch, move the content, prove tile-level parity, cut over. Pairs: Looker to Omni, Looker Studio to Omni, Looker Studio to Looker, Tableau to Looker and Metabase to Looker. A Looker Studio source has no semantic model to convert, so its plan decides per subject area whether the Omni model maps onto an existing warehouse model or needs a linked modelling release first."
 applicable_when:
   - "The client is replacing their BI tool and the warehouse and dbt layer stay where they are"
   - "The source is Looker (LookML in git plus content via the Looker API) and the target is Omni"
   - "Content must be proven equivalent before users are switched, and the source is decommissioned after a parallel run"
   - "The source is Tableau (Cloud, Server, or Desktop files) and the target is Looker: workbooks and published data sources become LookML views, explores and LookML dashboards on a branch of the client's Looker repo (experimental)"
+  - "The source is Looker Studio and the target is Looker: the same capture, audit and metric catalogue as the Omni pair, then LookML views from the BigQuery tables and custom SQL the data sources read, charts on Looker data sources pointed at the existing explores, and LookML dashboards (experimental)"
+  - "The source is Metabase (Cloud or self-hosted) and the target is Looker: questions, models, metrics and dashboards become LookML views, explores, measures and LookML dashboards on a branch of the client's Looker repo (experimental)"
   - "The source is Looker Studio (formerly Data Studio) and the target is Omni; report definitions are read from the Looker Studio editor, and metric definitions held in report-level data sources are consolidated through a metric catalogue before the Omni model is built"
 
 profile_field: bi_pair
@@ -66,6 +68,82 @@ profiles:
           - id: bi_migration_plan
             depends_on:
               - artifact: tableau_audit
+                action: review
+                outcome: approved
+              - artifact: business_rules
+                action: review
+                outcome: approved
+                enforcement: advisory
+      - id: parity
+        requires_phase: looker_content
+        artifacts:
+          - id: bi_equivalency
+            depends_on:
+              - artifact: looker_content
+                action: generate
+                outcome: complete
+
+  - id: looker_studio_to_looker
+    name: "Looker Studio to Looker (experimental)"
+    description: "Experimental: run end to end once on two Looker Studio reports on BigQuery and Looker data sources (charts converted, deployed to Looker and matched), not on a client estate. The Looker Studio capture, audit and metric catalogue of the Omni pair, then the Looker target phases: views from the BigQuery tables and custom SQL the data sources read, measures from the charts and the ruled catalogue, charts on Looker Studio's Looker connector pointed at the existing explores, and LookML dashboards."
+    enable_phases:
+      - looker_studio_audit
+      - metric_catalogue
+      - looker_target
+      - lookml_model
+      - looker_content
+    disable_phases:
+      - audit
+      - target
+      - model
+      - content
+    phase_overrides:
+      # The plan reads the Looker Studio audit and the ruled metric catalogue; parity follows Looker content.
+      - id: plan
+        requires_phase: metric_catalogue
+        artifacts:
+          - id: bi_migration_plan
+            depends_on:
+              - artifact: looker_studio_audit
+                action: review
+                outcome: approved
+              - artifact: metric_catalogue
+                action: review
+                outcome: approved
+              - artifact: business_rules
+                action: review
+                outcome: approved
+                enforcement: advisory
+      - id: parity
+        requires_phase: looker_content
+        artifacts:
+          - id: bi_equivalency
+            depends_on:
+              - artifact: looker_content
+                action: generate
+                outcome: complete
+
+  - id: metabase_to_looker
+    name: "Metabase to Looker (experimental)"
+    description: "Experimental: run end to end once on a Metabase Cloud trial instance (four BigQuery questions into Looker, rows matched), not on a client estate. Metabase questions, models, metrics and dashboards become LookML views (typed and keyed from Metabase's table metadata), explores, measures and LookML dashboards on a branch of the client's Looker repo. Uses the tool-neutral IR (wire/schemas/bi_ir-schema.md)."
+    enable_phases:
+      - metabase_source_audit
+      - looker_target
+      - lookml_model
+      - looker_content
+    disable_phases:
+      - audit
+      - target
+      - model
+      - content
+    phase_overrides:
+      # The plan reads the Metabase source audit; parity follows the Looker content phase.
+      - id: plan
+        requires_phase: metabase_source_audit
+        artifacts:
+          - id: bi_migration_plan
+            depends_on:
+              - artifact: metabase_source_audit
                 action: review
                 outcome: approved
               - artifact: business_rules
@@ -148,6 +226,19 @@ phases:
         sequence: 1
         depends_on: []
 
+  # Metabase source (profile metabase_to_looker, experimental). Optional by default.
+  # Not platform_migration's metabase_audit, which catalogs Metabase for a warehouse move.
+  - id: metabase_source_audit
+    name: "Metabase Source Audit"
+    required: false
+    requires_phase: null
+    artifacts:
+      - id: metabase_source_audit
+        command: metabase-source-audit
+        required: true
+        sequence: 1
+        depends_on: []
+
   - id: plan
     name: "Plan"
     required: true
@@ -192,7 +283,7 @@ phases:
             action: review
             outcome: approved
 
-  # Looker target (profile tableau_to_looker, experimental).
+  # Looker target (profiles tableau_to_looker, metabase_to_looker and looker_studio_to_looker, experimental).
   - id: looker_target
     name: "Looker Target Setup"
     required: false

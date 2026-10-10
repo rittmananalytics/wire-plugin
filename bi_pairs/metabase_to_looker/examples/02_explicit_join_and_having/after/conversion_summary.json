@@ -1,0 +1,18 @@
+{
+ "converter": "mb_to_lookml",
+ "counts": {
+  "mbql_question": {
+   "assisted": 1
+  },
+  "question_join": {
+   "mechanical": 1
+  }
+ },
+ "dashboards": 1,
+ "explores": 1,
+ "metabase_version": "v1.64.1",
+ "model": "halcyon",
+ "needs_human": 1,
+ "version": "0.1.0",
+ "views": 2
+}

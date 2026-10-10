@@ -1,0 +1,58 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "database_id": 2,
+ "dataset_query": {
+  "database": 2,
+  "lib/type": "mbql/query",
+  "stages": [
+   {
+    "lib/type": "mbql.stage/native",
+    "native": "SELECT c.name AS customer_name, SUM(o.total) AS revenue\nFROM `analytics.orders` o JOIN `analytics.customers` c ON o.customer_id = c.id\nWHERE o.total >= {{min_total}} [[AND {{region}}]]\nGROUP BY 1\nORDER BY 2 DESC\nLIMIT 20",
+    "template-tags": {
+     "min_total": {
+      "default": "10",
+      "display-name": "Min total",
+      "id": "t1",
+      "name": "min_total",
+      "type": "number"
+     },
+     "region": {
+      "dimension": [
+       "field",
+       {
+        "base-type": "type/Text",
+        "lib/uuid": "00000000-0000-4000-8000-000000000041"
+       },
+       112
+      ],
+      "display-name": "Region",
+      "id": "t2",
+      "name": "region",
+      "type": "dimension",
+      "widget-type": "string/="
+     }
+    }
+   }
+  ]
+ },
+ "description": null,
+ "display": "table",
+ "id": 9,
+ "name": "Top customers (SQL)",
+ "result_metadata": [
+  {
+   "base_type": "type/Text",
+   "display_name": "customer_name",
+   "name": "customer_name"
+  },
+  {
+   "base_type": "type/Float",
+   "display_name": "revenue",
+   "name": "revenue"
+  }
+ ],
+ "type": "question",
+ "updated_at": "2026-09-09T10:00:00Z",
+ "visualization_settings": {}
+}

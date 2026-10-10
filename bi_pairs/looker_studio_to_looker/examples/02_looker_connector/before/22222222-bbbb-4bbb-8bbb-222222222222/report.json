@@ -1,0 +1,180 @@
+{
+ "blends": [],
+ "datasources": [
+  {
+   "connection": {
+    "connector": "looker",
+    "explore": "orders",
+    "explore_label": "Orders",
+    "instance": "halcyon.cloud.looker.com",
+    "model": "halcyon"
+   },
+   "fields": [
+    {
+     "calculated": true,
+     "data_type_code": 0,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": "t0.orders.region",
+     "label": "Region",
+     "name": "_orders.region_"
+    },
+    {
+     "calculated": true,
+     "data_type_code": 8,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": "t0.orders.created_month",
+     "label": "Created Month",
+     "name": "_orders.created_month_"
+    },
+    {
+     "calculated": true,
+     "data_type_code": 2,
+     "default_aggregation_name": null,
+     "description": "",
+     "enabled": true,
+     "formula": "t0.orders.total_revenue",
+     "label": "Total Revenue",
+     "name": "_orders.total_revenue_"
+    }
+   ],
+   "id": "ds-lk",
+   "name": "Orders - Halcyon"
+  }
+ ],
+ "filters": [],
+ "pages": [
+  {
+   "components": [
+    {
+     "chart_fields": [],
+     "dataset": {
+      "id": null,
+      "type_code": null
+     },
+     "date_range_dimension": null,
+     "dimensions": [],
+     "filter_ids": [],
+     "grid": {
+      "h": 1,
+      "w": 8,
+      "x": 0,
+      "y": 0
+     },
+     "id": "cd-ldate",
+     "inherit_filters": true,
+     "kind": "control",
+     "metrics": [],
+     "sort": [],
+     "type": "simple-daterangepicker"
+    },
+    {
+     "chart_fields": [
+      {
+       "aggregation": null,
+       "aggregation_name": null,
+       "formula": null,
+       "label": null,
+       "name": "qt_ld",
+       "source_field": "_orders.created_month_"
+      }
+     ],
+     "dataset": {
+      "id": "ds-lk",
+      "type_code": 1
+     },
+     "date_range_dimension": "qt_ld",
+     "dimensions": [],
+     "filter_ids": [],
+     "grid": {
+      "h": 2,
+      "w": 6,
+      "x": 0,
+      "y": 1
+     },
+     "id": "cd-lkpi",
+     "inherit_filters": true,
+     "kind": "data",
+     "metrics": [
+      {
+       "aggregation": null,
+       "aggregation_name": null,
+       "formula": null,
+       "label": null,
+       "name": "qt_tr",
+       "source_field": "_orders.total_revenue_"
+      }
+     ],
+     "sort": [],
+     "type": "kpi-metric"
+    },
+    {
+     "chart_fields": [
+      {
+       "aggregation": null,
+       "aggregation_name": null,
+       "formula": null,
+       "label": null,
+       "name": "qt_ld2",
+       "source_field": "_orders.created_month_"
+      }
+     ],
+     "dataset": {
+      "id": "ds-lk",
+      "type_code": 1
+     },
+     "date_range_dimension": "qt_ld2",
+     "dimensions": [
+      {
+       "aggregation": null,
+       "aggregation_name": null,
+       "formula": null,
+       "label": null,
+       "name": "qt_lr",
+       "source_field": "_orders.region_"
+      }
+     ],
+     "filter_ids": [],
+     "grid": {
+      "h": 6,
+      "w": 18,
+      "x": 6,
+      "y": 1
+     },
+     "id": "cd-lbar",
+     "inherit_filters": true,
+     "kind": "data",
+     "metrics": [
+      {
+       "aggregation": 6,
+       "aggregation_name": "SUM",
+       "formula": null,
+       "label": null,
+       "name": "qt_lt",
+       "source_field": "_orders.total_revenue_"
+      }
+     ],
+     "sort": [
+      {
+       "direction_code": 1,
+       "field": "qt_lt"
+      }
+     ],
+     "type": "simple-barchart"
+    }
+   ],
+   "hidden": false,
+   "id": "q1",
+   "name": "Revenue"
+  }
+ ],
+ "report": {
+  "id": "22222222-bbbb-4bbb-8bbb-222222222222",
+  "name": "Looker Pack",
+  "revision": "draft"
+ },
+ "report_components": []
+}

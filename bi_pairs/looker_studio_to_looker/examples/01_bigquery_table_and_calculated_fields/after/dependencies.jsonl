@@ -1,0 +1,2 @@
+{"from": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders", "kind": "contains", "to": "looker:halcyon_ls:view:orders"}
+{"from": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p2/component:cd-table", "kind": "uses_dataset", "to": "looker:halcyon_ls:explore:orders"}

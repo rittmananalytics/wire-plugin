@@ -1,9 +1,9 @@
 ---
-description: Experimental: Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
+description: Experimental: Capture and catalog Looker Studio reports (for Omni or Looker): definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
 argument-hint: <release-folder>
 ---
 
-# Experimental: Capture and catalog Looker Studio reports: definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
+# Experimental: Capture and catalog Looker Studio reports (for Omni or Looker): definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
 
 ## User Input
 
@@ -234,7 +234,7 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: looker_studio_au
 
 ## Purpose
 
-> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. The same steps serve `looker_studio_to_looker` (experimental), which has run end to end once into Looker on two reports, not on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Catalogs the client's Looker Studio (formerly Data Studio) reports so the metric catalogue and the migration plan can decide what moves to Omni and how. Looker Studio has no supported API for report definitions, so the audit reads them from the editor itself through three evidence routes:
 
@@ -250,7 +250,7 @@ This is a **BI-tool** audit. It does not change the warehouse, and it changes no
 
 ## Prerequisites
 
-- Release folder with `project_type: bi_migration` and `bi_pair: looker_studio_to_omni` in `status.md`
+- Release folder with `project_type: bi_migration` and `bi_pair: looker_studio_to_omni` or `looker_studio_to_looker` in `status.md`
 - `bi_migration.looker_studio_reports`: the report URLs in scope, one per line
 - `bi_migration.looker_studio_namespace`: a short client slug used in object identities (`lookerstudio:<namespace>:...`)
 - `bi_migration.looker_studio_capture_consent`: who approved automated read-only access to the reports, and when. Required before the first capture. Routes B and C use the consultant's own Google sign-in to read the editor's internal calls; the client must agree to that in writing
@@ -270,7 +270,7 @@ This is a **BI-tool** audit. It does not change the warehouse, and it changes no
 
 ### Step 1: Locate the release and check the gates
 
-Confirm `project_type: bi_migration` and `bi_pair: looker_studio_to_omni`. Read the report list and the namespace. If `looker_studio_capture_consent` is empty, stop and output:
+Confirm `project_type: bi_migration` and `bi_pair: looker_studio_to_omni` or `looker_studio_to_looker` (the audit is the same for both targets; where this spec says Omni, read Looker for `looker_studio_to_looker`). Read the report list and the namespace. If `looker_studio_capture_consent` is empty, stop and output:
 
 ```
 Looker Studio capture needs recorded client consent for automated, read-only access
@@ -349,7 +349,8 @@ Writes `content_catalog.csv` and `datasource_catalog.csv`. The classes are the r
 | Data source class | Meaning |
 |---|---|
 | `map` | BigQuery table or view; the Omni model can read the same table |
-| `assisted` | BigQuery custom SQL; becomes a dbt model or an Omni SQL view |
+| `assisted` | BigQuery custom SQL (read from `connectorConfig.sql`); becomes a dbt model or a view on the SQL |
+| `map` (Looker connector) | A Looker Studio data source on Looker's Looker connector: `report.json` records the instance, model and explore; the charts read an existing Looker model |
 | `pipeline` | Community connector, Google product connector or Sheets; no known warehouse copy, so the plan raises a pipeline task |
 | `blocked` | Definition not read (Edit refused, or not captured) |
 

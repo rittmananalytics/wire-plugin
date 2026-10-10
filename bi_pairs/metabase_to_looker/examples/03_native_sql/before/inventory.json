@@ -1,0 +1,69 @@
+{
+ "collections": [
+  {
+   "id": 5,
+   "location": "/",
+   "name": "Sales"
+  }
+ ],
+ "databases": [
+  {
+   "details": {
+    "project-id": "halcyon-prod",
+    "service-account-json": "[redacted]"
+   },
+   "engine": "bigquery-cloud-sdk",
+   "id": 2,
+   "name": "Halcyon BigQuery"
+  }
+ ],
+ "exported_at": "2026-10-01T09:00:00Z",
+ "exporter": "metabase_export.py 0.1.0",
+ "objects": [
+  {
+   "archived": false,
+   "card_type": "question",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "table",
+   "id": "9",
+   "kind": "card",
+   "name": "Top customers (SQL)",
+   "path": "cards/9.json",
+   "query_kind": "native",
+   "sha256": "9eae587f3270579933f74256bdad3221185700fe5b3004b400c10596a102f968",
+   "updated_at": "2026-09-09T10:00:00Z"
+  },
+  {
+   "archived": false,
+   "card_type": "question",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "line",
+   "id": "10",
+   "kind": "card",
+   "name": "Daily orders (SQL)",
+   "path": "cards/10.json",
+   "query_kind": "native",
+   "sha256": "d8612d10e075bbe060a79602dc6c95d3db515a5e087826fc0d66f2bc29796d58",
+   "updated_at": "2026-09-10T10:00:00Z"
+  },
+  {
+   "archived": false,
+   "collection": "Sales",
+   "collection_id": 5,
+   "id": "2",
+   "kind": "dashboard",
+   "name": "SQL reports",
+   "path": "dashboards/2.json",
+   "sha256": "ee628bf6f6156465d1c56ff6c8e098620c7ad092ee4ce87f91a4914a9847b77c",
+   "updated_at": "2026-09-21T10:00:00Z"
+  }
+ ],
+ "site": "halcyon",
+ "snapshot_source": "api",
+ "tool": "metabase",
+ "version": "v1.64.1"
+}

@@ -1,0 +1,37 @@
+[
+ {
+  "class": "assisted",
+  "construct": "calculated_field",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders/field:calc_margin_rate",
+  "proposal": "Looker Studio: t0._margin_ / t0._revenue_",
+  "reason": "calculated field 'Margin rate' translated to SQL"
+ },
+ {
+  "class": "redesign",
+  "construct": "calculated_field",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders/field:calc_north",
+  "proposal": "Looker Studio: CONTAINS_TEXT(t0._region_, \"North\")",
+  "reason": "calculated field 'Is North' not translated: CONTAINS_TEXT"
+ },
+ {
+  "class": "assisted",
+  "construct": "calculated_field",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders/field:calc_region_upper",
+  "proposal": "Looker Studio: UPPER(t0._region_)",
+  "reason": "calculated field 'Region (upper)' translated to SQL"
+ },
+ {
+  "class": "assisted",
+  "construct": "calculated_field",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders/field:calc_rev_per_order",
+  "proposal": "Looker Studio: SUM(t0._revenue_) / SUM(t0._orders_)",
+  "reason": "calculated field 'Revenue per order' translated to SQL"
+ },
+ {
+  "class": "assisted",
+  "construct": "chart_formula",
+  "object": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p2/component:cd-table",
+  "proposal": null,
+  "reason": "chart-level formula translated: SUM(t0._margin_) / SUM(t0._revenue_)"
+ }
+]

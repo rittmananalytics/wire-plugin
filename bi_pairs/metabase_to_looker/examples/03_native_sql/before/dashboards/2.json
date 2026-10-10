@@ -1,0 +1,56 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "dashcards": [
+  {
+   "card_id": 9,
+   "col": 0,
+   "id": 21,
+   "parameter_mappings": [
+    {
+     "card_id": 9,
+     "parameter_id": "p_r2",
+     "target": [
+      "dimension",
+      [
+       "template-tag",
+       "region"
+      ]
+     ]
+    }
+   ],
+   "row": 0,
+   "size_x": 12,
+   "size_y": 8,
+   "visualization_settings": {}
+  },
+  {
+   "card_id": 10,
+   "col": 12,
+   "id": 22,
+   "parameter_mappings": [],
+   "row": 0,
+   "size_x": 12,
+   "size_y": 8,
+   "visualization_settings": {}
+  }
+ ],
+ "id": 2,
+ "name": "SQL reports",
+ "parameters": [
+  {
+   "default": [
+    "North",
+    "South, East"
+   ],
+   "id": "p_r2",
+   "name": "Region",
+   "sectionId": "string",
+   "slug": "region",
+   "type": "string/="
+  }
+ ],
+ "tabs": [],
+ "updated_at": "2026-09-21T10:00:00Z",
+ "width": "fixed"
+}

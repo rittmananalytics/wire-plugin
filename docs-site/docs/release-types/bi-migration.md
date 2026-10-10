@@ -21,11 +21,11 @@ a full release this way and names the command Wire runs at each step.
 
 :::
 
-Moving a reporting layer from one BI tool to another is a different job from moving a warehouse: the warehouse and the dbt layer stay where they are, and what has to be rebuilt, checked and switched over is the semantic model and the content that sits on it. The BI Tool Migration release type is for that job. It has three pairs. **Looker to Omni** (since 4.0.0): LookML views and explores become Omni views and topics on a model branch, Looker dashboards and Looks become Omni dashboards, every migrated tile is proven equivalent before users are switched and Looker is decommissioned after a parallel run. **Looker Studio to Omni** (experimental, since 4.2.2): Looker Studio reports are captured from the editor, their calculated fields are consolidated into one agreed set in a metric catalogue, and the Omni model is built from the warehouse rather than from the reports. See [Looker Studio to Omni](#looker-studio-to-omni) below. **Tableau to Looker** (experimental): Tableau Cloud, Server or Desktop workbooks become LookML views, explores and LookML dashboards on a branch of the client's Looker repo. See [Tableau to Looker](#tableau-to-looker) below.
+Moving a reporting layer from one BI tool to another is a different job from moving a warehouse: the warehouse and the dbt layer stay where they are, and what has to be rebuilt, checked and switched over is the semantic model and the content that sits on it. The BI Tool Migration release type is for that job. It has five pairs. **Looker to Omni** (since 4.0.0): LookML views and explores become Omni views and topics on a model branch, Looker dashboards and Looks become Omni dashboards, every migrated tile is proven equivalent before users are switched and Looker is decommissioned after a parallel run. **Looker Studio to Omni** (experimental, since 4.2.2): Looker Studio reports are captured from the editor, their calculated fields are consolidated into one agreed set in a metric catalogue, and the Omni model is built from the warehouse rather than from the reports. See [Looker Studio to Omni](#looker-studio-to-omni) below. **Tableau to Looker** (experimental): Tableau Cloud, Server or Desktop workbooks become LookML views, explores and LookML dashboards on a branch of the client's Looker repo. See [Tableau to Looker](#tableau-to-looker) below. **Metabase to Looker** (experimental): Metabase questions, models, metrics and dashboards become LookML views, explores, measures and LookML dashboards. See [Metabase to Looker](#metabase-to-looker) below. **Looker Studio to Looker** (experimental): the same capture and metric catalogue as the Omni pair, then LookML views, explores and dashboards. See [Looker Studio to Looker](#looker-studio-to-looker) below. The three pairs that end in Looker share one design: see [Migrating to Looker](#migrating-to-looker).
 
 It is not the same as migrating an Omni estate between warehouses. That is `platform_migration` with `migration.reporting_tool: omni`, where the pivot is the Omni connection, whereas here the pivot is the semantic model itself.
 
-**Supported pairs**: `looker_to_omni` (default), `looker_studio_to_omni` (experimental), `tableau_to_looker` (experimental)
+**Supported pairs**: `looker_to_omni` (default), `looker_studio_to_omni` (experimental), `tableau_to_looker` (experimental), `metabase_to_looker` (experimental), `looker_studio_to_looker` (experimental)
 
 The flow, from the Looker estate at the start to Looker retired at the end, is as follows:
 
@@ -156,6 +156,26 @@ The model, content, parity and cutover phases keep their commands. The Omni mode
 
 **Limitations.** Routes B and C use undocumented endpoints that Google can change without notice; each capture records the Looker Studio app version and the extractor stops on structure it does not know. The capture needs an interactive Google sign-in and recorded client consent, so it cannot run unattended. Route A covers BigQuery only. Recorded chart values reflect the data at capture time. Parameters, custom SQL data sources and extracted data sources had not been seen in a real capture when 4.2.2 shipped and are handled generically. The full list is in the [Looker Studio to Omni tutorial](../tutorials/looker-studio-to-omni#limitations).
 
+## Migrating to Looker
+
+Three pairs move a reporting layer to Looker: Tableau, Metabase and Looker Studio. Each has its own way into the source and its own converter, and all three share the rest: the tool-neutral record, the migration plan, the Looker target, model and content phases, and the parity loop that gates cutover.
+
+![Tableau, Metabase and Looker Studio feed per-tool snapshot and audit scripts; Wire's shared core holds the tool-neutral record, the migration plan, the metric catalogue (Looker Studio only) and the shared Looker target; three converters write LookML to a branch of the client's repo, deployed to Looker under its own model; the parity loop compares each source's rows with Looker's results before cutover](/img/bi-migration/migration-to-looker-architecture.png)
+
+| | Tableau | Metabase | Looker Studio |
+|---|---|---|---|
+| Way in | REST API with a personal access token (Cloud or Server), or Desktop files | Metabase API with an API key | The report editor in a Chrome window signed in as the consultant |
+| Snapshot | `tableau_export.py` | `metabase_export.py` | `looker_studio_capture.py`, `looker_studio_extract.py` |
+| What carries the model | Each workbook's data sources | Metabase's table metadata: types, primary and foreign keys | Nothing reusable: data sources are per report, so a metric catalogue rules each metric |
+| Converter | `twb_to_lookml.py` | `mb_to_lookml.py` | `ls_to_lookml.py` |
+| Parity source rows | Query View Data | Card data through the API | Chart recordings from the capture |
+
+Every pair's audit runs the same six steps, keeps its state in `status.md`, keeps secrets outside the repository and writes the same catalogs and `needs_human.json`:
+
+![The audit's six steps (connect, snapshot, classify, write the report, validate, review), the files each writes in the repo, secrets kept in ~/.wire outside it, and the metric catalogue and chart recordings that only Looker Studio adds](/img/bi-migration/source-audit-steps.png)
+
+Into a LookML project that already has views, each converter writes to its own folder (`--include-root`) under a separate model, so the client's existing models are untouched until a person decides otherwise. The [terminal session walkthrough](../tutorials/bi-to-looker-session) runs all three in one release.
+
 ## Tableau to Looker
 
 :::caution[Experimental]
@@ -175,11 +195,49 @@ The `tableau_to_looker` pair (`bi_pair: tableau_to_looker`) replaces four phases
 
 Duplicate embedded data sources are fingerprinted (connection, tables, joins, columns) and become one shared explore under a plan ruling. Parity reads each Tableau sheet's rows through REST Query View Data; a sheet on an extract that refreshed after the parity run is `INCONCLUSIVE`. Into a LookML project that already has views, the converter writes to its own folder (`--include-root`) under a separate model. The record uses the tool-neutral IR in `wire/schemas/bi_ir-schema.md`. The full walkthrough is the [Tableau to Looker tutorial](../tutorials/tableau-to-looker).
 
+## Metabase to Looker
+
+:::caution[Experimental]
+
+The Metabase to Looker pair is experimental. It has run end to end once, on a Metabase Cloud trial instance: four BigQuery questions converted, deployed to Looker and matched row for row. It has not run on a client estate. See the [limitations](../tutorials/metabase-to-looker#limitations).
+
+:::
+
+The `metabase_to_looker` pair (`bi_pair: metabase_to_looker`) has its own audit phase and shares the three Looker phases with the Tableau pair. The plan, parity, drift and cutover phases are shared and branch on the pair.
+
+| Phase | Artifact | Commands | What it produces |
+|---|---|---|---|
+| Metabase source audit | `metabase_source_audit` | `/wire:metabase-source-audit-generate`, `-validate`, `-review` | A snapshot of the instance through its API, catalogs with a class per construct, the tool-neutral IR |
+| Looker target, LookML model, Looker content | as for Tableau | `/wire:looker-target-setup-*`, `/wire:lookml-model-*`, `/wire:looker-content-*` | Views typed and keyed from Metabase's metadata, foreign-key joins, measures from questions and metrics, views on native SQL and models, LookML dashboards (one per tab) with filters |
+
+Metabase records each table's field types and its primary and foreign keys, so questions built in the query builder convert to shared views and explores. Native SQL questions and models become views on their SQL; simple single-table SQL is also lifted onto the table's view as a proposal. Parity reads each question's rows through the Metabase API, as the question runs on its dashboard. This pair is not the Metabase support in Platform Migration, which keeps Metabase and moves it to a new warehouse. The full walkthrough is the [Metabase to Looker tutorial](../tutorials/metabase-to-looker).
+
+## Looker Studio to Looker
+
+:::caution[Experimental]
+
+The Looker Studio to Looker pair is experimental. It has run end to end once, on two reports: one on BigQuery tables and custom SQL, one on Looker Studio's Looker connector. Their charts were converted, deployed to Looker and matched. It has not run on a client estate. See the [limitations](../tutorials/looker-studio-to-looker#limitations).
+
+:::
+
+The `looker_studio_to_looker` pair (`bi_pair: looker_studio_to_looker`) uses the Omni pair's Looker Studio audit and metric catalogue unchanged, then the three Looker phases shared with Tableau and Metabase.
+
+| Data source | Becomes |
+|---|---|
+| BigQuery table | A LookML view on the table, with measures for the charts' aggregations and the translated calculated fields |
+| BigQuery custom SQL | A view on the SQL |
+| Looker Studio's Looker connector | No new LookML: the charts point at the existing explore, and the dashboard goes in a folder that model includes |
+| Search Console, GA4, Sheets, Funnel.io and other connectors | Listed: a pipeline task or a drop |
+
+Calculated fields translate to BigQuery SQL, with Looker Studio's division as `SAFE_DIVIDE`. Each page becomes a LookML dashboard on the same 24-column grid; the date range control and dimension filter controls become dashboard filters. Parity compares each chart's recorded rows with the Looker element's. The full walkthrough is the [Looker Studio to Looker tutorial](../tutorials/looker-studio-to-looker).
+
 ## Prerequisites
 
 - The LookML repo cloned locally, and Looker API credentials with System Activity access for usage.
 - The Omni CLI configured, an API key that can create a model branch and documents, plus the `omni-analytics` agent skills installed (`/plugin marketplace add exploreomni/omni-agent-skills`, `/plugin install omni-analytics@omni-analytics`).
 - `/wire:new` with release type "BI tool migration". It asks whether the source is Looker or Looker Studio. For Looker it asks for the LookML path, the Looker and Omni URLs, the Omni model id and the parallel-run length. For Looker Studio it asks for the report URLs, a client slug, who approved automated read-only access, and the Omni details.
+- For Looker Studio to Looker: what the Looker Studio capture needs (below), plus Looker API access and the client's LookML repo. See [Tutorial: Looker Studio to Looker](../tutorials/looker-studio-to-looker).
+- For Metabase: `python3 -m pip install requests sqlglot`; a Metabase API key in a group that can see the content, kept in a file outside the repository that only the consultant can read; the databases in scope synced in Metabase. See [Tutorial: Metabase to Looker](../tutorials/metabase-to-looker#before-you-start).
 - For Looker Studio: Python with Playwright (`python3 -m pip install playwright`) and Google Chrome on the consultant's machine, and the access listed above.
 - For Tableau: `python3 -m pip install tableauserverclient`; a Tableau personal access token (a site administrator may need to allow token creation) kept in a file outside the repository that only the consultant can read; Site Role Explorer or higher with download permission; the client's LookML repo and a Looker developer and admin to deploy and configure the new model. See [Tutorial: Tableau to Looker](../tutorials/tableau-to-looker#before-you-start).
 
@@ -187,6 +245,9 @@ Duplicate embedded data sources are fingerprinted (connection, tables, joins, co
 
 - [Tutorial: Looker to Omni Migration](../tutorials/looker-to-omni-migration): a complete release, directed in prose, with every command Wire runs named
 - [Looker to Omni: A Real Run](../tutorials/looker-to-omni-real-run): a real migration of three dashboards on Rittman Analytics' own estate, as it was run, with the prompts, the counts and the 52 rulings
+- [A session at the terminal: Tableau, Metabase and Looker Studio to Looker](../tutorials/bi-to-looker-session): one release, directed in prose, moving all three to Looker
+- [Tutorial: Looker Studio to Looker](../tutorials/looker-studio-to-looker) (experimental): capture, metric catalogue, the three kinds of data source, controls and date ranges, parity from chart recordings, and the limitations
+- [Tutorial: Metabase to Looker](../tutorials/metabase-to-looker) (experimental): snapshot, metadata-driven views and joins, native SQL, dashboards with tabs and filters, parity from card data, and the limitations
 - [Tutorial: Tableau to Looker](../tutorials/tableau-to-looker) (experimental): snapshot, classification, fingerprints, LookML conversion, parity from Query View Data, and the limitations
 - [Tutorial: Looker Studio to Omni](../tutorials/looker-studio-to-omni): capture, metric catalogue, model route, parity from recorded chart values, and the limitations
 - [The Release Director Model](../advanced/release-director)

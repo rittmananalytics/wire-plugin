@@ -1,0 +1,58 @@
+{
+ "collections": [
+  {
+   "id": 5,
+   "location": "/",
+   "name": "Sales"
+  }
+ ],
+ "databases": [
+  {
+   "details": {
+    "project-id": "halcyon-prod",
+    "service-account-json": "[redacted]"
+   },
+   "engine": "bigquery-cloud-sdk",
+   "id": 2,
+   "name": "Halcyon BigQuery"
+  }
+ ],
+ "exported_at": "2026-10-01T09:00:00Z",
+ "exporter": "metabase_export.py 0.1.0",
+ "objects": [
+  {
+   "archived": false,
+   "card_type": "metric",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "line",
+   "id": "1",
+   "kind": "card",
+   "name": "Revenue",
+   "path": "cards/1.json",
+   "query_kind": "mbql",
+   "sha256": "79bd65a503ebfedb8eb53b2675516eda095a513aa3e08095b4c54eba4565b3aa",
+   "updated_at": "2026-09-01T10:00:00Z"
+  },
+  {
+   "archived": false,
+   "card_type": "question",
+   "collection": "Sales",
+   "collection_id": 5,
+   "database_id": 2,
+   "display": "bar",
+   "id": "2",
+   "kind": "card",
+   "name": "Revenue by region",
+   "path": "cards/2.json",
+   "query_kind": "mbql",
+   "sha256": "4d70d163fb9246fe1ea68962545788bc3ff83d6c839b8dfbbe968fe59188b4b4",
+   "updated_at": "2026-09-02T10:00:00Z"
+  }
+ ],
+ "site": "halcyon",
+ "snapshot_source": "api",
+ "tool": "metabase",
+ "version": "v1.64.1"
+}

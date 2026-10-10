@@ -153,7 +153,7 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 
 ## Purpose
 
-> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. The same steps serve `looker_studio_to_looker` (experimental), which has run end to end once into Looker on two reports, not on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 The client's ruling on what each metric means. This is the gate that turns report-level definitions into one agreed set. The person ruling is the owner of the definitions (often a head of marketing or finance), not only the consultant. Under the release director model the orchestrating session presents each conflict as a ruling and records the outcome.
 
@@ -185,7 +185,7 @@ For each group, record in `decisions.md` (one entry per conflict or alias group,
 |---|---|
 | `ruling` | `merge`, `rename`, `choose`, `keep_both` or `drop` |
 | `canonical_formula` | the agreed formula, written over warehouse column names |
-| `target_name` | the measure name in the Omni model, following the warehouse naming convention |
+| `target_name` | the measure name in the target model (Omni, or LookML for `looker_studio_to_looker`), following the warehouse naming convention |
 
 Clear the matching `parked_decisions` entries in `status.md`. If `business_rules.yaml` exists, add or update the agreed definitions there so later releases read the same set.
 

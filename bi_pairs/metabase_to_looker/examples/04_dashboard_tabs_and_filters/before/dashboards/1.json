@@ -1,0 +1,229 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "dashcards": [
+  {
+   "card_id": null,
+   "col": 0,
+   "dashboard_tab_id": 1,
+   "id": 11,
+   "parameter_mappings": [],
+   "row": 0,
+   "size_x": 24,
+   "size_y": 1,
+   "visualization_settings": {
+    "text": "Sales overview",
+    "virtual_card": {
+     "display": "heading"
+    }
+   }
+  },
+  {
+   "card_id": null,
+   "col": 0,
+   "dashboard_tab_id": 1,
+   "id": 12,
+   "parameter_mappings": [
+    {
+     "parameter_id": "p_region",
+     "target": [
+      "text-tag",
+      "region"
+     ]
+    }
+   ],
+   "row": 1,
+   "size_x": 24,
+   "size_y": 1,
+   "visualization_settings": {
+    "text": "Revenue for {{region}}",
+    "virtual_card": {
+     "display": "text"
+    }
+   }
+  },
+  {
+   "card_id": 2,
+   "col": 0,
+   "dashboard_tab_id": 1,
+   "id": 13,
+   "parameter_mappings": [
+    {
+     "card_id": 2,
+     "parameter_id": "p_region",
+     "target": [
+      "dimension",
+      [
+       "field",
+       {
+        "base-type": "type/Text",
+        "lib/uuid": "00000000-0000-4000-8000-000000000053",
+        "source-field": 101
+       },
+       112
+      ],
+      {
+       "stage-number": 0
+      }
+     ]
+    }
+   ],
+   "row": 2,
+   "size_x": 12,
+   "size_y": 6,
+   "visualization_settings": {}
+  },
+  {
+   "card_id": 3,
+   "col": 12,
+   "dashboard_tab_id": 1,
+   "id": 14,
+   "parameter_mappings": [
+    {
+     "card_id": 3,
+     "parameter_id": "p_region",
+     "target": [
+      "dimension",
+      [
+       "field",
+       {
+        "base-type": "type/Text",
+        "lib/uuid": "00000000-0000-4000-8000-000000000054",
+        "source-field": 101
+       },
+       112
+      ],
+      {
+       "stage-number": 0
+      }
+     ]
+    },
+    {
+     "card_id": 3,
+     "parameter_id": "p_date",
+     "target": [
+      "dimension",
+      [
+       "field",
+       {
+        "base-type": "type/DateTimeWithLocalTZ",
+        "lib/uuid": "00000000-0000-4000-8000-000000000055"
+       },
+       103
+      ],
+      {
+       "stage-number": 0
+      }
+     ]
+    },
+    {
+     "card_id": 3,
+     "parameter_id": "p_unit",
+     "target": [
+      "dimension",
+      [
+       "field",
+       {
+        "base-type": "type/DateTimeWithLocalTZ",
+        "lib/uuid": "00000000-0000-4000-8000-000000000056"
+       },
+       103
+      ],
+      {
+       "stage-number": 0
+      }
+     ]
+    }
+   ],
+   "row": 2,
+   "size_x": 12,
+   "size_y": 6,
+   "visualization_settings": {
+    "card.title": "Orders per month"
+   }
+  },
+  {
+   "card_id": 4,
+   "col": 0,
+   "dashboard_tab_id": 2,
+   "id": 15,
+   "parameter_mappings": [],
+   "row": 0,
+   "size_x": 12,
+   "size_y": 8,
+   "visualization_settings": {}
+  },
+  {
+   "card_id": 5,
+   "col": 12,
+   "dashboard_tab_id": 2,
+   "id": 16,
+   "parameter_mappings": [],
+   "row": 0,
+   "series": [
+    {
+     "id": 6
+    }
+   ],
+   "size_x": 12,
+   "size_y": 8,
+   "visualization_settings": {}
+  },
+  {
+   "card_id": null,
+   "col": 0,
+   "dashboard_tab_id": 2,
+   "id": 17,
+   "parameter_mappings": [],
+   "row": 8,
+   "size_x": 6,
+   "size_y": 2,
+   "visualization_settings": {
+    "link": {
+     "url": "https://example.com"
+    },
+    "virtual_card": {
+     "display": "link"
+    }
+   }
+  }
+ ],
+ "id": 1,
+ "name": "Sales overview",
+ "parameters": [
+  {
+   "id": "p_region",
+   "name": "Region",
+   "sectionId": "string",
+   "slug": "region",
+   "type": "string/="
+  },
+  {
+   "default": "past30days",
+   "id": "p_date",
+   "name": "Date",
+   "slug": "date",
+   "type": "date/all-options"
+  },
+  {
+   "id": "p_unit",
+   "name": "Grouping",
+   "slug": "grouping",
+   "type": "temporal-unit"
+  }
+ ],
+ "tabs": [
+  {
+   "id": 1,
+   "name": "Summary",
+   "position": 0
+  },
+  {
+   "id": 2,
+   "name": "Detail",
+   "position": 1
+  }
+ ],
+ "updated_at": "2026-09-20T10:00:00Z",
+ "width": "fixed"
+}

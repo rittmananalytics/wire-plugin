@@ -1,0 +1,45 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "database_id": 2,
+ "dataset_query": {
+  "database": 2,
+  "lib/type": "mbql/query",
+  "stages": [
+   {
+    "aggregation": [
+     [
+      "count",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000028"
+      }
+     ]
+    ],
+    "breakout": [
+     [
+      "field",
+      {
+       "base-type": "type/Float",
+       "binning": {
+        "bin-width": 50,
+        "strategy": "bin-width"
+       },
+       "lib/uuid": "00000000-0000-4000-8000-000000000029"
+      },
+      104
+     ]
+    ],
+    "lib/type": "mbql.stage/mbql",
+    "source-table": 10
+   }
+  ]
+ },
+ "description": null,
+ "display": "bar",
+ "id": 5,
+ "name": "Order value bands",
+ "result_metadata": [],
+ "type": "question",
+ "updated_at": "2026-09-05T10:00:00Z",
+ "visualization_settings": {}
+}

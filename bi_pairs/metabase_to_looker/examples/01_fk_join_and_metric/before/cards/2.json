@@ -1,0 +1,77 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "database_id": 2,
+ "dataset_query": {
+  "database": 2,
+  "lib/type": "mbql/query",
+  "stages": [
+   {
+    "aggregation": [
+     [
+      "metric",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000005"
+      },
+      1
+     ]
+    ],
+    "breakout": [
+     [
+      "field",
+      {
+       "base-type": "type/Text",
+       "lib/uuid": "00000000-0000-4000-8000-000000000006",
+       "source-field": 101
+      },
+      112
+     ]
+    ],
+    "filters": [
+     [
+      "time-interval",
+      {
+       "include-current": true,
+       "lib/uuid": "00000000-0000-4000-8000-000000000008"
+      },
+      [
+       "field",
+       {
+        "base-type": "type/DateTimeWithLocalTZ",
+        "lib/uuid": "00000000-0000-4000-8000-000000000007"
+       },
+       103
+      ],
+      -11,
+      "month"
+     ]
+    ],
+    "lib/type": "mbql.stage/mbql",
+    "order-by": [
+     [
+      "desc",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000010"
+      },
+      [
+       "aggregation",
+       {
+        "lib/uuid": "00000000-0000-4000-8000-000000000009"
+       },
+       "00000000-0000-4000-8000-000000000005"
+      ]
+     ]
+    ],
+    "source-table": 10
+   }
+  ]
+ },
+ "description": null,
+ "display": "bar",
+ "id": 2,
+ "name": "Revenue by region",
+ "result_metadata": [],
+ "type": "question",
+ "updated_at": "2026-09-02T10:00:00Z",
+ "visualization_settings": {}
+}

@@ -1,0 +1,51 @@
+[
+ {
+  "class": "redesign",
+  "construct": "mbql_question",
+  "object": "metabase:halcyon:card:6",
+  "proposal": "Metabase: Order value (auto bins)",
+  "reason": "question not converted: binning by number of bins: Metabase picks the width from the data range"
+ },
+ {
+  "class": "assisted",
+  "construct": "dashboard_tabs",
+  "object": "metabase:halcyon:dashboard:1",
+  "proposal": "link them, or merge into one dashboard",
+  "reason": "2 tabs became 2 LookML dashboards"
+ },
+ {
+  "class": "assisted",
+  "construct": "text_variable",
+  "object": "metabase:halcyon:dashboard:1/dashcard:12",
+  "proposal": "Revenue for {{region}}",
+  "reason": "text card showed a filter value; Looker text tiles cannot, so the tag became plain words"
+ },
+ {
+  "class": "assisted",
+  "construct": "filter_override",
+  "object": "metabase:halcyon:dashboard:1/dashcard:14",
+  "proposal": "move the tile's condition to another field, or accept the difference",
+  "reason": "the tile filters orders.created_at_date itself and listens to dashboard filter Date on the same field: Metabase applies both, Looker's dashboard filter replaces the tile's"
+ },
+ {
+  "class": "assisted",
+  "construct": "combined_series",
+  "object": "metabase:halcyon:dashboard:1/dashcard:16",
+  "proposal": null,
+  "reason": "1 card(s) combined into this chart: only the first is migrated"
+ },
+ {
+  "class": "drop",
+  "construct": "link_card",
+  "object": "metabase:halcyon:dashboard:1/dashcard:17",
+  "proposal": null,
+  "reason": "link card not migrated"
+ },
+ {
+  "class": "drop",
+  "construct": "temporal_unit_filter",
+  "object": "metabase:halcyon:dashboard:1/parameter:p_unit",
+  "proposal": "a parameter with a dynamic dimension in the view",
+  "reason": "a filter that changes date grouping: LookML dashboard filters cannot"
+ }
+]

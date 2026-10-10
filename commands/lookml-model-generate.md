@@ -1,9 +1,9 @@
 ---
-description: Experimental: Translate a batch of Tableau data sources to LookML views and explores on the migration branch (deterministic converter plus agent judgement)
+description: Experimental: Translate a batch of Tableau data sources or Metabase content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)
 argument-hint: <release-folder> [--batch N 
 ---
 
-# Experimental: Translate a batch of Tableau data sources to LookML views and explores on the migration branch (deterministic converter plus agent judgement)
+# Experimental: Translate a batch of Tableau data sources or Metabase content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)
 
 ## User Input
 
@@ -219,7 +219,7 @@ delegates_to:
   - utils/semantic_layer_developer_delegate
   - utils/precondition_gate
   - utils/stale_artifact_check
-description: "Experimental: Translate one batch of Tableau data sources into LookML views and explores on the migration branch; the deterministic converter writes the mechanical LookML and every construct it cannot emit becomes a needs_human item"
+description: "Experimental: Translate one batch of Tableau, Metabase or Looker Studio content into LookML views and explores on the migration branch; the deterministic converter writes the mechanical LookML and every construct it cannot emit becomes a needs_human item"
 argument-hint: <release-folder> [--batch <id> | --all]
 
 ---
@@ -236,7 +236,7 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: lookml_model` an
 
 ## Purpose
 
-> **Experimental.** The `tableau_to_looker` pair is experimental. It has run end to end once, on a Tableau Cloud trial site: one BigQuery sheet converted, deployed to Looker and matched row for row. It has not run on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
+> **Experimental.** This command serves three experimental pairs, each run end to end once and none on a client estate: `tableau_to_looker` (one BigQuery sheet on a Tableau Cloud trial site), `metabase_to_looker` (four BigQuery questions on a Metabase Cloud trial instance) and `looker_studio_to_looker` (two Looker Studio reports on BigQuery and Looker data sources), each converted, deployed to Looker and matched. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 The translation has two halves. The mechanical half is a script: `wire/scripts/twb_to_lookml.py convert` reads the snapshot, applies the pair's translation guide and emits LookML deterministically, including the row-level subset of the Tableau calculation language. The judgement half is what the script refuses: LOD expressions, table calculations, blends, sets, unmapped functions, and the cardinality of every join (Tableau physical joins declare none). Each arrives as a `needs_human` item. The agent resolves it from the plan's rulings or parks it. It never hand-writes LookML the script can emit.
 
@@ -245,6 +245,41 @@ The translation has two halves. The mechanical half is a script: `wire/scripts/t
 Tableau: read only (the snapshot). LookML: written to the migration branch only, never merged here.
 Warehouse: no queries. Validation queries belong to /wire:lookml-model-validate.
 ```
+
+## Pair: metabase_to_looker
+
+The workflow applies with these differences.
+
+- **Step 1.** A model batch is one Metabase database (one connection), optionally narrowed to the dashboards in the batch.
+- **Step 2.** The converter is `mb_to_lookml.py`; it also writes the batch's LookML dashboards (one per dashboard tab, and a one-tile dashboard per question on no dashboard), which `looker-content-generate` takes from the batch output:
+
+```bash
+python3 <plugin-root>/scripts/mb_to_lookml.py convert \
+  --snapshot .wire/releases/$ARGUMENTS/migration/source_snapshot/metabase \
+  --out .wire/releases/$ARGUMENTS/migration/lookml_model/<batch_id> \
+  --model <bi_migration.target.model> --connection <connection> --database <metabase database id> \
+  [--dashboards <id,id>] [--include-root <folder>]
+```
+
+- **Step 3.** The `needs_human` items for this pair: native SQL questions and models that became views on their SQL (remodel onto shared views, or keep), fields lifted from simple native SQL (keep or remove), joins not to a primary key, custom columns not translated, binning by number of bins (choose a fixed width), multi-stage questions, dashboard filters that change date grouping, and content on a database Looker cannot connect to. Primary keys come from Metabase's metadata (`type/PK`); a joined view without one is listed.
+
+## Pair: looker_studio_to_looker
+
+The workflow applies with these differences.
+
+- **Step 1.** A model batch is a set of reports (a report family, or the reports on one subject area).
+- **Step 2.** The converter is `ls_to_lookml.py`, run on the batch's `report.json` files and the ruled metric catalogue; it also writes the batch's LookML dashboards, which `looker-content-generate` takes from the batch output:
+
+```bash
+python3 <plugin-root>/scripts/ls_to_lookml.py convert \
+  --reports .wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>/report.json ... \
+  --catalogue .wire/releases/$ARGUMENTS/audit/metric_catalogue.json --namespace <looker_studio_namespace> \
+  --out .wire/releases/$ARGUMENTS/migration/lookml_model/<batch_id> \
+  --model <bi_migration.target.model> --connection <connection> [--include-root <folder>]
+```
+
+- **What it writes.** A view per BigQuery table a data source reads and per custom SQL data source; measures for the aggregations the charts use; calculated fields translated to BigQuery SQL (a ruled catalogue entry names the measure; Looker Studio's division becomes `SAFE_DIVIDE`); charts on Looker Studio's Looker connector pointed at the existing explore, with no view; `parity_map.json` linking each chart to its element and its recording columns to Looker fields.
+- **Step 3.** The `needs_human` items for this pair: custom SQL views (remodel or keep), calculated fields not translated, blends (model the join in an explore), data sources Looker cannot read (Search Console, GA4, Sheets, Funnel.io: a pipeline task or drop), date range control defaults (not in the capture), a chart's own date range ending today (Looker's nearest filter also takes in the rest of the current month), breakdown dimensions pivoted (Looker Studio draws only its top series), and dashboards on an existing Looker model (written to a folder of their own: add its include to that model).
 
 ## Workflow
 

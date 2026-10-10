@@ -1,0 +1,56 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "database_id": 2,
+ "dataset_query": {
+  "database": 2,
+  "lib/type": "mbql/query",
+  "stages": [
+   {
+    "aggregation": [
+     [
+      "sum",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000002"
+      },
+      [
+       "field",
+       {
+        "base-type": "type/Float",
+        "lib/uuid": "00000000-0000-4000-8000-000000000001"
+       },
+       104
+      ]
+     ]
+    ],
+    "filters": [
+     [
+      "!=",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000004"
+      },
+      [
+       "field",
+       {
+        "base-type": "type/Text",
+        "lib/uuid": "00000000-0000-4000-8000-000000000003"
+       },
+       105
+      ],
+      "cancelled"
+     ]
+    ],
+    "lib/type": "mbql.stage/mbql",
+    "source-table": 10
+   }
+  ]
+ },
+ "description": "Order revenue, excluding cancelled orders",
+ "display": "line",
+ "id": 1,
+ "name": "Revenue",
+ "result_metadata": [],
+ "type": "metric",
+ "updated_at": "2026-09-01T10:00:00Z",
+ "visualization_settings": {}
+}

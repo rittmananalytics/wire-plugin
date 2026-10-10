@@ -10,7 +10,8 @@ current_phase: "audit"
 
 # Profile: which tool pair this release migrates. Read by precondition_gate.md Step 0
 # and by runnable_set.md. looker_to_omni (default), looker_studio_to_omni (4.2.2, experimental)
-# or tableau_to_looker (experimental, wire#287: uses the bi_migration.source and .target blocks).
+# looker_studio_to_looker, tableau_to_looker (wire#287) or metabase_to_looker (all three experimental); the Looker
+# targets use the bi_migration.target block, and Tableau and Metabase the .source block too.
 # looker_studio_to_omni replaces the Looker audit phase with looker_studio_audit and
 # metric_catalogue; the Looker-only fields below are then left null.
 bi_pair: looker_to_omni
@@ -37,10 +38,11 @@ bi_migration:
                                            #   approved_by: "<client name and role>"
                                            #   date: "YYYY-MM-DD"
   chart_recordings_tracked: true           # false when Route C recordings must stay out of git (data handling rules)
-  # Tableau source and Looker target (bi_pair: tableau_to_looker, experimental) only. The tool-keyed
+  # Tableau or Metabase source and Looker target (bi_pair: tableau_to_looker or metabase_to_looker,
+  # experimental) only. The tool-keyed
   # source/target shape is the neutral form the other pairs are expected to move to later.
   source:
-    tool: null                             # tableau
+    tool: null                             # tableau | metabase
     edition: null                          # cloud | server | desktop_files
     server_url: null                       # Tableau Cloud or Server URL
     site: null                             # site content URL (also the identity scope: tableau:<site>:...)
@@ -48,6 +50,9 @@ bi_migration:
     snapshot_source: null                  # rest | files (set by tableau-audit-generate)
     usage_source: null                     # admin_insights | repository | unavailable
     usage_csv: null                        # Cloud: path to an Admin Insights export
+    host: null                             # metabase only: instance URL (the API key stays in ~/.wire/metabase.env)
+    dashboards: []                         # metabase only: dashboard ids in scope; empty = all
+    metabase_version: null                 # metabase only: set by metabase-source-audit-generate
   target:
     tool: null                             # looker
     base_url: null                         # Looker instance URL
@@ -159,7 +164,29 @@ artifacts:
     generated_files: []
     revision_history: []
 
-  looker_target_setup:         # bi_pair: tableau_to_looker only (experimental)
+  metabase_source_audit:       # bi_pair: metabase_to_looker only (experimental)
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null                 # audit/metabase_source_audit.md
+    generated_date: null
+    experimental: true
+    metabase_version: null
+    card_count: null
+    native_card_count: null
+    model_count: null
+    metric_count: null
+    dashboard_count: null
+    table_count: null
+    mechanical_count: null
+    assisted_count: null
+    redesign_count: null
+    drop_count: null
+    snapshot_source: null
+    generated_files: []
+    revision_history: []
+
+  looker_target_setup:         # bi_pair: tableau_to_looker, metabase_to_looker or looker_studio_to_looker (experimental)
     generate: not_started
     validate: not_started
     review: not_started
@@ -167,7 +194,7 @@ artifacts:
     generated_date: null
     experimental: true
 
-  lookml_model:                # bi_pair: tableau_to_looker only (experimental)
+  lookml_model:                # bi_pair: tableau_to_looker, metabase_to_looker or looker_studio_to_looker (experimental)
     generate: not_started
     validate: not_started
     review: not_started
@@ -176,7 +203,7 @@ artifacts:
     batches_complete: []
     needs_human_open: null
 
-  looker_content:              # bi_pair: tableau_to_looker only (experimental)
+  looker_content:              # bi_pair: tableau_to_looker, metabase_to_looker or looker_studio_to_looker (experimental)
     generate: not_started
     validate: not_started
     review: not_started

@@ -1,0 +1,60 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "database_id": 2,
+ "dataset_query": {
+  "database": 2,
+  "lib/type": "mbql/query",
+  "stages": [
+   {
+    "aggregation": [
+     [
+      "count",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000011"
+      }
+     ]
+    ],
+    "breakout": [
+     [
+      "field",
+      {
+       "base-type": "type/DateTimeWithLocalTZ",
+       "lib/uuid": "00000000-0000-4000-8000-000000000012",
+       "temporal-unit": "month"
+      },
+      103
+     ]
+    ],
+    "filters": [
+     [
+      "time-interval",
+      {
+       "lib/uuid": "00000000-0000-4000-8000-000000000014"
+      },
+      [
+       "field",
+       {
+        "base-type": "type/DateTimeWithLocalTZ",
+        "lib/uuid": "00000000-0000-4000-8000-000000000013"
+       },
+       103
+      ],
+      -6,
+      "month"
+     ]
+    ],
+    "lib/type": "mbql.stage/mbql",
+    "source-table": 10
+   }
+  ]
+ },
+ "description": null,
+ "display": "line",
+ "id": 3,
+ "name": "Orders by month",
+ "result_metadata": [],
+ "type": "question",
+ "updated_at": "2026-09-03T10:00:00Z",
+ "visualization_settings": {}
+}

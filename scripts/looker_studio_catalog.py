@@ -63,7 +63,7 @@ CHART_TYPES = {
     "simple-geochart": ("map", "assisted"),
     "geo-map": ("map", "assisted"),
 }
-DS_CLASS = {"bigquery_table": "map", "bigquery_custom_sql": "assisted", "community_connector": "pipeline",
+DS_CLASS = {"bigquery_table": "map", "bigquery_custom_sql": "assisted", "looker": "map", "community_connector": "pipeline",
             "google_sheets": "pipeline", "other": "pipeline", "multiple": "assisted"}
 
 CONTENT_COLUMNS = ["object_type", "object_uri", "report_id", "page_id", "component_id", "name", "section",

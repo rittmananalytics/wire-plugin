@@ -1,0 +1,39 @@
+{
+ "archived": false,
+ "collection_id": 5,
+ "database_id": 2,
+ "dataset_query": {
+  "database": 2,
+  "lib/type": "mbql/query",
+  "stages": [
+   {
+    "lib/type": "mbql.stage/native",
+    "native": "SELECT\n  FORMAT_TIMESTAMP('%Y-%m', orders.created_at) AS orders_created_at_month,\n  COUNT(DISTINCT orders.id) AS orders_order_count,\n  SUM(orders.total) AS orders_revenue\nFROM `analytics.orders` AS orders\nWHERE orders.status != 'cancelled'\nGROUP BY 1\nORDER BY 1"
+   }
+  ]
+ },
+ "description": null,
+ "display": "line",
+ "id": 10,
+ "name": "Daily orders (SQL)",
+ "result_metadata": [
+  {
+   "base_type": "type/Text",
+   "display_name": "orders_created_at_month",
+   "name": "orders_created_at_month"
+  },
+  {
+   "base_type": "type/BigInteger",
+   "display_name": "orders_order_count",
+   "name": "orders_order_count"
+  },
+  {
+   "base_type": "type/Float",
+   "display_name": "orders_revenue",
+   "name": "orders_revenue"
+  }
+ ],
+ "type": "question",
+ "updated_at": "2026-09-10T10:00:00Z",
+ "visualization_settings": {}
+}

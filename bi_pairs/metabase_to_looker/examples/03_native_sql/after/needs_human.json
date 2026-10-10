@@ -1,0 +1,44 @@
+[
+ {
+  "class": "assisted",
+  "construct": "native_sql",
+  "object": "metabase:halcyon:card:10",
+  "proposal": "remodel onto shared views, or keep",
+  "reason": "native SQL question became a view on its SQL: exact, but not reusable"
+ },
+ {
+  "class": "assisted",
+  "construct": "sql_lift",
+  "object": "metabase:halcyon:card:10",
+  "proposal": "a proposal: keep the fields that belong in the shared model, and filter tiles with Looker filters",
+  "reason": "simple single-table SQL lifted onto view orders: dimension created_at_month_from_sql, measure order_count, measure revenue; WHERE clause not lifted: orders.status <> 'cancelled'"
+ },
+ {
+  "class": "assisted",
+  "construct": "field_filter",
+  "object": "metabase:halcyon:card:9",
+  "proposal": "check the SQL reads that table without an alias",
+  "reason": "field filter region became a templated filter on `analytics.customers`.region, as Metabase writes it"
+ },
+ {
+  "class": "assisted",
+  "construct": "native_sql",
+  "object": "metabase:halcyon:card:9",
+  "proposal": "remodel onto shared views, or keep",
+  "reason": "native SQL question became a view on its SQL: exact, but not reusable"
+ },
+ {
+  "class": "assisted",
+  "construct": "sql_lift",
+  "object": "metabase:halcyon:card:9",
+  "proposal": null,
+  "reason": "not lifted: template tags: not lifted"
+ },
+ {
+  "class": "assisted",
+  "construct": "template_tags",
+  "object": "metabase:halcyon:card:9",
+  "proposal": "check each against the question in Metabase",
+  "reason": "template tags became 1 parameter(s) and 1 templated filter(s)"
+ }
+]

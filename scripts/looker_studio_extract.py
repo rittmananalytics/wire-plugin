@@ -223,6 +223,8 @@ def component(c: dict, canvas_width: int, order: int) -> dict:
             out["row_limit"] = prop.get("row")
         if prop.get("compareDateDuration"):
             out["comparison"] = prop.get("compareDateDuration")
+        if prop.get("dateDuration"):
+            out["date_duration"] = prop.get("dateDuration")     # the chart's own default date range (raw codes)
     if kind == "text":
         dp = prop.get("descriptionProperty", {})
         out["text"] = plain_text(dp.get("text", ""))
@@ -337,14 +339,22 @@ def connection(block: dict) -> dict:
         bq = cc["bigQueryConnectorConfig"]
         sql_key = next((k for k, v in sorted(bq.items())
                         if isinstance(v, str) and re.match(r"\s*(select|with)\b", v, re.I)), None)
-        out = {"connector": "bigquery_custom_sql" if sql_key and not bq.get("tableId") else "bigquery_table",
+        # Custom SQL sits beside bigQueryConnectorConfig, at connectorConfig.sql (seen October 2026); older
+        # captures may hold it inside the BigQuery config
+        sql = bq.get(sql_key) if sql_key else (cc.get("sql") if isinstance(cc.get("sql"), str) else None)
+        out = {"connector": "bigquery_custom_sql" if sql and not bq.get("tableId") else "bigquery_table",
                "project": bq.get("projectId"), "dataset": bq.get("datasetId"), "table": bq.get("tableId"),
                "billing_project": bq.get("billingProjectId"),
                "processing_location_code": bq.get("processingLocation")}
-        if sql_key:
-            out["sql"] = bq[sql_key]
-            out["sql_key"] = sql_key
+        if sql:
+            out["sql"] = sql
+            out["sql_key"] = sql_key or "connectorConfig.sql"
         return out
+    if "lookerConnectorConfig" in cc:
+        lk = cc["lookerConnectorConfig"]
+        return {"connector": "looker", "instance": lk.get("instanceUrl"),
+                "model": (lk.get("model") or {}).get("name"), "explore": (lk.get("explore") or {}).get("name"),
+                "explore_label": (lk.get("explore") or {}).get("label")}
     if "appsScriptAddonConnectorConfig" in cc:
         a = cc["appsScriptAddonConnectorConfig"]
         params = redact(a.get("configParams"))

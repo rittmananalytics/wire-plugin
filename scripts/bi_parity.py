@@ -38,6 +38,9 @@ Test contract (YAML; the control plane's own format, not a vendor payload):
         fields: [created_at[date]]   # key fields that are dates; one-bucket shifts may be timezone_conversion
         bucket: day                  # day | month
         timezone_conversion_recorded: false   # true only when the model batch recorded the convert_tz decision
+        grain: {created_month: month}         # optional: write both sides' values of a date key at one grain
+                                              # (day|week|month|quarter|year) before comparing, when the tools
+                                              # print a date bucket differently (2026-10-01T00:00:00Z and 2026-10)
       expected_rows: nonzero         # nonzero | any; two empty sides with nonzero expected is INCONCLUSIVE
       tile_sorted: false             # an unsorted tile with the same multiset in a different order is sort_only
 
@@ -64,6 +67,7 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import re
 import hashlib
 import json
 import sys
@@ -156,6 +160,32 @@ def compare_measure(name: str, spec: dict, a, b) -> tuple[bool, str | None, str 
 
 def key_of(row: dict, key_fields: list[str]) -> tuple:
     return tuple(norm_null(row.get(k)) for k in key_fields)
+
+
+def _grain_text(v, grain: str):
+    """A date or timestamp, or a period label (2026-10, 2026-Q4, 2026), written at one grain."""
+    s = norm_null(v)
+    if s is None:
+        return v
+    m = re.match(r"^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?|^(\d{4})-Q([1-4])", s)
+    q = re.match(r"^(\d{4})-Q([1-4])$", s)
+    if q:
+        y, mo, d = int(q.group(1)), (int(q.group(2)) - 1) * 3 + 1, 1
+    elif m and m.group(1):
+        y, mo, d = int(m.group(1)), int(m.group(2) or 1), int(m.group(3) or 1)
+    else:
+        return v
+    if grain == "year":
+        return f"{y:04d}"
+    if grain == "quarter":
+        return f"{y:04d}-Q{(mo - 1) // 3 + 1}"
+    if grain == "month":
+        return f"{y:04d}-{mo:02d}"
+    return f"{y:04d}-{mo:02d}-{d:02d}"          # day and week (a week is named by its first day)
+
+
+def _at_grain(rows: list[dict], grain: dict) -> list[dict]:
+    return [{k: (_grain_text(v, grain[k]) if k in grain else v) for k, v in r.items()} for r in rows]
 
 
 def _shift_dates(rows: list[dict], date_fields: set[str], bucket: str, shift: int) -> list[dict]:
@@ -269,6 +299,9 @@ def compare(contract: dict, source: list[dict], target: list[dict],
         return result("PASS", "pass")
 
     source = apply_field_map(source, comp.get("field_map") or {})
+    grain = dates.get("grain") or {}
+    if grain:
+        source, target = _at_grain(source, grain), _at_grain(target, grain)
 
     # Core comparison: keyed multiset, then typed measures on matched keys.
     core = _core_compare(source, target, key_fields, measures)

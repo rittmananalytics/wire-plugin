@@ -229,7 +229,7 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: looker_target_se
 
 ## Purpose
 
-> **Experimental.** The `tableau_to_looker` pair is experimental. It has run end to end once, on a Tableau Cloud trial site: one BigQuery sheet converted, deployed to Looker and matched row for row. It has not run on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
+> **Experimental.** This command serves three experimental pairs, each run end to end once and none on a client estate: `tableau_to_looker` (one BigQuery sheet on a Tableau Cloud trial site), `metabase_to_looker` (four BigQuery questions on a Metabase Cloud trial instance) and `looker_studio_to_looker` (two Looker Studio reports on BigQuery and Looker data sources), each converted, deployed to Looker and matched. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Prepares the Looker side before any LookML is written: the LookML project and its git repository, a migration branch, the warehouse connection, and the folders, groups and user attributes the plan's permission map needs.
 
@@ -245,6 +245,14 @@ at cutover. Folders, groups and user attributes are created, never deleted or re
 - `bi_migration_plan review: approved`
 - `bi_migration.target`: `base_url`, `project`, and the LookML repo registered with `/wire:migration-source-register $ARGUMENTS lookml <url>` and a `client_repos` entry with role `bi_target_model`
 - Looker API credentials (`LOOKERSDK_*`) or the Looker MCP
+
+## Pair: metabase_to_looker
+
+The workflow applies with these differences. **Step 1:** the connection must reach the databases the Metabase content reads (each database's engine and project from the audit's `inventory.json`); one LookML model serves one connection, so a Metabase instance with content on two warehouses needs two models. **Step 2:** the default branch is `wire/metabase-migration`. **Step 3:** Looker folders follow the Metabase collections in scope, and groups follow the Metabase permission groups in the plan's map.
+
+## Pair: looker_studio_to_looker
+
+The workflow applies with these differences. **Step 1:** the connection must reach the BigQuery projects the data sources read (`connection.project` in `report.json`); a data source on Looker Studio's Looker connector names its Looker instance, model and explore, and needs no connection of its own, only that the instance is the target. **Step 2:** the default branch is `wire/looker-studio-migration`.
 
 ## Workflow
 

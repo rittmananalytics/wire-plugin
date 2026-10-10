@@ -1,0 +1,6 @@
+{"from": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-orders", "kind": "contains", "to": "looker:halcyon_ls:view:orders"}
+{"from": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/datasource:ds-sql", "kind": "contains", "to": "looker:halcyon_ls:view:weekly_sessions_sql"}
+{"from": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p1/component:cd-bar", "kind": "uses_dataset", "to": "looker:halcyon_ls:explore:orders"}
+{"from": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p1/component:cd-kpi", "kind": "uses_dataset", "to": "looker:halcyon_ls:explore:orders"}
+{"from": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p1/component:cd-line", "kind": "uses_dataset", "to": "looker:halcyon_ls:explore:weekly_sessions_sql"}
+{"from": "lookerstudio:halcyon:report:11111111-aaaa-4aaa-8aaa-111111111111/page:p1/component:cd-pie", "kind": "uses_dataset", "to": "looker:halcyon_ls:explore:orders"}
