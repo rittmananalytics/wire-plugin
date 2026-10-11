@@ -274,6 +274,24 @@ log until it merges. Rows already rolled up are recognised by their Detail
 prefix and never added twice. The roll-up rows are appended after every other
 backfilled row, in the order `merge-log` returns them.
 
+**4h. Ticket results missing** (only when `status.md` has `delivery: tickets`;
+4.2.6, wire#297). Run on the release branch. For each merged ticket, run
+`python3 <wire>/scripts/ticket_delivery.py progress <release> <ticket>` and
+read its `missing` list: the actions its run-log rows or changed files show
+and its record's `results:` does not hold.
+
+| Condition | Category | Proposal |
+|---|---|---|
+| `missing` lists an action | `ticket_results_missing` | Write it to the ticket record's `results:` in the full form (`dbt: {generate: complete}`), keeping every value already there. Show the evidence beside each proposal |
+| The ticket record's own run table or pull request shows a validate or review result that `missing` does not list (a build that passed, a pull request reviewed and merged) | `ticket_results_missing` | Propose it, marked as read from the record, with the line it comes from. Never propose a result the record does not state |
+| `missing` is empty | `in_sync` | None |
+
+A result already in the record is never changed by this check; a conflict
+between the record and the evidence is reported for the consultant to decide.
+Proposals are applied only on confirmation, and before the step states of
+4g's last two rows are worked out, so a step the new results complete counts
+as complete.
+
 ### Step 5: Present the Drift Report
 
 Present all findings before asking anything. Suggested shape:

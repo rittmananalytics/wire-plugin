@@ -168,6 +168,7 @@ function viewOverview() {
   const r = release;
   if (!r.resolved) return h("div", {}, releaseHeader("Release overview"), h("div", { class: "content" }, h("div", { class: "error" }, r.error || "This release could not be resolved.")));
   const g = r.resolved.graph;
+  const tk = r.tickets && !r.tickets.error ? r.tickets : null;
   const applicable = g.filter((n) => n.state !== "not applicable");
   const complete = applicable.filter((n) => n.state === "complete").length;
   const phases = [];
@@ -183,10 +184,18 @@ function viewOverview() {
     h("span", { class: "ph" }, p.name),
     p.nodes.map((n) => h("button", { type: "button", class: `node ${stateClass(n.state)}`, "aria-pressed": n.id === selected.node ? "true" : "false",
       onclick: () => { selected.node = n.id; render("overview"); } },
-      h("span", { class: "t" }, n.id.replace(/_/g, " ")), h("span", { class: "s" }, stepText(n.steps)))))));
+      h("span", { class: "t" }, n.id.replace(/_/g, " ")), h("span", { class: "s" }, stepText(n.steps)),
+      sliceProgress(n.id))))));
 
   const plan = r.run_plan;
-  const tk = r.tickets && !r.tickets.error ? r.tickets : null;
+  // A release built from tickets: each node also shows its slices (4.2.6).
+  function sliceProgress(id) {
+    const x = tk && tk.release[id];
+    if (!x) return null;
+    const pct = x.slices ? Math.round((100 * x.complete) / x.slices) : 0;
+    return [h("span", { class: "s" }, `${x.complete} of ${x.slices} slice${x.slices === 1 ? "" : "s"} done${x.in_progress ? `, ${x.in_progress} in progress` : ""}`),
+      h("span", { class: "bar", "aria-hidden": "true" }, h("span", { style: `width:${pct}%` }))];
+  }
   return h("div", {},
     releaseHeader("Release overview", r.inbox.length ? h("a", { class: "btn", href: `#/r/${encodeURIComponent(r.name)}/decisions`, style: "text-decoration:none" }, `Review ${r.inbox.length} decision${r.inbox.length === 1 ? "" : "s"}`) : null),
     h("div", { class: "content" },
@@ -317,9 +326,10 @@ function nextClass(s) {
 function ticketDirective(r, t) {
   return t.rows_awaiting_rollup ? `/wire:status-sync ${r.name}` : `/wire:work ${r.name} ${t.key}`;
 }
-function viewTickets() {
+function viewTickets(arg) {
   const r = release;
   const tk = r.tickets;
+  if (arg) selected.ticket = arg;  // #/r/<release>/tickets/<ticket> opens that ticket
   if (!tk) return h("div", {}, releaseHeader("Tickets"), h("div", { class: "content" }, h("p", { class: "empty" }, "This release is built artifact by artifact, not from tickets.")));
   if (tk.error) return h("div", {}, releaseHeader("Tickets"), h("div", { class: "content" }, h("div", { class: "error" }, tk.error)));
   if (!tk.tickets.find((t) => t.key === selected.ticket)) selected.ticket = (tk.tickets.find((t) => t.next === "can_start") || tk.tickets[0] || {}).key;
@@ -343,18 +353,21 @@ function viewTickets() {
             h("span", { class: "meta" }, h("span", { class: "mono" }, t.key), h("span", { class: `badge ${nextClass(t.next)}` }, NEXT[t.next] || t.next)),
             h("span", { class: "title" }, t.title),
             t.waits_on.length ? h("span", { class: "muted" }, `Waits for ${t.waits_on.join(", ")}`) : null,
-            t.rows_awaiting_rollup ? h("span", { class: "muted" }, "Merged, not yet rolled up") : null)))),
+            t.rows_awaiting_rollup ? h("span", { class: "muted" }, "Merged, not yet rolled up") : null,
+            progressSummary(t))))),
         cur ? h("section", { class: "card", "aria-labelledby": "tk-h" },
           h("span", { class: "muted" }, `${String(cur.kind || "").toUpperCase()} · ${cur.record_state}${cur.merged ? " · merged" : ""}`),
           h("h2", { id: "tk-h", style: "margin:6px 0 12px;font-size:20px" }, `${cur.key}: ${cur.title}`),
           h("p", { class: "muted" }, "Slices: ", h("span", { class: "mono" }, cur.slices.join(", ") || "-")),
           h("p", { class: "muted" }, "Wire steps: ", h("span", { class: "mono" }, cur.steps.join(", ") || "none (plain work)")),
-          Object.keys(cur.results).length ? h("p", { class: "muted" }, "Results: ", h("span", { class: "mono" }, Object.entries(cur.results).map(([k, v]) => `${k} ${v}`).join(", "))) : null,
           cur.blocked ? h("div", { class: "error" }, `Blocked: ${cur.blocked}`) : null,
           cur.unmet.length ? h("p", { class: "muted" }, "Waiting on: ", h("span", { class: "mono" }, cur.unmet.join(", "))) : null,
           cur.needs_ruling.length ? h("p", { class: "muted" }, "Needs a ruling: ", cur.needs_ruling.join("; ")) : null,
           h("p", { class: "muted" }, `Ticket log: ${cur.log_rows} row${cur.log_rows === 1 ? "" : "s"}${cur.rows_awaiting_rollup ? `, ${cur.rows_awaiting_rollup} not yet in the release log` : ""}`),
-          h("p", {}, h("a", { href: `#/r/${encodeURIComponent(r.name)}/file/${encodeURIComponent(cur.record)}` }, "Open the ticket record"),
+          ticketProgress(r, cur),
+          ticketFiles(r, cur),
+          ticketRows(cur),
+          h("p", { style: "margin-top:16px" }, h("a", { href: `#/r/${encodeURIComponent(r.name)}/file/${encodeURIComponent(cur.record)}` }, "Open the ticket record"),
             cur.url ? [" · ", h("a", { href: cur.url, target: "_blank", rel: "noopener noreferrer" }, "Open in the tracker")] : null),
           cur.next !== "plain" && cur.next !== "cancelled" ? [h("p", { class: "muted", style: "margin:16px 0 6px" }, "Directive"), directiveBox(ticketDirective(r, cur))] : null)
           : h("p", { class: "empty" }, "No tickets in the map.")),
@@ -368,6 +381,61 @@ function viewTickets() {
         h("p", { class: "muted", style: "margin:0 0 10px" }, "Wire lists new, changed and removed tickets and asks before changing the map."),
         directiveBox(`/wire:tickets-import ${r.name} --refresh`))));
 }
+// ---------- progress inside a ticket (4.2.6) ----------
+const ACT = { recorded: "Recorded", found: "Found, not recorded", not_done: "Not done" };
+function progressSummary(t) {
+  const p = t.progress;
+  if (!p || p.error || !p.counts) return null;
+  const c = p.counts, total = c.recorded + c.found + c.not_done;
+  if (!total) return null;
+  return h("span", { class: "muted" }, `${c.recorded} of ${total} recorded${c.found ? `, ${c.found} found` : ""}`);
+}
+function ticketProgress(r, t) {
+  const p = t.progress;
+  if (!p) return null;
+  if (p.error) return h("p", { class: "muted" }, `Progress: ${p.error}`);
+  if (!p.progress.length) return null;
+  const acts = ["generate", "validate", "review"];
+  const cell = (x) => !x ? h("div", { class: "act na" }, h("span", { class: "v" }, "n/a"))
+    : h("div", { class: `act ${x.state}` }, h("span", { class: "v" }, x.state === "not_done" ? "Not done" : `${x.state === "found" ? "Found: " : ""}${x.value}`),
+        x.evidence ? h("span", { class: "e" }, x.evidence) : null);
+  const missing = p.missing || [];
+  return h("div", { class: "tsec" },
+    h("div", { class: "row", style: "justify-content:space-between" },
+      h("h3", {}, "Progress"),
+      h("div", { class: "legend" }, h("span", { style: "--c: var(--ok)" }, ACT.recorded), h("span", { class: "dash", style: "--c: var(--accent)" }, ACT.found), h("span", { style: "--c: var(--line)" }, ACT.not_done))),
+    h("div", { style: "overflow-x:auto" }, h("div", { class: "pgrid", role: "table", "aria-label": `Progress of ${t.key}` },
+      h("div", { class: "ph", role: "row" }, ["Wire step", "Generate", "Validate", "Review"].map((c) => h("span", { role: "columnheader" }, c))),
+      p.progress.map((s) => h("div", { class: "pr", role: "row" }, h("span", { class: "mono", role: "rowheader" }, s.step), acts.map((a) => h("div", { role: "cell" }, cell(s.actions[a]))))))),
+    missing.length ? h("div", { class: "found-note" },
+      h("p", { style: "margin:0 0 8px" }, `${missing.length} result${missing.length === 1 ? "" : "s"} found in the ticket's logs or changed files, not recorded in the ticket record. ` +
+        (t.merged ? "Status sync proposes them for your confirmation:" : "The ticket's session records them:")),
+      directiveBox(t.merged ? `/wire:status-sync ${r.name}` : `/wire:work ${r.name} ${t.key}`)) : null);
+}
+function ticketFiles(r, t) {
+  const f = t.progress && t.progress.files;
+  if (!f || (f.error && t.record_state === "planned")) return null;
+  if (f.error) return h("div", { class: "tsec" }, h("h3", {}, "Files changed"), h("p", { class: "muted" }, f.error));
+  const status = { A: "added", M: "changed", D: "deleted", T: "type changed" };
+  return h("div", { class: "tsec" },
+    h("h3", {}, "Files changed", h("span", { class: "note" }, `${f.files.length} file${f.files.length === 1 ? "" : "s"}, +${f.added} −${f.deleted}, ${f.branch}${f.merged ? " (merged)" : ` against ${f.base}`}`)),
+    f.files.length ? h("div", { class: "fgroups" }, f.groups.map((g) => h("div", { class: "fgroup" },
+      h("span", { class: "muted" }, `${g.name} · ${g.files.length}`),
+      h("ul", {}, g.files.map((x) => h("li", {},
+        x.status === "D" ? h("span", { class: "mono del" }, x.path) : h("a", { class: "mono", href: `#/r/${encodeURIComponent(r.name)}/file/${encodeURIComponent(x.path)}`, title: x.path }, x.path.split("/").pop()),
+        h("span", { class: "muted" }, ` ${status[x.status] || x.status}`))))))) : h("p", { class: "empty" }, "No files changed yet."));
+}
+function ticketRows(t) {
+  const a = t.progress && t.progress.activity;
+  if (!a || !a.rows.length) return null;
+  const cols = ["Timestamp", "Command", "Result", "Detail", "By"];
+  return h("div", { class: "tsec" },
+    h("h3", {}, "Activity", h("span", { class: "note" }, a.source === "ticket log" ? "from the ticket's own log" : "from the release log: this ticket has no log of its own")),
+    h("div", { class: "table-wrap" }, h("table", {},
+      h("thead", {}, h("tr", {}, cols.map((c) => h("th", {}, c)))),
+      h("tbody", {}, a.rows.map((row) => h("tr", {}, cols.map((c) => h("td", { class: c === "Command" ? "mono" : null }, row[c] || ""))))))));
+}
+
 function ticketActivity(rows) {
   const cols = ["Ticket", ...Object.keys(rows[0]).filter((c) => c !== "Ticket")];
   const recent = [...rows].reverse();

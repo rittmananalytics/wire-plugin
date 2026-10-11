@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.2.6: Progress inside each ticket in Wire Studio
+
+**Released**: October 2026
+
+**Optional steps in scope.** Some release types have optional steps, such as business rules and the semantic layer. Wire Studio showed an optional step as not applicable unless the release profile switched it on, even when the step was already generated or tickets covered it. On a release built from tickets, this made the release type look like a poor fit for the work. An optional step is now in scope when you ask for it, when the record shows progress on it, or when a ticket covers it. The rule is in the runnable set, so `/wire:start`, `/wire:delegate` and the release-director skill give the same answer as Studio.
+
+**Progress inside each ticket.** Studio's Tickets page now shows, for each ticket, a grid of its Wire steps with generate, validate and review, each marked recorded, found but not recorded, or not done. It also lists the files the ticket's branch changed, grouped by kind, each opening in Studio, and the ticket's activity. On the overview, each step shows how many slices are done and in progress. `#/r/<release>/tickets/<ticket>` opens one ticket.
+
+**Results found but not recorded.** Work done by a direct edit, or before a release was built from tickets, left no result in the ticket record, so Studio and the status table could not see it. The new `ticket_delivery.py progress` command reads a ticket's log rows and changed files and lists the results its record does not hold. `/wire:status-sync` proposes them, with their evidence, and writes them only on confirmation. Ticket records now hold one result per action (`dbt: {generate: complete, validate: pass}`); the short form still reads. `/wire:work` records a result for a step done by direct edit too, and records the ticket's branch.
+
+---
+
 ## v4.2.5: Metabase, Looker Studio and Omni to Looker
 
 **Released**: October 2026

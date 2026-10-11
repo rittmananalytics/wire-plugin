@@ -5,7 +5,7 @@ title: What Is Wire?
 
 # The Wire Framework
 
-**Rittman Analytics** | Version 4.2.5
+**Rittman Analytics** | Version 4.2.6
 
 Wire is Rittman Analytics' **agentic delivery system for data platform projects**. It combines our delivery methodology with AI coding agents to plan, build, validate and govern an engagement from initial requirements through design, development, testing, deployment and handover.
 

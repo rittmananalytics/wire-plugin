@@ -14,8 +14,8 @@ Studio 4.x runs on your own machine against a client repository you have checked
 | View | What it shows |
 |---|---|
 | Releases | Every release in the engagement: release type, artifacts complete, decisions waiting on you, live lanes. A release whose `status.md` cannot be read is flagged, not hidden. |
-| Overview | The artifact graph for the release type, with any profile applied, each artifact's generate, validate and review state, the runnable set (what can start now, in order, within the release's lane budget), and the AI spend the execution log records for the release |
-| Tickets | Only for a release built from tickets. One row per slice of the release and one column per Wire step, each cell showing its state and the tickets covering it; how far each step has got across the slices; every ticket with whether it can start, what it waits on or why it is blocked; the tracker's missing "blocked by" links; and a `/wire:work` directive for each ticket. On the overview, the runnable set gives way to the tickets that can start. |
+| Overview | The artifact graph for the release type, with any profile applied, each artifact's generate, validate and review state, the runnable set (what can start now, in order, within the release's lane budget), and the AI spend the execution log records for the release. For a release built from tickets, each step also shows how many slices are done and how many are in progress. |
+| Tickets | Only for a release built from tickets. One row per slice of the release and one column per Wire step, each cell showing its state and the tickets covering it; how far each step has got across the slices; every ticket with whether it can start, what it waits on or why it is blocked, and how many of its results are recorded; the tracker's missing "blocked by" links; and a `/wire:work` directive for each ticket. Inside each ticket: its progress, the files its branch changed and its activity (below). On the overview, the runnable set gives way to the tickets that can start. |
 | Decision inbox | Parked decisions, review gates and advisory gates waiting on you, each with a directive you can edit and then copy or run |
 | Lanes | Each lane's state file and when it was last written. A lane not marked complete with no write for 30 minutes is shown as stalled, with a re-dispatch directive. |
 | Record and rulings | Rulings from `decisions.md`, the tickets worked inside the release (iterations), and the execution log, newest first |
@@ -23,15 +23,35 @@ Studio 4.x runs on your own machine against a client repository you have checked
 
 For a release built from tickets, Studio reads the ticket map and the ticket records through the same script the Wire session uses (`scripts/ticket_delivery.py`), so its slice table and its list of what can start match `/wire:status`. A merged ticket whose work is not yet in the release record appears in the decision inbox with `/wire:status-sync`.
 
+### Progress inside a ticket
+
+Select a ticket on the Tickets page, or open `#/r/<release>/tickets/<ticket>`, to see three things:
+
+| Part | What it shows |
+|---|---|
+| Progress | For each Wire step the ticket covers, its generate, validate and review, each marked **recorded** (the ticket record holds the result), **found, not recorded** (the ticket's log or the files its branch changed show it, the record does not) or **not done** |
+| Files changed | The files the ticket's branch changed, grouped as dbt models, tests and docs, seeds, semantic layer, Wire record and design model, each opening in Studio. A merged branch is still found after it is deleted. |
+| Activity | The commands and edits run for the ticket, from its own log, or from the release log rows that name it when work was done before the import |
+
+A result is found, not recorded, when a step was done by a direct edit, or before the release was built from tickets, so nothing wrote it to the ticket record. For a merged ticket, Studio puts it in the decision inbox with `/wire:status-sync`, which proposes the results with their evidence and writes them only when you confirm. Files only show that a step's generate was done; validate and review results come from the log or the record.
+
+### Optional steps
+
+Business rules, the semantic layer and some other steps are optional in some release types. Studio shows an optional step as in scope when the release profile switches it on, when you ask for it, when the record already shows progress on it, or when a ticket covers it. Otherwise it shows as not applicable. Before 4.2.6, generated business rules, or a semantic layer that tickets covered, could show as not applicable.
+
 Studio works out the runnable set with the same rule `/wire:start`, `/wire:delegate` and the release-director skill use (`specs/utils/runnable_set.md`), and reads release types and the command registry from the Wire plugin it ships with. So Studio cannot show a different answer from the one the commands act on.
 
 ## The current version
 
-These screenshots are of Studio 4.x running against the sample release in Wire's own test suite.
+These screenshots are of Studio 4.2.6 running against the sample releases in Wire's own test suite.
 
 ![Wire Studio release overview: the artifact graph for a full_platform release grouped by phase, with complete, runnable, waiting and blocked artifacts, and the runnable set with a directive box](/img/wire-studio/studio-overview.png)
 
-![Wire Studio tickets view for a release built from tickets: the slice table with each step's state and covering tickets, the ticket list with can start, waiting and blocked states, and a /wire:work directive for the selected ticket](/img/wire-studio/studio-tickets.png)
+![Wire Studio overview of a release built from tickets: each step in the artifact graph shows how many slices are done and in progress, and the tickets that can start replace the runnable set](/img/wire-studio/studio-tickets-overview.png)
+
+![Wire Studio tickets view for a release built from tickets: the slice table with each step's state and covering tickets, the ticket list with can start, waiting and blocked states and how many results each ticket has recorded](/img/wire-studio/studio-tickets.png)
+
+![Wire Studio progress inside a ticket: a grid of generate, validate and review for each Wire step marked recorded, found but not recorded, or not done, a status-sync directive for the results found, the files the ticket's branch changed grouped by kind, and the ticket's activity](/img/wire-studio/studio-ticket-progress.png)
 
 ![Wire Studio decision inbox: a parked ruling on revenue currency and a dbt review gate, with an editable directive and the Run in Claude Code and Copy buttons](/img/wire-studio/studio-decision-inbox.png)
 
@@ -116,3 +136,4 @@ Studio 4.x is stage 1 of three:
 - **Older status files.** Studio reads artifact states from the front matter, and from a YAML block under `## Artifacts` or `## Artifact Status` in older 3.x files. A `status.md` with no front matter, or with front matter that is not valid YAML, is shown as unreadable. Wire's own commands have the same problem with those files, so fix them rather than work around them.
 - **Launching on Linux** uses `x-terminal-emulator` and has not yet been tried on a Linux desktop.
 - **Gemini CLI.** "Run in Claude Code" opens Claude Code only.
+- **Files changed needs git history.** Studio lists a ticket's files from the local clone: an open branch must be fetched, and a merged one is found from the merge commit that names it. A squash merge names no branch, so its files show only while the branch is still in the clone.

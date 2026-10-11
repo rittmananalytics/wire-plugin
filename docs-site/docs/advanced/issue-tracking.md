@@ -141,7 +141,7 @@ The "Working a Ticket" chapter of the docs site, Part Two, walks through a whole
 1. A ticket that builds a new table is accepted when the table is one of its slices in the ticket map. Work outside the map (a new source, another table) is still refused, with options.
 2. Every command step runs with `--slice <slice>`, so it reads and writes that slice only: one table's section of `design/data_model.md`, one table's models and tests.
 3. On the ticket branch Wire writes only the ticket record, the ticket run log and the code. It does not write `status.md` or `execution_log.md`, so ticket branches no longer clash on those files.
-4. When the pull request merges, `/wire:status-sync` on the release branch adds the ticket's log rows to `execution_log.md` (each row's original time kept in its Detail), copies its decisions to `decisions.md` and updates the slice table, with your confirmation.
+4. When the pull request merges, `/wire:status-sync` on the release branch adds the ticket's log rows to `execution_log.md` (each row's original time kept in its Detail), copies its decisions to `decisions.md` and updates the slice table, with your confirmation. It also proposes any results the ticket's log or changed files show but its record does not hold, for example a step done by a direct edit. [Wire Studio](./wire-studio#progress-inside-a-ticket) shows each ticket's progress, files and activity.
 
 **Where the table design comes from.**
 

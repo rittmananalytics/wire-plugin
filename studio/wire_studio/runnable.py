@@ -94,9 +94,18 @@ def _outcome_met(recorded, required):
     return recorded == required
 
 
-def resolve(framework, status, decisions_md="", requested=()):
+def has_progress(recorded):
+    """Step 5 rule 4: a recorded generate, validate or review value other than
+    not_started or not_applicable puts an optional artifact in scope."""
+    return any((recorded or {}).get(s) not in (None, "", "not_started", "not_applicable")
+               for s in ("generate", "validate", "review"))
+
+
+def resolve(framework, status, decisions_md="", requested=(), ticket_steps=()):
     """Returns states per artifact, the ordered runnable list, the parallel set
-    within budget.lanes_max, the rulings applied, and the graph Studio draws."""
+    within budget.lanes_max, the rulings applied, and the graph Studio draws.
+    `ticket_steps`: the steps a ticket in tickets.yaml covers (a release built
+    from tickets); each puts an optional artifact in scope."""
     release_type = status.get("project_type") or status.get("release_type")
     if not release_type:
         raise ValueError("status.md carries neither project_type nor release_type")
@@ -110,11 +119,13 @@ def resolve(framework, status, decisions_md="", requested=()):
     states = {a["id"]: "not applicable" for a in disabled_artifacts}
     disabled_by_profile = set(states)
 
+    in_scope = set(requested) | set(ticket_steps)
     for a in artifacts:
-        if a.get("optional_unrequested") and a["id"] not in requested:
+        recorded = art_status.get(a["id"], {}) or {}
+        if (a.get("optional_unrequested") and a["id"] not in in_scope
+                and not has_progress(recorded)):
             states[a["id"]] = "not applicable"
             continue
-        recorded = art_status.get(a["id"], {}) or {}
         if not framework.known_command(a["command"]):
             raise ValueError(
                 f"artifact {a['id']!r} declares command {a['command']!r}, which "

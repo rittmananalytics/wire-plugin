@@ -57,10 +57,17 @@ def _ticket_log_rows(release_dir, key, parse_table):
     return text, parse_table(text, "Timestamp")
 
 
-def read_tickets(framework, release, release_dir, status, now, parse_table):
+def _has_step(framework):
+    def has(art, action):
+        return framework.has_step(art, action) if framework.known_command(art) else True
+    return has
+
+
+def read_tickets(framework, release, release_dir, status, now, parse_table, iteration_rows=None):
     """Everything Studio shows for a ticket-built release, or None for a
     release built artifact by artifact. `parse_table` is record.py's table
-    reader, passed in to avoid an import cycle."""
+    reader, passed in to avoid an import cycle. `iteration_rows`: the
+    release's Iterations table, where a ticket's branch may be recorded."""
     if not is_ticket_release(status, release_dir):
         return None
     td = ticket_rules(framework)
@@ -89,10 +96,25 @@ def read_tickets(framework, release, release_dir, status, now, parse_table):
     release_log_text = release_log.read_text(encoding="utf-8", errors="replace") if release_log.is_file() else ""
     stamp = now.strftime("%Y-%m-%d %H:%M")
 
+    has_progress = hasattr(td, "ticket_progress")  # 4.2.6 and later
+    merges_text = None
+    if has_progress:
+        root = (td._git(release_dir, "rev-parse", "--show-toplevel") or "").strip()
+        merges_text = (td._git(root, "log", "--all", "--merges", "--format=%H%x09%P%x09%s") or "") if root else ""
+    has_step = _has_step(framework)
+
     tickets, activity = [], []
     for t in tmap.get("tickets") or []:
         key = t["key"]
         rec = records.get(key, {})
+        prog = None
+        if has_progress and (t.get("steps") or rec.get("branch") or rec.get("state") not in (None, "planned")):
+            try:
+                prog = td.ticket_progress(release_dir, key, has_step=has_step,
+                                          parse_rows=lambda text: parse_table(text, "Timestamp"),
+                                          iteration_rows=iteration_rows, merges_text=merges_text)
+            except (Exception, SystemExit) as e:  # one ticket must not hide the others
+                prog = {"error": str(e)}
         r = by_key.get(key, {"state": "cancelled" if rec.get("state") in ENDED_STATES else "unknown"})
         log_text, log_rows = _ticket_log_rows(release_dir, key, parse_table)
         pending = td.merge_log(release_log_text, log_text, key, stamp) if rec.get("merged") and log_text else []
@@ -107,8 +129,13 @@ def read_tickets(framework, release, release_dir, status, now, parse_table):
             "needs_ruling": r.get("needs_ruling", []),
             "log_rows": len(log_rows), "rows_awaiting_rollup": len(pending),
             "record": f"iterations/{key}.md",
+            "progress": prog,
         })
     activity.sort(key=lambda row: row.get("Timestamp", ""))
+
+    # Per step: slices complete and in progress, for the artifact graph.
+    for art, r in rollup.items():
+        r["in_progress"] = sum(1 for sl in cells if (cells[sl].get(art) or {}).get("state") in ("in_progress", "blocked"))
 
     live = [t for t in tickets if t["record_state"] not in ENDED_STATES]
     return {
@@ -124,6 +151,7 @@ def read_tickets(framework, release, release_dir, status, now, parse_table):
             "waiting": sum(1 for t in live if t["next"] == "waiting"),
             "blocked": sum(1 for t in live if t["next"] == "blocked"),
             "awaiting_rollup": sum(1 for t in live if t["rows_awaiting_rollup"]),
+            "results_found": sum(1 for t in live if (t["progress"] or {}).get("missing")),
         },
     }
 
@@ -141,6 +169,17 @@ def ticket_inbox(release, tk):
             "id": "rollup", "kind": "roll-up", "ref": ", ".join(pending), "artifact": None,
             "question": (f"{len(pending)} merged ticket{'s' if len(pending) != 1 else ''} not yet in the "
                          f"release record: {', '.join(pending)}."),
+            "since": "", "awaiting": None,
+            "directive": f"/wire:status-sync {release}",
+        })
+    found = [t["key"] for t in tk["tickets"]
+             if t["merged"] and (t.get("progress") or {}).get("missing") and not t["rows_awaiting_rollup"]]
+    if found:
+        items.append({
+            "id": "results", "kind": "ticket results", "ref": ", ".join(found), "artifact": None,
+            "question": (f"{len(found)} merged ticket{'s' if len(found) != 1 else ''} with results found in "
+                         f"{'their' if len(found) != 1 else 'its'} logs or changed files but not recorded: "
+                         f"{', '.join(found)}."),
             "since": "", "awaiting": None,
             "directive": f"/wire:status-sync {release}",
         })

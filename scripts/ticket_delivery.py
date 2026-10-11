@@ -19,6 +19,9 @@ right answer, so the Wire session does not work them out by hand:
   merge-log     the release execution-log rows a merged ticket adds
   design-source where a slice's table design comes from
   scope         whether /wire:work accepts a ticket in a ticket-built release
+  progress      one ticket's progress per Wire step and action: what its
+                record holds, what its logs and changed files show, the
+                files its branch changed and its activity (4.2.6)
 
 Judgement stays with the Wire session and the consultant: the kind of a
 ticket and its slice when the design model has no link for it. Those arrive
@@ -26,7 +29,8 @@ here as inputs, marked as proposals, and the output says which need checking.
 
 Reads and prints JSON. Writes nothing except `merge-log --write`, which
 appends to the release's execution_log.md and is run by the Wire session after
-the consultant confirms. Stdlib plus PyYAML.
+the consultant confirms. `progress` runs read-only git commands. Stdlib plus
+PyYAML.
 
 Usage:
     python3 ticket_delivery.py status <release-dir> [--markdown]
@@ -36,12 +40,15 @@ Usage:
     python3 ticket_delivery.py propose <classified.json>
     python3 ticket_delivery.py design-source <release-dir> [--slice <slice>]
     python3 ticket_delivery.py scope <release-dir> <request.json>
+    python3 ticket_delivery.py progress <release-dir> <ticket> [--base <branch>]
 """
 
 import argparse
 import datetime as _dt
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -371,7 +378,7 @@ def cells(ticket_map, records):
         out[sl] = {}
         for art, covering in arts.items():
             def done(st, rec):
-                return bool(rec.get("merged")) and str((rec.get("results") or {}).get(st, "")).lower() in DONE_RESULTS
+                return bool(rec.get("merged")) and result_done(rec.get("results"), st)
             if all(done(st, rec) for _, st, rec in covering):
                 state = "complete"
             elif any(rec.get("blocked") for _, _, rec in covering):
@@ -681,6 +688,348 @@ def scope(ticket_map, request):
 
 
 # ---------------------------------------------------------------------------
+# progress: one ticket's progress per step and action (4.2.6)
+# ---------------------------------------------------------------------------
+ACTIONS = ("generate", "validate", "review")
+# A short result (`dbt: pass`) names the furthest action reached; the actions
+# before it are implied done.
+SHORT_RESULT_ACTION = {"complete": "generate", "pass": "validate", "fail": "validate",
+                       "approved": "review", "changes_requested": "review"}
+IMPLIED = {"generate": "complete", "validate": "pass", "review": "approved"}
+
+# Commands whose run log rows count for a step besides `/wire:<step>-<action>`.
+STEP_COMMANDS = {
+    "dbt": ["dbt-staging", "dbt-integration", "dbt-warehouse"],
+}
+
+# Changed files that show a step's generate action was done, by path.
+# Validate and review results are never inferred from files.
+FILE_EVIDENCE = [
+    ("business_rules", re.compile(r"(^|/)artifacts/business_rules\.(md|ya?ml)$")),
+    ("requirements", re.compile(r"(^|/)requirements/requirements_specification\.md$")),
+    ("data_model", re.compile(r"(^|/)design/data_model_specification\.md$|(^|/)modality/models/physical/[^/]+\.mml$")),
+    ("seed_data", re.compile(r"(^|/)seeds/.+\.csv$")),
+    ("dbt", re.compile(r"(^|/)models/.+\.sql$")),
+    ("data_quality", re.compile(r"(^|/)models/.+\.ya?ml$|(^|/)tests/.+\.(sql|ya?ml)$")),
+    ("semantic_layer", re.compile(r"\.(lkml|lookml)$|(^|/)(cubes|semantic_models)/.+\.ya?ml$")),
+    ("dashboards", re.compile(r"\.dashboard\.lookml$|(^|/)dashboards/")),
+]
+
+# Groups for listing a ticket's changed files, first match wins.
+FILE_GROUPS = [
+    ("Wire record", re.compile(r"(^|/)\.wire/")),
+    ("Design model", re.compile(r"(^|/)modality/")),
+    ("dbt models", re.compile(r"(^|/)models/.+\.sql$")),
+    ("Tests and docs", re.compile(r"(^|/)models/.+\.(ya?ml|md)$|(^|/)tests/")),
+    ("Seeds", re.compile(r"(^|/)seeds/")),
+    ("Semantic layer", re.compile(r"\.(lkml|lookml)$|(^|/)(cubes|semantic_models)/")),
+    ("Other", re.compile(r".")),
+]
+
+
+def step_progress(results, step):
+    """{action: value} recorded for one step. Reads both forms:
+    the short form `dbt: pass` (the furthest action reached, earlier actions
+    implied done) and the full form `dbt: {generate: complete, validate: pass}`."""
+    value = (results or {}).get(step)
+    if value is None or value == "":
+        return {}
+    if isinstance(value, dict):
+        return {a: str(value[a]).lower() for a in ACTIONS if value.get(a) not in (None, "")}
+    v = str(value).lower()
+    action = SHORT_RESULT_ACTION.get(v)
+    if not action:
+        return {}
+    out = {}
+    for a in ACTIONS:
+        if a == action:
+            out[a] = v
+            break
+        out[a] = IMPLIED[a]
+    return out
+
+
+def result_done(results, step):
+    """A step is done when its record holds at least one action and every
+    action it holds is done. `dbt: pass` and `dbt: {generate: complete,
+    validate: pass}` are done; `{generate: complete, validate: fail}` is not."""
+    prog = step_progress(results, step)
+    return bool(prog) and all(v in DONE_RESULTS for v in prog.values())
+
+
+def _command_step_action(command, steps):
+    m = re.match(r"^/wire:(.+)-(generate|validate|review)$", (command or "").strip())
+    if not m:
+        return None
+    cmd, action = m.group(1), m.group(2)
+    for st in steps:
+        art = step_artifact(st)
+        if cmd == art or cmd in STEP_COMMANDS.get(art, []):
+            return st, action
+    return None
+
+
+def ticket_rows(ticket, ticket_log_rows, release_log_rows):
+    """The ticket's activity: its own run log, or, when it has none (work done
+    before the import, or before the run log existed), the release log rows
+    that name the ticket. Returns (source, rows in time order)."""
+    if ticket_log_rows:
+        rows, source = list(ticket_log_rows), "ticket log"
+    else:
+        pat = re.compile(rf"(?<![\w-]){re.escape(ticket)}(?!\w)(?!-\d)")
+        rows = [r for r in release_log_rows or [] if any(pat.search(str(v)) for v in r.values())]
+        source = "release log" if rows else None
+    order = sorted(enumerate(rows), key=lambda p: (str(p[1].get("Timestamp", "")), p[0]))
+    return source, [r for _, r in order]
+
+
+def found_results(steps, rows, files):
+    """{step: {action: {value, evidence}}} that the ticket's log rows and
+    changed files show. A log row gives the action's result (the latest row
+    wins); a changed file only shows that a generate was done."""
+    out = {}
+    for r in rows or []:
+        hit = _command_step_action(r.get("Command"), steps)
+        result = str(r.get("Result", "")).strip().lower()
+        if not hit or result not in SHORT_RESULT_ACTION:
+            continue
+        st, action = hit
+        out.setdefault(st, {})[action] = {"value": result,
+                                          "evidence": f"{r.get('Command')} {result}, {r.get('Timestamp', '')}".strip(", ")}
+    for st in steps:
+        if "generate" in out.get(st, {}):
+            continue
+        pat = dict(FILE_EVIDENCE).get(step_artifact(st))
+        hits = [f["path"] for f in files or [] if pat and pat.search(f["path"]) and f.get("status") != "D"]
+        if hits:
+            out.setdefault(st, {})["generate"] = {
+                "value": "complete",
+                "evidence": f"{len(hits)} file{'s' if len(hits) != 1 else ''} changed on the branch"}
+    return out
+
+
+def progress(steps, results, rows, files, has_step=None):
+    """One entry per Wire step the ticket covers, each action marked
+    `recorded` (the ticket record holds it), `found` (its logs or changed
+    files show it, the record does not) or `not_done`. `has_step(step,
+    action)` limits the actions to those the step has; default all three."""
+    found = found_results(steps, rows, files)
+    out, counts = [], {"recorded": 0, "found": 0, "not_done": 0}
+    for st in steps:
+        art = step_artifact(st)
+        rec = step_progress(results, st)
+        acts = {}
+        for a in ACTIONS:
+            if has_step and not has_step(art, a):
+                continue
+            if a in rec:
+                acts[a] = {"state": "recorded", "value": rec[a]}
+            elif a in found.get(st, {}):
+                acts[a] = {"state": "found", **found[st][a]}
+            else:
+                acts[a] = {"state": "not_done"}
+            counts[acts[a]["state"]] += 1
+        out.append({"step": st, "actions": acts})
+    return {"steps": out, "counts": counts}
+
+
+def missing_results(ticket, steps, results, rows, files, has_step=None):
+    """status-sync Step 4h: the results a ticket's evidence shows and its
+    record does not hold, as proposals. Each proposal keeps its evidence."""
+    p = progress(steps, results, rows, files, has_step)
+    out = []
+    for s in p["steps"]:
+        for a, x in s["actions"].items():
+            if x["state"] == "found":
+                out.append({"ticket": ticket, "step": s["step"], "action": a,
+                            "proposed": x["value"], "evidence": x["evidence"]})
+    return out
+
+
+def group_files(files):
+    groups = {}
+    for f in files or []:
+        name = next(n for n, pat in FILE_GROUPS if pat.search(f["path"]))
+        groups.setdefault(name, []).append(f)
+    order = [n for n, _ in FILE_GROUPS]
+    return [{"name": n, "files": sorted(groups[n], key=lambda f: f["path"])} for n in order if n in groups]
+
+
+# --- the branch's changed files (read-only git) ---------------------------
+_GIT_ENV = dict(os.environ, GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0")
+
+
+def _git(repo, *args):
+    try:
+        out = subprocess.run(["git", "-C", str(repo), "--no-pager", *args], capture_output=True,
+                             text=True, timeout=15, env=_GIT_ENV)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return out.stdout if out.returncode == 0 else None
+
+
+def _ref(repo, name):
+    for cand in (f"refs/heads/{name}", f"refs/remotes/origin/{name}", name):
+        sha = _git(repo, "rev-parse", "--verify", "--quiet", f"{cand}^{{commit}}")
+        if sha:
+            return sha.strip()
+    return None
+
+
+def _merge_commit(repo, branch, merges_text=None):
+    """The newest merge commit whose subject names the branch: a GitHub pull
+    request merge (`from <owner>/<branch>`) or a git merge (`Merge branch
+    '<branch>'`, `Merge remote-tracking branch 'origin/<branch>'`)."""
+    if merges_text is None:
+        merges_text = _git(repo, "log", "--all", "--merges", "--format=%H%x09%P%x09%s") or ""
+    b = re.escape(branch)
+    pat = re.compile(rf"(?:from [^/\s]+/{b}$|Merge (?:remote-tracking )?branch '(?:origin/)?{b}'(?: |$))")
+    for line in merges_text.splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) == 3 and pat.search(parts[2]):
+            parents = parts[1].split()
+            if len(parents) >= 2:
+                return {"sha": parts[0], "base": parents[0], "tip": parents[1]}
+    return None
+
+
+def branch_files(repo, branch, bases=(), merges_text=None):
+    """The files a ticket branch changed, from the point it left its base.
+
+    Merged branch: the newest merge commit naming it gives both sides, so this
+    works after the branch is deleted. Open branch: the first of `bases` that
+    exists. Returns {branch, base, merged, files: [{path, status, added,
+    deleted}], added, deleted} or {error}."""
+    if not branch:
+        return {"error": "No branch is recorded for this ticket."}
+    if _git(repo, "rev-parse", "--git-dir") is None:
+        return {"error": "Not a git repository."}
+    merge = _merge_commit(repo, branch, merges_text)
+    if merge:
+        tip, base_sha, base_name, merged = merge["tip"], merge["base"], None, True
+    else:
+        tip = _ref(repo, branch)
+        if not tip:
+            return {"error": f"Branch {branch} is not in this clone. Fetch it to list its files."}
+        base_sha = base_name = None
+        for b in bases:
+            sha = _ref(repo, b)
+            if sha and sha != tip:
+                base_sha, base_name = sha, b
+                break
+        if not base_sha:
+            return {"error": "No base branch found to compare the ticket branch with."}
+        merged = False
+    fork = (_git(repo, "merge-base", base_sha, tip) or "").strip()
+    if not fork:
+        return {"error": "The ticket branch and its base share no history."}
+    status = _git(repo, "diff", "--name-status", "--no-renames", fork, tip)
+    numstat = _git(repo, "diff", "--numstat", "--no-renames", fork, tip)
+    if status is None or numstat is None:
+        return {"error": "git diff failed."}
+    counts = {}
+    for line in numstat.splitlines():
+        a, d, path = line.split("\t", 2)
+        counts[path] = (int(a) if a.isdigit() else 0, int(d) if d.isdigit() else 0)
+    files = []
+    for line in status.splitlines():
+        st, path = line.split("\t", 1)
+        add, dele = counts.get(path, (0, 0))
+        files.append({"path": path, "status": st[0], "added": add, "deleted": dele})
+    files.sort(key=lambda f: f["path"])
+    return {"branch": branch, "base": base_name, "merged": merged, "files": files,
+            "added": sum(f["added"] for f in files), "deleted": sum(f["deleted"] for f in files)}
+
+
+BRANCH_ROW = re.compile(r"^\|\s*Branch\s*\|\s*`?([^\s|`]+)", re.M)
+
+
+def ticket_branch(record, record_text="", iteration_rows=None, ticket=None):
+    """The ticket's branch: `branch:` in the record's front matter, else the
+    Branch row of the record's table, else the release's Iterations table."""
+    if record.get("branch"):
+        return str(record["branch"])
+    m = BRANCH_ROW.search(record_text or "")
+    if m:
+        return m.group(1)
+    for row in iteration_rows or []:
+        if row.get("Ticket") == ticket and row.get("Branch"):
+            return row["Branch"].strip("`").split()[0]
+    return None
+
+
+def release_bases(release_name, status=None):
+    """Branches an open ticket branch is compared with, in order."""
+    out = []
+    if status and status.get("release_branch"):
+        out.append(str(status["release_branch"]))
+    out += [f"release/{release_name}", "main", "master"]
+    return out
+
+
+def ticket_progress(release_dir, ticket, repo=None, bases=None, has_step=None,
+                    parse_rows=None, iteration_rows=None, merges_text=None):
+    """Everything `progress` reports for one ticket of a release folder."""
+    rel = Path(release_dir)
+    tmap = load_map(rel)
+    t = next((x for x in tmap.get("tickets") or [] if x["key"] == ticket), None)
+    if t is None:
+        raise SystemExit(f"{ticket} is not in the ticket map.")
+    rec_path = rel / "iterations" / f"{ticket}.md"
+    rec_text = rec_path.read_text(encoding="utf-8", errors="replace") if rec_path.exists() else ""
+    rec = _front_matter(rec_text)
+    parse_rows = parse_rows or _dict_rows
+    tlog = rel / "iterations" / f"{ticket}.execution_log.md"
+    rlog = rel / "execution_log.md"
+    source, rows = ticket_rows(ticket,
+                               parse_rows(tlog.read_text(encoding="utf-8", errors="replace")) if tlog.exists() else [],
+                               parse_rows(rlog.read_text(encoding="utf-8", errors="replace")) if rlog.exists() else [])
+    if iteration_rows is None:
+        iteration_rows = iteration_table(rel)
+    branch = ticket_branch(rec, rec_text, iteration_rows, ticket)
+    files = {"error": "No branch is recorded for this ticket."}
+    if branch:
+        root = repo or (_git(rel, "rev-parse", "--show-toplevel") or "").strip() or rel
+        files = branch_files(root, branch, bases if bases is not None else release_bases(rel.name, load_status(rel)), merges_text)
+    steps = t.get("steps") or []
+    flist = files.get("files") or []
+    p = progress(steps, rec.get("results"), rows, flist, has_step)
+    return {
+        "ticket": ticket, "merged": bool(rec.get("merged")), "branch": branch,
+        "progress": p["steps"], "counts": p["counts"],
+        "missing": missing_results(ticket, steps, rec.get("results"), rows, flist, has_step),
+        "files": dict(files, groups=group_files(flist)) if "files" in files else files,
+        "activity": {"source": source, "rows": rows},
+    }
+
+
+def iteration_table(release_dir):
+    """Rows of the `## Iterations` table in status.md."""
+    path = Path(release_dir) / "status.md"
+    if not path.exists():
+        return []
+    m = re.search(r"^##\s+Iterations\s*$(.*?)(?=^##\s|\Z)", path.read_text(encoding="utf-8", errors="replace"), re.M | re.S)
+    return _dict_rows(m.group(1), "ticket") if m else []
+
+
+def _dict_rows(text, first="timestamp"):
+    """Rows of the first Markdown table whose header starts with `first`, as
+    dicts keyed by the header row."""
+    lines = (text or "").splitlines()
+    for i, line in enumerate(lines):
+        cells_ = [c.strip() for c in line.strip().strip("|").split("|")] if line.strip().startswith("|") else None
+        if cells_ and cells_[0].lower() == first:
+            out = []
+            for row in lines[i + 2:]:
+                if not row.strip().startswith("|"):
+                    break
+                vals = [c.strip() for c in row.strip().strip("|").split("|")]
+                out.append({h: (vals[j] if j < len(vals) else "") for j, h in enumerate(cells_)})
+            return out
+    return []
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def _now():
@@ -698,6 +1047,8 @@ def main(argv=None):
     s = sub.add_parser("propose"); s.add_argument("classified")
     s = sub.add_parser("design-source"); s.add_argument("release"); s.add_argument("--slice")
     s = sub.add_parser("scope"); s.add_argument("release"); s.add_argument("request")
+    s = sub.add_parser("progress"); s.add_argument("release"); s.add_argument("ticket")
+    s.add_argument("--base", action="append", help="base branch for an open ticket branch (repeatable)")
     a = p.parse_args(argv)
 
     if a.cmd == "propose":
@@ -711,6 +1062,9 @@ def main(argv=None):
     if a.cmd == "design-source":
         print(json.dumps({"design_source": design_source(
             status.get("model_source"), physical_tables(rel, status), a.slice)}, indent=2))
+        return 0
+    if a.cmd == "progress":
+        print(json.dumps(ticket_progress(rel, a.ticket, bases=a.base), indent=2, ensure_ascii=False))
         return 0
     tmap = load_map(rel)
     records = load_records(rel)

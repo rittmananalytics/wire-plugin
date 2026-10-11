@@ -115,3 +115,26 @@ table.slices td.cell.blocked { background: var(--bad-soft); color: var(--bad-ink
 
 /* The hidden attribute must win over .group and .group a display rules. */
 [hidden] { display: none !important; }
+
+/* progress inside a ticket (4.2.6) */
+.node .bar { display: block; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; margin-top: 2px; }
+.node .bar span { display: block; height: 100%; background: var(--ok); }
+.tsec { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.tsec h3 { margin: 0; font-size: 15px; font-weight: 500; }
+.tsec h3 .note { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+.legend .dash::before { background: transparent; border: 1.5px dashed var(--c); box-sizing: border-box; }
+.pgrid { display: flex; flex-direction: column; gap: 8px; min-width: 560px; }
+.pgrid .ph, .pgrid .pr { display: grid; grid-template-columns: 120px repeat(3, minmax(140px, 1fr)); gap: 8px; align-items: stretch; }
+.pgrid .ph span { font-size: 12px; color: var(--muted); }
+.pgrid .pr > span { font-size: 13px; padding-top: 10px; }
+.act { display: flex; flex-direction: column; gap: 2px; padding: 9px 11px; border-radius: 8px; height: 100%; box-sizing: border-box; }
+.act .v { font-size: 13px; font-weight: 500; }
+.act .e { font-size: 12px; color: var(--muted); }
+.act.recorded { background: var(--ok-soft); color: var(--ok-ink); }
+.act.found { border: 1.5px dashed var(--accent); color: var(--accent); }
+.act.not_done, .act.na { background: var(--ground); color: var(--muted); }
+.found-note { background: var(--accent-soft); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+.fgroups { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.fgroup { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.fgroup ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.fgroup .del { text-decoration: line-through; color: var(--muted); }

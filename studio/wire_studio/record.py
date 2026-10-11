@@ -298,12 +298,14 @@ def load_release(framework, repo, name, now=None):
         "error": status.get("_error"),
     }
     try:
-        out["tickets"] = read_tickets(framework, name, rel["dir"], status, now, parse_markdown_table)
+        out["tickets"] = read_tickets(framework, name, rel["dir"], status, now, parse_markdown_table,
+                                      out["iterations"]["rows"])
     except Exception as e:  # a broken ticket map must not hide the rest of the release
         out["tickets"] = {"error": f"Could not read the ticket map: {e}"}
     out["spend"] = spend_of(out["execution_log"])
     try:
-        resolved = resolve(framework, status, decisions_md)
+        tk = out["tickets"] if out["tickets"] and not out["tickets"].get("error") else None
+        resolved = resolve(framework, status, decisions_md, ticket_steps=tuple(tk["steps"]) if tk else ())
         out["resolved"] = resolved
         out["inbox"] = build_inbox(name, status, resolved)
         out["run_plan"] = run_plan_directive(name, resolved)

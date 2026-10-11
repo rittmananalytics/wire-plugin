@@ -166,15 +166,44 @@ ticket: CUS-216
 state: awaiting_owner     # planned | open | awaiting_review | awaiting_owner | closed | escalated | cancelled
 merged: true              # its pull request has merged into the release branch
 blocked: null             # or the reason, e.g. "no access to the existing dbt project"
-results:                  # one entry per step, written as each command reports
-  data_model: pass
-  dbt: pass
-  data_quality: pass
+branch: feature/cus-216-legal-entity   # optional; else the record's Branch row or the Iterations table
+results:                  # one entry per step, one value per action, written as each action reports
+  data_model: {generate: complete, validate: pass, review: approved}
+  dbt: {generate: complete, validate: pass}
+  data_quality: pass      # the short form still reads
 ---
 ```
 
 `planned` is new: the import created the record and nobody has opened it yet.
 The other states are `/wire:work`'s.
+
+**Results.** The full form (4.2.6) holds one value per action: `generate:
+complete`, `validate: pass | fail`, `review: approved | changes_requested`.
+The short form `dbt: pass` names the furthest action reached, and the actions
+before it count as done (`pass` means generate complete and validate pass).
+A step counts as done for the status table when the record holds at least one
+action for it and every action it holds is done. A step done by a direct edit
+under a skill, rather than by its command, records its result too: without
+it the status table and Wire Studio cannot see the work.
+
+## A ticket's progress: `ticket_delivery.py progress`
+
+`python3 <wire>/scripts/ticket_delivery.py progress <release> <ticket>` reports,
+read only, what Wire Studio shows on the Tickets page and what status sync
+proposes (Step 4h):
+
+| Part | Rule |
+|---|---|
+| Progress | For each Wire step the ticket covers and each action the step has, `recorded` (the ticket record holds it), `found` (the evidence below shows it and the record does not) or `not_done` |
+| Evidence from logs | A run-log row `/wire:<step>-<action>` (for `dbt` also `dbt-staging`, `dbt-integration`, `dbt-warehouse`) gives that action's result; the latest row wins |
+| Evidence from files | A file the ticket's branch changed shows that the step's generate was done: `models/**.sql` for `dbt`, `models/**.yml` or `tests/` for `data_quality`, `design/data_model_specification.md` or a Modality physical file for `data_model`, `seeds/*.csv` for `seed_data`, LookML or cube files for `semantic_layer`, the requirements and business rules documents for those steps. Validate and review results are never taken from files |
+| Files changed | The files the branch changed since it left its base, grouped (Wire record, design model, dbt models, tests and docs, seeds, semantic layer, other). A merged branch is found from the merge commit that names it, so it still works after the branch is deleted; an open branch is compared with `release/<release>`, then `main` |
+| Activity | The ticket's own run log; if it has none (work done before the import), the release log rows that name the ticket |
+| Missing | The `found` actions, each with its evidence: the proposals for Step 4h |
+
+The branch comes from `branch:` in the front matter, else the record's
+`| Branch |` row, else the release's Iterations table. Every git command is
+read only.
 
 ## The status table, per slice
 
@@ -291,7 +320,9 @@ the shared record files.
 2. Copies the ticket's decisions to `decisions.md`, next ids in sequence.
 3. Rewrites the `## Slices` table and the `## Iterations` row.
 4. Proposes `artifacts.<id>` changes for steps now complete for the release.
-5. Writes nothing until the consultant confirms (status-sync's contract).
+5. Proposes the results a merged ticket's evidence shows and its record does
+   not hold (Step 4h).
+6. Writes nothing until the consultant confirms (status-sync's contract).
 
 The Wire session stays the single writer of the release record
 (`specs/utils/director_operating_model.md`). On the ticket branch it writes

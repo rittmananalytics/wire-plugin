@@ -138,7 +138,7 @@ Rules, applied in order:
    has ruled out is met rather than permanently blocking.
 
    **This covers disabled phases only, not merely optional artifacts.** An
-   optional artifact nobody enabled is reported `not applicable`, but a
+   optional artifact nobody enabled (Step 5 rule 4) is reported `not applicable`, but a
    dependency on it is resolved on its recorded state like any other, so an
    advisory gate on it still parks for a ruling. `business_rules` is the case:
    it is optional on every release type that carries it, and if being optional
@@ -185,9 +185,16 @@ the value exists and is never produced.
    director, so nothing else is dispatched into the foreground alongside it,
    but non-interactive lanes continue in the background.
 4. **Optional artifacts** (`required: false`) that the active profile has not
-   enabled are `not applicable` and are not dispatched. They stay runnable on
-   request: a director who asks for one gets it, and the request is what
-   enables it.
+   enabled are `not applicable` and are not dispatched, unless one of these
+   puts them in scope:
+   - a director asks for one (the request is what enables it);
+   - `status.md` already records progress on it: any `generate`, `validate`
+     or `review` value other than `not_started` or `not_applicable`;
+   - in a release built from tickets, a ticket in `tickets.yaml` covers it
+     (the ticket's `steps`).
+   An optional artifact in scope resolves like any other: Steps 2 to 4 give
+   its state. Without this, generated business rules, or a semantic layer that
+   tickets cover, show as `not applicable` (wire#297, 4.2.6).
 
 ## Releases built from tickets
 
@@ -210,6 +217,7 @@ computes it; do not work it out by hand. In short:
    `/wire:work`, never dispatched as a lane: a ticket is one foreground piece
    of work.
 
+An optional step a ticket covers is in scope for the release (Step 5 rule 4).
 The release-level `artifacts:` block still answers this procedure for callers
 that do not read slices, and is only marked done when a step is complete in
 every slice. Wire's order is also compared with the tracker's "blocked by"
