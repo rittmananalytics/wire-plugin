@@ -1,0 +1,8 @@
+schema: analytics
+table_name: orders
+
+dimensions:
+  id:
+    primary_key: true
+  customer_id: {}
+  referrer_id: {}

@@ -1,0 +1,48 @@
+[
+ {
+  "dashboard_file": "dashboards/order_summary.dashboard.lookml",
+  "document": "Order summary",
+  "document_identifier": "0rd5umm4",
+  "element": "orders_this_quarter_1",
+  "explore": "orders",
+  "field_map": {
+   "analytics__orders.count": "analytics__orders.count"
+  },
+  "fields": [
+   "analytics__orders.count"
+  ],
+  "source": "omni:halcyon:document:0rd5umm4/query:1",
+  "source_fields": [
+   "analytics__orders.count"
+  ],
+  "source_query_key": "1"
+ },
+ {
+  "dashboard_file": "dashboards/order_summary.dashboard.lookml",
+  "document": "Order summary",
+  "document_identifier": "0rd5umm4",
+  "element": "revenue_by_status_and_month_2",
+  "explore": "orders",
+  "field_map": {
+   "analytics__orders.count": "analytics__orders.count",
+   "analytics__orders.created_at[month]": "analytics__orders.created_at_month",
+   "analytics__orders.revenue": "analytics__orders.revenue",
+   "analytics__orders.status": "analytics__orders.status"
+  },
+  "fields": [
+   "analytics__orders.created_at_month",
+   "analytics__orders.status",
+   "analytics__orders.revenue",
+   "analytics__orders.count",
+   "per_order"
+  ],
+  "source": "omni:halcyon:document:0rd5umm4/query:2",
+  "source_fields": [
+   "analytics__orders.created_at[month]",
+   "analytics__orders.status",
+   "analytics__orders.revenue",
+   "analytics__orders.count"
+  ],
+  "source_query_key": "2"
+ }
+]

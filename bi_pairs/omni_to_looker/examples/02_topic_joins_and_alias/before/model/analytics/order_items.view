@@ -1,0 +1,11 @@
+schema: analytics
+table_name: order_items
+
+dimensions:
+  id:
+    primary_key: true
+  order_id: {}
+
+measures:
+  count:
+    aggregate_type: count

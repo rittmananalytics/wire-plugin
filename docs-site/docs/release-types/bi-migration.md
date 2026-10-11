@@ -13,15 +13,16 @@ Since v4.0.0, on Claude Code, you can direct this release in plain language: say
 
 This release type moves a reporting layer from one BI tool to another. The warehouse and the dbt layer stay where they are. What is rebuilt, checked and switched over is the semantic model and the dashboards that sit on it.
 
-It supports seven migration pairs. The release's `status.md` records which one with `bi_pair`.
+It supports eight migration pairs. The release's `status.md` records which one with `bi_pair`.
 
 1. [Tableau to Looker](#tableau-to-looker) (`tableau_to_looker`, experimental)
 2. [Metabase to Looker](#metabase-to-looker) (`metabase_to_looker`, experimental)
 3. [Looker Studio to Looker](#looker-studio-to-looker) (`looker_studio_to_looker`, experimental)
-4. [Looker to Omni](#looker-to-omni) (`looker_to_omni`, the default)
-5. [Tableau to Omni](#tableau-to-omni-and-metabase-to-omni) (`tableau_to_omni`, experimental)
-6. [Metabase to Omni](#tableau-to-omni-and-metabase-to-omni) (`metabase_to_omni`, experimental)
-7. [Looker Studio to Omni](#looker-studio-to-omni) (`looker_studio_to_omni`, experimental)
+4. [Omni to Looker](#omni-to-looker) (`omni_to_looker`, experimental)
+5. [Looker to Omni](#looker-to-omni) (`looker_to_omni`, the default)
+6. [Tableau to Omni](#tableau-to-omni-and-metabase-to-omni) (`tableau_to_omni`, experimental)
+7. [Metabase to Omni](#tableau-to-omni-and-metabase-to-omni) (`metabase_to_omni`, experimental)
+8. [Looker Studio to Omni](#looker-studio-to-omni) (`looker_studio_to_omni`, experimental)
 
 This is not the same as moving an Omni estate to a new warehouse. That is a `platform_migration` release with `migration.reporting_tool: omni`.
 
@@ -53,21 +54,21 @@ The converters are plain scripts: the same input always gives the same output, w
 
 :::caution[Experimental]
 
-The three pairs that end in Looker are experimental.
+The four pairs that end in Looker are experimental.
 
 :::
 
-Tableau, Metabase and Looker Studio each have their own way in and their own converter. They share everything else: the tool-neutral record (`wire/schemas/bi_ir-schema.md`), the plan, the Looker phases and the parity loop.
+Tableau, Metabase, Looker Studio and Omni each have their own way in and their own converter. They share everything else: the tool-neutral record (`wire/schemas/bi_ir-schema.md`), the plan, the Looker phases and the parity loop.
 
 ![Tableau, Metabase and Looker Studio feed per-tool snapshot and audit scripts; Wire's shared core holds the tool-neutral record, the migration plan, the metric catalogue (Looker Studio only) and the shared Looker target; three converters write LookML to a branch of the client's repo, deployed to Looker under its own model; the parity loop compares each source's rows with Looker's results before cutover](/img/bi-migration/migration-to-looker-architecture.png)
 
-| | Tableau | Metabase | Looker Studio |
-|---|---|---|---|
-| Way in | REST API with a personal access token, or Desktop files | Metabase API with an API key | The report editor, in a Chrome window signed in as the consultant |
-| Snapshot | `tableau_export.py` | `metabase_export.py` | `looker_studio_capture.py`, `looker_studio_extract.py` |
-| What carries the model | Each workbook's data sources | Metabase's table metadata: types, primary and foreign keys | Nothing reusable, so a metric catalogue rules each metric |
-| Converter | `twb_to_lookml.py` | `mb_to_lookml.py` | `ls_to_lookml.py` |
-| Source rows for parity | Query View Data | Card data through the API | Chart recordings from the capture |
+| | Tableau | Metabase | Looker Studio | Omni |
+|---|---|---|---|---|
+| Way in | REST API with a personal access token, or Desktop files | Metabase API with an API key | The report editor, in a Chrome window signed in as the consultant | The Omni CLI with a configured profile |
+| Snapshot | `tableau_export.py` | `metabase_export.py` | `looker_studio_capture.py`, `looker_studio_extract.py` | `omni_export.py` |
+| What carries the model | Each workbook's data sources | Metabase's table metadata: types, primary and foreign keys | Nothing reusable, so a metric catalogue rules each metric | The shared model: views, topics and relationships, close to LookML |
+| Converter | `twb_to_lookml.py` | `mb_to_lookml.py` | `ls_to_lookml.py` | `omni_to_lookml.py` |
+| Source rows for parity | Query View Data | Card data through the API | Chart recordings from the capture | Each tile's saved query, run through the CLI |
 
 The three Looker phases are the same for every source:
 
@@ -120,6 +121,21 @@ The audit and metric catalogue phases are the same as for [Looker Studio to Omni
 Calculated fields become BigQuery SQL, with Looker Studio's division as `SAFE_DIVIDE`. Each page becomes a LookML dashboard; the date range and dimension filter controls become dashboard filters. Parity compares each chart's recorded rows with the Looker element's rows.
 
 Walkthrough: [Tutorial: Looker Studio to Looker](../tutorials/looker-studio-to-looker).
+
+### Omni to Looker
+
+The audit phase is `omni_source_audit` (`/wire:omni-source-audit-generate`, `-validate`, `-review`). It snapshots the shared model and the dashboards on it through the Omni CLI, read only.
+
+- Omni's model language descends from LookML, so most constructs map one to one: views keep their table or SQL, topics become explores, and their joins take `sql_on`, relationship and type from Omni's relationships.
+- Bare column names in Omni field SQL are qualified with `${TABLE}`; `${created_at[month]}` becomes `${created_at_month}`.
+- Omni's YAML carries no column types. The snapshot reads them from the warehouse's `INFORMATION_SCHEMA` through Omni, so a DATE column becomes a date dimension group.
+- Each dashboard document becomes a LookML dashboard on the same 24-column grid; controls become dashboard filters with `listen`; simple table calculations carry over.
+- Mustache templating, query views built from a topic query, workbook-only fields, field-selection controls, SQL tiles and AI context go to `needs_human.json`.
+- Parity runs each tile's saved query through the CLI, unpivoted, and compares it with the Looker element's rows.
+
+The pair ran end to end once, on Rittman Analytics' own Omni model: three dashboards deployed to Looker, 39 of 39 tiles matching Omni.
+
+This is not the Omni audit in Platform Migration or Looker to Omni, which keeps Omni. Walkthrough: [Tutorial: Omni to Looker](../tutorials/omni-to-looker).
 
 ## Migrating to Omni
 

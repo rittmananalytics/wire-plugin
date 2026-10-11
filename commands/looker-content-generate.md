@@ -1,9 +1,9 @@
 ---
-description: Experimental: Write a batch of Tableau or Metabase dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons
+description: Experimental: Write a batch of Tableau, Metabase or Omni dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons
 argument-hint: <release-folder> [--batch N 
 ---
 
-# Experimental: Write a batch of Tableau or Metabase dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons
+# Experimental: Write a batch of Tableau, Metabase or Omni dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons
 
 ## User Input
 
@@ -219,7 +219,7 @@ delegates_to:
   - utils/semantic_layer_developer_delegate
   - utils/precondition_gate
   - utils/stale_artifact_check
-description: "Experimental: Write one batch of Tableau, Metabase or Looker Studio dashboards as LookML dashboards in the client's Looker repo on the migration branch; every tile that cannot be rebuilt is listed with its reason, never dropped silently"
+description: "Experimental: Write one batch of Tableau, Metabase, Looker Studio or Omni dashboards as LookML dashboards in the client's Looker repo on the migration branch; every tile that cannot be rebuilt is listed with its reason, never dropped silently"
 argument-hint: <release-folder> [--batch <id> | --all]
 
 ---
@@ -236,7 +236,7 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: looker_content` 
 
 ## Purpose
 
-> **Experimental.** This command serves three experimental pairs, each run end to end once and none on a client estate: `tableau_to_looker` (one BigQuery sheet on a Tableau Cloud trial site), `metabase_to_looker` (four BigQuery questions on a Metabase Cloud trial instance) and `looker_studio_to_looker` (two Looker Studio reports on BigQuery and Looker data sources), each converted, deployed to Looker and matched. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
+> **Experimental.** This command serves three experimental pairs, each run end to end once and none on a client estate: `tableau_to_looker` (one BigQuery sheet on a Tableau Cloud trial site), `metabase_to_looker` (four BigQuery questions on a Metabase Cloud trial instance) and `looker_studio_to_looker` (two Looker Studio reports on BigQuery and Looker data sources), each converted, deployed to Looker and matched. It also serves `omni_to_looker` (three dashboards from Rittman Analytics' own Omni model, 39 of 39 tiles matched). At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Tableau dashboards become LookML dashboards (`.dashboard.lookml`) in the same repository as the model, not user-defined dashboards through the API, so they get the same branch, drift and reverse-port handling as the model. `twb_to_lookml.py convert` writes them with the model batch; this command takes the ones in the content batch, resolves their skipped tiles and commits them. A worksheet on no dashboard is emitted as a one-tile LookML dashboard (its sort and supported filters kept); it stays one, becomes a Look through the Looker API (`create_look`), or is dropped, as the plan says.
 
@@ -247,6 +247,10 @@ The workflow applies with these differences. **Step 1:** take each Metabase dash
 ## Pair: looker_studio_to_looker
 
 The workflow applies with these differences. **Step 1:** take each report's dashboards from the model batch output: one per visible page, with charts on the same 24-column grid, text boxes as text tiles, the date range control and dimension filter controls as dashboard filters with `listen`. A dashboard whose charts all read one existing Looker model is in `dashboards/<model>/`, so the new model does not include it: add that folder's include to the existing model, or leave the dashboard out. **Step 2:** the skipped tiles are charts on blends and on data sources Looker cannot read. **Step 3:** fill each Route C contract from `parity_map.json`: `target_object` the element, `field_map` from recording column to Looker field.
+
+## Pair: omni_to_looker
+
+The workflow applies with these differences. **Step 1:** take each Omni dashboard's file from the model batch output: one LookML dashboard per document, with tiles on the same 24-column grid (heights scaled), text tiles kept, tile filters translated, Omni table calculations (arithmetic and safe divide) as Looker table calculations, and controls as dashboard filters with `listen` on each tile the control was mapped to. **Step 2:** the skipped tiles are SQL tiles, tiles on fields defined only in a workbook, tiles with a filter the converter cannot translate (composite OR, negated numbers), field-selection controls, period-over-period comparisons and workbook tabs not on the dashboard (see the model batch's `needs_human.json`). A document with pages becomes one dashboard. **Step 3:** fill each parity contract from `parity_map.json`: `source_object` the Omni tile identity (`omni:<instance>:document:<id>/query:<key>`), `target_object` the element, `field_map` from Omni field to Looker field.
 
 ## Workflow
 

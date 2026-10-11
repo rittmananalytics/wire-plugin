@@ -1,0 +1,44 @@
+{
+ "documents": {
+  "0rd5umm4": {
+   "file": "documents/0rd5umm4.json",
+   "folder": "Examples",
+   "last_viewed_at": "2026-10-02T00:00:00Z",
+   "name": "Order summary",
+   "sha256": "3c78ed4fad3255d6d1d14ccd656f457b5b2cf98c68c0fe82b36cb07c5bad2ad4",
+   "updated_at": "2026-10-01T00:00:00Z",
+   "visits": 10
+  }
+ },
+ "exported_at": "2026-10-11T12:00:00Z",
+ "exporter": "omni_export",
+ "instance": "halcyon",
+ "model": {
+  "connection_id": "c0ffee00-0000-4000-8000-000000000001",
+  "connection_name": "halcyon_bigquery",
+  "database": "halcyon-prod",
+  "default_schema": "analytics",
+  "dialect": "bigquery",
+  "id": "11111111-aaaa-4bbb-8ccc-000000000001",
+  "name": "halcyon"
+ },
+ "model_files": {
+  "analytics/orders.view": {
+   "sha256": "077b9bcf3567f30ed0c10d17308a77cb6a1c5b972c836e18ca97cf31f6a86493"
+  },
+  "model": {
+   "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  "orders.topic": {
+   "sha256": "1814a4e6f032fcbbb33d6d02fbd02fe20b4f271080c0101a4934879c62a40db4"
+  },
+  "relationships": {
+   "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  }
+ },
+ "model_files_kept": 4,
+ "model_files_total": 4,
+ "omni_cli_version": "1.2.1",
+ "skipped_documents": {},
+ "version": "0.1.0"
+}

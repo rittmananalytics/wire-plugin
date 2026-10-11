@@ -1,0 +1,1 @@
+{"from": "omni:halcyon:topic:orders", "kind": "base_view", "to": "omni:halcyon:view:analytics__orders"}

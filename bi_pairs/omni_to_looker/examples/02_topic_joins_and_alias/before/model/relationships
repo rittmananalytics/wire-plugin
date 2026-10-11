@@ -1,0 +1,24 @@
+- join_from_view: analytics__order_items
+  join_to_view: analytics__orders
+  join_type: always_left
+  on_sql: ${analytics__order_items.order_id} = ${analytics__orders.id}
+  relationship_type: many_to_one
+
+- join_from_view: analytics__orders
+  join_to_view: analytics__customers
+  join_type: always_left
+  on_sql: ${analytics__orders.customer_id} = ${analytics__customers.id}
+  relationship_type: many_to_one
+
+- join_from_view: analytics__orders
+  join_to_view: analytics__customers
+  join_to_view_as: referrers
+  join_type: always_left
+  on_sql: ${analytics__orders.referrer_id} = ${referrers.id}
+  relationship_type: many_to_one
+
+- join_from_view: analytics__returns
+  join_to_view: analytics__order_items
+  join_type: always_left
+  on_sql: ${analytics__returns.order_item_id} = ${analytics__order_items.id}
+  relationship_type: many_to_one

@@ -1,0 +1,9 @@
+[
+ {
+  "class": "assisted",
+  "construct": "join_direction",
+  "object": "omni:halcyon:topic:order_items",
+  "proposal": "confirm the join type from this explore's side",
+  "reason": "join analytics__returns: the relationship is declared from analytics__returns to analytics__order_items"
+ }
+]

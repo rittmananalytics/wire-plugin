@@ -515,16 +515,19 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:looker-target-setup-generate` | `<release-folder>` | Experimental: Prepare the Looker target: connection, LookML migration branch, folders, groups and user attributes |
 | `/wire:looker-target-setup-validate` | `<release-folder>` | Experimental: Validate the Looker target: branch, connection, project validates, permission objects exist |
 | `/wire:looker-target-setup-review` | `<release-folder>` | Experimental: Internal RA review of the Looker target setup |
-| `/wire:lookml-model-generate` | `<release-folder> [--batch N ` | Experimental: Translate a batch of Tableau data sources or Metabase content to LookML views and explores on the migration branch (deterministic converter plus agent judgement) |
-| `/wire:lookml-model-lint` | `<release-folder> [--batch N]` | Experimental: Lint emitted LookML: no Tableau or Metabase syntax left, LookML conventions, primary keys on joined views |
+| `/wire:lookml-model-generate` | `<release-folder> [--batch N ` | Experimental: Translate a batch of Tableau data sources, Metabase or Omni content to LookML views and explores on the migration branch (deterministic converter plus agent judgement) |
+| `/wire:lookml-model-lint` | `<release-folder> [--batch N]` | Experimental: Lint emitted LookML: no Tableau, Metabase or Omni syntax left, LookML conventions, primary keys on joined views |
 | `/wire:lookml-model-validate` | `<release-folder> [--batch N]` | Experimental: Validate a LookML batch on the branch: Looker validator clean, fields present, one smoke query per explore |
 | `/wire:lookml-model-review` | `<release-folder> [--batch N]` | Experimental: Release director review of a translated LookML batch |
-| `/wire:looker-content-generate` | `<release-folder> [--batch N ` | Experimental: Write a batch of Tableau or Metabase dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons |
+| `/wire:looker-content-generate` | `<release-folder> [--batch N ` | Experimental: Write a batch of Tableau, Metabase or Omni dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons |
 | `/wire:looker-content-validate` | `<release-folder> [--batch N]` | Experimental: Validate a LookML dashboard batch: fields exist, dashboards validate, every skipped tile has a reason |
 | `/wire:looker-content-review` | `<release-folder> [--batch N]` | Experimental: Release director review of a migrated LookML dashboard batch |
 | `/wire:metabase-source-audit-generate` | `<release-folder>` | Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker or Omni |
 | `/wire:metabase-source-audit-validate` | `<release-folder>` | Experimental: Validate the Metabase source audit: reproducible, every construct classified, IR valid, tables synced, secrets redacted |
 | `/wire:metabase-source-audit-review` | `<release-folder>` | Experimental: Internal RA review of the Metabase source audit |
+| `/wire:omni-source-audit-generate` | `<release-folder>` | Experimental: Snapshot an Omni model and its dashboards through the Omni CLI and classify every view, field, topic, relationship, tile and control for the move to Looker |
+| `/wire:omni-source-audit-validate` | `<release-folder>` | Experimental: Validate the Omni source audit: reproducible, every construct classified, IR valid, every tile's view in the snapshot |
+| `/wire:omni-source-audit-review` | `<release-folder>` | Experimental: Internal RA review of the Omni source audit |
 | `/wire:looker-studio-audit-generate` | `<release-folder>` | Experimental: Capture and catalog Looker Studio reports (for Omni or Looker): definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified |
 | `/wire:looker-studio-audit-validate` | `<release-folder>` | Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored |
 | `/wire:looker-studio-audit-review` | `<release-folder>` | Experimental: Internal RA review of the Looker Studio audit |

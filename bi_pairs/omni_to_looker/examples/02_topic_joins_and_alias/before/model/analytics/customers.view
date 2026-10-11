@@ -1,0 +1,7 @@
+schema: analytics
+table_name: customers
+
+dimensions:
+  id:
+    primary_key: true
+  name: {}

@@ -1,0 +1,8 @@
+schema: analytics
+table_name: returns
+
+dimensions:
+  id:
+    primary_key: true
+  order_item_id: {}
+  reason: {}

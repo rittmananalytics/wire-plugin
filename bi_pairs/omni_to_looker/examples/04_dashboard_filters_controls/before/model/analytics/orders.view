@@ -1,0 +1,17 @@
+schema: analytics
+table_name: orders
+
+dimensions:
+  id:
+    primary_key: true
+  status: {}
+  total: {}
+  created_at:
+    timeframes: [raw, date, month, quarter]
+
+measures:
+  count:
+    aggregate_type: count
+  revenue:
+    sql: ${total}
+    aggregate_type: sum

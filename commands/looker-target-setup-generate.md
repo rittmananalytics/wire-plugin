@@ -229,7 +229,7 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: looker_target_se
 
 ## Purpose
 
-> **Experimental.** This command serves three experimental pairs, each run end to end once and none on a client estate: `tableau_to_looker` (one BigQuery sheet on a Tableau Cloud trial site), `metabase_to_looker` (four BigQuery questions on a Metabase Cloud trial instance) and `looker_studio_to_looker` (two Looker Studio reports on BigQuery and Looker data sources), each converted, deployed to Looker and matched. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
+> **Experimental.** This command serves three experimental pairs, each run end to end once and none on a client estate: `tableau_to_looker` (one BigQuery sheet on a Tableau Cloud trial site), `metabase_to_looker` (four BigQuery questions on a Metabase Cloud trial instance) and `looker_studio_to_looker` (two Looker Studio reports on BigQuery and Looker data sources), each converted, deployed to Looker and matched. It also serves `omni_to_looker` (three dashboards from Rittman Analytics' own Omni model, 39 of 39 tiles matched). At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Prepares the Looker side before any LookML is written: the LookML project and its git repository, a migration branch, the warehouse connection, and the folders, groups and user attributes the plan's permission map needs.
 
@@ -253,6 +253,10 @@ The workflow applies with these differences. **Step 1:** the connection must rea
 ## Pair: looker_studio_to_looker
 
 The workflow applies with these differences. **Step 1:** the connection must reach the BigQuery projects the data sources read (`connection.project` in `report.json`); a data source on Looker Studio's Looker connector names its Looker instance, model and explore, and needs no connection of its own, only that the instance is the target. **Step 2:** the default branch is `wire/looker-studio-migration`.
+
+## Pair: omni_to_looker
+
+The workflow applies with these differences. **Step 1:** the connection must reach the warehouse the Omni connection reads (dialect and project in the snapshot's `inventory.json`, `model`); one Omni shared model maps to one LookML model. **Step 2:** the default branch is `wire/omni-migration`. **Step 3:** Looker folders follow the Omni folders in scope; user attributes are those the topics' access filters name.
 
 ## Workflow
 

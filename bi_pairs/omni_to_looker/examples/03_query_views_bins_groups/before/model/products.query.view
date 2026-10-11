@@ -1,0 +1,20 @@
+sql: SELECT * FROM `halcyon-prod.analytics.products`
+
+dimensions:
+  id:
+    primary_key: true
+  category: {}
+  price: {}
+  price_band:
+    sql: ${price}
+    bin_boundaries: [0, 25, 100]
+  category_group:
+    sql: ${category}
+    groups:
+      - filter:
+          is: [Tents, Sleeping bags]
+        name: Camping
+      - filter:
+          is: Jackets
+        name: Clothing
+    else: Other

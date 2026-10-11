@@ -94,6 +94,7 @@ const sidebars = {
             'tutorials/tableau-to-looker',
             'tutorials/metabase-to-looker',
             'tutorials/looker-studio-to-looker',
+            'tutorials/omni-to-looker',
             'tutorials/agentic-data-stack',
             'tutorials/droughty',
             'tutorials/custom',

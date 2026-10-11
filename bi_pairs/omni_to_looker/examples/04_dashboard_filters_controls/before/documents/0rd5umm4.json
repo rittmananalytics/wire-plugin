@@ -1,0 +1,244 @@
+{
+ "containers": [
+  {
+   "container": {
+    "children": [
+     {
+      "children": [
+       {
+        "as": "chart",
+        "id": "1",
+        "type": "query"
+       }
+      ],
+      "containerType": "stack",
+      "gridPosition": {
+       "h": 24,
+       "w": 6,
+       "x": 0,
+       "y": 0
+      },
+      "instanceKey": "tile-stack-1",
+      "metadata": {
+       "attachedQueryKey": "1"
+      },
+      "name": "Orders this quarter"
+     },
+     {
+      "children": [
+       {
+        "as": "chart",
+        "id": "2",
+        "type": "query"
+       }
+      ],
+      "containerType": "stack",
+      "gridPosition": {
+       "h": 48,
+       "w": 18,
+       "x": 6,
+       "y": 0
+      },
+      "instanceKey": "tile-stack-2",
+      "metadata": {
+       "attachedQueryKey": "2"
+      },
+      "name": "Revenue by status and month"
+     },
+     {
+      "children": [
+       {
+        "as": "chart",
+        "id": "3",
+        "type": "query"
+       }
+      ],
+      "containerType": "stack",
+      "gridPosition": {
+       "h": 24,
+       "w": 6,
+       "x": 0,
+       "y": 24
+      },
+      "instanceKey": "tile-stack-3",
+      "metadata": {
+       "attachedQueryKey": "3"
+      },
+      "name": "Raw SQL"
+     }
+    ]
+   }
+  }
+ ],
+ "controls": {
+  "data": {
+   "status": {
+    "config": {
+     "fieldName": "analytics__orders.status",
+     "kind": "EQUALS",
+     "label": "Status",
+     "type": "string",
+     "values": [
+      "complete",
+      "returned"
+     ]
+    },
+    "map": {
+     "1": "analytics__orders.status",
+     "2": false
+    }
+   }
+  },
+  "order": [
+   "status"
+  ]
+ },
+ "modelId": "11111111-aaaa-4bbb-8ccc-000000000001",
+ "name": "Order summary",
+ "queryPresentations": {
+  "data": {
+   "1": {
+    "isSql": false,
+    "name": "Orders this quarter",
+    "query": {
+     "calculations": [],
+     "column_totals": {},
+     "fields": [
+      "analytics__orders.count"
+     ],
+     "fill_fields": [],
+     "filters": {
+      "analytics__orders.created_at": {
+       "kind": "TIME_FOR_INTERVAL_DURATION",
+       "left_side": "0 complete quarters ago",
+       "right_side": "1 quarter",
+       "type": "date"
+      }
+     },
+     "join_paths_from_topic_name": "orders",
+     "limit": 500,
+     "pivots": [],
+     "row_totals": {},
+     "sorts": [],
+     "table": "analytics__orders",
+     "userEditedSQL": ""
+    },
+    "topicName": "orders",
+    "type": "query",
+    "visConfig": {
+     "chartType": "kpi",
+     "fields": [
+      "analytics__orders.count"
+     ],
+     "version": 0
+    }
+   },
+   "2": {
+    "isSql": false,
+    "name": "Revenue by status and month",
+    "query": {
+     "calculations": [
+      {
+       "calc_name": "per_order",
+       "format": "GBPCURRENCY_2",
+       "label": "Revenue per order",
+       "sql_expression": {
+        "operands": [
+         {
+          "field_name": "analytics__orders.revenue",
+          "type": "field"
+         },
+         {
+          "field_name": "analytics__orders.count",
+          "type": "field"
+         }
+        ],
+        "operator": "SqlStdOperatorTable.DIVIDE",
+        "type": "call"
+       }
+      }
+     ],
+     "column_totals": {},
+     "fields": [
+      "analytics__orders.created_at[month]",
+      "analytics__orders.status",
+      "analytics__orders.revenue",
+      "analytics__orders.count"
+     ],
+     "fill_fields": [],
+     "filters": {
+      "analytics__orders.status": {
+       "is_negative": true,
+       "kind": "EQUALS",
+       "type": "string",
+       "values": [
+        "test"
+       ]
+      }
+     },
+     "join_paths_from_topic_name": "orders",
+     "limit": 500,
+     "pivots": [
+      "analytics__orders.status"
+     ],
+     "row_totals": {},
+     "sorts": [
+      {
+       "column_name": "analytics__orders.created_at[month]",
+       "sort_descending": false
+      }
+     ],
+     "table": "analytics__orders",
+     "userEditedSQL": ""
+    },
+    "topicName": "orders",
+    "type": "query",
+    "visConfig": {
+     "chartType": "columnStacked",
+     "fields": [
+      "analytics__orders.created_at[month]",
+      "analytics__orders.status",
+      "analytics__orders.revenue",
+      "analytics__orders.count"
+     ],
+     "version": 0
+    }
+   },
+   "3": {
+    "isSql": true,
+    "name": "Raw SQL",
+    "query": {
+     "calculations": [],
+     "column_totals": {},
+     "fields": [
+      "n"
+     ],
+     "fill_fields": [],
+     "filters": {},
+     "join_paths_from_topic_name": "orders",
+     "limit": 500,
+     "pivots": [],
+     "row_totals": {},
+     "sorts": [],
+     "table": "analytics__orders",
+     "userEditedSQL": "SELECT 1"
+    },
+    "topicName": "orders",
+    "type": "query",
+    "visConfig": {
+     "chartType": "table",
+     "fields": [
+      "n"
+     ],
+     "version": 0
+    }
+   }
+  },
+  "order": [
+   "1",
+   "2",
+   "3"
+  ]
+ },
+ "settings": {}
+}

@@ -1,0 +1,34 @@
+{
+ "converter": "omni_to_lookml",
+ "counts": {
+  "always_where_sql": {
+   "mechanical": 1
+  },
+  "dimension": {
+   "mechanical": 10
+  },
+  "join": {
+   "mechanical": 4
+  },
+  "join_alias": {
+   "mechanical": 1
+  },
+  "measure": {
+   "mechanical": 1
+  },
+  "table_view": {
+   "mechanical": 4
+  },
+  "topic": {
+   "mechanical": 1
+  }
+ },
+ "dashboards": 0,
+ "dialect": "bigquery",
+ "explores": 1,
+ "model": "halcyon",
+ "needs_human": 1,
+ "omni_model": "halcyon",
+ "version": "0.1.0",
+ "views": 4
+}

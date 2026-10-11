@@ -1,0 +1,2 @@
+{"from": "omni:halcyon:topic:daily_revenue", "kind": "base_view", "to": "omni:halcyon:view:daily_revenue"}
+{"from": "omni:halcyon:topic:products", "kind": "base_view", "to": "omni:halcyon:view:products"}

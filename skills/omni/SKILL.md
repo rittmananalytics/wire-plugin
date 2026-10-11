@@ -1,6 +1,6 @@
 ---
 name: omni
-description: Connect to an Omni Analytics instance and work with its semantic model, dashboards, content, and admin surfaces via the Omni CLI. Activates for Omni audits, reporting-layer migrations, semantic-layer work where the client's BI tool is Omni, or any work that reads or repoints Omni content. Wraps the official exploreomni/omni-agent-skills.
+description: Connect to an Omni Analytics instance and work with its semantic model, dashboards, content, and admin surfaces via the Omni CLI. Activates for Omni audits, reporting-layer migrations (moving Omni to a new warehouse, Looker to Omni, or replacing Omni with Looker on the experimental omni_to_looker pair of bi_migration), semantic-layer work where the client's BI tool is Omni, or any work that reads or repoints Omni content. Wraps the official exploreomni/omni-agent-skills.
 ---
 
 # Omni
@@ -71,3 +71,17 @@ Unlike Metabase's card-level SQL, most Omni tiles query through the semantic mod
 ## Looker to Omni migration (`bi_migration`, wire#258)
 
 When the release type is `bi_migration` with `bi_pair: looker_to_omni`, this skill is the Omni side of a BI-tool migration: the warehouse does not move, the semantic model and the content do. The pair files at `bi_pairs/looker_to_omni/` (translation guide, property mappings, feature detection, content mapping, tooling, worked examples) and the deterministic converter `scripts/lookml_to_omni.py` do the LookML side. Use `omni-model-builder` on the branch `omni-target-setup` created (`yaml-create` one file at a time with the exact path, `yaml-get` to read back, `omni models validate --branch-id` before any batch is reported ready), `omni-content-builder`'s `omni documents v2-*` commands for dashboards, `omni-query` with `branchId` for the Omni side of tile parity, and `omni-admin` for groups and user attributes. Never merge the branch: merging is the release director's ruling at cutover.
+
+## Replacing Omni with Looker (`bi_migration`, `bi_pair: omni_to_looker`, experimental)
+
+The reverse of the pair above: Omni is the source and Looker the target. Tell the consultant the pair is experimental at the start of that work. Wire reads Omni through this skill's CLI profile, read only, and converts with no AI call:
+
+| Step | Command | What it does |
+|---|---|---|
+| Snapshot | `python3 scripts/omni_export.py snapshot --model-id <uuid> --out <dir> [--profile <p>] [--documents ids] [--folders names]` | `omni models yaml-get --mode combined` (the shared model's files, keeping only the views topics, relationships, extends and tiles reach), `omni models get-views` (which fields are time fields), `omni connections list` (dialect and project), `omni query run` with `userEditedSQL` on `INFORMATION_SCHEMA.COLUMNS` (column types, which the YAML lacks), `omni documents list` and `v2-get` (the dashboards on the model) |
+| Audit | `python3 scripts/omni_to_lookml.py audit --snapshot <dir> --out <audit>` | Catalogs, IR, dependencies, `needs_human.json` |
+| Convert | `python3 scripts/omni_to_lookml.py convert --snapshot <dir> --out <batch> --model <m> --connection <c>` | LookML views, explores, LookML dashboards, `parity_map.json` |
+| Drift | `python3 scripts/omni_export.py diff --old <inventory.json> --new <inventory.json>` | Documents and model files changed since the snapshot |
+| Parity source side | `python3 scripts/omni_export.py tile-data --document <id> --query-key <key> --out rows.csv` | `omni documents get-queries`, then `omni query run` with raw values, unpivoted; `--limit` re-runs a capped tile at a parity limit |
+
+Omni facts the converter relies on: a bare identifier in a field's `sql` is a column; a view is named by its file path (`analytics/orders.view` is `analytics__orders`); a topic by its file name; Omni's YAML carries no column types (the snapshot reads them from `INFORMATION_SCHEMA` through Omni); fields defined in a document's workbook are not in the shared model. The pair files are at `bi_pairs/omni_to_looker/`; the commands are `/wire:omni-source-audit-*` and the shared Looker target commands. This is not `/wire:omni-audit-*`, which audits Omni for a warehouse move or a brownfield Omni target.

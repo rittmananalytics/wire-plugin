@@ -22,7 +22,7 @@ specs:
   - migration/omni_model-reverse_port
   - migration/omni_content-generate
   - migration/omni_content-validate
-  # bi_migration, Tableau to Looker (wire#287) and Metabase to Looker, experimental: LookML model and dashboards
+  # bi_migration, Tableau (wire#287), Metabase, Looker Studio and Omni to Looker, experimental: LookML model and dashboards
   - migration/lookml_model-generate
   - migration/lookml_model-lint
   - migration/lookml_model-validate

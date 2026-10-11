@@ -10,9 +10,9 @@ current_phase: "audit"
 
 # Profile: which tool pair this release migrates. Read by precondition_gate.md Step 0
 # and by runnable_set.md. looker_to_omni (default), looker_studio_to_omni (4.2.2, experimental)
-# looker_studio_to_looker, tableau_to_looker (wire#287), metabase_to_looker, tableau_to_omni or metabase_to_omni
-# (all experimental); the Looker targets use the bi_migration.target block, and Tableau and Metabase the .source
-# block too. tableau_to_omni and metabase_to_omni use the .source block and the Omni fields above.
+# looker_studio_to_looker, tableau_to_looker (wire#287), metabase_to_looker, omni_to_looker, tableau_to_omni or
+# metabase_to_omni (all experimental); the Looker targets use the bi_migration.target block, and Tableau, Metabase
+# and Omni the .source block too. tableau_to_omni and metabase_to_omni use the .source block and the Omni fields above.
 # looker_studio_to_omni replaces the Looker audit phase with looker_studio_audit and
 # metric_catalogue; the Looker-only fields below are then left null.
 bi_pair: looker_to_omni
@@ -39,11 +39,11 @@ bi_migration:
                                            #   approved_by: "<client name and role>"
                                            #   date: "YYYY-MM-DD"
   chart_recordings_tracked: true           # false when Route C recordings must stay out of git (data handling rules)
-  # Tableau or Metabase source (bi_pair: tableau_to_looker, metabase_to_looker, tableau_to_omni or
-  # metabase_to_omni, experimental) only; the target block applies to the Looker targets. The tool-keyed
+  # Tableau, Metabase or Omni source (bi_pair: tableau_to_looker, metabase_to_looker, omni_to_looker,
+  # tableau_to_omni or metabase_to_omni, experimental) only; the target block applies to the Looker targets. The tool-keyed
   # source/target shape is the neutral form the other pairs are expected to move to later.
   source:
-    tool: null                             # tableau | metabase
+    tool: null                             # tableau | metabase | omni
     edition: null                          # cloud | server | desktop_files
     server_url: null                       # Tableau Cloud or Server URL
     site: null                             # site content URL (also the identity scope: tableau:<site>:...)
@@ -54,6 +54,12 @@ bi_migration:
     host: null                             # metabase only: instance URL (the API key stays in ~/.wire/metabase.env)
     dashboards: []                         # metabase only: dashboard ids in scope; empty = all
     metabase_version: null                 # metabase only: set by metabase-source-audit-generate
+    base_url: null                         # omni only: instance URL, e.g. https://client.omniapp.co
+    model_id: null                         # omni only: the shared model to migrate
+    cli_profile: null                      # omni only: named `omni config` profile (credentials stay in the CLI's config)
+    documents: []                          # omni only: dashboard document identifiers in scope; empty = all
+    folders: []                            # omni only: folders in scope; empty = all
+    omni_cli_version: null                 # omni only: set by omni-source-audit-generate
   target:
     tool: null                             # looker
     base_url: null                         # Looker instance URL
@@ -187,7 +193,29 @@ artifacts:
     generated_files: []
     revision_history: []
 
-  looker_target_setup:         # bi_pair: tableau_to_looker, metabase_to_looker or looker_studio_to_looker (experimental)
+  omni_source_audit:           # bi_pair: omni_to_looker only (experimental); not omni_audit below
+    generate: not_started
+    validate: not_started
+    review: not_started
+    file: null                 # audit/omni_source_audit.md
+    generated_date: null
+    experimental: true
+    omni_cli_version: null
+    view_count: null
+    topic_count: null
+    relationship_count: null
+    dashboard_count: null
+    tile_count: null
+    skipped_document_count: null
+    mechanical_count: null
+    assisted_count: null
+    redesign_count: null
+    drop_count: null
+    snapshot_source: null
+    generated_files: []
+    revision_history: []
+
+  looker_target_setup:         # bi_pair: tableau_to_looker, metabase_to_looker, looker_studio_to_looker or omni_to_looker (experimental)
     generate: not_started
     validate: not_started
     review: not_started
@@ -195,7 +223,7 @@ artifacts:
     generated_date: null
     experimental: true
 
-  lookml_model:                # bi_pair: tableau_to_looker, metabase_to_looker or looker_studio_to_looker (experimental)
+  lookml_model:                # bi_pair: tableau_to_looker, metabase_to_looker, looker_studio_to_looker or omni_to_looker (experimental)
     generate: not_started
     validate: not_started
     review: not_started
@@ -204,7 +232,7 @@ artifacts:
     batches_complete: []
     needs_human_open: null
 
-  looker_content:              # bi_pair: tableau_to_looker, metabase_to_looker or looker_studio_to_looker (experimental)
+  looker_content:              # bi_pair: tableau_to_looker, metabase_to_looker, looker_studio_to_looker or omni_to_looker (experimental)
     generate: not_started
     validate: not_started
     review: not_started

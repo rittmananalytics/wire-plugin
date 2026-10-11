@@ -1,0 +1,10 @@
+base_view: analytics__order_items
+label: Order items
+group_label: Sales
+always_where_sql: ${analytics__orders.customer_id} IS NOT NULL
+
+joins:
+  analytics__orders:
+    analytics__customers: {}
+    referrers: {}
+  analytics__returns: {}

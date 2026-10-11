@@ -1,0 +1,27 @@
+schema: analytics
+table_name: orders
+
+dimensions:
+  id:
+    primary_key: true
+  status: {}
+  total:
+    format: gbpcurrency_2
+  created_at:
+    timeframes: [raw, date, week, month, quarter, year]
+  status_label:
+    sql: INITCAP(status)
+
+measures:
+  count:
+    aggregate_type: count
+  revenue:
+    sql: ${total}
+    aggregate_type: sum
+    format: gbpcurrency_2
+    filters:
+      status:
+        is_not: [cancelled, test]
+  average_order_value:
+    sql: ${revenue} / NULLIF(${count}, 0)
+    format: gbpcurrency_2

@@ -1,0 +1,4 @@
+{"from": "omni:halcyon:topic:order_items", "kind": "base_view", "to": "omni:halcyon:view:analytics__order_items"}
+{"from": "omni:halcyon:topic:order_items", "kind": "joins", "to": "omni:halcyon:view:analytics__customers"}
+{"from": "omni:halcyon:topic:order_items", "kind": "joins", "to": "omni:halcyon:view:analytics__orders"}
+{"from": "omni:halcyon:topic:order_items", "kind": "joins", "to": "omni:halcyon:view:analytics__returns"}

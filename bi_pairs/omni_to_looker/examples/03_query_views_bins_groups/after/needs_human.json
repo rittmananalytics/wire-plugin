@@ -1,0 +1,9 @@
+[
+ {
+  "class": "assisted",
+  "construct": "bin_boundaries",
+  "object": "omni:halcyon:field:products:price_band",
+  "proposal": "confirm the tier style and labels",
+  "reason": "bins became a tier: Looker labels tiers differently"
+ }
+]

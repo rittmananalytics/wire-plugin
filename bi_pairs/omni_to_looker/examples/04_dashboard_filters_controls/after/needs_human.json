@@ -1,0 +1,9 @@
+[
+ {
+  "class": "redesign",
+  "construct": "tile",
+  "object": "omni:halcyon:document:0rd5umm4/query:3",
+  "proposal": null,
+  "reason": "tile 'Raw SQL' not emitted: a SQL tile: a view on its SQL, or rebuild on an explore"
+ }
+]

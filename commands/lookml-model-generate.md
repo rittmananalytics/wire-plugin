@@ -1,9 +1,9 @@
 ---
-description: Experimental: Translate a batch of Tableau data sources or Metabase content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)
+description: Experimental: Translate a batch of Tableau data sources, Metabase or Omni content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)
 argument-hint: <release-folder> [--batch N 
 ---
 
-# Experimental: Translate a batch of Tableau data sources or Metabase content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)
+# Experimental: Translate a batch of Tableau data sources, Metabase or Omni content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)
 
 ## User Input
 
@@ -219,7 +219,7 @@ delegates_to:
   - utils/semantic_layer_developer_delegate
   - utils/precondition_gate
   - utils/stale_artifact_check
-description: "Experimental: Translate one batch of Tableau, Metabase or Looker Studio content into LookML views and explores on the migration branch; the deterministic converter writes the mechanical LookML and every construct it cannot emit becomes a needs_human item"
+description: "Experimental: Translate one batch of Tableau, Metabase, Looker Studio or Omni content into LookML views and explores on the migration branch; the deterministic converter writes the mechanical LookML and every construct it cannot emit becomes a needs_human item"
 argument-hint: <release-folder> [--batch <id> | --all]
 
 ---
@@ -236,7 +236,7 @@ Follow `specs/utils/stale_artifact_check.md` with `artifact_id: lookml_model` an
 
 ## Purpose
 
-> **Experimental.** This command serves three experimental pairs, each run end to end once and none on a client estate: `tableau_to_looker` (one BigQuery sheet on a Tableau Cloud trial site), `metabase_to_looker` (four BigQuery questions on a Metabase Cloud trial instance) and `looker_studio_to_looker` (two Looker Studio reports on BigQuery and Looker data sources), each converted, deployed to Looker and matched. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
+> **Experimental.** This command serves three experimental pairs, each run end to end once and none on a client estate: `tableau_to_looker` (one BigQuery sheet on a Tableau Cloud trial site), `metabase_to_looker` (four BigQuery questions on a Metabase Cloud trial instance) and `looker_studio_to_looker` (two Looker Studio reports on BigQuery and Looker data sources), each converted, deployed to Looker and matched. It also serves `omni_to_looker` (three dashboards from Rittman Analytics' own Omni model, 39 of 39 tiles matched). At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 The translation has two halves. The mechanical half is a script: `wire/scripts/twb_to_lookml.py convert` reads the snapshot, applies the pair's translation guide and emits LookML deterministically, including the row-level subset of the Tableau calculation language. The judgement half is what the script refuses: LOD expressions, table calculations, blends, sets, unmapped functions, and the cardinality of every join (Tableau physical joins declare none). Each arrives as a `needs_human` item. The agent resolves it from the plan's rulings or parks it. It never hand-writes LookML the script can emit.
 
@@ -280,6 +280,24 @@ python3 <plugin-root>/scripts/ls_to_lookml.py convert \
 
 - **What it writes.** A view per BigQuery table a data source reads and per custom SQL data source; measures for the aggregations the charts use; calculated fields translated to BigQuery SQL (a ruled catalogue entry names the measure; Looker Studio's division becomes `SAFE_DIVIDE`); charts on Looker Studio's Looker connector pointed at the existing explore, with no view; `parity_map.json` linking each chart to its element and its recording columns to Looker fields.
 - **Step 3.** The `needs_human` items for this pair: custom SQL views (remodel or keep), calculated fields not translated, blends (model the join in an explore), data sources Looker cannot read (Search Console, GA4, Sheets, Funnel.io: a pipeline task or drop), date range control defaults (not in the capture), a chart's own date range ending today (Looker's nearest filter also takes in the rest of the current month), breakdown dimensions pivoted (Looker Studio draws only its top series), and dashboards on an existing Looker model (written to a folder of their own: add its include to that model).
+
+## Pair: omni_to_looker
+
+The workflow applies with these differences.
+
+- **Step 1.** A model batch is a set of topics (with the views they join), optionally narrowed to the dashboards in the batch. One Omni shared model maps to one LookML model on one connection.
+- **Step 2.** The converter is `omni_to_lookml.py`; it also writes the batch's LookML dashboards (one per Omni dashboard document) and `parity_map.json`, which `looker-content-generate` takes from the batch output:
+
+```bash
+python3 <plugin-root>/scripts/omni_to_lookml.py convert \
+  --snapshot .wire/releases/$ARGUMENTS/migration/source_snapshot/omni \
+  --out .wire/releases/$ARGUMENTS/migration/lookml_model/<batch_id> \
+  --model <bi_migration.target.model> --connection <connection> \
+  [--topics <name,name>] [--documents <id,id>] [--include-root <folder>]
+```
+
+- **What it writes.** A view per Omni view: a schema view keeps its table (`sql_table_name`, with the connection's project on BigQuery), a query view that is only `SELECT * FROM <table>` does too, other SQL becomes a derived table. Bare column names in field SQL are qualified with `${TABLE}`; `${field[month]}` becomes `${field_month}`. A time field (declared timeframes, Omni's own field list, or a DATE or TIMESTAMP column in `columns.json`) becomes a dimension group. Topics become explores on their base view, with the nested joins flattened and each join's `sql_on`, relationship and type taken from the relationship that connects it; an alias (`join_to_view_as`) joins with `from:`.
+- **Step 3.** The `needs_human` items for this pair: query views built from a topic query, views with Mustache in their SQL (and the topics on them), nested fields, markdown and links, bins (Looker labels tiers differently), cross-view references, filter-only fields, a relationship declared from the other side (confirm the join type), custom aggregate SQL on a joined view (fan-out), default filters (not emitted: Looker's `always_filter` would also change saved tiles), access filters (the user attributes must exist), AI context (dropped), and timeframes with no LookML equivalent. Dimensions are typed from the snapshot's `columns.json` (read from `INFORMATION_SCHEMA` through Omni), else from their format and the filters that use them; the rest default to `string`. A DATE column's group gets `datatype: date`.
 
 ## Workflow
 

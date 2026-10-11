@@ -1,0 +1,41 @@
+{
+ "converter": "omni_to_lookml",
+ "counts": {
+  "control": {
+   "mechanical": 1
+  },
+  "dashboard": {
+   "mechanical": 1
+  },
+  "dimension": {
+   "mechanical": 3
+  },
+  "measure": {
+   "mechanical": 2
+  },
+  "table_calculation": {
+   "mechanical": 1
+  },
+  "table_view": {
+   "mechanical": 1
+  },
+  "tile": {
+   "mechanical": 2,
+   "redesign": 1
+  },
+  "time_dimension": {
+   "mechanical": 1
+  },
+  "topic": {
+   "mechanical": 1
+  }
+ },
+ "dashboards": 1,
+ "dialect": "bigquery",
+ "explores": 1,
+ "model": "halcyon",
+ "needs_human": 1,
+ "omni_model": "halcyon",
+ "version": "0.1.0",
+ "views": 1
+}

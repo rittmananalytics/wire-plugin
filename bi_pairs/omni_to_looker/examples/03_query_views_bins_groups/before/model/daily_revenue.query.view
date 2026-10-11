@@ -1,0 +1,16 @@
+label: Daily revenue
+sql: |-
+  SELECT DATE(created_at) AS order_date, SUM(total) AS revenue
+  FROM `halcyon-prod.analytics.orders`
+  GROUP BY 1
+
+dimensions:
+  order_date:
+    timeframes: [date, week, month]
+  revenue:
+    hidden: true
+
+measures:
+  total_revenue:
+    sql: revenue
+    aggregate_type: sum

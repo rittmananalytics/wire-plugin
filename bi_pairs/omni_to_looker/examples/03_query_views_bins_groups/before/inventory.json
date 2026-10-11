@@ -1,0 +1,40 @@
+{
+ "documents": {},
+ "exported_at": "2026-10-11T12:00:00Z",
+ "exporter": "omni_export",
+ "instance": "halcyon",
+ "model": {
+  "connection_id": "c0ffee00-0000-4000-8000-000000000001",
+  "connection_name": "halcyon_bigquery",
+  "database": "halcyon-prod",
+  "default_schema": "analytics",
+  "dialect": "bigquery",
+  "id": "11111111-aaaa-4bbb-8ccc-000000000001",
+  "name": "halcyon"
+ },
+ "model_files": {
+  "daily_revenue.query.view": {
+   "sha256": "ee925f5dd070f7b80e4df8df8aefb8171c5cda41808168cebc1cf0ff01d51536"
+  },
+  "daily_revenue.topic": {
+   "sha256": "727029abbd8aa26492e65112d58e391e0e98732db025c45161d3512bab794e37"
+  },
+  "model": {
+   "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  "products.query.view": {
+   "sha256": "e4179aa5ff4b6bf187a76c568d46290ffc6bfb19b8c039c2d8da71bd2c2b514b"
+  },
+  "products.topic": {
+   "sha256": "82ea3b0c4a0b21393cbcace1002b1fb2e79c3f7c0931f65a809c91ac1eab36f5"
+  },
+  "relationships": {
+   "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  }
+ },
+ "model_files_kept": 6,
+ "model_files_total": 6,
+ "omni_cli_version": "1.2.1",
+ "skipped_documents": {},
+ "version": "0.1.0"
+}

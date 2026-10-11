@@ -280,6 +280,18 @@ When `bi_pair: metabase_to_looker`, the gate resolves this command's preconditio
 - **Step 6 (register).** Identities from the audit (`metabase:<instance>:card:<id>`, `metabase:<instance>:dashboard:<id>`, `metabase:<instance>:table:<id>`); `source_updated_at` from `inventory.json` `updated_at`; no `last_migrated_commit`.
 - **Step 6b (baseline).** Record the snapshot (`exported_at`, Metabase version, SHA-256 per object) in place of `lookml_commit`, and the converter version from `mb_to_lookml.py`.
 
+## Pair: omni_to_looker
+
+This pair is experimental (see `specs/migration/omni_source_audit/generate.md`).
+
+When `bi_pair: omni_to_looker`, the gate resolves this command's preconditions from the profile: `omni_source_audit` review approved (blocking), `business_rules` review approved (advisory). The workflow applies with these differences:
+
+- **Inputs.** `audit/omni_source_audit.md`, `audit/bi_model_catalog.csv`, `audit/bi_content_catalog.csv`, `audit/needs_human.json`.
+- **Step 3 (rulings).** A ruling per tile on a workbook-only field (move the field into the shared model before the snapshot, or rebuild in Looker), per query view built from a topic query and per view with Mustache in its SQL (native derived table, Liquid rewrite, or a dbt model), per topic default filter (an `always_filter`, or nothing), and per SQL tile (a view on its SQL, or rebuild on an explore).
+- **Step 5 (batches).** Model batches are groups of topics with the views they join; content batches are dashboards by visits, each depending on the model batch of the topics its tiles query.
+- **Step 6 (register).** Identities from the audit (`omni:<instance>:view:<name>`, `omni:<instance>:topic:<name>`, `omni:<instance>:document:<id>`, `.../query:<key>`); `source_updated_at` from `inventory.json` `updated_at` for documents and the SHA-256 for model files; no `last_migrated_commit`.
+- **Step 6b (baseline).** Record the snapshot (`exported_at`, Omni CLI version, model id, SHA-256 per object) in place of `lookml_commit`, and the converter version from `omni_to_lookml.py`.
+
 ## Pairs: tableau_to_omni and metabase_to_omni
 
 These pairs are experimental. The preconditions, inputs, rulings, batches and register identities are those of `tableau_to_looker` and `metabase_to_looker` above, with Omni as the target and these differences:
