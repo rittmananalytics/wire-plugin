@@ -60,7 +60,7 @@ The four pairs that end in Looker are experimental.
 
 Tableau, Metabase, Looker Studio and Omni each have their own way in and their own converter. They share everything else: the tool-neutral record (`wire/schemas/bi_ir-schema.md`), the plan, the Looker phases and the parity loop.
 
-![Tableau, Metabase and Looker Studio feed per-tool snapshot and audit scripts; Wire's shared core holds the tool-neutral record, the migration plan, the metric catalogue (Looker Studio only) and the shared Looker target; three converters write LookML to a branch of the client's repo, deployed to Looker under its own model; the parity loop compares each source's rows with Looker's results before cutover](/img/bi-migration/migration-to-looker-architecture.png)
+![Tableau, Metabase, Looker Studio and Omni feed per-tool snapshot and audit scripts; Wire's shared core holds the tool-neutral record, the migration plan, the metric catalogue (Looker Studio only) and the shared Looker target; four converters write LookML to a branch of the client's repo, deployed to Looker under its own model; the parity loop compares each source's rows (Tableau Query View Data, Metabase card data, Looker Studio chart recordings, Omni tile queries) with Looker's results before cutover](/img/bi-migration/migration-to-looker-architecture.png)
 
 | | Tableau | Metabase | Looker Studio | Omni |
 |---|---|---|---|---|

@@ -15,7 +15,7 @@ This page follows one working session in Claude Code, as the release director se
 
 The director never types a command. They say what they want, rule on what Wire cannot decide, and approve at the gates. Wire runs the real commands, and each turn ends with the commands it ran.
 
-![Tableau, Metabase and Looker Studio feed per-tool snapshot and audit scripts; Wire's shared core holds the tool-neutral record, the migration plan, the metric catalogue and the shared Looker target; three converters write LookML to a branch of the client's repo, deployed to Looker under its own model; the parity loop compares each source's rows with Looker's results before cutover](/img/bi-migration/migration-to-looker-architecture.png)
+![Tableau, Metabase, Looker Studio and Omni feed per-tool snapshot and audit scripts; Wire's shared core holds the tool-neutral record, the migration plan, the metric catalogue and the shared Looker target; four converters write LookML to a branch of the client's repo, deployed to Looker under its own model; the parity loop compares each source's rows with Looker's results before cutover](/img/bi-migration/migration-to-looker-architecture.png)
 
 ## Before the session
 
