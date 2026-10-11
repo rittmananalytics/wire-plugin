@@ -114,5 +114,6 @@ The run confirmed the relative date translation both ways: "previous 12 months" 
 
 - [BI Tool Migration](../release-types/bi-migration#migrating-to-looker)
 - [A session at the terminal: Tableau, Metabase and Looker Studio to Looker](./bi-to-looker-session)
+- [Tutorial: Tableau and Metabase to Omni](./tableau-and-metabase-to-omni): the same source, with Omni as the target
 - Pair files: `bi_pairs/metabase_to_looker/` (translation guide, property mapping, feature detection, content mapping, tooling, worked examples)
 - IR schema: `wire/schemas/bi_ir-schema.md`

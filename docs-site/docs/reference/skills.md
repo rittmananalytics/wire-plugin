@@ -123,17 +123,17 @@ Clients find it easier to react to a dashboard they can click on than to a list 
 
 ### `metabase`
 
-**Activates when**: auditing or migrating a Metabase reporting layer: cataloguing collections, dashboards, cards/questions, database connections or permission groups, repointing Metabase from one warehouse to another, or replacing Metabase with Looker on the experimental `metabase_to_looker` pair of a BI Tool Migration release.
+**Activates when**: auditing or migrating a Metabase reporting layer: cataloguing collections, dashboards, cards/questions, database connections or permission groups, repointing Metabase from one warehouse to another, or replacing Metabase with Looker or Omni on the experimental `metabase_to_looker` and `metabase_to_omni` pairs of a BI Tool Migration release.
 
-This skill connects to a Metabase instance (metabase-cli serialization export, the REST API or a client-supplied query inventory) and maps the collection → dashboard → card hierarchy, each card's SQL and its warehouse dependencies, the database connections and the permission groups. It is used by the `metabase-audit-*` and `metabase-migration-*` platform-migration commands (gated on `migration.reporting_tool: metabase`, not on migration scope), and it wraps the upstream `metabase/agent-skills` (metabase-cli, metabase-representation-format, metabase-database-metadata). For replacing Metabase with Looker it covers Wire's two scripts, `metabase_export.py` for the snapshot, drift and card data and `mb_to_lookml.py` for the audit, the LookML conversion and the lint, and what to know first: sync, MBQL 5, native SQL, relative dates and date grains. Experimental: run end to end once on a Metabase Cloud trial; not on a client estate.
+This skill connects to a Metabase instance (metabase-cli serialization export, the REST API or a client-supplied query inventory) and maps the collection → dashboard → card hierarchy, each card's SQL and its warehouse dependencies, the database connections and the permission groups. It is used by the `metabase-audit-*` and `metabase-migration-*` platform-migration commands (gated on `migration.reporting_tool: metabase`, not on migration scope), and it wraps the upstream `metabase/agent-skills` (metabase-cli, metabase-representation-format, metabase-database-metadata). For replacing Metabase it covers Wire's scripts: `metabase_export.py` for the snapshot, drift and card data, `mb_to_lookml.py` for the audit, the LookML conversion and the lint, and `bi_to_omni.py` for the Omni model and dashboards; and what to know first: sync, MBQL 5, native SQL, relative dates and date grains. Experimental.
 
 ---
 
 ### `tableau`
 
-**Activates when**: auditing a Tableau estate or migrating it to Looker on the experimental `tableau_to_looker` pair of a BI Tool Migration release, or reading `.twb`, `.twbx`, `.tds` or `.tdsx` files.
+**Activates when**: auditing a Tableau estate or migrating it to Looker or Omni on the experimental `tableau_to_looker` and `tableau_to_omni` pairs of a BI Tool Migration release, or reading `.twb`, `.twbx`, `.tds` or `.tdsx` files.
 
-This skill covers signing in to Tableau Cloud or Server with a personal access token, what each surface gives (REST API, usage, parity rows), how the workbook XML is laid out, the calculation language in one page (row-level and aggregate calculations, LOD expressions, table calculations) and Wire's three scripts: `tableau_export.py` for the snapshot and drift, `twb_to_lookml.py` for the audit, the LookML conversion and the lint, and `bi_ir.py` for the tool-neutral record. Experimental: run end to end once on a Tableau Cloud trial site; not on a client estate.
+This skill covers signing in to Tableau Cloud or Server with a personal access token, what each surface gives (REST API, usage, parity rows), how the workbook XML is laid out, the calculation language in one page (row-level and aggregate calculations, LOD expressions, table calculations) and Wire's scripts: `tableau_export.py` for the snapshot and drift, `twb_to_lookml.py` for the audit, the LookML conversion and the lint, `bi_to_omni.py` for the Omni model and dashboards, and `bi_ir.py` for the tool-neutral record. Experimental.
 
 ---
 

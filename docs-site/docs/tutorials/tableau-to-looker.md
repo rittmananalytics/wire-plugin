@@ -148,5 +148,6 @@ The sheet's 34 rows from Query View Data were compared, with the standard compar
 
 - [BI Tool Migration](../release-types/bi-migration#migrating-to-looker)
 - [A session at the terminal: Tableau, Metabase and Looker Studio to Looker](./bi-to-looker-session)
+- [Tutorial: Tableau and Metabase to Omni](./tableau-and-metabase-to-omni): the same source, with Omni as the target
 - Pair files: `bi_pairs/tableau_to_looker/` (translation guide, property mapping, feature detection, content mapping, tooling, worked examples)
 - IR schema: `wire/schemas/bi_ir-schema.md`
