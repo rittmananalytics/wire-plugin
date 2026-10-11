@@ -1,11 +1,11 @@
 ---
 name: tableau
-description: Read a Tableau estate (Tableau Cloud, Tableau Server, or Desktop workbook files) for a migration to Looker. Activates for Tableau audits, the experimental tableau_to_looker pair of the bi_migration release type, or any work that reads .twb, .twbx, .tds or .tdsx files. Covers sign-in with a personal access token, what each surface gives, the workbook XML, the calculation language, and Wire's export and converter scripts.
+description: Read a Tableau estate (Tableau Cloud, Tableau Server, or Desktop workbook files) for a migration to Looker or Omni. Activates for Tableau audits, the experimental tableau_to_looker and tableau_to_omni pairs of the bi_migration release type, or any work that reads .twb, .twbx, .tds or .tdsx files. Covers sign-in with a personal access token, what each surface gives, the workbook XML, the calculation language, and Wire's export and converter scripts.
 ---
 
 # Tableau
 
-Experimental (wire#287). Used by `/wire:tableau-audit-*`, `/wire:lookml-model-*` and `/wire:looker-content-*` on a `bi_migration` release with `bi_pair: tableau_to_looker`, and by any work that reads Tableau workbooks. Tell the consultant the pair is experimental at the start of that work.
+Experimental (wire#287). Used by `/wire:tableau-audit-*`, `/wire:lookml-model-*` and `/wire:looker-content-*` on a `bi_migration` release with `bi_pair: tableau_to_looker`, by `/wire:omni-model-*` and `/wire:omni-content-*` with `bi_pair: tableau_to_omni` (the Omni writer `bi_to_omni.py --source tableau`, rules in `wire/bi_pairs/tableau_to_omni/`), and by any work that reads Tableau workbooks. Tell the consultant the pair is experimental at the start of that work.
 
 ## Sign-in
 

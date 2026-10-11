@@ -1,9 +1,9 @@
 ---
-description: Plan and create Omni dashboards for a batch of Looker dashboards and Looks; skipped tiles listed with reasons
+description: Plan and create Omni dashboards for a batch of Looker dashboards and Looks, or Tableau or Metabase dashboards (experimental); skipped tiles listed with reasons
 argument-hint: <release-folder> [--batch N 
 ---
 
-# Plan and create Omni dashboards for a batch of Looker dashboards and Looks; skipped tiles listed with reasons
+# Plan and create Omni dashboards for a batch of Looker dashboards and Looks, or Tableau or Metabase dashboards (experimental); skipped tiles listed with reasons
 
 ## User Input
 
@@ -279,6 +279,10 @@ What the rebuild can and cannot do is fixed by Omni's document API and by what t
 - `wire/bi_pairs/looker_to_omni/tooling.md` (Omni's dashboard inspector and builder scripts, and how this command may use them)
 - `wire/bi_pairs/looker_to_omni/content_mapping.md`, section "Rules from Omni's own dashboard migration guide": every control in every tile's map, no quarter-grained date keys, hidden fields left out of `fields`, table pivots in `query.pivots` and chart pivots as the series field, parameters as Mustache block templated filters, never delete by name
 - `.wire/releases/$ARGUMENTS/status.md`
+
+## Pairs: tableau_to_omni and metabase_to_omni
+
+These pairs are experimental. Steps 2 to 4 are done by the converter: for each dashboard (and each Metabase tab, and each question or sheet on no dashboard) the model batch wrote `documents/<slug>.json`, an Omni document body with tiles, Omni filter objects, sorts, controls and a `containers` layout, and `documents/<slug>.plan.json` with the tiles planned, the skipped tiles and their reasons (`text_tile`, `unmapped_field`, `unmapped_filter`) and fidelity notes. Step 5 copies them into `plan.json`; the agent reviews the skipped tiles and fidelity notes and adds the hand-finish list. In Step 6, create each document by name on the shared model (`omni documents v2-create`), then patch its draft with the body and the branch (`omni documents v2-patch-draft <identifier> --body` with `branchId`), so the draft runs against the branch; the published document stays empty until the branch merges. Fill each parity contract's `target_object` and `field_map` from `parity_map.json`.
 
 ## Pair: looker_studio_to_omni
 

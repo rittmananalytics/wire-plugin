@@ -1,9 +1,9 @@
 ---
-description: Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker, with data source fingerprints
+description: Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker or Omni, with data source fingerprints
 argument-hint: <release-folder>
 ---
 
-# Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker, with data source fingerprints
+# Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker or Omni, with data source fingerprints
 
 ## User Input
 
@@ -244,7 +244,7 @@ Catalogs the client's Tableau estate so the migration plan can decide what moves
 
 ## Prerequisites
 
-- Release folder with `project_type: bi_migration` and `bi_pair: tableau_to_looker` in `status.md`
+- Release folder with `project_type: bi_migration` and `bi_pair: tableau_to_looker` or `tableau_to_omni` in `status.md` (the audit is the same for both targets)
 - `bi_migration.source` block: `edition`, and either `server_url` and `site` (Cloud or Server) or `files_path` (Desktop)
 - For Cloud or Server: a personal access token in two environment variables (name and secret), loaded from a file outside the repository that only the consultant can read (for example `~/.wire/tableau.env`, mode 600), never committed or pasted into a session; `python3 -m pip install tableauserverclient`. Token creation can be switched off for the site: a site administrator turns it on under Settings, General
 - For usage on Cloud: an Admin Insights export (CSV) path in `bi_migration.source.usage_csv`. Without one, the snapshot records each view's all-time view count from the REST API (`usage_source: rest_total_views`): it has no time window and no last-viewed date, so the report says so and ranks by it with care
@@ -259,7 +259,7 @@ Catalogs the client's Tableau estate so the migration plan can decide what moves
 
 ### Step 1: Locate the release
 
-Confirm `project_type: bi_migration` and `bi_pair: tableau_to_looker`. Read `bi_migration.source`. If neither `server_url` nor `files_path` is set, stop and ask for one.
+Confirm `project_type: bi_migration` and `bi_pair: tableau_to_looker` or `tableau_to_omni`. Read `bi_migration.source`. If neither `server_url` nor `files_path` is set, stop and ask for one.
 
 ### Step 2: Take the snapshot
 

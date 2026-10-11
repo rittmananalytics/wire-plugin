@@ -1,9 +1,9 @@
 ---
-description: Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker
+description: Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker or Omni
 argument-hint: <release-folder>
 ---
 
-# Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker
+# Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker or Omni
 
 ## User Input
 
@@ -246,7 +246,7 @@ Metabase keeps its content in its application database, so the audit first takes
 
 ## Prerequisites
 
-- Release folder with `project_type: bi_migration` and `bi_pair: metabase_to_looker` in `status.md`
+- Release folder with `project_type: bi_migration` and `bi_pair: metabase_to_looker` or `metabase_to_omni` in `status.md` (the audit is the same for both targets)
 - `bi_migration.source` block: `host` (the instance URL), optional `dashboards` (ids in scope)
 - An API key from a group that can see the content and its databases (Admin settings, Authentication, API keys), kept in a file outside the repository that only the consultant can read (for example `~/.wire/metabase.env`, mode 600, exporting `MB_HOST` and `MB_API_KEY`), never committed or pasted into a session; `python3 -m pip install requests`
 - The databases in scope fully synced in Metabase: a table whose fields are not synced has no metadata to convert
@@ -262,7 +262,7 @@ Metabase keeps its content in its application database, so the audit first takes
 
 ### Step 1: Locate the release
 
-Confirm `project_type: bi_migration` and `bi_pair: metabase_to_looker`. Read `bi_migration.source`. If `host` is not set, stop and ask for it.
+Confirm `project_type: bi_migration` and `bi_pair: metabase_to_looker` or `metabase_to_omni`. Read `bi_migration.source`. If `host` is not set, stop and ask for it.
 
 ### Step 2: Take the snapshot
 

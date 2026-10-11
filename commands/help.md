@@ -439,12 +439,12 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:omni-target-setup-generate` | `<release-folder>` | Prepare the Omni target: connection check, model branch, schema refresh, groups and user attributes |
 | `/wire:omni-target-setup-validate` | `<release-folder>` | Validate the Omni target: branch exists, model validates with no blocking issue, groups exist |
 | `/wire:omni-target-setup-review` | `<release-folder>` | Internal RA review of the Omni target setup |
-| `/wire:omni-model-generate` | `<release-folder> [--batch N ` | Translate a batch of LookML views and explores to Omni views and topics on the model branch (deterministic converter plus agent judgement) |
+| `/wire:omni-model-generate` | `<release-folder> [--batch N ` | Translate a batch of LookML views and explores, or Tableau or Metabase content (experimental), to Omni views and topics on the model branch (deterministic converter plus agent judgement) |
 | `/wire:omni-model-lint` | `<release-folder> [--batch N]` | Static lint of emitted Omni YAML for a batch: no ${TABLE}, no Liquid, valid timeframes, aggregate types, filter objects, primary keys, relationship types |
 | `/wire:omni-model-validate` | `<release-folder> [--batch N]` | Validate a model batch on the branch: Omni validator clean, every in-scope field present, one smoke query per topic |
 | `/wire:omni-model-review` | `<release-folder> [--batch N]` | Release director review of a translated model batch and its needs_human resolutions |
 | `/wire:omni-model-reverse-port` | `<release-folder> [--batch N] [--dry-run]` | Carry changes made to the Omni model downstream (in Omni or its git repo) back into the delivery tree; four-way classification per emitted file, never clobbering unwritten local work |
-| `/wire:omni-content-generate` | `<release-folder> [--batch N ` | Plan and create Omni dashboards for a batch of Looker dashboards and Looks; skipped tiles listed with reasons |
+| `/wire:omni-content-generate` | `<release-folder> [--batch N ` | Plan and create Omni dashboards for a batch of Looker dashboards and Looks, or Tableau or Metabase dashboards (experimental); skipped tiles listed with reasons |
 | `/wire:omni-content-validate` | `<release-folder> [--batch N]` | Validate a content batch: plan fields exist on the branch, controls map, created documents resolve with the planned tile count |
 | `/wire:omni-content-review` | `<release-folder> [--batch N]` | Release director review of a migrated dashboard batch |
 | `/wire:bi-equivalency-validate` | `<release-folder> [--batch N ` | Tile-level parity: Looker and Omni results compared under a pinned as-of, verdicts in the model taxonomy; gates cutover |
@@ -509,7 +509,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N ` | Present migration batch acceptance pack for stakeholder sign-off |
 | `/wire:migration-source-register` | `<release-folder> <source_type> <github_url>` | Register a source repository for a given migration source type |
 | `/wire:migration-source-refresh` | `<release-folder> <source_type>` | Pull a fresh local snapshot of a registered migration source |
-| `/wire:tableau-audit-generate` | `<release-folder>` | Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker, with data source fingerprints |
+| `/wire:tableau-audit-generate` | `<release-folder>` | Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker or Omni, with data source fingerprints |
 | `/wire:tableau-audit-validate` | `<release-folder>` | Experimental: Validate the Tableau audit: reproducible, every construct classified, every data source in one fingerprint group, IR valid |
 | `/wire:tableau-audit-review` | `<release-folder>` | Experimental: Internal RA review of the Tableau audit |
 | `/wire:looker-target-setup-generate` | `<release-folder>` | Experimental: Prepare the Looker target: connection, LookML migration branch, folders, groups and user attributes |
@@ -522,7 +522,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:looker-content-generate` | `<release-folder> [--batch N ` | Experimental: Write a batch of Tableau or Metabase dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons |
 | `/wire:looker-content-validate` | `<release-folder> [--batch N]` | Experimental: Validate a LookML dashboard batch: fields exist, dashboards validate, every skipped tile has a reason |
 | `/wire:looker-content-review` | `<release-folder> [--batch N]` | Experimental: Release director review of a migrated LookML dashboard batch |
-| `/wire:metabase-source-audit-generate` | `<release-folder>` | Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker |
+| `/wire:metabase-source-audit-generate` | `<release-folder>` | Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker or Omni |
 | `/wire:metabase-source-audit-validate` | `<release-folder>` | Experimental: Validate the Metabase source audit: reproducible, every construct classified, IR valid, tables synced, secrets redacted |
 | `/wire:metabase-source-audit-review` | `<release-folder>` | Experimental: Internal RA review of the Metabase source audit |
 | `/wire:looker-studio-audit-generate` | `<release-folder>` | Experimental: Capture and catalog Looker Studio reports (for Omni or Looker): definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified |

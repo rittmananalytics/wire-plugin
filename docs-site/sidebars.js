@@ -89,6 +89,7 @@ const sidebars = {
             'tutorials/looker-to-omni-migration',
             'tutorials/looker-to-omni-real-run',
             'tutorials/looker-studio-to-omni',
+            'tutorials/tableau-and-metabase-to-omni',
             'tutorials/bi-to-looker-session',
             'tutorials/tableau-to-looker',
             'tutorials/metabase-to-looker',

@@ -862,7 +862,8 @@ class Estate:
     def classify_field(self, d, f):
         k = f["field_kind"]
         if f.get("_remote"):
-            f["class"], f["reason"] = "mechanical", ""
+            f["class"], f["reason"] = ("assisted", "field inside a record column (parent.child): not emitted") \
+                if "." in f["_remote"] else ("mechanical", "")
             return
         if k == "parameter":
             f["class"], f["reason"] = "assisted", "LookML parameter; references use {% parameter %}"
@@ -958,8 +959,12 @@ def lk_str(s):
     return '"' + str(s).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def emit_estate(est: Estate, model: str, connection: str, only_datasets=None, only_workbooks=None, include_root=""):
-    """Return (files: dict path->text, needs_human: list, summary: dict, objects: list, deps: list)."""
+def emit_estate(est: Estate, model: str, connection: str, only_datasets=None, only_workbooks=None, include_root="",
+                collect=None):
+    """Return (files: dict path->text, needs_human: list, summary: dict, objects: list, deps: list).
+
+    collect: an optional dict that receives the converted model before it is rendered as LookML (views,
+    explores and dashboard definitions), for another writer (bi_to_omni.py) to render."""
     views = {}          # view -> {"source": ..., "dims": {}, "measures": {}, "params": {}}
     explores = {}
     needs, deps = [], []
@@ -1057,6 +1062,15 @@ def emit_estate(est: Estate, model: str, connection: str, only_datasets=None, on
         # physical columns
         for f in d["fields"]:
             if not f.get("_remote"):
+                continue
+            if "." in f["_remote"]:
+                # Tableau flattens a field inside a BigQuery record (STRUCT, often repeated) as parent.child; as
+                # one quoted column name it does not exist, and a repeated record needs UNNEST, so it is listed
+                count("nested_field", "assisted")
+                need(f["id"], "nested_field", "assisted",
+                     f"field {f['_remote']} is inside a record column: not emitted",
+                     "a dimension on the record (parent.child for a single record, UNNEST in a derived table for a "
+                     "repeated one), or drop")
                 continue
             vname = est.view_for(d, f["_relation"])
             v = views[vname]
@@ -1197,7 +1211,7 @@ def emit_estate(est: Estate, model: str, connection: str, only_datasets=None, on
         deps.append({"from": f"looker:{model}:explore:{xname}", "to": d["id"], "kind": "uses_dataset"})
 
     # dashboards
-    dash_files, objects = {}, []
+    dash_files, objects, docs = {}, [], []
     for w in wbs:
         for r in w["reports"]:
             if r["blended"]:
@@ -1221,7 +1235,7 @@ def emit_estate(est: Estate, model: str, connection: str, only_datasets=None, on
                        "size": {"width": 1000, "height": 800},
                        "zones": [{"zone_id": "1", "type": "sheet", "name": r["name"], "param": None,
                                   "x": 0, "y": 0, "w": 100000, "h": 100000, "text": ""}]}
-                text, dropped = emit_dashboard(est, w, one, model, explores, need, count, deps, kind="worksheet")
+                text, dropped = emit_dashboard(est, w, one, model, explores, need, count, deps, kind="worksheet", docs=docs)
                 if dropped:
                     need(r["id"], "worksheet_standalone", "assisted", "worksheet on no dashboard; its tile was not emitted",
                          "create a Look through the Looker API (looker_content), or drop")
@@ -1235,7 +1249,7 @@ def emit_estate(est: Estate, model: str, connection: str, only_datasets=None, on
                 count("story", "drop")
                 need(db["id"], "story", "drop", "story: recreate by hand")
                 continue
-            text, dropped = emit_dashboard(est, w, db, model, explores, need, count, deps)
+            text, dropped = emit_dashboard(est, w, db, model, explores, need, count, deps, docs=docs)
             dash_files[f"dashboards/{bi_ir.slug(db['name'])}.dashboard.lookml"] = text
             if db["device_layouts"]:
                 count("device_layout", "drop")
@@ -1265,6 +1279,8 @@ def emit_estate(est: Estate, model: str, connection: str, only_datasets=None, on
     files[f"models/{model}.model.lkml"] = render_model(model, connection, explores, root)
     files.update({f"{root}{k}": v for k, v in dash_files.items()})
     needs.sort(key=lambda n: (n["object"], n["construct"]))
+    if collect is not None:
+        collect.update({"views": views, "explores": explores, "dashboards": docs})
     summary = {"converter": "twb_to_lookml", "version": VERSION, "dialect": est.dialect, "model": model,
                "counts": {k: dict(sorted(v.items())) for k, v in sorted(counts.items())},
                "views": len(views), "explores": len(explores), "dashboards": len(dash_files),
@@ -1306,7 +1322,7 @@ def instance_field(est, w, r, ds_name, inst_name):
     return None, f"derivation {deriv} on calculated field {f['label']}"
 
 
-def emit_dashboard(est, w, db, model, explores, need, count, deps, kind="dashboard"):
+def emit_dashboard(est, w, db, model, explores, need, count, deps, kind="dashboard", docs=None):
     width, height = db["size"]["width"], db["size"]["height"]
     rows_total = 24 * height / width
     reports = {r["name"]: r for r in w["reports"]}
@@ -1424,6 +1440,8 @@ def emit_dashboard(est, w, db, model, explores, need, count, deps, kind="dashboa
     doc = [{"dashboard": bi_ir.slug(db["name"]), "title": db["name"], "layout": "newspaper",
             "preferred_viewer": "dashboards-next", "description": f"Migrated from Tableau {kind} {db['name']} (twb_to_lookml {VERSION}, experimental)",
             **({"filters": filters} if filters else {}), "elements": elements}]
+    if docs is not None and not (kind == "worksheet" and dropped):
+        docs.append({**doc[0], "source_id": db["id"], "source_kind": kind})
     return yaml.safe_dump(doc, sort_keys=False, allow_unicode=True, width=1000), dropped
 
 

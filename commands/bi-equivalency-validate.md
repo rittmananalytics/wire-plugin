@@ -235,6 +235,10 @@ This pair is experimental (see `specs/migration/metabase_source_audit/generate.m
 
 This pair is experimental. The source side is the same as for `looker_studio_to_omni` below: each chart's Route C recording (`looker_studio_parity.py`), the expected rows for every connector. The target side is the LookML dashboard element's query through the Looker API or the Looker MCP `query` tool. Fill each contract from the model batch's `parity_map.json` (element, and recording column to Looker field), run the element with the recording's date range as an absolute filter, and declare grouped date keys in `comparison.dates.grain`. A chart with a breakdown dimension records only the series Looker Studio drew: compare that subset (every recorded row must be in the Looker result, with the same values) and record the series limit as an accepted difference.
 
+## Pairs: tableau_to_omni and metabase_to_omni
+
+These pairs are experimental. The source side is the same as for `tableau_to_looker` (Query View Data) and `metabase_to_looker` (card data) above. The target side is the Omni tile's query, read from the document draft (`omni documents v2-get-draft`) and run against the branch: `omni query run --body '{"query": <tile query with modelId>, "branchId": "<branch>", "resultType": "json", "formatResults": false}'`, so values are raw, not formatted. The JSON rows are keyed by field label: write them to CSV with the tile's `fields` as the header, in order. Fill each contract from the model batch's `parity_map.json` (source field to Omni field). Metabase returns a date bucket as the timestamp of its first day and Omni as a date; declare each grouped date key in `comparison.dates.grain` as a map from field to grain (`{<omni field>: month}`).
+
 ## Pair: looker_studio_to_omni
 
 This pair is experimental in 4.2.2 (see `specs/migration/looker_studio_audit/generate.md`).

@@ -1,9 +1,9 @@
 ---
-description: Translate a batch of LookML views and explores to Omni views and topics on the model branch (deterministic converter plus agent judgement)
+description: Translate a batch of LookML views and explores, or Tableau or Metabase content (experimental), to Omni views and topics on the model branch (deterministic converter plus agent judgement)
 argument-hint: <release-folder> [--batch N 
 ---
 
-# Translate a batch of LookML views and explores to Omni views and topics on the model branch (deterministic converter plus agent judgement)
+# Translate a batch of LookML views and explores, or Tableau or Metabase content (experimental), to Omni views and topics on the model branch (deterministic converter plus agent judgement)
 
 ## User Input
 
@@ -277,6 +277,21 @@ Omni differs from Looker in ways the emitted YAML must respect: there is no `${T
 - `.wire/releases/$ARGUMENTS/migration/migration_register.csv`
 - The LookML repository: `migration_sources.lookml.local_snapshot_path` when registered and refreshed, otherwise `bi_migration.lookml_repo_path`
 - Pair files at `wire/bi_pairs/looker_to_omni/` and, when present, engagement overrides at `.wire/engagement/bi_pair_overrides/looker_to_omni/`
+
+## Pairs: tableau_to_omni and metabase_to_omni
+
+These pairs are experimental. There is no LookML to convert. The Tableau reader (`twb_to_lookml.py`) or the Metabase reader (`mb_to_lookml.py`) works out the model from the source snapshot, and `bi_to_omni.py` writes the Omni files from it directly, with Omni naming. Step 2 runs, in place of `lookml_to_omni.py`:
+
+```bash
+python3 <plugin-root>/scripts/bi_to_omni.py convert --source tableau \
+  --snapshot migration/source_snapshot/tableau/ --out migration/omni_model/<batch_id>/ \
+  [--workbooks <ids>] [--datasets <ids>] --prefix <plan prefix> --bind query|schema
+python3 <plugin-root>/scripts/bi_to_omni.py convert --source metabase \
+  --snapshot migration/source_snapshot/metabase/ --out migration/omni_model/<batch_id>/ \
+  --database <id> [--dashboards <ids>] --prefix <plan prefix> --bind query|schema
+```
+
+It writes one view per table or SQL source (`<view>.query.view` by default), one `.topic` per explore the reader built, `relationships.yaml`, `documents/<slug>.json` and `documents/<slug>.plan.json` (read by `omni-content-generate`), `needs_human.json`, `parity_map.json` and `conversion_summary.json`. A dimension on a table column takes the column's name and the source caption as its label; a measure or calculation whose name would collide with a column is suffixed; a raw column that a derived field reads is declared hidden; fields that use a parameter or templated filter, and fields inside a record column, are not emitted and are listed. Step 3 works through `needs_human.json` as above. In Step 4, the model's `relationships` file is shared by every topic: read it from the branch, append the batch's entries that are not already there, and write it back; never replace it.
 
 ## Pair: looker_studio_to_omni
 

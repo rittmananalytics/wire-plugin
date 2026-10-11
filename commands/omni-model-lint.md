@@ -181,6 +181,10 @@ Ten rules, each PASS or FAIL for the batch, each failure naming the file and the
 | L9 | No duplicate dimension or measure name within one view file, and no dimension name that collides with a measure name | Omni keys fields by name in one namespace per view |
 | L10 | Every `needs_human.json` item of class `redesign` has no emitted counterpart: no view, dimension or measure of that name in the batch directory | A redesign that was emitted anyway is a guess, and guesses pass validate |
 
+## Pairs: tableau_to_omni and metabase_to_omni
+
+These pairs are experimental. Run `python3 <plugin-root>/scripts/bi_to_omni.py lint migration/omni_model/<batch_id>/` first: it checks L0 to L9 that need no Omni call, and L11, a dimension or measure whose SQL refers to its own name (in Omni that is a self-reference, not a column). Then apply the remaining rules by reading, as below. Overall result is PASS only when the script and every rule pass.
+
 ## Workflow
 
 ### Step 1: Resolve the batch

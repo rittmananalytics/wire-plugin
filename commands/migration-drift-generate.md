@@ -240,6 +240,8 @@ Blast radius on this release type is topics and dashboards that reference a drif
 
 **Pair `metabase_to_looker`** (experimental). Take a fresh snapshot with `metabase_export.py api` and compare it with the pinned `inventory.json`: `python3 <plugin-root>/scripts/metabase_export.py diff --old <pinned> --new <fresh>`. `content_drifted` when `updated_at` is newer or the SHA-256 changed, `removed` (deleted or archived), `new`. A drifted card or dashboard whose batch is complete is re-run through `mb_to_lookml.py audit` to re-classify; a class that becomes `redesign` is `blocking`.
 
+**Pairs `tableau_to_omni` and `metabase_to_omni`** (experimental). Source drift is checked as for `tableau_to_looker` and `metabase_to_looker` above; a drifted object whose batch is complete is re-run through the reader's `audit` to re-classify, and its model batch through `bi_to_omni.py convert`.
+
 **Pairs `looker_studio_to_omni` and `looker_studio_to_looker`.** There is no source repository to diff. Drift is checked by re-capturing (`looker-studio-audit-generate`, update mode) and comparing each report's `modified_date` and `report.json` against the stored extraction: `content_drifted` when either changed, `unknown` when no stored extraction exists. Model rows are not applicable; the warehouse model's own drift is the linked `dbt_development` release's concern.
 
 **Baseline check.** Compare `migration/baseline.yaml` against what is live: the Looker project's deployed revision, the Omni model id and branch, the converter and comparator versions installed, `parity_as_of` in status.md. Any difference is a `baseline_drift` finding, `blocking`: the plan must re-baseline (`bi-migration-plan-generate` writes a new `baseline_id`) before another parity run counts.

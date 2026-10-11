@@ -248,6 +248,10 @@ Makes the Omni instance ready for model and content migration, and proves the as
 - `.wire/releases/$ARGUMENTS/audit/looker_audit.md` (the warehouse connection Looker uses, from its model files' `connection:` value)
 - The Omni instance, via the Omni CLI
 
+## Pairs: tableau_to_omni and metabase_to_omni
+
+These pairs are experimental. In Step 2, compare the Omni connection with the warehouse the source tool reads: the BigQuery project or Snowflake account and the datasets in `audit/bi_model_catalog.csv` (Tableau data source connections, or the Metabase database's details) in place of Looker's `connection:`. In Step 3, list the existing view and topic names, and record the plan's view prefix; a converter name that already exists on the model is a parked decision, as for Looker views.
+
 ## Workflow
 
 ### Step 1: Confirm CLI access

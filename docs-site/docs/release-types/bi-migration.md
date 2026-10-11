@@ -13,13 +13,15 @@ Since v4.0.0, on Claude Code, you can direct this release in plain language: say
 
 This release type moves a reporting layer from one BI tool to another. The warehouse and the dbt layer stay where they are. What is rebuilt, checked and switched over is the semantic model and the dashboards that sit on it.
 
-It supports five migration pairs. The release's `status.md` records which one with `bi_pair`.
+It supports seven migration pairs. The release's `status.md` records which one with `bi_pair`.
 
 1. [Tableau to Looker](#tableau-to-looker) (`tableau_to_looker`, experimental)
 2. [Metabase to Looker](#metabase-to-looker) (`metabase_to_looker`, experimental)
 3. [Looker Studio to Looker](#looker-studio-to-looker) (`looker_studio_to_looker`, experimental)
 4. [Looker to Omni](#looker-to-omni) (`looker_to_omni`, the default)
-5. [Looker Studio to Omni](#looker-studio-to-omni) (`looker_studio_to_omni`, experimental)
+5. [Tableau to Omni](#tableau-to-omni-and-metabase-to-omni) (`tableau_to_omni`, experimental)
+6. [Metabase to Omni](#tableau-to-omni-and-metabase-to-omni) (`metabase_to_omni`, experimental)
+7. [Looker Studio to Omni](#looker-studio-to-omni) (`looker_studio_to_omni`, experimental)
 
 This is not the same as moving an Omni estate to a new warehouse. That is a `platform_migration` release with `migration.reporting_tool: omni`.
 
@@ -195,6 +197,26 @@ Without a LookML git URL the audit still runs from a local checkout, but drift c
 
 Walkthroughs: [Tutorial: Looker to Omni Migration](../tutorials/looker-to-omni-migration) and [Looker to Omni: A Real Run](../tutorials/looker-to-omni-real-run).
 
+### Tableau to Omni and Metabase to Omni
+
+:::caution[Experimental]
+
+The Tableau to Omni and Metabase to Omni pairs are experimental.
+
+:::
+
+These pairs use the source audit of the matching Looker pair (`tableau_audit` or `metabase_source_audit`), then the Omni target, model and content phases of Looker to Omni.
+
+No LookML is written on the way. The Tableau or Metabase reader works out what each table, column, calculation, join and tile becomes, and `bi_to_omni.py` writes the Omni files from that directly:
+
+- **Views.** One per table or SQL source, as a query view (`SELECT * FROM` the table) by default, so it cannot collide with Omni's own schema view; `--bind schema` uses `schema` and `table_name` instead.
+- **Omni naming.** A column dimension takes the column's name, with the source caption as its label. A measure or calculation that would take a column's name is suffixed, because in Omni a field named after the column it reads refers to itself.
+- **Topics and relationships.** One topic per data source group (Tableau) or table (Metabase); joins go to the model's shared `relationships` file, which is appended to, never replaced.
+- **Dashboards.** One Omni document body per dashboard, with tiles, filters, controls and layout. Each document is created on the shared model and its draft is patched with the branch, so it runs against the branch until the branch merges.
+- **Not emitted, and listed.** Parameters and fields that use them, LOD expressions and table calculations, fields inside a BigQuery record column, and text cards.
+
+Parity takes the source rows as for the Looker pairs (Query View Data, Metabase card data) and runs each Omni tile's query against the branch. Walkthrough: [Tutorial: Tableau and Metabase to Omni](../tutorials/tableau-and-metabase-to-omni).
+
 ### Looker Studio to Omni
 
 :::caution[Experimental]
@@ -241,6 +263,7 @@ This release type was built for the [release director model](../advanced/release
 | Metabase to Looker | `python3 -m pip install requests sqlglot`; a Metabase API key in a group that can see the content, kept outside the repo; the databases in scope synced in Metabase. See [before you start](../tutorials/metabase-to-looker#before-you-start) |
 | Looker Studio (either target) | `python3 -m pip install playwright` and Google Chrome; the access listed for Looker Studio to Omni; who approved automated read-only access to the reports |
 | Any Looker target | The client's LookML repo, Looker API access, and a Looker developer and admin to deploy and configure the new model |
+| Tableau to Omni, Metabase to Omni | The source access of the matching Looker pair; the Omni CLI with a profile that can create a model branch, write model YAML and create documents |
 | Looker to Omni | The LookML repo cloned locally; Looker API credentials with System Activity access; the Omni CLI and an API key that can create a model branch and documents; the `omni-analytics` agent skills (`/plugin marketplace add exploreomni/omni-agent-skills`, `/plugin install omni-analytics@omni-analytics`) |
 
 ## See also
@@ -251,5 +274,6 @@ This release type was built for the [release director model](../advanced/release
 - [Tutorial: Looker Studio to Looker](../tutorials/looker-studio-to-looker)
 - [Tutorial: Looker to Omni Migration](../tutorials/looker-to-omni-migration)
 - [Looker to Omni: A Real Run](../tutorials/looker-to-omni-real-run)
+- [Tutorial: Tableau and Metabase to Omni](../tutorials/tableau-and-metabase-to-omni)
 - [Tutorial: Looker Studio to Omni](../tutorials/looker-studio-to-omni)
 - [Platform Migration](./platform-migration): the same register and drift checks applied to a warehouse move

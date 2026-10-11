@@ -280,6 +280,13 @@ When `bi_pair: metabase_to_looker`, the gate resolves this command's preconditio
 - **Step 6 (register).** Identities from the audit (`metabase:<instance>:card:<id>`, `metabase:<instance>:dashboard:<id>`, `metabase:<instance>:table:<id>`); `source_updated_at` from `inventory.json` `updated_at`; no `last_migrated_commit`.
 - **Step 6b (baseline).** Record the snapshot (`exported_at`, Metabase version, SHA-256 per object) in place of `lookml_commit`, and the converter version from `mb_to_lookml.py`.
 
+## Pairs: tableau_to_omni and metabase_to_omni
+
+These pairs are experimental. The preconditions, inputs, rulings, batches and register identities are those of `tableau_to_looker` and `metabase_to_looker` above, with Omni as the target and these differences:
+
+- **Rulings.** Name the Omni alternative in each ruling: an LOD expression becomes a query view or is dropped, a table calculation becomes an Omni table calculation on the tile or is dropped, a parameter becomes an Omni templated filter or a dashboard control. Add a **view naming** ruling: the prefix for every view and topic (`--prefix`, default none) and the binding (`--bind query`, the default, files each view as a query view so it cannot collide with Omni's generated schema view; `--bind schema` uses `schema` and `table_name`).
+- **Baseline.** Record the converter versions of the reader (`twb_to_lookml.py` or `mb_to_lookml.py`) and of `bi_to_omni.py`.
+
 ## Pair: looker_studio_to_looker
 
 This pair is experimental (see `specs/migration/looker_studio_audit/generate.md`). The preconditions, inputs and rulings are those of `looker_studio_to_omni` below, with Looker as the target, and these differences:

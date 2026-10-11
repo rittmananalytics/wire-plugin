@@ -1,7 +1,7 @@
 wire_schema: "1.0"
 id: bi_migration
 name: "BI Tool Migration"
-description: "Migrate a reporting layer from one BI tool to another: audit the source estate, decide what moves and how, build the target model on a branch, move the content, prove tile-level parity, cut over. Pairs: Looker to Omni, Looker Studio to Omni, Looker Studio to Looker, Tableau to Looker and Metabase to Looker. A Looker Studio source has no semantic model to convert, so its plan decides per subject area whether the Omni model maps onto an existing warehouse model or needs a linked modelling release first."
+description: "Migrate a reporting layer from one BI tool to another: audit the source estate, decide what moves and how, build the target model on a branch, move the content, prove tile-level parity, cut over. Pairs: Looker to Omni, Looker Studio to Omni, Tableau to Omni, Metabase to Omni, Looker Studio to Looker, Tableau to Looker and Metabase to Looker. A Looker Studio source has no semantic model to convert, so its plan decides per subject area whether the Omni model maps onto an existing warehouse model or needs a linked modelling release first."
 applicable_when:
   - "The client is replacing their BI tool and the warehouse and dbt layer stay where they are"
   - "The source is Looker (LookML in git plus content via the Looker API) and the target is Omni"
@@ -9,6 +9,7 @@ applicable_when:
   - "The source is Tableau (Cloud, Server, or Desktop files) and the target is Looker: workbooks and published data sources become LookML views, explores and LookML dashboards on a branch of the client's Looker repo (experimental)"
   - "The source is Looker Studio and the target is Looker: the same capture, audit and metric catalogue as the Omni pair, then LookML views from the BigQuery tables and custom SQL the data sources read, charts on Looker data sources pointed at the existing explores, and LookML dashboards (experimental)"
   - "The source is Metabase (Cloud or self-hosted) and the target is Looker: questions, models, metrics and dashboards become LookML views, explores, measures and LookML dashboards on a branch of the client's Looker repo (experimental)"
+  - "The source is Tableau or Metabase and the target is Omni: the source audit of the matching Looker pair, then an Omni model on a model branch and Omni dashboard documents written from the converted model (experimental)"
   - "The source is Looker Studio (formerly Data Studio) and the target is Omni; report definitions are read from the Looker Studio editor, and metric definitions held in report-level data sources are consolidated through a metric catalogue before the Omni model is built"
 
 profile_field: bi_pair
@@ -159,6 +160,50 @@ profiles:
                 action: generate
                 outcome: complete
 
+  - id: tableau_to_omni
+    name: "Tableau to Omni (experimental)"
+    description: "Experimental. Tableau Cloud or Server workbooks and published data sources become an Omni model on a model branch (query views, topics, relationships) and Omni dashboard documents, written by bi_to_omni.py from the Tableau reader's converted model. The Tableau audit of the Tableau to Looker pair, then the Omni target, model and content phases of Looker to Omni."
+    enable_phases:
+      - tableau_audit
+    disable_phases:
+      - audit
+    phase_overrides:
+      # The plan reads the Tableau audit in place of the Looker audit.
+      - id: plan
+        requires_phase: tableau_audit
+        artifacts:
+          - id: bi_migration_plan
+            depends_on:
+              - artifact: tableau_audit
+                action: review
+                outcome: approved
+              - artifact: business_rules
+                action: review
+                outcome: approved
+                enforcement: advisory
+
+  - id: metabase_to_omni
+    name: "Metabase to Omni (experimental)"
+    description: "Experimental. Metabase questions, models, metrics and dashboards become an Omni model on a model branch (query views typed and keyed from Metabase's table metadata, topics, relationships) and Omni dashboard documents, written by bi_to_omni.py from the Metabase reader's converted model. The Metabase source audit of the Metabase to Looker pair, then the Omni target, model and content phases of Looker to Omni."
+    enable_phases:
+      - metabase_source_audit
+    disable_phases:
+      - audit
+    phase_overrides:
+      # The plan reads the Metabase source audit in place of the Looker audit.
+      - id: plan
+        requires_phase: metabase_source_audit
+        artifacts:
+          - id: bi_migration_plan
+            depends_on:
+              - artifact: metabase_source_audit
+                action: review
+                outcome: approved
+              - artifact: business_rules
+                action: review
+                outcome: approved
+                enforcement: advisory
+
 phases:
   - id: business_rules
     name: "Business Rules Discovery"
@@ -214,7 +259,7 @@ phases:
             action: review
             outcome: approved
 
-  # Tableau source (profile tableau_to_looker, experimental). Optional by default.
+  # Tableau source (profiles tableau_to_looker and tableau_to_omni, experimental). Optional by default.
   - id: tableau_audit
     name: "Tableau Audit"
     required: false
@@ -226,7 +271,7 @@ phases:
         sequence: 1
         depends_on: []
 
-  # Metabase source (profile metabase_to_looker, experimental). Optional by default.
+  # Metabase source (profiles metabase_to_looker and metabase_to_omni, experimental). Optional by default.
   # Not platform_migration's metabase_audit, which catalogs Metabase for a warehouse move.
   - id: metabase_source_audit
     name: "Metabase Source Audit"

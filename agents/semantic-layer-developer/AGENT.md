@@ -15,6 +15,7 @@ specs:
   - ads/semantic_layer_design-validate
   - droughty/lookml
   # bi_migration (Looker to Omni, wire#258): the Omni model and content batches
+  # Omni model and content for every Omni pair, including Tableau and Metabase to Omni (experimental, bi_to_omni.py)
   - migration/omni_model-generate
   - migration/omni_model-lint
   - migration/omni_model-validate

@@ -12,7 +12,8 @@ key the schema does not list, so a tool-shaped key (lookml_type, omni, explore) 
 creep into the neutral record unnoticed.
 
 Used by wire/scripts/twb_to_lookml.py (Tableau reader, LookML writer, experimental) and
-wire/scripts/mb_to_lookml.py (Metabase reader, LookML writer, experimental).
+wire/scripts/mb_to_lookml.py (Metabase reader, LookML writer, experimental). wire/scripts/bi_to_omni.py writes Omni
+from the same readers' converted model (experimental).
 wire/scripts/lookml_to_omni.py keeps its own IR in 4.2.x; moving it onto this module
 is a later, deliberate change (it would regenerate the Looker to Omni expected files).
 

@@ -88,3 +88,15 @@ What to know before running them:
 - **One connection per LookML model.** Convert one Metabase database at a time (`--database`).
 - The full rules are in `wire/bi_pairs/metabase_to_looker/`.
 
+## Replacing Metabase with Omni (bi_migration, experimental)
+
+`bi_pair: metabase_to_omni` uses the same snapshot and audit, then writes an Omni model and Omni document bodies from the Metabase reader's converted model, with Omni naming (a column dimension takes the column's name, no LookML on the way):
+
+```bash
+python3 <plugin-root>/scripts/bi_to_omni.py convert --source metabase --snapshot <snapshot> --out <batch> \
+  --database <id> [--dashboards <ids>] --prefix <prefix> [--bind query|schema]
+python3 <plugin-root>/scripts/bi_to_omni.py lint <batch>
+```
+
+Views are query views by default. Write the files to a model branch, append to the model's shared `relationships` file rather than replacing it, and patch each document's draft with the branch id. The rules are in `wire/bi_pairs/metabase_to_omni/`.
+

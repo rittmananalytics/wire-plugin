@@ -365,6 +365,7 @@ class Converter:
         self.names_used = set()
         self.field_names = {}     # Metabase field id -> (view, name, is_group)
         self.reported = set()     # (dashboard, parameter, construct) already listed
+        self.dash_docs = []       # dashboard definitions before rendering, for another writer (bi_to_omni.py)
 
     # -- bookkeeping ----------------------------------------------------------
     def count(self, construct, cls):
@@ -1356,6 +1357,8 @@ class Converter:
                     "preferred_viewer": "dashboards-next",
                     "description": f"Migrated from Metabase dashboard {d['name']} (mb_to_lookml {VERSION}, experimental)",
                     **({"filters": filters} if filters else {}), "elements": elements}]
+            self.dash_docs.append({**doc[0], "source_id": dobj if tab is None else self.est.ident("dashboard", did, "tab", tab),
+                                   "source_kind": "dashboard"})
             files[f"{self.root}dashboards/{bi_ir.slug(title)}.dashboard.lookml"] = yaml.safe_dump(
                 doc, sort_keys=False, allow_unicode=True, width=1000)
             self.count("dashboard", "mechanical")
@@ -1635,6 +1638,7 @@ def run(est: Estate, model: str, connection: str, dashboards=None, cards=None, d
                 "preferred_viewer": "dashboards-next",
                 "description": f"Migrated from Metabase question {title} (mb_to_lookml {VERSION}, experimental)",
                 "elements": [e]}]
+        cv.dash_docs.append({**doc[0], "source_id": est.ident("card", cid), "source_kind": "question"})
         files[f"{cv.root}dashboards/{bi_ir.slug(title + ' question')}.dashboard.lookml"] = yaml.safe_dump(
             doc, sort_keys=False, allow_unicode=True, width=1000)
         cv.need(est.ident("card", cid), "standalone_question", "assisted",

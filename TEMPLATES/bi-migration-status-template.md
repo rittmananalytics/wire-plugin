@@ -10,8 +10,9 @@ current_phase: "audit"
 
 # Profile: which tool pair this release migrates. Read by precondition_gate.md Step 0
 # and by runnable_set.md. looker_to_omni (default), looker_studio_to_omni (4.2.2, experimental)
-# looker_studio_to_looker, tableau_to_looker (wire#287) or metabase_to_looker (all three experimental); the Looker
-# targets use the bi_migration.target block, and Tableau and Metabase the .source block too.
+# looker_studio_to_looker, tableau_to_looker (wire#287), metabase_to_looker, tableau_to_omni or metabase_to_omni
+# (all experimental); the Looker targets use the bi_migration.target block, and Tableau and Metabase the .source
+# block too. tableau_to_omni and metabase_to_omni use the .source block and the Omni fields above.
 # looker_studio_to_omni replaces the Looker audit phase with looker_studio_audit and
 # metric_catalogue; the Looker-only fields below are then left null.
 bi_pair: looker_to_omni
@@ -38,8 +39,8 @@ bi_migration:
                                            #   approved_by: "<client name and role>"
                                            #   date: "YYYY-MM-DD"
   chart_recordings_tracked: true           # false when Route C recordings must stay out of git (data handling rules)
-  # Tableau or Metabase source and Looker target (bi_pair: tableau_to_looker or metabase_to_looker,
-  # experimental) only. The tool-keyed
+  # Tableau or Metabase source (bi_pair: tableau_to_looker, metabase_to_looker, tableau_to_omni or
+  # metabase_to_omni, experimental) only; the target block applies to the Looker targets. The tool-keyed
   # source/target shape is the neutral form the other pairs are expected to move to later.
   source:
     tool: null                             # tableau | metabase
@@ -145,7 +146,7 @@ artifacts:
     generated_files: []
     revision_history: []
 
-  tableau_audit:               # bi_pair: tableau_to_looker only (experimental)
+  tableau_audit:               # bi_pair: tableau_to_looker or tableau_to_omni only (experimental)
     generate: not_started
     validate: not_started
     review: not_started
@@ -164,7 +165,7 @@ artifacts:
     generated_files: []
     revision_history: []
 
-  metabase_source_audit:       # bi_pair: metabase_to_looker only (experimental)
+  metabase_source_audit:       # bi_pair: metabase_to_looker or metabase_to_omni only (experimental)
     generate: not_started
     validate: not_started
     review: not_started
