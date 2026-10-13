@@ -9,6 +9,14 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.3.0: Internal tooling
+
+**Released**: October 2026
+
+**No change to the plugin.** This release adds internal Rittman Analytics tooling. The plugin's commands, skills and release types are unchanged; only the version number moves.
+
+---
+
 ## v4.2.6: Progress inside each ticket in Wire Studio
 
 **Released**: October 2026
