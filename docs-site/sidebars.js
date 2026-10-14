@@ -112,6 +112,7 @@ const sidebars = {
           items: [
             'advanced/worked-example',
             'advanced/release-director',
+            'advanced/personas',
             'advanced/wire-studio',
             'advanced/wire-agent-architecture',
             'advanced/wire-agents',

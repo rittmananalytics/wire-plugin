@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.3.1: Personas
+
+**Released**: October 2026
+
+**Commands that know your role.** Every Wire command used to show the same thing to everyone, but a delivery manager and an analytics engineer need different things from the same command. A persona is the role you play on an engagement: delivery manager, analytics engineer, data engineer or engagement lead. A command with a variant for your role shows what that role needs, and every other command is unchanged. A persona changes what a command shows, never what it writes, and with none set Wire behaves as before.
+
+**Setting yours.** `/wire:persona set delivery-manager` records your role in the engagement's team roster, `.wire/engagement/team.yml`, which is committed with the record and matched on your git email. Your persona therefore follows you to any clone on any machine, each person on the engagement has their own, and the same person can hold a different role on another engagement. `--local` sets one for a single clone, and `--as <persona>` on a command gives a role's view for one run.
+
+**A delivery manager's status report.** The first variant is `/wire:status` for a delivery manager, built from a worked example on a live engagement. It opens with a summary table of tickets, points, sprint, schedule, blockers and the steps that need you, each marked Green, Amber or Red with a reason, then lists the work slices, the artifacts not yet ready, the open questions you can answer and the steps waiting on you, naming who each one waits on. Wire works out the release from your branch, including the release branch a ticket branch was cut from, and asks when it cannot tell. See [Personas](../advanced/personas).
+
+---
+
 ## v4.3.0: Internal tooling
 
 **Released**: October 2026

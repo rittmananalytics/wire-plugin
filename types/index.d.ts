@@ -10,6 +10,8 @@ export type WireRun = {
   /** The loop the run is in: a subagent's id, null on the main loop. */
   agentId: string | null
   invokedBy: 'typed' | 'orchestrator' | 'lane' | 'autopilot' | 'studio'
+  /** The persona the run was made as (specs/utils/personas.md), '' when none. */
+  persona?: string
   startedAt: number
   endedAt: number | null
   /** Final usage, set when the run closes (zero while it is open; see stepUsage). */

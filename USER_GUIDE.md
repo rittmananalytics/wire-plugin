@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.3.0 | **Date**: October 2026
+**Version**: 4.3.1 | **Date**: October 2026
 
 ---
 
@@ -5466,6 +5466,19 @@ Just send a message in the repo. The engagement-context skill fires automaticall
 ## 29. Framework Management Commands
 
 Wire includes several commands for managing the framework itself, rather than delivery work.
+
+### `/wire:persona`: your role on an engagement
+
+Every Wire command used to show the same thing to everyone. A persona is the role you play on an engagement, and a command with a variant for that role shows what the role needs. The first is `/wire:status` for a delivery manager: a summary table of tickets, points, sprint, schedule, blockers and the steps that need you, each marked Green, Amber or Red, then the work slices, artifacts not yet ready, open questions you can answer and the steps waiting on you.
+
+```
+/wire:persona                          your persona, where it comes from, and the team's
+/wire:persona set delivery-manager     set yours
+/wire:persona clear                    remove it
+/wire:status --as delivery-manager     one run as a role, without changing anything
+```
+
+The personas are `delivery-manager`, `analytics-engineer`, `data-engineer` and `engagement-lead`. Each person on an engagement has their own, and the same person can have a different role on another engagement. Your persona is kept in the team roster, `.wire/engagement/team.yml`, committed with the record and matched on your git email, so it follows you to any clone on any machine; `--local` sets one for this clone only. With none set, commands run as before. A persona changes what a command shows, never what it writes.
 
 ### `/wire:playbook-generate` — Delivery Playbook
 

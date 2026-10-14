@@ -164,6 +164,80 @@ export function releaseOf(args: string): string | null {
   return /^[A-Za-z0-9][A-Za-z0-9_.-]{0,120}$/.test(first) && !first.startsWith('-') ? first : null
 }
 
+/**
+ * The persona list (specs/utils/personas.md); wire/tests/core/validate_personas.py
+ * checks this copy matches the spec.
+ */
+export const PERSONAS = ['delivery-manager', 'analytics-engineer', 'data-engineer', 'engagement-lead'] as const
+
+/**
+ * The persona in the team roster (`.wire/engagement/team.yml`) for a git email:
+ * the entry whose `emails` include it. Same format as wire/scripts/persona.py
+ * writes; inline or block email lists.
+ */
+export function rosterPersonaOf(rosterText: string | null, email: string | null): string {
+  const wanted = (email ?? '').trim().toLowerCase()
+  if (!rosterText || !wanted) {
+    return ''
+  }
+  let emails: string[] = []
+  let persona = ''
+  let inEmails = false
+  const entries: { emails: string[]; persona: string }[] = []
+  const flush = () => { if (emails.length || persona) entries.push({ emails, persona }) }
+  for (const raw of rosterText.split('\n')) {
+    const line = raw.replace(/\s#.*$/, '')
+    if (/^\s*-\s+name:/.test(line)) {
+      flush()
+      emails = []
+      persona = ''
+      inEmails = false
+      continue
+    }
+    const inline = /^\s+emails:\s*\[(.*)\]\s*$/.exec(line)
+    if (inline) {
+      emails = inline[1].split(',').map((e) => e.trim().replace(/^['"]|['"]$/g, '').toLowerCase()).filter(Boolean)
+      inEmails = false
+      continue
+    }
+    if (/^\s+emails:\s*$/.test(line)) {
+      inEmails = true
+      continue
+    }
+    const item = /^\s+-\s+(\S+@\S+)\s*$/.exec(line)
+    if (item && inEmails) {
+      emails.push(item[1].replace(/^['"]|['"]$/g, '').toLowerCase())
+      continue
+    }
+    const p = /^\s+persona:\s*['"]?([^'"\s]*)/.exec(line)
+    if (p) {
+      persona = p[1]
+      inEmails = false
+    }
+  }
+  flush()
+  return entries.find((e) => e.emails.includes(wanted))?.persona ?? ''
+}
+
+/**
+ * The persona a run is made as (specs/utils/personas.md): `--as <persona>` in
+ * the command's arguments, then WIRE_PERSONA, then the clone's override
+ * (`.wire/local/persona.yml`), then the team roster by git email. The first
+ * value set decides; an unknown one gives ''. Only the persona is taken from
+ * the arguments, never anything else typed there.
+ */
+export function personaOf(args: string, envValue: string | undefined, fileText: string | null, rosterText: string | null = null, email: string | null = null): string {
+  const asArg = /(?:^|\s)--as(?:=|\s+)([^\s]+)/.exec(args ?? '')?.[1]
+  const fromFile = /^\s*persona:\s*['"]?([^'"#\s]+)/m.exec(fileText ?? '')?.[1]
+  for (const value of [asArg, envValue, fromFile, rosterPersonaOf(rosterText, email)]) {
+    const v = (value ?? '').trim()
+    if (v) {
+      return (PERSONAS as readonly string[]).includes(v) ? v : ''
+    }
+  }
+  return ''
+}
+
 /** `wire:dbt-generate` (command.run) or `wire:dbt-generate` (Skill) to the log's `/wire:dbt-generate`. */
 export function logCommandOf(name: string): string | null {
   const m = /^wire:([A-Za-z0-9_-]+)$/.exec((name ?? '').trim())
@@ -191,6 +265,7 @@ export function invokedBy(path: 'command' | 'skill', agentId: string | null, aut
 export type TrackFields = {
   command: string
   invokedBy: InvokedBy
+  persona?: string
   timestamp: string
   release: string | null
   sessionId: string | null
@@ -225,6 +300,7 @@ export function trackBody(writeKey: string, userId: string, f: TrackFields): str
       os: f.os,
       runtime: 'claude',
       invoked_by: f.invokedBy,
+      persona: f.persona ?? '',
       release: f.release,
       session_id: f.sessionId,
       agent_id: f.agentId,

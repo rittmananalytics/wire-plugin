@@ -40,6 +40,7 @@ Shows the current status of all active releases, or of a specific release.
 ```
 /wire:status
 /wire:status <release-folder>
+/wire:status --as delivery-manager
 ```
 
 Output includes:
@@ -52,6 +53,23 @@ Output includes:
 With a specific release folder the output is expanded to show every artifact and its current state.
 
 `/wire:status` also performs reconciliation when integrations are configured, syncing any missing Jira/Linear updates and flagging divergences between the local execution log and the external trackers, so that the board your client looks at matches the record on disk.
+
+With a persona set (see `/wire:persona` below), `/wire:status` shows the report for that role. The first variant is for the delivery manager: a summary table of tickets, points, sprint, schedule, blockers and the steps that need you, each marked Green, Amber or Red, then the work slices, artifacts, open questions and steps that need you. `--as <persona>` asks for a role's view for one run. See [Personas](../advanced/personas).
+
+---
+
+## `/wire:persona`
+
+Shows or sets your role on this engagement, so that commands with a variant for that role focus on it.
+
+```
+/wire:persona                          your persona, where it comes from, and the team's
+/wire:persona set delivery-manager     set yours in the team roster
+/wire:persona set analytics-engineer --local   this clone only, not shared
+/wire:persona clear                    remove yours
+```
+
+Your persona is kept in the engagement's team roster, `.wire/engagement/team.yml`, committed with the record and matched on your git email, so it follows you to any clone on any machine. Each person on an engagement has their own entry. The personas are `delivery-manager`, `analytics-engineer`, `data-engineer` and `engagement-lead`. See [Personas](../advanced/personas).
 
 ---
 

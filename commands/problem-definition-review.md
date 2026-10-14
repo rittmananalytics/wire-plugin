@@ -327,6 +327,10 @@ Then append one row per execution:
   - a lane label — the lane that ran it, e.g. `dbt-developer [staging 1/2]`
   - `autopilot` — `/wire:autopilot` ran it
 
+  When a persona is set for the run (`specs/utils/personas.md`), add
+  ` as <persona>` to the value: `typed as delivery-manager`,
+  `orchestrator [a1b2c3] as delivery-manager`. No persona: the value alone.
+
   This is the same value the `invoked_by` telemetry property carries
   (`specs/utils/telemetry.md`), read from `WIRE_INVOKED_BY` and defaulting to
   `typed`. The log records it per row so the record on disk answers the same

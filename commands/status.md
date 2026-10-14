@@ -122,6 +122,7 @@ inputs:
   required:
     - name: release_folder
       description: "Path to the release folder"
+personas: [delivery-manager]
 description: Report on all release statuses in the current engagement
 
 ---
@@ -140,7 +141,14 @@ Wire is one-engagement-per-repo: a single `.wire/engagement/context.md` holds en
 /wire:status                    # Show all releases in this engagement
 /wire:status 01-discovery       # Show detailed status for a specific release
 /wire:status --archived         # Show archived releases (see /wire:archive)
+/wire:status --as delivery-manager   # This run only, as a persona (specs/utils/personas.md)
 ```
+
+**Personas.** Before Step 1, find the persona (`specs/utils/personas.md`,
+"Finding the persona"). If it is `delivery-manager`, follow
+"Persona: delivery-manager" below in place of Steps 1 to 4's report. Any
+other persona, or none, runs the default report. Step 4.5 (Jira sync) and
+everything the command writes are the same under every persona.
 
 ## Workflow
 
@@ -364,6 +372,73 @@ If `jira` section exists in a release's `status.md` and `jira.epic_key` is not n
 5. If Atlassian MCP is unavailable, skip silently
 
 Run this for every release being reported on (overview mode) or the one release being reported on (detail mode). This ensures Jira stays in sync every time `/wire:status` is run.
+
+## Persona: delivery-manager
+
+A dashboard of one release for the person running delivery, readable in two
+minutes. It replaces the default report; Step 4.5 still runs.
+
+### Scope
+
+1. **Which release.** Run `python3 <wire>/scripts/release_scope.py` in the
+   engagement repository. A branch that a release's claim records, or that
+   names one release folder (`release/<release>`, `<release>/<artifact>`),
+   gives that release, as in active-release resolution (`specs/start.md`
+   Step B1); with one release, that one; on a feature or ticket branch, the
+   release branch it was cut from; on the default branch, or when that
+   cannot be told, it lists the releases to choose from. When it lists, ask which release, unless a release folder was
+   passed on the command. A release folder passed on the command always
+   wins.
+2. **Only that release.** Its own `status.md`, `execution_log.md`,
+   decisions, business rules, iterations and, for a release built from
+   tickets, its ticket map and its own tracker project. Work outside it stays
+   out, even when a call mentions it.
+
+### Sources
+
+Read what exists and skip what does not, saying `not available` in the row:
+`status.md` (artifacts, `blockers`, `## Iterations`), the governing sprint
+plan, `decisions.md`, the business rules document, the release's ticket map
+with `ticket_delivery.py status`, `runnable` and `progress`
+(`specs/utils/ticket_delivery.md`), the tracker (Jira or Linear, read only:
+tickets, points, sprint and its end date), open pull requests on the release
+branch (`gh pr list --base release/<release>`), and the latest call notes
+(`specs/utils/meeting_context.md`, read only).
+
+### Report
+
+1. **Summary table first.** One row each, with a state of `Green`, `Amber`
+   or `Red` and a reason of a few words:
+
+   | Row | Shows |
+   |---|---|
+   | Tickets | Closed of total (`9 of 15`) |
+   | Points | Closed of total, when the tracker has points |
+   | Sprint | Name, end date, working days left |
+   | Schedule | On track, at risk or late against the sprint or release end date |
+   | Blockers | Count, and the oldest one's age |
+   | Needs you | Count of the items in section 4 |
+
+2. **Then four short sections**, each a table, empty ones left out:
+   1. *Work slices*: each slice not yet complete, its state and its ticket;
+      complete ones as a count (`6 of 9 slices complete`).
+   2. *Artifacts*: each artifact not yet ready, the step it is at and the
+      next command; ready ones as a count (`11 of 16 ready`). Hide artifacts
+      that do not apply.
+   3. *Open questions you can answer*: each open question found in the
+      business rules, tickets, decisions and latest call notes, with where it
+      came from.
+   4. *Steps needed from you*: reviews, approvals, sign-offs, pull requests
+      to merge and workshops to run, each with the command or link that does
+      it.
+   Where a step or blocker waits on someone else, name them from the team
+   roster (`.wire/engagement/team.yml`) or the tracker's assignee: "waiting
+   on Raj Patel (analytics engineer)", not "waiting on an engineer".
+3. **End with three ready-to-paste prompts** to dig into a section, for
+   example `/wire:status <release>` for the full artifact table, or
+   `/wire:work <release> <ticket>` for the oldest blocked ticket.
+
+Tables over prose; no full artifact list; words, not icons.
 
 ## State Icons Reference
 

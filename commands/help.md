@@ -468,6 +468,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | Command | Arguments | Description |
 |---------|-----------|-------------|
 | `/wire:delegate` | `<release-folder>` | Decompose a release's pending work into typed tasks and dispatch to specialist local subagents |
+| `/wire:persona` | `[set <persona> ` | Show or set your role (persona) on this engagement, so commands with a persona variant focus on it |
 | `/wire:status-sync` | `[release-folder]` | Reconcile recorded release state against evidence (git, execution log, disk, sprint plan) and repair the record with confirmation |
 | `/wire:tickets-import` | `<release-folder> [--tracker linear` | Read a release's tickets from Linear or Jira and propose the ticket map (kind, slices, Wire steps per ticket), using the Modality model where linked; turns on ticket delivery for the release |
 | `/wire:work` | `<release-folder> [ticket-or-description]` | Work a ticket inside an existing release — plan with a command or skill named per step, run only the approved plan, publish via the client's PR, patch stale documents and reconcile the record |

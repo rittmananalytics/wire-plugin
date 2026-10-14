@@ -34,7 +34,8 @@ Before any artifact can be generated a release has to exist, and once several re
 |---|---|
 | `/wire:new` | Create a new release. Prompts for release type, client name, optional Jira/Linear/document store setup. Always the first command for a new engagement. |
 | `/wire:start` | Load session context, show current engagement state and suggest the next action (and, in orchestrated mode, offer to run it). Run at the start of any session or whenever you're unsure what to do next. |
-| `/wire:status [release]` | Show completion status across all active releases (or a specific release). Reconciles Jira/Linear state when integrations are configured. |
+| `/wire:status [release]` | Show completion status across all active releases (or a specific release). Reconciles Jira/Linear state when integrations are configured. With a persona set, or `--as <persona>`, shows that role's report (first: delivery manager). |
+| `/wire:persona [set <persona> \| clear] [--local]` | Show or set your role on this engagement (delivery manager, analytics engineer, data engineer, engagement lead). Kept in the committed team roster and matched on your git email, so it follows you between machines. |
 | `/wire:autopilot <release>` | Run all pending generate → validate cycles autonomously, answering its own review gates and pausing only at safety gates and validation failures. The unattended end of the range; for client work, direct the release instead. |
 | `/wire:delegate <release>` | Build a parallel/sequential delegation plan across specialist subagents and dispatch it, within the release's budget and after resolving the release claim. Called internally by Autopilot and by the orchestrating session; run directly to review the plan before agents start. |
 | `/wire:playbook-generate <release>` | Generate a visual BPMN-style delivery plan with dependency order, team assignments and target dates for the release. |

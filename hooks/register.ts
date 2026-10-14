@@ -34,6 +34,7 @@ import {
   emptyUsage,
   identifyBody,
   invokedBy,
+  personaOf,
   isOn,
   logCommandOf,
   logStamp,
@@ -137,6 +138,7 @@ async function sendTrack($: any, run: WireRun): Promise<void> {
   await post($, SEGMENT_TRACK, trackBody(SEGMENT_WRITE_KEY, identity.userId, {
     command: run.command.replace(/^\/wire:/, ''),
     invokedBy: run.invokedBy,
+    persona: run.persona ?? '',
     timestamp,
     release: run.release,
     sessionId,
@@ -307,9 +309,25 @@ async function backfillPending($: any, options: Options): Promise<void> {
   }
 }
 
+async function readText($: any, path: string): Promise<string | null> {
+  try {
+    return String(await $.fs.read(path))
+  } catch {
+    return null
+  }
+}
+
+async function personaFor($: any, args: string): Promise<string> {
+  const cwd = await $.session.cwd()
+  const fileText = await readText($, `${cwd}/.wire/local/persona.yml`)
+  const rosterText = await readText($, `${cwd}/.wire/engagement/team.yml`)
+  const email = rosterText ? await run1($, ['git', 'config', '--get', 'user.email'], cwd) : ''
+  return personaOf(args, await $.env.get('WIRE_PERSONA'), fileText, rosterText, email)
+}
+
 async function newRun($: any, id: string, command: string, args: string, agentId: string | null, by: WireRun['invokedBy']): Promise<WireRun> {
   return {
-    id, command, release: releaseOf(args), agentId, invokedBy: by,
+    id, command, release: releaseOf(args), agentId, invokedBy: by, persona: await personaFor($, args),
     startedAt: await $.clock.now(), endedAt: null, usage: emptyUsage(), model: null, filled: false,
   }
 }
