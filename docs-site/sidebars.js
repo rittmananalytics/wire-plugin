@@ -144,7 +144,6 @@ const sidebars = {
             'hosted-agents/sprints-and-backlog',
             'hosted-agents/jira-slack-and-files',
             'hosted-agents/setting-up-a-pod',
-            'hosted-agents/diagrams',
           ],
         },
         {

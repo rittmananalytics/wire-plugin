@@ -33,4 +33,3 @@ Everything they produce goes through Wire: releases are set up with `/wire:new`,
 | [Sprints and the backlog](./sprints-and-backlog) | How the sprint is kept whole and how late additions are approved |
 | [Jira, Slack and files](./jira-slack-and-files) | How agents are asked for work, where they report, and how documents reach the repository |
 | [Setting up a pod](./setting-up-a-pod) | What a Rittman Analytics administrator configures before a pod can work |
-| [Diagrams](./diagrams) | The three diagrams in this section, together |
