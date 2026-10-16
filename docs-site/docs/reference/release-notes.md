@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.4.0: Governance templates and hosted agents documentation
+
+**Released**: October 2026
+
+**Governance templates.** The process registry has a fourth entry type alongside release types, command specs and conventions. A governance template says, for each of 17 kinds of decision met on a delivery project, who takes it: the delivery manager, the engagement lead or a person. Two ship: lightly governed, where the engagement lead decides all but the most significant decisions, and strictly governed, where a person decides everything except routine, non-destructive choices. Five kinds are a person's in every template: scope changes, security and access, client data, production changes and merging code into the default branch. Templates are synced into Wire like the other registry content and checked by a validator that enforces those five. See [Governance](../hosted-agents/governance).
+
+**Hosted agents documentation (Rittman Analytics only).** A new section of the technical reference describes the hosted agents Rittman Analytics runs on its own engagements: pods and roles, the delivery process with a swim-lane diagram of who does each step and takes each decision, governance, sprints and the backlog, and how the agents use Jira and Slack. Hosted agents are not part of the plugin or extension and cannot be run outside Rittman Analytics; the section explains how they work for clients and consultants on those engagements. See [Hosted agents](../hosted-agents/overview).
+
+**Registry sync.** `sync-process-registry.sh` mirrors the registry's `governance/` folder as an optional fourth directory, covered by the same pinned commit and content hash as the other three.
+
+---
+
 ## v4.3.1: Personas
 
 **Released**: October 2026
