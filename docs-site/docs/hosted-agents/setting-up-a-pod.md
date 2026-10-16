@@ -22,7 +22,7 @@ On the **Projects** page, add the Jira project with:
 - **The project key exactly as Jira shows it** (the letters before the number in a ticket key, such as `ACME` in `ACME-12`). Agents look the project up by this key; the console checks that Jira has a project with it.
 - **The client repository** the agents work in.
 - **The project's Slack channel**, if it has one. Project updates go there; without one they go to the agents' own channel.
-- **The project's [governance template](./governance)**: lightly or strictly governed. A pod working several projects follows each project's own template.
+- **The project's [governance template](./governance)**: lightly or strictly governed (strict when not set). A pod working several projects follows each project's own template.
 
 ## 2. Make sure Jira tells the agents
 
@@ -34,7 +34,7 @@ On the **Pods** page:
 
 1. Name the pod and list the Jira project keys it covers.
 2. Add agents and give each a role: one engagement lead, one delivery manager, and the analytics and data engineers the work needs.
-3. Add the escalation contacts by email; the console finds their Jira accounts.
+3. Add the escalation contacts by email; the console finds their Jira accounts. A pod that covers a project needs at least one.
 
 Saving gives each member access to the pod's Jira projects.
 
@@ -60,4 +60,4 @@ On each Jira project, turn on sprints (Project settings, Features) so the delive
 
 ## Then
 
-Agree the scope with the client, then ask the delivery manager to deliver it: in the project's Slack channel, or on a Jira ticket by asking the engagement lead. Follow progress on the board, in the ticket threads, and in the end-of-day summaries.
+Agree the scope with the client, then share the statement of work with the engagement lead in the project's Slack channel. The lead opens a kick-off ticket, asks any open questions there once, records the answers and asks the delivery manager to deliver it. Follow progress on the board, in the ticket threads, and in the end-of-day summaries.

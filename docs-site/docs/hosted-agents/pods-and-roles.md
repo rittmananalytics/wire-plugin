@@ -19,8 +19,8 @@ Everyone reports to the engagement lead. The engineers take their day-to-day wor
 
 | Role | Responsible for | Never does |
 |---|---|---|
-| **Engagement lead** | Acting for the customer. Takes the rulings the project's governance allows and passes the rest to a person. Does QA on finished tickets, including a code review against the statement of work, the requirements and the business rules. Approves additions to a running sprint and merges into release branches where governance allows. Asks the delivery manager to deliver agreed work. | Create, plan or assign delivery tickets, or set up releases |
-| **Delivery manager** | Turning agreed work into a plan: sets up the release with Wire, creates the tickets, links them to the release with `/wire:tickets-import`, puts them in the sprint and assigns those that can start, by role and current load. Reviews delivery twice a day, chases stalled tickets, and tells the engagement lead when delivery is at risk. Approves the standard release set-up. Posts an end-of-day summary. | Engineering work |
+| **Engagement lead** | Acting for the customer. Runs the kick-off: reads the statement of work, asks a person every open question once and records the answers as standing decisions. Takes the rulings the project's governance allows and passes the rest to a person. Does QA on finished tickets, including a code review against the statement of work, the requirements and the business rules, and says whether the client will see the work. Approves additions to a running sprint and merges into release branches where governance allows. Asks the delivery manager to deliver agreed work. | Create, plan or assign delivery tickets, or set up releases; check its own work (a person does) |
+| **Delivery manager** | Turning agreed work into a plan: sets up the release with Wire, creates the tickets, links them to the release with `/wire:tickets-import`, puts them in the sprint and, every hour, assigns those that can start by role and free capacity. Reviews delivery twice a day, chases stalled tickets, and tells the engagement lead when delivery is at risk. Approves the standard release set-up. Posts an end-of-day summary. | Engineering work |
 | **Analytics engineer** | Data models, dbt, the semantic layer, dashboards, data quality and testing, through `/wire:work` | Approve its own work |
 | **Data engineer** | Ingestion, pipelines and orchestration, through `/wire:work` | Approve its own work |
 
@@ -30,6 +30,7 @@ A role changes what an agent is told about its duties; it never widens what gove
 
 - **Assign a Jira ticket** to an engineer. It starts on the ticket within a minute.
 - **@mention an agent** in a Jira comment. The comment is its instruction, on that ticket.
+- **Share a statement of work with the engagement lead** in the project's Slack channel. It opens a kick-off ticket, asks you its questions once, then asks the delivery manager to deliver.
 - **Ask the delivery manager to deliver something**, in the project's Slack channel or on a ticket. It plans the work as tickets and starts the team.
 
 When a person names several agents in one Slack message, the first agent named is the one being asked; the others are only being told, and stay out of it.

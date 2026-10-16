@@ -45,17 +45,48 @@ Templates are a [process registry](../advanced/registries) entry type, like rele
 
 ### Light: the engagement lead decides all but the most significant
 
-Use it for internal projects and for clients who want speed and are content for an experienced lead to take delivery decisions. A person decides only the seven kinds that are significant or hard to undo.
+Use it for internal projects and for clients who want speed, where the solution is clear once the first questions are answered. A person decides only the seven kinds that are significant or hard to undo.
+
+The aim is a release that runs through with little of a person's time: the engagement lead asks every open question once, at kick-off (`kickoff_questions`), the pod then plans, builds, checks and merges each ticket into the release branch, and a person's only other step is to review and merge the release pull request into the default branch.
 
 ### Strict: a person decides all but the routine
 
 Use it for regulated clients, early engagements and any client who wants to approve each step. Agents still plan, build and check the work, but plans, designs, business rules, sprint changes and every merge wait for a person. The engagement lead keeps only routine, non-destructive technical choices and the first QA check.
 
+## Standing decisions
+
+When a person answers a question that applies beyond one ticket (who reviews the release, a list of brand terms, how to treat an edge case), the engagement lead or delivery manager records it as one of the project's **standing decisions**. Every agent reads them at every run, they are copied into the release's `decisions.md` when it is set up, and they stand until a person changes them. A standing decision that names a person for an item (a business rule's confirmer, the reviewer of a pull request) means that person decides exactly that item, whatever the template says.
+
+## When work is two kinds at once
+
+A template can say which decision wins (`precedence`). The light template says:
+
+| Work that is both | Rule |
+|---|---|
+| Client-facing and a QA check | The engagement lead's QA comes first; a person signs off anything the client will see |
+| An effort estimate and the delivery plan | Estimates inside the plan are the delivery manager's; budget, billing and any change to agreed effort are a person's |
+| Named in the documents or a standing decision | The person named decides exactly that item |
+
+## How the rules are enforced
+
+These checks are made by the agents' own tools, not left to an agent's judgement:
+
+| Check | What happens |
+|---|---|
+| **Each question names its decision kind** | An agent asking for a decision says which kind it is. A kind the template gives to a person goes straight to the escalation contacts; the engagement lead never sees it, so it cannot rule on it by misreading it. |
+| **Only the people asked can answer** | A question for a person is answered only by the people it went to, not by another agent or anyone else who comments. |
+| **A named reviewer** | When a person is recorded as reviewer for pull requests into the default branch, a release branch or both, no agent may approve or merge those pull requests; they are sent to that person. |
+| **A person in the review** | When a person comments on a ticket after its work was handed in, an agent may no longer merge it; a person does. |
+| **Client-facing work** | The engagement lead states in every QA whether the client will see the work. When the template gives client-facing work to a person, the lead cannot merge it, and work outside a pull request waits in QA for a person's sign-off ("Sign-off requested:"). |
+| **The lead's own work** | A ticket held by the engagement lead goes to a person for QA. |
+| **The release pull request** | The ticket that publishes a release always opens its pull request into the default branch; any other base is corrected. |
+| **Finished sprints** | A running sprint with every ticket done is completed, and the next starts with the open tickets. |
+
 ## Rules every template keeps
 
 - **Five kinds are always a person's**: scope changes, security and access, client data, production changes and code merged into the default branch. The validator refuses a template that gives any of them to an agent.
-- **The delivery manager decides only** the standard release set-up and the delivery plan.
-- **A person not replying is never a reason to decide.** An agent waits; after the template's wait it pauses the ticket and says so.
+- **The delivery manager decides only** the standard release set-up and the delivery plan. The standard set-up adds only Wire's files under `.wire/`, which do not deploy, so it is the one merge into the default branch an agent may approve.
+- **A person not replying is never a reason to decide.** An agent waits; after the template's wait it pauses the ticket and says so. A person's reply on the ticket starts it again, with or without an @mention.
 - **The lead escalates when unsure.** Even for a kind it may decide, the engagement lead passes the question to a person when the documents do not settle it, or when the customer would reasonably expect to be asked.
 
 ## Pull request approvals
@@ -67,10 +98,10 @@ Use it for regulated clients, early engagements and any client who wants to appr
 | Code into a release branch | `code_merge_release` |
 | Code into the default branch | `code_merge_default` |
 
-The agent the template names approves and merges with a plain merge, so no branch is ever deleted or rewritten. Approving code needs a written note of what was checked against the statement of work, the requirements and the business rules; it is posted on the pull request as the record of the review. Under the strict template every merge is a person's.
+The agent the template names approves and merges with a plain merge, so no branch is ever deleted or rewritten. When a person must merge, the ticket passes QA but stays in QA, and a "Merge requested:" comment and a Slack message ask the escalation contacts; the ticket moves to Done when the pull request is merged. A person's comment on a ticket in QA goes to the engagement lead, who checks the work again with it. Approving code needs a written note of what was checked against the statement of work, the requirements and the business rules; it is posted on the pull request as the record of the review. Under the strict template every merge is a person's.
 
 ## Choosing and adding templates
 
-A project's template is chosen on the agents console's Projects page; a project with none chosen is lightly governed.
+A project's template is chosen on the agents console's Projects page; a project with none chosen is strictly governed, so a forgotten setting is the safer one.
 
 To add a template, add a file to the process registry's `governance/` folder with every decision kind set, open a pull request there, and sync it into Wire. The schema is `wire/schemas/governance-schema.md`; `wire/tests/core/validate_governance.py` checks every template, including the always-a-person rule.
