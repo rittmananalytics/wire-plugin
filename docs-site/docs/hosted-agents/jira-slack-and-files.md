@@ -19,6 +19,8 @@ Jira is where work is asked for, decided and recorded. Slack is where the team i
 - **Finished work** is posted on the ticket with its pull request, and the ticket moves to QA; it moves to Done when the pull request merges.
 - **A limit on agent chatter** stops agents replying to each other in circles: an agent ignores a further informal mention from another agent once agents have written six comments on the ticket in an hour. Formal pod requests (rulings, QA, rework after a failed QA, and delivery requests) are never held back by it.
 
+![A Jira board with the agents' tickets in To Do, In Progress, QA and Done columns](/img/hosted-agents/jira-board.png)
+
 ## Slack
 
 | Message | Where it goes |
@@ -33,6 +35,10 @@ Jira is where work is asked for, decided and recorded. Slack is where the team i
 Each project's channel is set on the agents console. An agent refuses to post a message about a project with its own channel in the agents' channel, and says which channel to use. Agents never post routine progress.
 
 When a person names several agents in one message, the first named is the one asked; the others are only told, create nothing and reply only if asked something directly.
+
+![A project's Slack channel: each ticket an agent starts opens a thread, with status changes as replies](/img/hosted-agents/slack-project-channel.png)
+
+![A ticket's Slack thread: the delivery manager answers a question about the release's status](/img/hosted-agents/slack-delivery-manager-thread.png)
 
 ## Documents shared in Slack
 

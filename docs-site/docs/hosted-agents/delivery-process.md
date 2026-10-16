@@ -11,47 +11,9 @@ Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them 
 
 This is the process a pod follows from an agreed scope to merged work. Each step is done by one role; each decision point is taken by whoever the pod's [governance template](./governance) names for that kind of decision. The diagram uses the light template; under the strict template more of the decision points go to a person.
 
-```mermaid
-flowchart TB
-  subgraph PERSON["Person"]
-    direction TB
-    A1([Agree scope and SoW])
-    A9{{Decision a person<br/>must take}}
-    A10([Merge release to<br/>default branch])
-  end
-  subgraph EL["Engagement lead"]
-    direction TB
-    B1[Delivery request]
-    B5{Ruling within<br/>governance?}
-    B6[QA and code review]
-    B7{Passes?}
-    B8[Merge into<br/>release branch]
-  end
-  subgraph DM["Delivery manager"]
-    direction TB
-    C1[Set up release<br/>with Wire]
-    C2[Plan tickets,<br/>import to release]
-    C3[Sprint: all<br/>in-scope tickets]
-    C4[Assign by<br/>role and load]
-    C5[Delivery review<br/>twice a day]
-  end
-  subgraph ENG["Engineers"]
-    direction TB
-    D1[Ticket branch from<br/>release branch]
-    D2[Propose plan]
-    D3[Build and test]
-    D4[Pull request into<br/>release branch]
-  end
-  A1 --> B1 --> C1 --> C2 --> C3 --> C4 --> D1 --> D2
-  D2 -->|plan| B5
-  B5 -->|yes| D3
-  B5 -->|no| A9 --> D3
-  D3 --> D4 --> B6 --> B7
-  B7 -->|rework| D3
-  B7 -->|pass| B8 --> C5
-  C5 -->|next tickets| C4
-  C5 -->|release done| A10
-```
+![How work flows, part 1: a person agrees the scope, the engagement lead raises a delivery request, the delivery manager sets up the release, plans and assigns tickets, and the engineers branch, propose a plan and get a ruling](/img/hosted-agents/diagram-flow-1.png)
+
+![How work flows, part 2: the engineers build and raise a pull request, the engagement lead reviews it and merges it into the release branch or sends it back, the delivery manager reviews delivery and assigns the next tickets, and a person merges the finished release](/img/hosted-agents/diagram-flow-2.png)
 
 ## The steps
 

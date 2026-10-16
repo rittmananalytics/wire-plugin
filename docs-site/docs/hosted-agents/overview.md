@@ -17,6 +17,10 @@ They differ from running Wire yourself in Claude Code in three ways:
 - **They work in teams.** Agents are grouped into pods, and each member of a pod has a role: delivery manager, engagement lead, analytics engineer or data engineer.
 - **They work under a governance template.** Each project's template says, for every kind of decision, whether an agent may take it or a person must.
 
+The agents console lists each agent with its pod and role, what it is working on, its queue and its tickets and pull requests for the day.
+
+![The agents console: four agents, each with its pod and role, state, tickets in progress, queue, and tickets and pull requests for the day](/img/hosted-agents/console-agents.png)
+
 Everything they produce goes through Wire: releases are set up with `/wire:new`, tickets are linked to the release with `/wire:tickets-import`, each ticket is worked with `/wire:work` on its own branch cut from the release branch, and work is published with `/wire:utils-pr-create`. The Wire record in the repository is the same one a consultant working by hand would leave.
 
 ## This section

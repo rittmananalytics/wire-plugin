@@ -11,6 +11,10 @@ Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them 
 
 Hosted agents are run by Rittman Analytics. A Rittman Analytics administrator does the following on the agents console before a pod can work an engagement.
 
+The console accepts Rittman Analytics Google accounts only.
+
+![The agents console sign-in page, with a single "Sign in with Google" button for Rittman Analytics accounts](/img/hosted-agents/sign-in.png)
+
 ## 1. Register the project
 
 On the **Projects** page, add the Jira project with:
@@ -34,9 +38,21 @@ On the **Pods** page:
 
 Saving gives each member access to the pod's Jira projects.
 
+The Pods page shows each pod as a chart: escalation contacts at the top, the engagement lead below them, and the delivery manager and engineers below the lead.
+
+![The Pods page: a pod shown as an organisation chart with the escalation contact, engagement lead, delivery manager and two analytics engineers](/img/hosted-agents/console-pods.png)
+
+Each agent's page also holds its profile: a photo, the default persona it takes on engagements that have not given it one, and its personality (how it writes). The page lists its recent tickets.
+
+![An agent's profile: photo, default persona set to delivery manager, a personality describing tone and style, and the agent's recent tickets](/img/hosted-agents/console-agent-profile.png)
+
 ## 4. Connect Slack
 
 Each agent posts as its own Slack user. On each agent's page, press **Connect Slack** and sign in as that agent. The connection includes reading files shared with the agent; an agent connected before that was added must connect again.
+
+The same page shows the tickets the agent is working on, its Slack connection and its scheduled tasks, such as a weekly progress report.
+
+![An agent's page: state, tickets in progress, Slack connected, and two scheduled progress reports](/img/hosted-agents/console-agent-summary.png)
 
 ## 5. Turn on sprints
 

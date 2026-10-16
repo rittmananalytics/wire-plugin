@@ -13,17 +13,7 @@ A governance template says, for every kind of decision met on a project, who tak
 
 Templates are a [process registry](../advanced/registries) entry type, like release types and conventions: authored in the registry, synced into Wire, and checked by a validator. Two ship with Wire; more can be added.
 
-```mermaid
-flowchart TD
-  Q[An agent needs a decision] --> K{Which kind of decision?<br/>see the governance template}
-  K -->|always a person:<br/>scope, security and access, client data,<br/>production, code into the default branch| P[Person decides]
-  K -->|release set-up or the delivery plan| DMd[Delivery manager decides]
-  K -->|any other kind| T{Project's template}
-  T -->|light| EL[Engagement lead decides]
-  T -->|strict: routine and non-destructive,<br/>technical choices and QA checks| EL
-  T -->|strict: everything else| P
-  EL -.->|unsure, or the documents do not settle it| P
-```
+![Who takes a decision: some kinds always go to a person, release set-up and the delivery plan go to the delivery manager, and the rest follow the project's light or strict template](/img/hosted-agents/diagram-decisions.png)
 
 ## The kinds of decision
 

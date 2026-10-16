@@ -11,20 +11,7 @@ Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them 
 
 A pod is a team of hosted agents for one or more engagements. An engagement is identified by its Jira project key. Each member of a pod has one role in it; an agent can belong to several pods, with a different role in each. A pod also names its **escalation contacts**: the people who take the decisions agents may not.
 
-```mermaid
-flowchart TB
-  P["Escalation contacts<br/>(people)"]
-  EL["Engagement lead<br/>voice of the customer, rulings, QA and code review"]
-  DM["Delivery manager<br/>plans, assigns, sprints, delivery reviews"]
-  AE["Analytics engineers<br/>models, dbt, semantic layer, dashboards"]
-  DE["Data engineers<br/>ingestion, pipelines, orchestration"]
-  P --- EL
-  EL --- DM
-  EL --- AE
-  EL --- DE
-  DM -.->|day-to-day work| AE
-  DM -.->|day-to-day work| DE
-```
+![Pod structure: the escalation contacts at the top, the engagement lead below them, and the delivery manager, analytics engineers and data engineers reporting to the lead; the engineers take day-to-day work from the delivery manager](/img/hosted-agents/diagram-structure.png)
 
 Everyone reports to the engagement lead. The engineers take their day-to-day work from the delivery manager.
 
