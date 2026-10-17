@@ -38,6 +38,8 @@ Each project's channel is set on the agents console. An agent refuses to post a 
 
 To start a project, share the statement of work with the engagement lead in the project's channel. The lead opens a kick-off ticket with the file attached, and its questions for you, if any, are asked there.
 
+When an agent makes a ticket from a Slack request, it records who asked, so they can be asked to review the work if no engagement lead can.
+
 When a person names several agents in one message, the first named is the one asked; the others are only told, create nothing and reply only if asked something directly.
 
 ![A project's Slack channel: each ticket an agent starts opens a thread, with status changes as replies](/img/hosted-agents/slack-project-channel.png)

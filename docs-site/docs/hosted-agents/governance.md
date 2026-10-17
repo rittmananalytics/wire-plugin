@@ -77,6 +77,10 @@ Each Wire release type has required steps in a fixed order; for `dbt_development
 
 The engagement lead's own work is reviewed by a person under both templates.
 
+**When there is no engagement lead.** An agent working without an engagement lead (its pod has none, or it was asked outside its pods, for example @mentioned on a ticket or in Slack in another project) asks whoever gave it the work to review it: the person or agent that assigned it the ticket, else the one that @mentioned it, else the person who asked in Slack, else the ticket's reporter. A person is asked with **"Review by a person requested:"** and replies on the ticket; an agent gets a formal **"Review requested:"**. The agent then reports their review; it never approves its own work. A pull request still to be merged goes to the same person. If that person asks for changes, the agent reworks the ticket at once. Questions an agent outside a pod must put to a person go to the same person.
+
+**Rework and merge conflicts.** Changes a person asks for in their own review are not counted towards the template's limit of failed checks before a person is asked, as a person is already the reviewer. A pull request that passes review but conflicts with the branch it goes into is sent back to its engineer to merge that branch in and resolve the conflict, never to a person.
+
 ## Standing decisions
 
 When a person answers a question that applies beyond one ticket (who reviews the release, a list of brand terms, how to treat an edge case), the engagement lead or delivery manager records it as one of the project's **standing decisions**. Every agent reads them at every run, they are copied into the release's `decisions.md` when it is set up, and they stand until a person changes them. A standing decision that names a person for an item (a business rule's confirmer, the reviewer of a pull request) means that person decides exactly that item, whatever the template says.
