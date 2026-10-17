@@ -34,6 +34,8 @@ Templates are a [process registry](../advanced/registries) entry type, like rele
 | `code_merge_release` | Merging code into a release branch, after code review | Engagement lead | Person |
 | `technical_choice` | Routine technical choices within a ticket's scope | Engagement lead | Engagement lead |
 | `qa_signoff` | Passing a ticket's QA | Engagement lead | Engagement lead |
+| `artifact_review` | Reviewing a generated Wire artifact in QA: approve it, or send it back for rework and resubmission | Engagement lead | Person (the lead asks a human reviewer) |
+| `precondition_override` | Skipping a required Wire step | Engagement lead, under a fixed rule: refused unless a person allowed it | Same |
 | `release_setup_standard` | The standard release branch and Wire scaffolding | Delivery manager | Delivery manager |
 | `delivery_plan` | Planning tickets, the sprint and assignments | Delivery manager | Delivery manager |
 
@@ -52,6 +54,28 @@ The aim is a release that runs through with little of a person's time: the engag
 ### Strict: a person decides all but the routine
 
 Use it for regulated clients, early engagements and any client who wants to approve each step. Agents still plan, build and check the work, but plans, designs, business rules, sprint changes and every merge wait for a person. The engagement lead keeps only routine, non-destructive technical choices and the first QA check.
+
+## Preconditions: required steps are not skipped
+
+Each Wire release type has required steps in a fixed order; for `dbt_development`, requirements, then the data model, then dbt. A later step's command checks that the earlier ones are done and reviewed (a precondition) before it runs.
+
+- **The delivery plan covers every required step** that is not complete, in Wire's order, each as its own ticket, plus the optional steps the statement of work or a person asks for. Each ticket waits for the tickets of the steps it depends on.
+- **A step is skipped only when a person says so.** At kick-off the engagement lead asks whether any required step may be skipped, recommending none. A person's yes is recorded as a standing decision naming the step. Nothing else allows a skip.
+- **The engagement lead refuses every other request to skip a step.** An engineer that meets an unmet precondition ends its ticket blocked on the earlier step, and starts again when that step is done. The agents' tools turn a lead's approval that does not cite a person's standing decision into a refusal.
+- **A technical blocker goes to a person.** When an engineer cannot complete a prerequisite for a technical reason, it asks with the `precondition_override` kind and says what stops it; the lead escalates it to a person, who decides.
+- **Slices only when the statement of work asks.** Building an artifact in parts on separate tickets, which together make up the whole, is for human-delivered projects; for hosted agents, only when the statement of work asks for it.
+
+## Validation and review
+
+| Stage | Who | What happens |
+|---|---|---|
+| **Validate** | The engineer that generated the artifact | Wire 4.x validates automatically after each generate step; where a command does not, the engineer runs its validate step. The engineer reads the result, fixes every issue, regenerates and validates again until it passes. Only validated work is handed in. |
+| **Hand in** | The engineer | Moves the ticket to QA and posts **"Review requested:"** @mentioning the engagement lead |
+| **Review, light** | The engagement lead | Reviews the work and either approves it, or comments with what to change; the engineer reworks and resubmits. The lead escalates only a question that a person must answer. |
+| **Review, strict** | A person | The lead asks a human reviewer (**"Review by a person requested:"**, on the ticket and in Slack): the named reviewer when one is recorded, else the escalation contacts. The person approves, or says what to change and the work goes back for rework and resubmission. The lead reports the person's review, not its own judgement. |
+| **Record** | The delivery manager | When the work merges, the review result and who approved it are recorded in the release record, as the step's `/wire:<artifact>-review` records it |
+
+The engagement lead's own work is reviewed by a person under both templates.
 
 ## Standing decisions
 
@@ -73,6 +97,7 @@ These checks are made by the agents' own tools, not left to an agent's judgement
 
 | Check | What happens |
 |---|---|
+| **Required steps** | A lead's approval to skip a required Wire step that cites no person's standing decision becomes a refusal. |
 | **Each question names its decision kind** | An agent asking for a decision says which kind it is. A kind the template gives to a person goes straight to the escalation contacts; the engagement lead never sees it, so it cannot rule on it by misreading it. |
 | **Only the people asked can answer** | A question for a person is answered only by the people it went to, not by another agent or anyone else who comments. |
 | **A named reviewer** | When a person is recorded as reviewer for pull requests into the default branch, a release branch or both, no agent may approve or merge those pull requests; they are sent to that person. |
