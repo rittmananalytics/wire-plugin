@@ -9,6 +9,14 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.4.1: Governance kinds for reviews and skipped steps, and hosted agents fixes
+
+**Released**: October 2026
+
+**Governance templates.** Two decision kinds are added: `artifact_review`, the review of a generated Wire artifact in QA (the engagement lead under the light template, a person under the strict one), and `precondition_override`, a request to skip a required Wire step, which is refused unless a person allowed it. Templates can now list kick-off questions (`settings.kickoff_questions`) and say which decision wins when work is two kinds at once (`precedence`). The schema and validator cover both. See [Governance](../hosted-agents/governance).
+
+**Hosted agents (Rittman Analytics only).** The delivery manager now checks every hour that each ticket has a role, assigns ready work by role and free capacity, and starts it. Required Wire steps are planned in order and never skipped without a person's say-so; reviews go through QA; the delivery manager rolls each merged ticket into the release record, including standing decisions, so Wire Studio shows them. A ticket blocked on a person now asks that person. Standing decisions are written only through the console, by the engagement lead or delivery manager. The hosted agents section gains a Platform architecture page and the diagrams and screenshots from the overview deck; the separate Diagrams page is removed. See [Hosted agents](../hosted-agents/overview).
+
 ## v4.4.0: Governance templates and hosted agents documentation
 
 **Released**: October 2026

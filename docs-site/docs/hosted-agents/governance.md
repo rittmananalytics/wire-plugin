@@ -83,7 +83,7 @@ The engagement lead's own work is reviewed by a person under both templates.
 
 ## Standing decisions
 
-When a person answers a question that applies beyond one ticket (who reviews the release, a list of brand terms, how to treat an edge case), the engagement lead or delivery manager records it as one of the project's **standing decisions**. Every agent reads them at every run, they are copied into the release's `decisions.md` when it is set up, and they stand until a person changes them. A standing decision that names a person for an item (a business rule's confirmer, the reviewer of a pull request) means that person decides exactly that item, whatever the template says.
+When a person answers a question that applies beyond one ticket (who reviews the release, a list of brand terms, how to treat an edge case), the engagement lead or delivery manager records it as one of the project's **standing decisions**. Every agent reads them at every run, they are copied into the release's `decisions.md` when it is set up, and those recorded later are added each time the delivery manager updates the release record, so Wire Studio lists them all; they stand until a person changes them. A standing decision that names a person for an item (a business rule's confirmer, the reviewer of a pull request) means that person decides exactly that item, whatever the template says.
 
 ## When work is two kinds at once
 
@@ -109,6 +109,7 @@ These checks are made by the agents' own tools, not left to an agent's judgement
 | **Client-facing work** | The engagement lead states in every QA whether the client will see the work. When the template gives client-facing work to a person, the lead cannot merge it, and work outside a pull request waits in QA for a person's sign-off ("Sign-off requested:"). |
 | **The lead's own work** | A ticket held by the engagement lead goes to a person for QA. |
 | **The release pull request** | The ticket that publishes a release always opens its pull request into the default branch; any other base is corrected. |
+| **Blocked on a person** | A ticket that ends blocked waiting on a person, with no question to a person open, asks them: a "Question for a person:" on the ticket @mentioning them, and a Slack message. Their reply starts the ticket again. |
 | **Finished sprints** | A running sprint with every ticket done is completed, and the next starts with the open tickets. |
 
 ## Rules every template keeps

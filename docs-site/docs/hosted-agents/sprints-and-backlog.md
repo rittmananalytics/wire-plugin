@@ -23,7 +23,9 @@ The project's board must have sprints turned on. Scrum boards and team-managed b
 
 ## Tickets added after the sprint starts
 
-A ticket created after the sprint started waits in the backlog:
+Kick-off and delivery request tickets are never sprint work: they don't start a sprint or count in one. The tickets the delivery manager creates for her delivery plan join the running sprint straight away, because the plan is hers to decide.
+
+Any other ticket created after the sprint started waits in the backlog:
 
 1. The delivery manager's agent posts **"Sprint addition requested:"** on the ticket once, mentioning whoever the project's governance names: the engagement lead (light) or the escalation contacts (strict). Under strict, a person approves by moving the ticket into the sprint on the board.
 2. An engineer assigned the ticket does not start it while it waits.
