@@ -151,11 +151,16 @@ export function backfillLog(text: string, run: Measured): string | null {
   return null
 }
 
-/** `YYYY-MM-DD HH:MM` in local time, the execution log's timestamp form, `minutes` before `ms`. */
+/**
+ * `YYYY-MM-DD HH:MMZ` in UTC, the execution log's timestamp form
+ * (specs/utils/execution_log.md, 4.4.3), `minutes` before `ms`. Rows written
+ * before 4.4.3 have no `Z` and an unknown zone; the backfill compares only
+ * the date and allows a day's slack, so it reads both forms.
+ */
 export function logStamp(ms: number, minutes = 0): string {
   const d = new Date(ms - minutes * 60_000)
   const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}Z`
 }
 
 /** The release folder a command names as its first argument, if it looks like one. */

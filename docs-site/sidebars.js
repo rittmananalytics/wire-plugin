@@ -107,6 +107,16 @@ const sidebars = {
         },
         {
           type: 'category',
+          label: 'Guides',
+          link: {type: 'generated-index', title: 'Guides', description: 'Practice guides for consultants: designing the conceptual model, running sessions with a coding agent, and running advisory engagements on discovery.', slug: '/technical-reference/guides'},
+          items: [
+            'guides/conceptual-model-design',
+            'guides/session-discipline',
+            'guides/advisory-discovery',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Advanced',
           link: {type: 'generated-index', title: 'Advanced', slug: '/technical-reference/advanced'},
           items: [

@@ -130,6 +130,8 @@ The design phase follows a defined sequence, and the conceptual model gates ever
 
 > **Review audience: business stakeholders, not just the technical team.** Approving entities here constrains everything that follows.
 
+Before drafting, Wire asks the client for the key business questions the model must answer and any uses expected soon, unless the requirements already say. It records a status, a workflow stage or a milestone date as an attribute of an existing entity, not as an entity of its own. The reasoning is in [Conceptual Data Model Design](../guides/conceptual-model-design.md).
+
 ### Step 2: Pipeline design + data flow diagram
 
 `/wire:pipeline_design-generate` produces the full pipeline architecture document, covering source system analysis, replication scenarios with cost analysis, scheduling, error handling and the design decisions requiring client input, **plus an embedded Data Flow Diagram (DFD)**.
@@ -147,6 +149,8 @@ Where the client already models in Modality, this command reads the existing `.m
 `/wire:data_model-generate` produces the complete dbt-layer data model specification, covering source definitions, staging models, integration models, warehouse models with surrogate keys and FK paths and seed files, **plus an embedded Physical ERD**.
 
 > **This is the most important review gate in the full-platform workflow.** Approving a model with incorrect grain, wrong join keys or missing entities is expensive to fix after dbt code is generated.
+
+Before drafting, Wire states the grain of each fact table and asks the client to confirm it, rather than taking it from the shape of the source tables. Each new dimension and fact records the one conceptual entity it implements, and each new extended aggregate (`_xa`) records why it exists: a summary agreed in the conceptual model, or performance. `/wire:data_model-validate` fails a design where a new model maps to no agreed entity, so tables that copy the source systems are caught at design time. See [Conceptual Data Model Design](../guides/conceptual-model-design.md).
 
 ### Step 5: Dashboard mockups
 

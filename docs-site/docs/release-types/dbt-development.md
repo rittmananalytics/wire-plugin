@@ -56,6 +56,8 @@ At a high level, the release runs as follows, with the business rules step optio
 /wire:archive <release-folder>
 ```
 
+The conceptual model is the list of business entities the warehouse must follow. `data_model-validate` checks both directions: every entity has a warehouse model, and every new dimension and fact maps to one agreed entity. On a project where the source systems have many tables, this is what stops the warehouse copying them. See [Conceptual Data Model Design](../guides/conceptual-model-design.md).
+
 :::info[Tutorial available]
 
 A worked example of a dbt Development engagement, using a fictional client scenario with realistic command output, agent delegation and reviewer decisions, is available in the [Tutorial: dbt Development](../tutorials/dbt-development).

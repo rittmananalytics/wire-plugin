@@ -241,6 +241,12 @@ file order and compare each row's timestamp with its predecessor's:
 | Every row's timestamp is greater than or equal to its predecessor's | `in_sync` | — |
 | A row's timestamp precedes its predecessor's | `log_out_of_order` | Report both rows, in file order, with their timestamps. Ask; do not repair automatically |
 | A row's timestamp is unparseable | `log_out_of_order` | Report the row and its position. It is neither in nor out of order; it cannot be compared |
+| A UTC row (`HH:MMZ`) next to a row with no zone, and some zones put the pair in order and some do not | `in_sync` | List the pair as `zone_unknown`, for information. Never convert the older row by guessing its zone |
+
+Timestamps are UTC with a `Z` suffix from 4.4.3; a row without the suffix is
+read as "zone unknown" (`specs/utils/execution_log.md`, "Time zones"). Run
+`python3 <wire>/scripts/log_time.py check <release>/execution_log.md` for this
+check; do not compare the rows by hand.
 
 The proposal is never "re-sort the file". Re-ordering an append-only log
 destroys the evidence of what actually happened in what order, and the wrong
@@ -263,7 +269,8 @@ so) and whose run log has rows not yet in `execution_log.md`:
 | Condition | Category | Proposal |
 |---|---|---|
 | Ticket merged, record says `merged: false` or nothing | `ticket_merge_unrecorded` | Set `merged: true` in the ticket record |
-| Ticket run log has rows not yet rolled up | `ticket_rows_pending` | Append the rows from `python3 <wire>/scripts/ticket_delivery.py merge-log <release> <ticket>` (roll-up timestamp, `ticket <key>, ran <original time>:` in Detail, ticket order, no duplicates) |
+| Ticket run log has rows not yet rolled up | `ticket_rows_pending` | Append the rows from `python3 <wire>/scripts/ticket_delivery.py merge-log <release> <ticket>` (roll-up time in Timestamp, `ticket <key>, ran <original time>:` in Detail, ticket order, no duplicates). Both times are UTC with the `Z` suffix (`2026-10-17 15:40Z`, `ran 2026-10-17 14:28Z`); an original time the ticket log wrote without a zone (before 4.4.3) is copied as written, never converted |
+| A review result in the ticket record (`review: approved`) comes from the ticket's merged pull request, not from a review command row in its run log | `ticket_review_from_pr` | Record it as a pull request approval (below). Never write it as a review command run |
 | Ticket record has decisions not in `decisions.md` | `ticket_decisions_pending` | Copy them, next ids in sequence, citing the ticket |
 | `## Slices` table differs from `ticket_delivery.py status <release> --markdown` | `slices_stale` | Replace the table |
 | A step is complete for the release (every slice that has it) and `artifacts.<id>` does not say so | `record_behind` | Set the artifact's present lifecycle steps to done, with a `revision_history` entry: `complete across <n> slices (ticket roll-up)` |
@@ -274,6 +281,39 @@ log until it merges. Rows already rolled up are recognised by their Detail
 prefix and never added twice. The roll-up rows are appended after every other
 backfilled row, in the order `merge-log` returns them.
 
+**Review results recorded from a pull request** (4.4.3). When a ticket's
+review result is a pull request approval (the reviewer approved the ticket's
+pull request; no `/wire:<artifact>-review` ran), the roll-up records it as
+what it is:
+
+1. Read the approval: `gh pr view <n> --json number,url,reviews`. The pull
+   request number comes from the ticket record's `| PR |` row, or
+   `gh pr list --head <branch> --state merged`.
+2. Run `python3 <wire>/scripts/ticket_delivery.py pr-review <ticket>
+   <artifact> <pr.json> --session "<what ran the roll-up>" --names
+   <names.json>` (`names.json` maps GitHub logins to names, from the team
+   roster `.wire/engagement/team.yml` or the GitHub profile). It returns the
+   log row and the `status.md` fields.
+3. The row: Command `/wire:<artifact>-review`, Result `approved`, Timestamp
+   the roll-up time in UTC, **By the approver** (the author of the latest
+   approving review, never the person or agent running the roll-up), Detail
+   `recorded from PR #<n> approved by <name> (ticket <key>, approved
+   <time>Z)`, **Session what ran the roll-up** (`orchestrator [<id>]`, a lane
+   label, or `typed` only when a person typed `/wire:status-sync`; ` as
+   <persona>` when one is set), and `n/a` in the three metric cells because
+   no review command ran.
+4. `status.md`, on `artifacts.<artifact>`, when the step is complete for the
+   release: `review: approved`, `reviewed_by` (every approver, comma
+   separated), `reviewed_date` (the approval date, UTC) and `review_pr` (the
+   pull request URL; a list when several pull requests approved slices of
+   the step).
+5. A pull request merged with no approving review records no review result.
+   The script says so; report the step as still owing its review, with the
+   command that holds it (`/wire:<artifact>-review <release>`).
+
+This rule does not decide whether a pull request approval may stand as a
+review; it makes the record show that the result came from one.
+
 **4h. Ticket results missing** (only when `status.md` has `delivery: tickets`;
 4.2.6, wire#297). Run on the release branch. For each merged ticket, run
 `python3 <wire>/scripts/ticket_delivery.py progress <release> <ticket>` and
@@ -283,7 +323,7 @@ and its record's `results:` does not hold.
 | Condition | Category | Proposal |
 |---|---|---|
 | `missing` lists an action | `ticket_results_missing` | Write it to the ticket record's `results:` in the full form (`dbt: {generate: complete}`), keeping every value already there. Show the evidence beside each proposal |
-| The ticket record's own run table or pull request shows a validate or review result that `missing` does not list (a build that passed, a pull request reviewed and merged) | `ticket_results_missing` | Propose it, marked as read from the record, with the line it comes from. Never propose a result the record does not state |
+| The ticket record's own run table or pull request shows a validate or review result that `missing` does not list (a build that passed, a pull request reviewed and merged) | `ticket_results_missing` | Propose it, marked as read from the record, with the line it comes from. Never propose a result the record does not state. A review result read from a pull request approval is logged by 4g's "Review results recorded from a pull request" rule, with the approver in By |
 | `missing` is empty | `in_sync` | None |
 
 A result already in the record is never changed by this check; a conflict
@@ -334,7 +374,7 @@ On explicit confirmation (all items, or the picked subset):
 After applying (and only then — a declined or empty sync writes nothing), append one execution-log row recording the sync itself, in `specs/utils/execution_log.md`'s format:
 
 ```markdown
-| 2026-08-21 14:30 | /wire:status-sync | complete | 3 artifact repairs, 2 story updates, last_updated 2026-08-19 → 2026-08-21 |
+| 2026-08-21 14:30Z | /wire:status-sync | complete | 3 artifact repairs, 2 story updates, last_updated 2026-08-19 → 2026-08-21 | Jane Smith | typed | n/a | n/a | n/a |
 ```
 
 ## Edge Cases

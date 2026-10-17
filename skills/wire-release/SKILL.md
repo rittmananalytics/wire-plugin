@@ -436,6 +436,33 @@ Report the results as a brief checklist with pass/fail for each item.
 
 ---
 
+## Step 9 — Post the Release Notes to #wire-framework
+
+Every release is announced in the Rittman Analytics Slack channel `#wire-framework` once the
+packages are pushed and the tag exists. Post with the Slack connector (`slack_send_message`;
+find the channel with `slack_search_channels`). If no Slack connector is available, give the
+user the message text to post and say so: the release is not complete until it is posted.
+
+Read the channel's last few release posts first and match their shape:
+
+- Title line in bold: `*Wire vX.Y.Z: <what the release is about>*` (several versions released
+  together go in one post: `*Wire vA to vB: ...*`).
+- `_Released_: <Month Year>`.
+- One section per version, with short bullets that lead with an italic label and say what a
+  person can now do or what changed for them, linking the issue (`wire#NNN`).
+- A line on anything that needs action before use, if any.
+- A closing line with docs links (`https://docs.rittmananalytics.com/en/latest/docs/...`,
+  never readthedocs.io) and "The Claude plugin, Gemini extension and Wire Work packages are
+  pushed at X.Y.Z. Run `/reload-plugins` after the marketplace update."
+
+The channel is internal, so Rittman Analytics-only features may be named, but never secrets,
+tokens or client data. Hosted agents releases are announced from their own repository
+(`rittmananalytics/wire-hosted-agents`), not here; a Wire post only says when they changed.
+
+Give the user the link to the posted message.
+
+---
+
 ## Checklist Summary
 
 Run through this before declaring the release complete:
@@ -463,6 +490,9 @@ Documentation
 [ ] New doc page created and added to sidebars.js (if new release type added)
 [ ] docs-site/ builds without errors (npm run build)
 [ ] docs-site/ synced to wire-plugin repo (rsync)
+
+Announcement
+[ ] Release notes posted to #wire-framework (Step 9), link given to the user
 
 VSCode Extension
 [ ] package.json version bumped (if applicable)

@@ -148,6 +148,25 @@ With neither `--new-project` nor `--changed-from`, section A rules report as war
 
 Treat its findings as ground truth for the rules it covers (filename patterns, column suffixes tied to type-cast macros, bare `join`, `union distinct`, the `final` CTE, layer boundaries, missing primary-key tests, the `Grain:` line, the test key). Do not re-argue a pass or fail the checker already gave. Everything it does not cover (grain choice, CTE quality, whether a join direction makes sense, whether a staging filter is about correctness) is your call, applied through Steps 1 to 10. If the checker is not available (no Python or PyYAML), fall back to the manual review below and say so in your output.
 
+### 0.6 Before Adding a Warehouse Model
+
+The checker can tell whether a warehouse model is named correctly. It cannot tell whether the model should exist. Coding assistants follow the shape of the source data and propose a fact, dimension or summary for every source table, status log or sub-process they find. Over time one business concept ends up spread across several tables, and users and AI tools cannot tell which one holds the answer.
+
+Before creating a new `_dim`, `_fact` or `_xa` model:
+
+1. Read the conceptual model: the release's `design/conceptual_model.md`, if it exists, or the client's own equivalent. If there is none, say so and ask before inventing entities.
+2. Run this checklist:
+   1. **What is one row?** State it in one plain sentence in the client's words ("One row is one customer order").
+   2. **A thing, or a fact about a thing?** If the data describes an existing entity (a new status, an approval date, a completion date), add columns to that entity's model. Do not build a separate table.
+   3. **Check the name.** A name that joins two business concepts, carries a filter or type (`web_order`), or stacks nouns (`order_status_history`) usually points to a relationship, a filter or facts about an existing entity, not a new entity. A two-word name where the second word is a true child grain (`order_line`) is fine.
+   4. **Can the semantic layer do it?** If the number can be worked out at query time from existing facts and dimensions, do not build an `_xa`. Build one only for a summary listed in the conceptual model's Agreed Summaries, or for performance; a performance `_xa` is used through the BI tool's aggregate awareness, not shown as a second table.
+   5. **Does it exist already?** Check whether another entity or model already covers it.
+   6. **Will it confuse users?** If a user or AI tool would have to choose between overlapping tables to answer a question, do not build it.
+   7. **Agree first, build second.** A new or renamed entity goes into the conceptual model and is agreed with the client before the dbt model is written.
+3. Record in the model's description which conceptual entity it implements (`_dim`, `_fact`) or why it exists (`_xa`). Inside a Wire release, `data_model-validate` checks the same mapping on the design.
+
+This applies to new models only. Existing models keep their names and place (see "The one rule"). The reasoning behind the checklist is in the conceptual model design guide: https://docs.rittmananalytics.com/en/latest/docs/guides/conceptual-model-design
+
 ---
 
 ### 1. Identify the Kind of File
@@ -878,7 +897,7 @@ Where one source can arrive through more than one loader (Stitch, Fivetran, Airb
 ## 14. Creating and Changing Models
 
 **Creating a new model:**
-1. Settle the kind with Step 1 and the layer maps in Step 2. Ask if unclear.
+1. Settle the kind with Step 1 and the layer maps in Step 2. Ask if unclear. For a new warehouse model, run Step 0.6 first.
 2. Name and place it by Step 3, following any `form_choices` ruling.
 3. Write the `config()` description with the `Grain:` line first.
 4. Import CTEs (`s_`), one unit of work per CTE, `final`, `select * from final`.

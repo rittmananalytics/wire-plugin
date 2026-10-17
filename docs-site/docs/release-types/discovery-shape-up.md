@@ -34,6 +34,8 @@ Four situations point to starting with discovery rather than going straight to d
 
 If, on the other hand, you already have a signed and well-scoped SOW, you may not need a discovery release at all, and you can go straight to the appropriate delivery type.
 
+Discovery also suits advisory engagements, where the deliverables are documents and the client's team builds from them. See [Advisory Engagements on Discovery](../guides/advisory-discovery).
+
 ## Discovery artifact flow
 
 The four artifacts build on one another in a fixed order, each one shaping or formalising the one before it, and the last of them spawns the delivery releases that follow:

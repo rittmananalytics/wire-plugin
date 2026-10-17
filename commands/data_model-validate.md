@@ -154,6 +154,7 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 
 Validate the generated data model specification and embedded Physical ERD against quality standards:
 - All conceptual model entities are represented as warehouse models
+- Every new warehouse dimension and fact maps to one agreed conceptual entity, and every new extended aggregate records why it exists
 - dbt naming conventions are followed throughout
 - Every model has a defined grain, surrogate key, and test coverage plan
 - The Physical ERD is present, complete, and consistent with the model specs
@@ -252,6 +253,8 @@ Run: /wire:data_model-generate <project_id>
 | Check | Rule | Severity |
 |-------|------|----------|
 | Entity coverage | Every entity from conceptual_model.md appears as at least one warehouse model | Critical |
+| Entity mapping | Every new `_dim` and `_fact` names exactly one **Conceptual entity**, and that entity is in the conceptual model's Entity Inventory (not in Section 4, out of scope). See "Entity Mapping" below | Critical |
+| Extended aggregate reason | Every new `_xa` records a **Reason**: `summary: <name>` naming a row of the conceptual model's Agreed Summaries, or `performance:` followed by what it makes faster or cheaper | Major |
 | Grain defined | Every model (staging and warehouse) has a grain statement | Critical |
 | Key defined | Every warehouse model has a surrogate key specified. Every staging and integration model has a natural key (current form) or a surrogate key (older designs, accepted) | Critical |
 | Source defined | Every staging model references a source table from the pipeline architecture | Critical |
@@ -325,6 +328,8 @@ Run: /wire:data_model-generate <project_id>
 | Check | Status | Notes |
 |-------|--------|-------|
 | Entity coverage | ✅/❌ | [e.g. "Enrolment from conceptual model has no warehouse model"] |
+| Entity mapping | ✅/❌/➖ | [e.g. "wh_sales__order_status_history_fact names no conceptual entity"; ➖ with the reason when skipped] |
+| Extended aggregate reason | ✅/⚠️ | [e.g. "wh_sales__order_summary_xa: summary 'OrderSummary' is not in Agreed Summaries"] |
 | Grain defined (all models) | ✅/❌ | |
 | Surrogate keys defined | ✅/❌ | |
 | FK → PK traceability | ✅/❌ | |
@@ -420,6 +425,18 @@ If a conceptual model entity has no warehouse model, this is a Critical failure 
 2. Explicitly document it as out of scope in the data model spec (with justification)
 3. Flag it as a future phase item
 
+### Entity Mapping
+
+Coverage checks one direction: every conceptual entity has a warehouse model. Entity mapping checks the other: every new warehouse model traces back to an agreed entity. Without it, a design can pass with extra tables that copy the source systems rather than the business.
+
+- Check new models only. A model marked `existing` is never reported.
+- Match entity and summary names to the conceptual model ignoring case, spaces and underscores (`OrderLine`, `order_line` and `Order Line` are the same name).
+- A `_dim` or `_fact` with no **Conceptual entity**, with more than one, or naming an entity the inventory does not hold, fails. The fix is in the conceptual model first (add and agree the entity), or in the design (merge the model into the entity it describes as columns).
+- A `_dim` or `_fact` naming an entity listed in Section 4 (out of scope) fails.
+- A junction fact recording `relationship: ...` is not failed. List it in the report for `data_model-review` to decide whether the relationship should be an entity of its own; this check does not settle that.
+- An `_xa` with no **Reason**, with `summary:` naming a summary not in Agreed Summaries, or with `performance:` and nothing after it, fails at Major severity.
+- If the release has no `design/conceptual_model.md` (a `dashboard_first` release can design its data model without one), report both checks as skipped with that reason. A check that cannot run has not passed.
+
 ### Existing Models in the Design
 
 A design that extends an existing dbt project lists existing models alongside new ones. Never report a finding that would require renaming an existing model, column, seed, snapshot or schema. Apply the source content, column suffix and extended aggregate checks to new models only.
@@ -471,12 +488,18 @@ If the file does not exist, create it with the header:
 Then append one row per execution:
 
 ```markdown
-| YYYY-MM-DD HH:MM | /wire:<command> | <result> | <detail> | <by> | <session> | <duration> | n/a | n/a |
+| YYYY-MM-DD HH:MMZ | /wire:<command> | <result> | <detail> | <by> | <session> | <duration> | n/a | n/a |
 ```
 
 ### Field Definitions
 
-- **Timestamp**: Current date and time in `YYYY-MM-DD HH:MM` format (24-hour, local time)
+- **Timestamp**: Current date and time **in UTC**, written `YYYY-MM-DD HH:MMZ`
+  (24-hour, a literal `Z` after the minutes, no `T`, no seconds, no offset):
+  `2026-10-17 14:05Z`. Get it with `date -u +"%Y-%m-%d %H:%MZ"` (or
+  `python3 <wire>/scripts/log_time.py now`), never from the local clock. The
+  same form is used for every time written into a log row, including an
+  original time quoted in Detail (`ran 2026-10-17 14:28Z`), in the release log
+  and in ticket run logs. From Wire 4.4.3; see "Time zones" below.
 - **Command**: Either the `/wire:*` command invoked, or `skill` for a skill activation entry
 - **Result / Skill name**: For commands, the outcome; for skills, the skill identifier. Use one of:
   - `complete` — generate command finished successfully
@@ -537,7 +560,7 @@ Then append one row per execution:
 When a skill activates, it appends a row in the same format as commands, using `skill` in the Command column and the skill identifier in the Result column, with `n/a` in all three metric columns:
 
 ```markdown
-| YYYY-MM-DD HH:MM | skill | <skill-identifier> | activated | <brief trigger description> | <by> | <session> | n/a | n/a | n/a |
+| YYYY-MM-DD HH:MMZ | skill | <skill-identifier> | activated | <brief trigger description> | <by> | <session> | n/a | n/a | n/a |
 ```
 
 Skill identifiers:
@@ -601,6 +624,7 @@ This check is self-contained within this utility, so every caller gets it automa
    clock moved or a row was inserted out of order; both are record defects.
    `/wire:status-sync` flags them, naming both rows. This does not block any
    command — the log is written either way, and the flag is a repair prompt.
+   Rows are compared as "Time zones" below says.
 7. **Single writer in orchestrated mode.** When
    `specs/utils/director_operating_model.md`'s operating model is in force,
    only the orchestrating session appends to this file. Lanes write their own
@@ -610,6 +634,43 @@ This check is self-contained within this utility, so every caller gets it automa
 8. **Never fabricate metrics.** Tokens and Cost are written as `n/a` and only
    ever filled by tooling that measured them. A best guess is worse than
    `n/a` in a client-facing audit trail.
+9. **One time zone.** Every Timestamp, and every time quoted in Detail, is UTC
+   with the `Z` suffix. A row is never written in local time, and a time
+   with no zone is never converted by guessing the zone it was written in.
+10. **Review rows say what they are.** A review result recorded from a merged
+    pull request, not from a review command run, follows
+    `specs/utils/status_sync.md` Step 4g: By is the approver, Detail says
+    `recorded from PR #<n> approved by <name>`, and Session is what ran the
+    roll-up.
+
+## Time zones
+
+From Wire 4.4.3 every Timestamp is UTC, `YYYY-MM-DD HH:MMZ`. Before that the
+rule said local time, and logs mixed UTC rows with rows in the writer's local
+time, so a ticket could appear to close before it opened.
+
+- **Writing.** `date -u +"%Y-%m-%d %H:%MZ"`. A row's time is the UTC time the
+  command finished. A roll-up row's Timestamp is the UTC time of the roll-up.
+- **Rows with no zone.** `YYYY-MM-DD HH:MM` without `Z` is a row written
+  before 4.4.3. It stays valid, is never rewritten, and is read as "zone
+  unknown": it may be in any zone from UTC-12 to UTC+14.
+- **Anything else** (`2026-10-17T14:05Z`, `14:05+01:00`, `14:05 BST`) is
+  unparseable and reported as such.
+- **Ordering** (rule 6, `/wire:status-sync` Step 4f). Two rows in the same
+  form compare on the values written. A UTC row next to a zone-unknown row is
+  out of order only when no zone in that range puts the pair in order; when
+  some zones do and some do not, the pair is `zone_unknown`, listed for
+  information and not a defect. A log that changes from local time to UTC in
+  British summer time (`15:05` then `14:10Z`) is therefore not flagged.
+- **Never earlier than the last row.** A roll-up stamps its rows with the
+  later of now and the last row's time when the last row is UTC. A last row
+  with no zone is not copied into a new row.
+
+The rule is implemented in `<wire>/scripts/log_time.py` (`now`,
+`check <execution_log.md>`), used by `ticket_delivery.py merge-log` and tested
+by `wire/tests/core/validate_execution_log_order.py`. The Wire mod's metrics
+backfill (below) reads both forms: it matches a row on its command and date,
+with a day's slack, not on its time.
 
 ## Metrics Backfill (Claude Code)
 
@@ -666,19 +727,27 @@ columns existed have four or six. They stay valid and are never rewritten:
 
 | Timestamp | Command | Result | Detail | By | Session | Duration | Tokens | Cost (USD) |
 |-----------|---------|--------|--------|----|---------|----------|--------|------------|
-| 2026-02-22 14:30 | skill | engagement-context | activated | Context loaded for new conversation | Jane Smith | typed | n/a | n/a | n/a |
-| 2026-02-22 14:35 | /wire:new | created | Project created (type: full_platform, client: Acme Corp) | Jane Smith | typed | 3m 40s | 84210 | $0.61 |
-| 2026-02-22 14:40 | /wire:requirements-generate | complete | Generated requirements specification (3 files) | Jane Smith | orchestrator [a1b2c3] | 18m 05s | 412876 | $3.18 |
-| 2026-02-22 15:12 | /wire:requirements-validate | pass | 14 checks passed, 0 failed | Jane Smith | orchestrator [a1b2c3] | 6m 22s | 156430 | $1.02 |
-| 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith | Jane Smith | typed | 24m 10s | 98764 | $0.74 |
-| 2026-02-23 09:15 | /wire:conceptual_model-generate | complete | Generated entity model with 8 entities | Jane Smith | data-designer | 11m 48s | n/a | n/a |
-| 2026-02-23 10:30 | /wire:conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity | Jane Smith | data-designer | 5m 02s | n/a | n/a |
-| 2026-02-23 11:00 | /wire:conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) | Jane Smith | data-designer | 9m 31s | n/a | n/a |
-| 2026-02-23 11:15 | /wire:conceptual_model-validate | pass | 12 checks passed, 0 failed | Jane Smith | data-designer | 4m 47s | n/a | n/a |
-| 2026-02-23 14:00 | /wire:conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity | Jane Smith | typed | 31m 20s | 122504 | $0.95 |
-| 2026-02-23 15:30 | /wire:conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) | Jane Smith | data-designer | 8m 56s | n/a | n/a |
-| 2026-02-23 15:45 | /wire:conceptual_model-validate | pass | 14 checks passed, 0 failed | Jane Smith | data-designer | 4m 12s | n/a | n/a |
-| 2026-02-23 16:00 | /wire:conceptual_model-review | approved | Reviewed by John Doe | Jane Smith | typed | 12m 33s | 74902 | $0.58 |
-| 2026-02-24 09:05 | /wire:migration-strategy-generate | override | migration_inventory.review required approved, was not_started — overridden by Jane Smith: client demo tomorrow, inventory sign-off deferred to Monday | Jane Smith | typed | 2m 08s | 41207 | $0.33 |
-| 2026-02-24 10:20 | /wire:conceptual_model-generate | override | business_rules.review required approved, was not_started — ruling R-1 (Jane Smith): agree definitions at kickoff | Jane Smith | orchestrator [a1b2c3] | 7m 14s | 188341 | $1.44 |
+| 2026-02-22 14:30Z | skill | engagement-context | activated | Context loaded for new conversation | Jane Smith | typed | n/a | n/a | n/a |
+| 2026-02-22 14:35Z | /wire:new | created | Project created (type: full_platform, client: Acme Corp) | Jane Smith | typed | 3m 40s | 84210 | $0.61 |
+| 2026-02-22 14:40Z | /wire:requirements-generate | complete | Generated requirements specification (3 files) | Jane Smith | orchestrator [a1b2c3] | 18m 05s | 412876 | $3.18 |
+| 2026-02-22 15:12Z | /wire:requirements-validate | pass | 14 checks passed, 0 failed | Jane Smith | orchestrator [a1b2c3] | 6m 22s | 156430 | $1.02 |
+| 2026-02-22 16:00Z | /wire:requirements-review | approved | Reviewed by Jane Smith | Jane Smith | typed | 24m 10s | 98764 | $0.74 |
+| 2026-02-23 09:15Z | /wire:conceptual_model-generate | complete | Generated entity model with 8 entities | Jane Smith | data-designer | 11m 48s | n/a | n/a |
+| 2026-02-23 10:30Z | /wire:conceptual_model-validate | fail | 2 issues: missing relationship, orphaned entity | Jane Smith | data-designer | 5m 02s | n/a | n/a |
+| 2026-02-23 11:00Z | /wire:conceptual_model-generate | complete | Regenerated entity model (fixed 2 issues, 8 entities) | Jane Smith | data-designer | 9m 31s | n/a | n/a |
+| 2026-02-23 11:15Z | /wire:conceptual_model-validate | pass | 12 checks passed, 0 failed | Jane Smith | data-designer | 4m 47s | n/a | n/a |
+| 2026-02-23 14:00Z | /wire:conceptual_model-review | changes_requested | Reviewed by John Doe — add Customer entity | Jane Smith | typed | 31m 20s | 122504 | $0.95 |
+| 2026-02-23 15:30Z | /wire:conceptual_model-generate | complete | Regenerated entity model (9 entities, added Customer) | Jane Smith | data-designer | 8m 56s | n/a | n/a |
+| 2026-02-23 15:45Z | /wire:conceptual_model-validate | pass | 14 checks passed, 0 failed | Jane Smith | data-designer | 4m 12s | n/a | n/a |
+| 2026-02-23 16:00Z | /wire:conceptual_model-review | approved | Reviewed by John Doe | Jane Smith | typed | 12m 33s | 74902 | $0.58 |
+| 2026-02-24 09:05Z | /wire:migration-strategy-generate | override | migration_inventory.review required approved, was not_started — overridden by Jane Smith: client demo tomorrow, inventory sign-off deferred to Monday | Jane Smith | typed | 2m 08s | 41207 | $0.33 |
+| 2026-02-24 10:20Z | /wire:conceptual_model-generate | override | business_rules.review required approved, was not_started — ruling R-1 (Jane Smith): agree definitions at kickoff | Jane Smith | orchestrator [a1b2c3] | 7m 14s | 188341 | $1.44 |
+| 2026-02-25 11:02Z | /wire:data_model-generate | complete | ticket CUS-199, ran 2026-02-25 09:40Z: 4 tables | Jane Smith | orchestrator [d4e5f6] | 9m 12s | 201544 | $1.51 |
+| 2026-02-25 11:02Z | /wire:data_model-review | approved | recorded from PR #64 approved by John Doe (ticket CUS-199, approved 2026-02-25 10:55Z) | John Doe | orchestrator [d4e5f6] | n/a | n/a | n/a |
 ```
+
+The last two rows are a ticket roll-up (`specs/utils/status_sync.md` Step 4g)
+run by an orchestrating session: the first was rolled up from the ticket's run
+log; the second records a review result from the ticket's merged pull request,
+so By is the approver, Session is the session that ran the roll-up, and the
+metric cells stay `n/a` because no review command ran.

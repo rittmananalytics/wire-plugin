@@ -11,7 +11,7 @@ Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them 
 
 A governance template says, for every kind of decision met on a project, who takes it: the **delivery manager** or the **engagement lead** of the pod working it, or a **person** (one of the pod's escalation contacts). Each project chooses one template, on the agents console's Projects page, so a pod working several projects can be lightly governed on one and strictly on another. The agents read it at every decision, so changing a project's template changes how it is governed from the next decision on.
 
-Templates are a [process registry](../advanced/registries) entry type, like release types and conventions: authored in the registry, synced into Wire, and checked by a validator. Two ship with Wire; more can be added.
+Templates are a [process registry](../advanced/registries) entry type, like release types and conventions: authored in the registry, synced into the hosted agents' private repository (`rittmananalytics/wire-hosted-agents`), and checked by a validator there. Two ship; more can be added.
 
 ![Who takes a decision: some kinds always go to a person, release set-up and the delivery plan go to the delivery manager, and the rest follow the project's light or strict template](/img/hosted-agents/diagram-decisions.png)
 
@@ -134,4 +134,4 @@ The agent the template names approves and merges with a plain merge, so no branc
 
 A project's template is chosen on the agents console's Projects page; a project with none chosen is strictly governed, so a forgotten setting is the safer one. Agents read the choice, and pod membership and roles, but cannot change them: only a person does, on the console (see [Platform architecture](./platform-architecture)).
 
-To add a template, add a file to the process registry's `governance/` folder with every decision kind set, open a pull request there, and sync it into Wire. The schema is `wire/schemas/governance-schema.md`; `wire/tests/core/validate_governance.py` checks every template, including the always-a-person rule.
+To add a template, add a file to the process registry's `governance/` folder with every decision kind set, open a pull request there, and sync it into the hosted agents repository (`rittmananalytics/wire-hosted-agents`, private). The schema and the validator that checks every template, including the always-a-person rule, are in that repository.

@@ -245,9 +245,20 @@ entry of that step in the release type's graph (profile applied):
    the tables' designs. If no slice has the step, the release-level state in
    `status.md`'s `artifacts:` block decides, compared as the runnable set
    compares it.
-3. A cell meets the dependency only when it is complete, whatever action the
-   graph entry names. The build for one table waits for that table's design to
-   be approved, not for every table's.
+3. A cell meets the dependency only when it is complete **and** the action
+   the graph entry names has reached the outcome it names. A dependency with
+   no action or outcome means `generate` `complete`, which a complete cell
+   always holds. For any other action (`validate` `pass`, `review`
+   `approved`) a ticket covering the cell must record that action at that
+   outcome in its `results:` (full or short form), or the release status
+   (`artifacts.<id>.<action>` in `status.md`) must hold it, as when the
+   review ran on the release branch. A requirements ticket merged with
+   `{generate: complete, validate: pass}` does not meet a dependency on
+   `requirements` `review` `approved`: the ticket waits, with the reason
+   `whole_release.requirements: requirements.review required approved, was
+   not_started`. The same rule applies to the same slice's cell, to upstream
+   slices and to `whole_release` (Wire 4.4.3). The build for one table waits
+   for that table's design to be approved, not for every table's.
 4. A build step (`pipeline`, `seed_data`, `dbt`, `semantic_layer`,
    `dashboards`) also waits for the same step in each upstream slice, because
    it reads their tables. The customer master's dbt build waits for the
@@ -259,6 +270,10 @@ entry of that step in the release type's graph (profile applied):
 Each ticket gets one state: `done`, `in_progress`, `blocked` (with the
 blocker), `waiting` (with the tickets and steps it waits on), `parked` (needs
 a ruling), `can_start`, or `plain` (plain work: no Wire steps to wait for).
+A ticket waiting on an action no open ticket covers (a review not yet held)
+has an empty ticket list and the unmet step in its reason; the next step is
+that action's command (`/wire:requirements-review <release>`), or a
+precondition override recorded by a person.
 
 **Link check.** For each ticket that is not done, Wire compares the tickets it
 depends on (by the rules above, not done yet) with the tracker's `blocked_by`
@@ -315,8 +330,20 @@ the shared record files.
    `ticket <key>, ran <original time>:`. `execution_log.md` is append-only and
    its timestamps never go backwards (`specs/utils/execution_log.md` rules 1
    and 6), so the original time goes in Detail, as for any backfilled row.
+   Both times are UTC with the `Z` suffix (`2026-10-17 15:40Z`,
+   `ran 2026-10-17 14:28Z`), as is every time in a ticket run log
+   (`specs/utils/execution_log.md`, "Time zones"); a time a ticket log wrote
+   without a zone before 4.4.3 is copied as written, never converted.
    Rows are added in the order the ticket ran them; a row already rolled up is
    not added again.
+1a. Records each review result that came from the ticket's merged pull
+   request rather than a review command with
+   `ticket_delivery.py pr-review` (`specs/utils/status_sync.md` Step 4g,
+   "Review results recorded from a pull request"): By is the approver from
+   the pull request review, Detail `recorded from PR #<n> approved by
+   <name>`, Session what ran the roll-up, and `status.md` gets `reviewed_by`
+   and `review_pr` on the artifact. A pull request merged with no approving
+   review records no review result.
 2. Copies the ticket's decisions to `decisions.md`, next ids in sequence.
 3. Rewrites the `## Slices` table and the `## Iterations` row.
 4. Proposes `artifacts.<id>` changes for steps now complete for the release.

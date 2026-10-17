@@ -22,6 +22,10 @@ right answer, so the Wire session does not work them out by hand:
   progress      one ticket's progress per Wire step and action: what its
                 record holds, what its logs and changed files show, the
                 files its branch changed and its activity (4.2.6)
+  pr-review     the log row and status.md fields for a review result
+                recorded from a merged pull request's approval: By the
+                approver, Detail `recorded from PR #<n> approved by <name>`
+                (4.4.3)
 
 Judgement stays with the Wire session and the consultant: the kind of a
 ticket and its slice when the design model has no link for it. Those arrive
@@ -35,12 +39,14 @@ PyYAML.
 Usage:
     python3 ticket_delivery.py status <release-dir> [--markdown]
     python3 ticket_delivery.py runnable <release-dir> [--graph <release-type.yaml>]
-    python3 ticket_delivery.py merge-log <release-dir> <ticket> [--now "YYYY-MM-DD HH:MM"] [--write]
+    python3 ticket_delivery.py merge-log <release-dir> <ticket> [--now "YYYY-MM-DD HH:MMZ"] [--write]
     python3 ticket_delivery.py refresh <release-dir> <tracker.json>
     python3 ticket_delivery.py propose <classified.json>
     python3 ticket_delivery.py design-source <release-dir> [--slice <slice>]
     python3 ticket_delivery.py scope <release-dir> <request.json>
     python3 ticket_delivery.py progress <release-dir> <ticket> [--base <branch>]
+    python3 ticket_delivery.py pr-review <ticket> <artifact> <pr.json> --session "<what ran the roll-up>"
+                                         [--names <names.json>] [--now "YYYY-MM-DD HH:MMZ"]
 """
 
 import argparse
@@ -53,6 +59,9 @@ import sys
 from pathlib import Path
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import log_time  # noqa: E402  (same folder; the log's timestamp rule)
 
 HERE = Path(__file__).resolve().parent
 RELEASE_TYPES = HERE.parent / "release-types"
@@ -480,6 +489,7 @@ def runnable(ticket_map, records, graph, release_artifacts=None, rulings=None):
     roll = rollup(ticket_map, cm)
     slices = {s["id"]: s for s in ticket_map.get("slices") or []}
     owners = {}
+    steps_of = {t["key"]: list(t.get("steps") or []) for t, _ in _live_tickets(ticket_map, records)}
     for t, _ in _live_tickets(ticket_map, records):
         for sl in t.get("slices") or []:
             for st in t.get("steps") or []:
@@ -488,23 +498,69 @@ def runnable(ticket_map, records, graph, release_artifacts=None, rulings=None):
     def upstream(sl):
         return list((slices.get(sl) or {}).get("depends_on") or [])
 
+    def ticket_done(key):
+        """Every cell the ticket covers is complete."""
+        return all(cm[sl][a]["state"] == "complete" for (sl, a), keys in owners.items() if key in keys)
+
+    def cell_meets(c, dep, action, outcome):
+        """Whether a cell meets a dependency on `dep`'s `action` reaching
+        `outcome`. The cell must be complete. Unless the dependency is the
+        default (generate complete, which a complete cell always holds), a
+        covering ticket's record must also hold the action at the outcome,
+        or the release status must (a review held on the release branch).
+        Returns (met, the action's value as recorded)."""
+        if (action, outcome) == ("generate", "complete"):
+            return c["state"] == "complete", None
+        values = set()
+        for key in c["tickets"]:
+            for st in steps_of.get(key, ()):
+                if step_artifact(st) == dep:
+                    v = step_progress(records.get(key, {}).get("results"), st).get(action)
+                    if v:
+                        values.add(v)
+        release_value = str((release_artifacts.get(dep) or {}).get(action) or "").lower()
+        if c["state"] != "complete":
+            # Not merged or not done. Name the action only when a record
+            # holds it at another value (changes requested, a failed validate).
+            other = sorted(values - {outcome})
+            return False, other[0] if other else None
+        if outcome in values or release_value == outcome:
+            return True, outcome
+        if len(values) == 1:
+            return False, next(iter(values))
+        return False, release_value or "not_started"
+
     def requirement(sl, dep, entry):
         """The cells (or release state) a dependency on `dep` for slice `sl`
-        resolves to. Returns (met, waiting_tickets, reason)."""
+        resolves to. Every branch checks the action and outcome the
+        dependency names. Returns (met, related_tickets, reason)."""
         node = (graph or {}).get(dep)
         if node and node.get("disabled"):
             return True, set(), None
+        action = entry.get("action", "generate")
+        outcome = str(entry.get("outcome", "complete")).lower()
         if dep in cm.get(sl, {}):
-            c = cm[sl][dep]
-            return c["state"] == "complete", set(c["tickets"]), f"{sl}.{dep}"
-        ups = [u for u in upstream(sl) if dep in cm.get(u, {})]
-        if ups:
-            pending = [u for u in ups if cm[u][dep]["state"] != "complete"]
-            tickets = set().union(*(cm[u][dep]["tickets"] for u in ups))
-            return not pending, tickets, ", ".join(f"{u}.{dep}" for u in ups)
-        if dep in cm.get(WHOLE_RELEASE, {}):
-            c = cm[WHOLE_RELEASE][dep]
-            return c["state"] == "complete", set(c["tickets"]), f"{WHOLE_RELEASE}.{dep}"
+            found = [sl]
+        else:
+            found = [u for u in upstream(sl) if dep in cm.get(u, {})]
+            if not found and dep in cm.get(WHOLE_RELEASE, {}):
+                found = [WHOLE_RELEASE]
+        if found:
+            met_all, related, reasons = True, set(), []
+            for s_id in found:
+                c = cm[s_id][dep]
+                related |= set(c["tickets"])
+                met, actual = cell_meets(c, dep, action, outcome)
+                if met:
+                    continue
+                met_all = False
+                if actual is None:
+                    reasons.append(f"{s_id}.{dep}")
+                else:
+                    # Name the action and outcome the dependency requires,
+                    # and the value recorded for it.
+                    reasons.append(f"{s_id}.{dep}: {dep}.{action} required {outcome}, was {actual}")
+            return met_all, related, ", ".join(reasons) or None
         if dep in roll:
             # Other slices have this step and this one does not: the ticket
             # map, as confirmed, says the step does not apply to this slice.
@@ -548,7 +604,7 @@ def runnable(ticket_map, records, graph, release_artifacts=None, rulings=None):
                     if (art, dep) not in rulings:
                         parked.append(f"proceed without {dep}?")
                     continue
-                waits |= tickets
+                waits |= {k for k in tickets if not ticket_done(k)}
                 reasons.append(why)
         if rec.get("blocked"):
             state = "blocked"
@@ -571,9 +627,7 @@ def runnable(ticket_map, records, graph, release_artifacts=None, rulings=None):
         results.append(item)
 
         tracker = set(t.get("blocked_by") or [])
-        open_structural = {k for k in structural
-                           if not all(cm[sl][a]["state"] == "complete"
-                                      for (sl, a), keys in owners.items() if k in keys)}
+        open_structural = {k for k in structural if not ticket_done(k)}
         missing = sorted(open_structural - tracker, key=_key_order)
         extra = sorted(tracker - structural, key=_key_order)
         if missing or extra:
@@ -584,7 +638,9 @@ def runnable(ticket_map, records, graph, release_artifacts=None, rulings=None):
 # ---------------------------------------------------------------------------
 # merge-log: a merged ticket's run log rows, added to the release log
 # ---------------------------------------------------------------------------
-TS = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
+# A log Timestamp: `YYYY-MM-DD HH:MMZ` (UTC, from 4.4.3) or the older
+# `YYYY-MM-DD HH:MM` (zone unknown). See log_time.py.
+TS = log_time.PATTERN
 
 
 def _rows(text):
@@ -604,15 +660,19 @@ def merge_log(release_log, ticket_log, ticket, now):
     """Rows to append to the release execution_log.md.
 
     Each row keeps its command, result, by, session and metric cells. Its
-    Timestamp is the time of the roll-up (never earlier than the release log's
-    last row), and its Detail starts `ticket <key>, ran <original time>:`,
-    because execution_log.md is append-only and its timestamps must not go
-    backwards (specs/utils/execution_log.md rules 1 and 6). Rows are added in
-    the order the ticket ran them. A row already rolled up is not added again.
+    Timestamp is the time of the roll-up in UTC (`YYYY-MM-DD HH:MMZ`, never
+    earlier than the release log's last UTC row), and its Detail starts
+    `ticket <key>, ran <original time>:`, because execution_log.md is
+    append-only and its timestamps must not go backwards
+    (specs/utils/execution_log.md rules 1 and 6). The original time is copied
+    as the ticket log wrote it: UTC with `Z`, or, for a row written before
+    4.4.3, without a zone (never converted by guessing one). Rows are added
+    in the order the ticket ran them. A row already rolled up is not added
+    again.
     """
     existing = _rows(release_log)
     last = existing[-1][0] if existing else None
-    stamp = max(now, last) if last else now
+    stamp = log_time.not_before(last, now) if last else now
     seen = set()
     for r in existing:
         m = re.match(rf"^ticket {re.escape(ticket)}, ran (\S+ \S+): ", r[3] if len(r) > 3 else "")
@@ -632,6 +692,64 @@ def merge_log(release_log, ticket_log, ticket, now):
             cells_.append("n/a" if len(cells_) >= 6 else "unknown")
         out.append("| " + " | ".join(cells_) + " |")
     return out
+
+
+# ---------------------------------------------------------------------------
+# pr-review: a review result recorded from a merged pull request (4.4.3)
+# ---------------------------------------------------------------------------
+def _iso_to_log(text):
+    """GitHub's `2026-10-17T14:30:12Z` as the log form `2026-10-17 14:30Z`."""
+    value = _dt.datetime.fromisoformat(str(text).replace("Z", "+00:00"))
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=_dt.timezone.utc)
+    return log_time.format_utc(value)
+
+
+def pr_review(artifact, ticket, pr, session, now, names=None):
+    """The execution-log row and status.md fields for a review result taken
+    from a merged pull request's approval, not from a review command run
+    (specs/utils/status_sync.md Step 4g).
+
+    `pr`: `gh pr view <n> --json number,url,reviews` output:
+        {number, url, reviews: [{author: {login}, state, submittedAt}]}
+    `session`: what ran the roll-up (`orchestrator [<id>]`, a lane label,
+        `typed` only when a person typed the roll-up). Never defaulted.
+    `names`: {login: "Full Name"}; a login without a name is written as is.
+
+    By is the approver; Detail starts `recorded from PR #<n> approved by
+    <name>`. With no approving review, nothing is recorded: the review is
+    still owed, and the result says which command holds it.
+    """
+    names = names or {}
+    approvals = sorted(
+        (r for r in pr.get("reviews") or [] if str(r.get("state", "")).upper() == "APPROVED"),
+        key=lambda r: str(r.get("submittedAt", "")))
+    number, url = pr.get("number"), pr.get("url")
+    if not approvals:
+        return {"recorded": False, "ticket": ticket, "artifact": artifact,
+                "reason": f"PR #{number} merged with no approving review",
+                "next": f"/wire:{artifact}-review"}
+    approvers = []
+    for r in approvals:
+        login = (r.get("author") or {}).get("login") or "unknown"
+        name = names.get(login, login)
+        if name not in approvers:
+            approvers.append(name)
+    last = approvals[-1]
+    by = names.get((last.get("author") or {}).get("login"), (last.get("author") or {}).get("login") or "unknown")
+    approved_at = _iso_to_log(last["submittedAt"]) if last.get("submittedAt") else None
+    who = " and ".join(approvers)
+    detail = f"recorded from PR #{number} approved by {who} (ticket {ticket}"
+    detail += f", approved {approved_at})" if approved_at else ")"
+    detail = detail.replace("|", "—")
+    row = "| " + " | ".join([now, f"/wire:{artifact}-review", "approved", detail, by,
+                             session or "unknown", "n/a", "n/a", "n/a"]) + " |"
+    return {
+        "recorded": True,
+        "row": row,
+        "status": {"review": "approved", "reviewed_by": ", ".join(approvers),
+                   "reviewed_date": (approved_at or now)[:10], "review_pr": url},
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1061,7 +1179,8 @@ def _dict_rows(text, first="timestamp"):
 # CLI
 # ---------------------------------------------------------------------------
 def _now():
-    return _dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+    """The roll-up time: UTC with the `Z` suffix (execution_log.md, 4.4.3)."""
+    return log_time.now()
 
 
 def main(argv=None):
@@ -1077,7 +1196,18 @@ def main(argv=None):
     s = sub.add_parser("scope"); s.add_argument("release"); s.add_argument("request")
     s = sub.add_parser("progress"); s.add_argument("release"); s.add_argument("ticket")
     s.add_argument("--base", action="append", help="base branch for an open ticket branch (repeatable)")
+    s = sub.add_parser("pr-review"); s.add_argument("ticket"); s.add_argument("artifact")
+    s.add_argument("pr_json", help="output of gh pr view <n> --json number,url,reviews")
+    s.add_argument("--session", required=True, help="what ran the roll-up, e.g. 'orchestrator [a1b2c3]'")
+    s.add_argument("--names", help='JSON file {"login": "Full Name"}')
+    s.add_argument("--now")
     a = p.parse_args(argv)
+
+    if a.cmd == "pr-review":
+        names = json.loads(Path(a.names).read_text()) if a.names else {}
+        print(json.dumps(pr_review(a.artifact, a.ticket, json.loads(Path(a.pr_json).read_text()),
+                                   a.session, a.now or _now(), names), indent=2, ensure_ascii=False))
+        return 0
 
     if a.cmd == "propose":
         print(json.dumps(propose(json.loads(Path(a.classified).read_text())), indent=2))

@@ -207,8 +207,11 @@ computes it; do not work it out by hand. In short:
    upstream slices, then the `whole_release` slice. A step other slices have
    and this one does not is not required for this slice. A step no slice has
    resolves to the release-level state in `artifacts:` as above.
-2. A cell meets a dependency only when complete. The build for one table waits
-   for that table's design, not every table's.
+2. A cell meets a dependency only when complete and the action the
+   dependency names has reached its outcome, in a covering ticket's
+   `results:` or in the release status (a merged generate and validate do not
+   meet `review` `approved`). The build for one table waits for that table's
+   design, not every table's.
 3. A build step also waits for the same step in each upstream slice.
 4. Advisory entries and rulings work as in Step 3, once per release. A ruling
    covers every slice and never meets a blocking entry.

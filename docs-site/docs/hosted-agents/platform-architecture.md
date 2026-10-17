@@ -30,7 +30,7 @@ Hosted agents run on Google Cloud, in a project Rittman Analytics owns. Each age
 
 ## Why it is built this way
 
-**The agent is the same Wire a consultant runs.** Each agent runs Claude Code with the Wire plugin, the same build a consultant installs. It uses Wire's own commands for releases, tickets and pull requests, so the record it leaves in the repository is the same as a person's, and any improvement to Wire reaches the agents with the next image. There is no separate agent version of Wire to keep in step.
+**The agent is the same Wire a consultant runs.** Each agent runs Claude Code with the Wire plugin, the same published release a consultant installs. It uses Wire's own commands for releases, tickets and pull requests, so the record it leaves in the repository is the same as a person's. The image names one plugin release; a newer Wire reaches the agents when that pin is raised and the image rebuilt, and an earlier one can be restored the same way. There is no separate agent version of Wire to keep in step. The agents' own code is in a private Rittman Analytics repository (`rittmananalytics/wire-hosted-agents`), released on its own schedule.
 
 **One virtual machine per agent.** Agent work is long-running and stateful. A ticket can take hours, much of it waiting for a ruling, and the agent needs a disk that keeps its repository clones, its Claude sign-in and its tool sign-ins between tickets and restarts. A Compute Engine machine gives each agent that disk and runs without the time limits of request-based services. One machine per agent also keeps agents apart: a fault, a full disk or a stuck process on one agent does not touch the others. A container cluster would add a cluster to run and pay for before any agent did any work, for no gain at this size. Each machine works up to 3 tickets at once, so a ticket waiting for a ruling does not hold up the rest.
 
@@ -61,7 +61,7 @@ Hosted agents run on Google Cloud, in a project Rittman Analytics owns. Each age
 
 ## Release view
 
-Each project on the console's **Projects** page has a **Release** link. It opens a read-only view of the project's releases, built by the same code as Wire Studio, so it shows the same answer a consultant sees running Studio on a clone:
+Each project on the console's **Projects** page has a **View release** button beside its key. It opens a read-only view of the project's releases, built by the same code as Wire Studio, so it shows the same answer a consultant sees running Studio on a clone:
 
 - the artifact graph and what can run next;
 - for a release built from tickets, the tickets view: each slice and step, what each ticket waits on, its progress, the files its branch changed and its activity;

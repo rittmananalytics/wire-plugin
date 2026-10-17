@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.4.3: Review gates enforced on ticket-built releases, one time zone in the log, and data model design checks
+
+**Released**: October 2026
+
+**Review gates on releases built from tickets.** A step that depends on another step's review now waits until that review is approved. Before, a merged ticket counted as done even when its review had not run, so a data model could be built on requirements nobody had reviewed. Every dependency now checks the action and outcome it names (for example `requirements.review` approved), from the ticket's results or the release status.
+
+**One time zone in the execution log.** New rows are written in UTC with a `Z` suffix (`2026-10-17 14:05Z`). Older rows without a zone stay valid and are read as zone unknown, never converted by guesswork. The order check allows for an unknown zone, and roll-ups never write a time earlier than the last UTC row.
+
+**Review results recorded from a pull request say so.** When a merged, approved pull request stands as an artifact's review, the log row names the approver and the pull request (`recorded from PR #12 approved by ...`), and `status.md` records `reviewed_by`, the date and the pull request link. With no approving review, the review is reported as still owed.
+
+**Data model design checks.** A new guide, [Conceptual model design](../guides/conceptual-model-design), sets out how to decide which warehouse tables to build. `data_model-validate` now checks that every new dimension and fact maps to exactly one entity in the conceptual model, and that every new extended aggregate (`_xa`) records why it exists. Before drafting, `conceptual_model-generate` asks the business questions the model must answer, and `data_model-generate` confirms the grain of each fact rather than assuming it from source tables. The dbt development skill gains a checklist to run before adding a warehouse model.
+
+**Two new guides.** [Session discipline](../guides/session-discipline) (one task per session, what Wire keeps between sessions, when to hand over) and [Advisory discovery](../guides/advisory-discovery) (running advisory engagements on the discovery release type).
+
+**Registry path check.** A new test fails when a data model registry path written in the specs or docs matches no file, so a registry restructure cannot silently empty a comparison again.
+
 ## v4.4.2: One unit test rule, lane models from the routing file, and hosted agents memory, ticket templates and release view
 
 **Released**: October 2026
