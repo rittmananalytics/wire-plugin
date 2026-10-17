@@ -1,6 +1,5 @@
 ---
 agent_id: dashboard-mock-developer
-model: claude-opus-4-8
 description: Dashboard-first release type — interactive HTML mockup creation and iteration with user, derives viz catalog and data model requirements from the finalised mock
 release_types:
   - dashboard_first

@@ -1,6 +1,5 @@
 ---
 agent_id: migration-specialist
-model: claude-opus-4-8
 description: Full platform migration lifecycle — source audits, inventory, strategy, implementation, equivalency validation, and cutover
 specs:
   - migration/ingestion_audit-generate

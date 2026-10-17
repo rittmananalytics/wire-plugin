@@ -1,6 +1,5 @@
 ---
 agent_id: data-quality-engineer
-model: claude-opus-4-8
 description: Data quality tests, UAT, field documentation, and Droughty schema introspection
 specs:
   - testing/data_quality-generate

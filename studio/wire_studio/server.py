@@ -126,25 +126,41 @@ def make_handler(framework, repo, clock=datetime.now, launch_mode="auto", launch
                 return self._send(403, {"error": str(e)})
 
         def _static(self, path):
-            name = "index.html" if path in ("/", "") else path.lstrip("/")
-            target = (STATIC / name).resolve()
-            try:
-                target.relative_to(STATIC)
-            except ValueError:
-                return self._send(403, {"error": "forbidden"})
-            if not target.is_file():
-                return self._send(404, {"error": "not found"})
-            ctype = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
-            if ctype.startswith("text/") or ctype == "application/javascript":
-                ctype += "; charset=utf-8"
-            data = target.read_bytes()
-            if target.name == "index.html":
-                # The token is only readable by a page served from this origin:
-                # no CORS headers are sent, and the Host check blocks rebinding.
-                data = data.replace(b"__STUDIO_TOKEN__", token.encode("ascii"))
-            return self._send(200, data, ctype)
+            # The token is only readable by a page served from this origin:
+            # no CORS headers are sent, and the Host check blocks rebinding.
+            code, data, ctype = static_file(path, {"token": token, "mode": "local", "base": "/", "back": ""})
+            return self._send(code, data, ctype)
 
     return Handler
+
+
+def static_file(path, page):
+    """(status, body, content type) for a file under static/. index.html gets
+    the page settings: the launch token (local mode only), the mode (`local`
+    or `hosted`), the base path the page's own requests go to, and an
+    optional link back to whatever serves the page."""
+    name = "index.html" if path in ("/", "") else path.lstrip("/")
+    target = (STATIC / name).resolve()
+    try:
+        target.relative_to(STATIC)
+    except ValueError:
+        return 403, {"error": "forbidden"}, "application/json; charset=utf-8"
+    if not target.is_file():
+        return 404, {"error": "not found"}, "application/json; charset=utf-8"
+    ctype = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+    if ctype.startswith("text/") or ctype == "application/javascript":
+        ctype += "; charset=utf-8"
+    data = target.read_bytes()
+    if target.name == "index.html":
+        for key, value in (("TOKEN", page.get("token", "")), ("MODE", page.get("mode", "local")),
+                           ("BASE", page.get("base", "/")), ("BACK", page.get("back", ""))):
+            data = data.replace(f"__STUDIO_{key}__".encode("ascii"), html_attr(value).encode("utf-8"))
+    return 200, data, ctype
+
+
+def html_attr(value):
+    return (str(value).replace("&", "&amp;").replace('"', "&quot;")
+            .replace("<", "&lt;").replace(">", "&gt;"))
 
 
 def serve(framework, repo, port=4800, clock=datetime.now, launch_mode="auto", launch_fn=launch, token=None):

@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.4.2: One unit test rule, lane models from the routing file, and hosted agents memory, ticket templates and release view
+
+**Released**: October 2026
+
+**One unit test rule.** Which dbt models need unit tests is now stated once, in the dbt development skill's testing reference, and the other skills point to it: recommended on staging models with non-trivial logic, required on integration models with business logic (entity resolution, matching, deduplication, merging sources, derived flags) and on every warehouse dimension and fact with business logic. The data quality gap scan covers every layer, and validate fails on a missing required unit test in any layer.
+
+**Lane models come from the routing file.** The specialist subagents (lanes) no longer carry a fixed model. `wire/model-routing.yaml` is the only place models are set; it now names the economy model (`lane_economy`) and ships in the plugin. A lane runs on its command's tier model, else the economy model when economy mode is on and the command produces nothing the client sees, else the session default. See [Model routing](../advanced/model-routing).
+
+**Ticket import and Wire Studio.** `/wire:tickets-import` reads a ticket's stated kind and Wire steps when the ticket carries them; other tickets work as before. Wire Studio gains a read-only hosted mode that loads a release from a GitHub repository and branch.
+
+**Hosted agents (Rittman Analytics only).** The delivery manager writes every ticket from a template with goal, scope, decisions needed from a person and testable acceptance criteria. Agents keep a memory per project and per agent, with every write checked. The agents console shows each project's release, as Wire Studio does. Pod and project settings can be changed only on the console. See [Hosted agents](../hosted-agents/overview).
+
 ## v4.4.1: Governance kinds for reviews and skipped steps, and hosted agents fixes
 
 **Released**: October 2026

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 title: Setting up a pod
 ---
 
@@ -23,6 +23,7 @@ On the **Projects** page, add the Jira project with:
 - **The client repository** the agents work in.
 - **The project's Slack channel**, if it has one. Project updates go there; without one they go to the agents' own channel.
 - **The project's [governance template](./governance)**: lightly or strictly governed (strict when not set). A pod working several projects follows each project's own template.
+- **Release branches**, optional: branches the release view should also read (see [Platform architecture](./platform-architecture#release-view)).
 
 ## 2. Make sure Jira tells the agents
 

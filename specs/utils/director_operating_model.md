@@ -359,7 +359,7 @@ observe and enforce:
 ```yaml
 budget:
   lanes_max: 2                 # concurrent lanes; default 4
-  model_tier: default          # default | economy (lane model override)
+  model_tier: default          # default | economy (lane_economy in wire/model-routing.yaml)
   warehouse_spend: none        # none | estimate_required | cap:<amount>
   stop_at: decisions           # decisions | phase_end | never
   set_by: "Mark Rittman"
@@ -372,7 +372,7 @@ decisions") and the orchestrator writes the block, echoing back what it wrote.
 | Field | Enforcement |
 |---|---|
 | `lanes_max` | `specs/delegate.md` refuses to dispatch beyond it. Default 4 when the block is absent. |
-| `model_tier` | `economy` passes a lower-tier model override to lane dispatch. The consolidation pass runs either way. |
+| `model_tier` | `economy` dispatches a lane on the `lane_economy` model in `wire/model-routing.yaml`, unless its command has a tier model or produces a client-facing deliverable. The order (command tier, then economy, then session default) and the client-facing test are in `specs/delegate.md` ("Lane model"). The consolidation pass runs either way. |
 | `warehouse_spend: none` | `delegate.md` refuses any lane whose command queries a warehouse. |
 | `warehouse_spend: estimate_required` | The cost governance rules below apply to every such lane. |
 | `warehouse_spend: cap:<amount>` | As `estimate_required`, plus: a lane whose estimate would take the release past the cap is not dispatched; it becomes a parked decision. |

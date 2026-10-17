@@ -218,7 +218,16 @@ Without `model_source: modality`, skip this step. Nothing needs Modality.
 
 ### Step 4: Propose kind, slices and steps
 
-For each ticket, from its title and text:
+A ticket whose description has both a `Kind:` line and a `Wire step:` line
+states its kind and Wire steps (tickets written from a ticket template; plain
+work says `Wire step: none`). Read those lines instead of proposing them: put
+the ticket's description in the proposals file as `description`, and the
+script uses the stated kind and steps and marks the entry
+`kind_source: ticket`. The slice is still proposed as below. A ticket without
+both lines, which is every ticket a person writes, takes the proposal route
+unchanged.
+
+For each other ticket, from its title and text:
 
 1. Propose the **kind** (`specs/utils/ticket_delivery.md`, "Ticket kinds").
 2. Propose the **slice** and its kind. With a Modality link, the slice is the
@@ -236,7 +245,7 @@ Write these proposals to a JSON file in the release's scratch area and run:
 python3 <wire>/scripts/ticket_delivery.py propose <proposals.json>
 ```
 
-The script applies the recipes, uses Modality links over proposals, drops
+The script reads stated kinds and steps, applies the recipes, uses Modality links over proposals, drops
 `data_model` from build tickets whose slice a design ticket covers, marks
 every proposal that needs checking, lists plain work and lists tickets in
 tracker projects that are not this release's. Use its output as the proposal;

@@ -178,7 +178,56 @@ The surrogate primary key of the user entity.
 
 - **Regression tests** live in `analyses/regression_tests/` and run with `dbt compile`. Existing projects that use `analysis/` keep it.
 - **Singular data tests** (`tests/*.sql`) and **custom generic tests** are project specific.
-- **Unit tests** mock model inputs and assert outputs without querying the warehouse. See the `dbt-unit-testing` skill (`wire/skills/dbt-unit-testing/SKILL.md`). RA convention: required for warehouse models with business logic (case statements, window functions, complex joins); recommended for staging models with non-trivial transformations.
+- **Unit tests** mock model inputs and assert outputs without querying the warehouse. Which models need one is set by the unit test rule below. For how to write them, see the `dbt-unit-testing` skill (`wire/skills/dbt-unit-testing/SKILL.md`).
+
+---
+
+## Unit test rule
+
+This is the one statement of which dbt models need a unit test. The `dbt-unit-testing` skill and `/wire:data_quality-generate` refer to it. Change it here only.
+
+| Layer | Model names | Rule |
+|---|---|---|
+| Staging | `stg_`, `base_` | **Recommended** when the model has non-trivial logic: parsing, casting with rules, CASE logic. Not required. |
+| Integration | `int_` (integration and intermediate models) | **Required** when the model has business logic, including entity resolution, matching, deduplication, merging sources, or derived business flags. |
+| Warehouse | `wh_..._dim`, `wh_..._fact`, `wh_..._xa` (and the older `wh_..._agg`) | **Required** on every dimension and fact with business logic: derived columns, joins that apply rules, aggregations with rules. Pure pass-through columns need no unit test. |
+
+A model's layer comes from its name prefix. If the name matches no prefix (an older project), the folder decides: `models/staging/`, `models/integration/` or `models/warehouse/`. If neither does, the layer is not recognised and the model is listed for the consultant to classify.
+
+### Business logic signals
+
+A model has business logic when its SQL (compiled SQL where `target/compiled/` exists, else the model file, with comments removed) shows any of these signals:
+
+| Signal | What it looks like |
+|---|---|
+| `conditional` | `CASE`, `IF(`, `IFF(` |
+| `window` | a window function: `... OVER (` |
+| `regex` | `REGEXP_...(` functions |
+| `parsing` | parsing or casting with rules: `PARSE_...(`, `JSON_...(`, `SPLIT(`, `SAFE_CAST(`, `TRY_CAST(`, `TRY_TO_...(`, `TO_DATE(` or `TO_TIMESTAMP(` with a format |
+| `date_logic` | date arithmetic and boundaries: `DATE_DIFF`, `DATETIME_DIFF`, `TIMESTAMP_DIFF`, `DATEDIFF`, `DATE_ADD`, `DATE_SUB`, `DATEADD`, `DATE_TRUNC`, `LAST_DAY` |
+| `deduplication` | `SELECT DISTINCT`, `QUALIFY` |
+| `merge_sources` | `UNION`, or the `merge_sources` macro |
+| `conditional_aggregation` | an aggregate over a condition: `SUM(CASE ...)`, `COUNT(IF(...))`, `COUNTIF`, `SUMIF`, `COUNT_IF`, `FILTER (WHERE` |
+| `rule_join` | a join whose `ON` condition has more than key equality: `<`, `>`, `!=`, `<>`, `BETWEEN`, `LIKE`, `OR`, or a function call |
+| `derived_column` | a selected column computed with arithmetic (`+`, `-`, `*`, `/`) |
+| `derived_flag` | a boolean-named column (`is_`, `has_`, `was_` at the start or after the entity prefix) set from an expression rather than a plain column |
+
+Not signals on their own: renames, plain `CAST`, `TRIM`, `LOWER`, `UPPER`, joins on key equality, `SELECT *`.
+
+Not decided by this rule: a plain aggregation (`GROUP BY` with `SUM` or `COUNT` and no condition), `COALESCE` or `IFNULL`, and a call to a project macro other than `ref`, `source`, `config`, `var` or `merge_sources` (its logic is not visible in the model file). On an integration or warehouse model with none of the signals above, these mark the model **check by hand**: the consultant decides and records the decision.
+
+### Outcome per model
+
+| Layer | Signals found | Outcome | Gap when no `unit_tests:` block |
+|---|---|---|---|
+| Staging | yes | Recommended | Advisory |
+| Staging | no | None | None |
+| Integration or warehouse | yes | Required | Required (must be resolved or tracked) |
+| Integration or warehouse | no, but a check-by-hand marker | Check by hand | Check by hand |
+| Integration or warehouse | no | None (pass-through) | None |
+| Not recognised | any | Classify by hand | Classify by hand |
+
+The test `wire/tests/misc_release_types/validate_unit_test_rule.py` holds this classification as code and checks it against fixture models.
 
 ---
 

@@ -522,12 +522,7 @@ dbt build --select state:modified+
 
 ### Unit Test Requirements by Layer
 
-| Model Layer | Unit Test Required? | Guidance |
-|---|---|---|
-| **Staging** (`stg_`) | Recommended if non-trivial | Only if the staging model contains regex, date logic, or case statements beyond simple rename/recast |
-| **Integration** (`int_`) | Required if business logic present | Multi-source joins with conditional logic, entity resolution, deduplication |
-| **Warehouse - Dimension** (`_dim`) | Required | SCD logic, derived attributes, business classifications |
-| **Warehouse - Fact** (`_fact`) | Required | Metric calculations, status derivations, temporal logic |
+Which models need a unit test is set in one place: the "Unit test rule" section of `wire/skills/dbt-development/testing-reference.md`. It covers staging, integration and warehouse models, and lists the business logic signals `/wire:data_quality-generate` scans for. Do not restate the rule here.
 
 ### File Naming Convention
 

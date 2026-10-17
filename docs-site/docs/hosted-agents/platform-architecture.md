@@ -40,9 +40,10 @@ Hosted agents run on Google Cloud, in a project Rittman Analytics owns. Each age
 |---|---|---|
 | Receive Jira and Slack events | Cloud Run | Events arrive at any time and need a public address that answers in seconds. Cloud Run scales to the traffic and holds no state. |
 | Hand work to the right agent | Pub/Sub, a topic per agent | A request waits safely if the agent is busy or restarting, and is delivered again if a run fails. Nothing is lost between Jira and the agent. |
-| Share what agents need to know | Firestore | Projects, pods, governance choices, status, schedules and Slack threads are small records read by every agent and the console. Firestore needs no schema changes or server. |
+| Share what agents need to know | Firestore | Projects, pods, governance choices, status, schedules and Slack threads are small records read by every agent and the console. Firestore needs no schema changes or server. Settings people make on the console are kept apart from what agents write (see below). |
 | Keep credentials | Secret Manager | Each agent's Jira, GitHub and Slack tokens are stored once and read at start, never written into the image or the repository. |
 | Run the console | Cloud Run | The console is a web app used by a few administrators. It runs only when used. |
+| Show a release's progress | Cloud Run, private | Wire Studio's release view, read from the client repository. Only the console can call it, so the record is seen only by people signed in to the console. |
 | See what agents did | Cloud Logging | Every run is logged in one place, and the console shows it live. |
 | Ship the agent | Cloud Build and Artifact Registry | One image for every agent, built once and deployed by digest, so every agent runs exactly the same code. |
 
@@ -50,8 +51,30 @@ Hosted agents run on Google Cloud, in a project Rittman Analytics owns. Each age
 
 **Each agent has its own identity.** Every agent has its own Jira account, Slack user, GitHub access, service account, credentials and queue. Its actions show under its own name, its access can be granted or removed alone, and it can read only its own secrets and its own queue. The console can give a new agent only the roles on a fixed list, so it cannot give any agent more access than that.
 
+**Agents cannot change their own permissions.** What an agent may do depends on settings people make on the console: which pods it is in and with what role, each project's repository, Slack channel and governance template, and each agent's profile. These settings are kept in a store agents can read but never write. Agents write their own working state (status, schedules, Slack threads) to a separate store, and the console never takes that state as grounds for access. When an agent asks the console to record a standing decision, save to memory or record a project's repository, the console checks the request against the settings store and against Jira, which it reads with its own account: for example, whether the agent is the project's engagement lead, or whether the ticket is assigned to it. An agent misled by text in a ticket or a file cannot add itself to a pod or give itself a role. A project's repository can be recorded by an agent only once, for a project that has none, and only when a person named it on the ticket; after that, only a person changes it on the console.
+
 **Closed to the internet.** The agent machines have no public address. They reach Jira, Slack, GitHub and Anthropic outward through Cloud NAT, and nothing can connect in to them. An administrator reaches a machine only through Identity-Aware Proxy, for example to sign an agent in to Claude. The only public entry points are the event receiver, which checks that each event really came from Jira or Slack, and the console, which accepts Rittman Analytics Google accounts only.
 
 **People keep the decisions.** The architecture carries questions to people rather than letting an agent settle them. A question goes to the Jira ticket and the agent waits for an answer; the project's [governance template](./governance) says which decisions the engagement lead may take and which go to a person.
 
 **Defined as code.** The machines, queues, service accounts, secrets and network are defined in Terraform, so a new agent is created the same way every time, by Terraform or by the console from the same machine template.
+
+## Release view
+
+Each project on the console's **Projects** page has a **Release** link. It opens a read-only view of the project's releases, built by the same code as Wire Studio, so it shows the same answer a consultant sees running Studio on a clone:
+
+- the artifact graph and what can run next;
+- for a release built from tickets, the tickets view: each slice and step, what each ticket waits on, its progress, the files its branch changed and its activity;
+- what is waiting on a decision;
+- rulings, iterations and the execution log;
+- any document in the release.
+
+It leaves out what does not apply to hosted work: there are no directives to copy and no "Run in Claude Code" button (work starts from Jira tickets), and no lanes (the console's agent status shows what each agent is doing).
+
+| Question | How it works |
+|---|---|
+| Where does it read from? | The project's GitHub repository, read only, with a credential that can read and not write. Releases are found on the default branch, on `feature/` and `release/` branches, and on any release branches listed for the project. A release on several branches is shown from the branch where it was updated last. The most recently updated release opens first; the others are listed. |
+| How fresh is it? | Read on each page load. Results are kept for up to a minute per commit, so a new commit shows within about a minute. |
+| Who can see it? | People signed in to the console. The release view runs as its own private service; the console calls it for a signed-in person and passes the page back. The browser never reaches the service, and nothing else may call it. |
+| Can it change anything? | No. It reads the repository and writes nothing, and it has no action that starts work. |
+

@@ -11,6 +11,15 @@ Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them 
 
 Every ticket that is in scope when a sprint starts is in that sprint, whatever state it is in. Tickets that arrive after the sprint has started wait in the backlog until they are approved.
 
+## Planning the tickets
+
+When the engagement lead asks for a release to be delivered, the delivery manager:
+
+1. **Writes the release context file.** A short file in the release folder holds the release branch, the statement of work and the sections in scope, where the standing decisions and rulings are, the development-only and no-new-grants rules, and the pull request route. It has a version number, which goes up whenever the file changes. Each ticket cites the version it was written against, so QA can see what applied.
+2. **Checks for tickets already written for the release.** If any exist, open or done, it asks the engagement lead before creating another set. One release has one set of tickets.
+3. **Plans one ticket per Wire step**, from the [ticket templates](./jira-slack-and-files#how-the-delivery-manager-writes-tickets). Expected values come from the statement of work, the business rules register and earlier slices. Every open item that the business rules or design documents give to a person is listed on the ticket it holds up, and again on the release pull request ticket.
+4. **Creates the tickets**, each checked against its template, and links each to the tickets it waits for.
+
 ## Starting and keeping the sprint
 
 - When the delivery manager plans work, it puts the new tickets in the project's running sprint. If none is running, it starts the project's sprint that has been created but not started, or creates and starts a new one. The sprint length comes from the pod's [governance template](./governance).

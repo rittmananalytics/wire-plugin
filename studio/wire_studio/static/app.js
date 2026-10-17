@@ -1,8 +1,17 @@
 // Wire Studio 4.x front end. Plain JavaScript, no build step.
 // Every value from the record is set with textContent (never innerHTML), except
 // rendered Markdown, which is sanitised with DOMPurify first. "Run in Claude Code"
-// posts to /api/launch with the per-run token from the page's meta tag.
+// posts to api/launch with the per-run token from the page's meta tag.
+//
+// Hosted mode (meta studio-mode = hosted): the same views, read only, behind
+// another site's sign-in. No directives, no Run in Claude Code, no Copy, no
+// lanes (work starts from the tracker and the agents run it). The page's own
+// requests go to the base path in meta studio-base.
 "use strict";
+
+const meta = (name) => (document.querySelector(`meta[name="${name}"]`) || {}).content || "";
+const HOSTED = meta("studio-mode") === "hosted";
+const BASE = /^\/([A-Za-z0-9_-]+\/)*$/.test(meta("studio-base")) ? meta("studio-base") : "/";
 
 const main = document.getElementById("main");
 let summary = null;
@@ -26,7 +35,7 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 async function api(path) {
-  const r = await fetch(path, { headers: { Accept: "application/json" } });
+  const r = await fetch(BASE + path.replace(/^\//, ""), { headers: { Accept: "application/json" } });
   const body = await r.json();
   if (!r.ok) throw new Error(body.error || r.statusText);
   return body;
@@ -62,17 +71,19 @@ function setNav(view) {
     document.getElementById("nav-waiting").textContent = release.inbox.length;
     const live = release.lanes.filter((l) => l.state !== "complete").length;
     document.getElementById("nav-lanes").textContent = live ? `${live} live` : "";
+    document.getElementById("nav-lanes-link").hidden = HOSTED;
     const tk = release.tickets && !release.tickets.error ? release.tickets : null;
     document.getElementById("nav-tickets-link").hidden = !release.tickets;
     document.getElementById("nav-tickets").textContent = tk ? `${tk.counts.closed} of ${tk.counts.total}` : "";
   }
 }
 
-const TOKEN = (document.querySelector('meta[name="studio-token"]') || {}).content || "";
+const TOKEN = meta("studio-token");
 async function runInClaude(text, out) {
+  if (HOSTED) return;
   out.replaceChildren(h("span", { class: "muted" }, "Opening Claude Code…"));
   try {
-    const r = await fetch("/api/launch", { method: "POST", headers: { "Content-Type": "application/json", "X-Studio-Token": TOKEN }, body: JSON.stringify({ directive: text }) });
+    const r = await fetch(BASE + "api/launch", { method: "POST", headers: { "Content-Type": "application/json", "X-Studio-Token": TOKEN }, body: JSON.stringify({ directive: text }) });
     const body = await r.json();
     if (!r.ok) throw new Error(body.error || r.statusText);
     out.replaceChildren(h("p", { class: body.launched ? "muted" : "error", style: "margin:8px 0 0" }, body.message),
@@ -81,7 +92,9 @@ async function runInClaude(text, out) {
 }
 // An editable directive with Copy and Run in Claude Code. Placeholders such as
 // <your decision> must be replaced before the server will launch it.
+// Hosted mode shows no directives: work starts from the tracker.
 function directiveBox(text) {
+  if (HOSTED) return null;
   const ta = h("textarea", { class: "directive", rows: String(Math.min(6, Math.max(2, Math.ceil(text.length / 90)))), "aria-label": "Directive", style: "width:100%;resize:vertical" });
   ta.value = text;
   const out = h("div", { "aria-live": "polite" });
@@ -108,6 +121,10 @@ async function route() {
       const view = parts[2] || "overview";
       render(view, parts.slice(3).join("/"));
       if (view !== "file") refreshTimer = setInterval(refresh, 15000);
+    } else if (HOSTED && parts[0] === "" && summary.releases.length && !sessionGet("studio-home")) {
+      // Hosted: open the most recently updated release first; Releases lists the rest.
+      sessionSet("studio-home", "1");
+      location.replace(`#/r/${encodeURIComponent(summary.releases[0].name)}/overview`);
     } else {
       release = null;
       summary = await api("/api/summary");
@@ -125,9 +142,20 @@ async function refresh() {
     render(parts[2] || "overview");
   } catch { /* keep the last good view */ }
 }
+function sessionGet(k) { try { return sessionStorage.getItem(k); } catch { return null; } }
+function sessionSet(k, v) { try { sessionStorage.setItem(k, v); } catch { /* storage blocked */ } }
+function hostedChrome() {
+  if (!HOSTED) return;
+  const back = meta("studio-back");
+  const a = document.getElementById("nav-back");
+  if (back && /^\/[A-Za-z0-9_/-]*$/.test(back)) { a.href = back; a.hidden = false; }
+  document.getElementById("foot").textContent = "Read only. Reads .wire/ from the project's repository on GitHub and the release-type graph. "
+    + "Work on the release starts from its tickets; decisions are made there.";
+}
+hostedChrome();
 function render(view, arg) {
   setNav(view);
-  const views = { home: viewHome, overview: viewOverview, tickets: viewTickets, decisions: viewDecisions, lanes: viewLanes, record: viewRecord, file: viewFile };
+  const views = { home: viewHome, overview: viewOverview, tickets: viewTickets, decisions: viewDecisions, lanes: HOSTED ? viewOverview : viewLanes, record: viewRecord, file: viewFile };
   main.replaceChildren((views[view] || viewOverview)(arg));
 }
 
@@ -136,11 +164,13 @@ function viewHome() {
   const e = summary.engagement;
   const rows = summary.releases.map((r) => h("tr", {},
     h("td", {}, h("a", { href: `#/r/${encodeURIComponent(r.name)}/overview` }, r.name), r.legacy ? h("span", { class: "tag warn", style: "margin-left:8px" }, "pre-3.4 layout") : null),
+    HOSTED ? h("td", { class: "mono" }, r.branch || "-", r.other_branches && r.other_branches.length ? h("span", { class: "muted" }, ` (also on ${r.other_branches.join(", ")})`) : null) : null,
+    HOSTED ? h("td", {}, r.last_updated || "-") : null,
     h("td", { class: "mono" }, r.project_type || "-"),
     h("td", {}, r.error ? h("span", { class: "tag bad" }, r.error)
       : r.tickets ? `${r.tickets.closed} of ${r.tickets.total} tickets closed` : `${r.complete} of ${r.total}`),
     h("td", {}, r.waiting ? h("strong", {}, r.waiting) : "0"),
-    h("td", {}, r.lanes_live || "0")));
+    HOSTED ? null : h("td", {}, r.lanes_live || "0")));
   return h("div", {},
     header([summary.repo, h("span", { class: "tag" }, `framework: ${summary.framework.layout}`),
             e.orchestration_mode === "manual" ? h("span", { class: "tag warn" }, "manual mode") : null],
@@ -149,7 +179,8 @@ function viewHome() {
       h("section", { class: "card", "aria-labelledby": "rel-h" },
         h("h2", { id: "rel-h" }, "Releases"),
         summary.releases.length ? h("div", { class: "table-wrap" }, h("table", {},
-          h("thead", {}, h("tr", {}, h("th", {}, "Release"), h("th", {}, "Type"), h("th", {}, "Progress"), h("th", {}, "Waiting on you"), h("th", {}, "Lanes live"))),
+          h("thead", {}, h("tr", {}, h("th", {}, "Release"), HOSTED ? [h("th", {}, "Branch"), h("th", {}, "Last updated")] : null,
+            h("th", {}, "Type"), h("th", {}, "Progress"), h("th", {}, HOSTED ? "Waiting on a decision" : "Waiting on you"), HOSTED ? null : h("th", {}, "Lanes live"))),
           h("tbody", {}, rows))) : h("p", { class: "empty" }, "No releases found under .wire/releases/."))));
 }
 
@@ -160,7 +191,8 @@ function releaseHeader(title, right) {
                  h("span", { class: "tag" }, r.project_type || "unknown type"),
                  r.resolved && r.resolved.profile ? h("span", { class: "tag" }, `profile: ${r.resolved.profile}`) : null,
                  r.tickets ? h("span", { class: "tag" }, "built from tickets") : null,
-                 r.claim.held ? h("span", { class: r.claim.stale ? "tag warn" : "tag" }, `claim: ${r.claim.user || "?"}${r.claim.stale ? " (stalled)" : ""}`) : h("span", { class: "tag warn" }, "no release claim")],
+                 r.branch ? h("span", { class: "tag" }, `branch: ${r.branch}`) : null,
+                 HOSTED ? null : r.claim.held ? h("span", { class: r.claim.stale ? "tag warn" : "tag" }, `claim: ${r.claim.user || "?"}${r.claim.stale ? " (stalled)" : ""}`) : h("span", { class: "tag warn" }, "no release claim")],
                 title, right);
 }
 
@@ -205,8 +237,8 @@ function viewOverview() {
         tk ? kpi("Tickets closed", tk.counts.closed, `of ${tk.counts.total}`) : kpi("Artifacts complete", complete, `of ${applicable.length}`),
         tk ? kpi("Tickets that can start", tk.counts.can_start, `${tk.counts.waiting} waiting`)
            : kpi("Runnable now", r.resolved.order.length, `parallel ${r.resolved.parallel.length} of ${r.resolved.lanes_max}`),
-        kpi("Waiting on you", r.inbox.length),
-        kpi("Lanes live", r.lanes.filter((l) => l.state !== "complete").length, r.lanes.some((l) => l.state === "stalled") ? "1+ stalled" : ""),
+        kpi(HOSTED ? "Waiting on a decision" : "Waiting on you", r.inbox.length),
+        HOSTED ? null : kpi("Lanes live", r.lanes.filter((l) => l.state !== "complete").length, r.lanes.some((l) => l.state === "stalled") ? "1+ stalled" : ""),
         r.spend ? kpi("AI spend recorded", `$${r.spend.cost.toFixed(2)}`, `${r.spend.measured_rows} of ${r.spend.rows} log rows measured`) : null),
       h("section", { class: "card", "aria-labelledby": "g-h" },
         h("div", { class: "row", style: "justify-content:space-between;margin-bottom:12px" },
@@ -225,14 +257,15 @@ function viewOverview() {
         tk ? h("section", { class: "card", "aria-labelledby": "p-h" },
           h("h2", { id: "p-h" }, "Tickets that can start"),
           r.ticket_next ? [
-            h("p", { class: "muted", style: "margin:0 0 10px" }, "This release is built from tickets, so work starts from a ticket. Each line opens it with /wire:work."),
-            ...r.ticket_next.commands.map((c) => h("div", { style: "margin-bottom:10px" }, directiveBox(c))),
+            HOSTED ? h("ul", {}, r.ticket_next.tickets.map((k) => h("li", {}, h("a", { class: "mono", href: `#/r/${encodeURIComponent(r.name)}/tickets/${encodeURIComponent(k)}` }, k))))
+              : h("p", { class: "muted", style: "margin:0 0 10px" }, "This release is built from tickets, so work starts from a ticket. Each line opens it with /wire:work."),
+            ...r.ticket_next.commands.map((c) => HOSTED ? null : h("div", { style: "margin-bottom:10px" }, directiveBox(c))),
             h("p", {}, h("a", { href: `#/r/${encodeURIComponent(r.name)}/tickets` }, "See every ticket and slice"))
           ] : h("p", { class: "empty" }, "No ticket can start now. See the Tickets page for what each one waits on."))
         : h("section", { class: "card", "aria-labelledby": "p-h" },
           h("h2", { id: "p-h" }, "Runnable set"),
           plan ? [
-            h("p", { class: "muted", style: "margin:0 0 10px" }, `In order, within lanes_max ${r.resolved.lanes_max}. Paste this to get the run plan shown and approved in the session.`),
+            h("p", { class: "muted", style: "margin:0 0 10px" }, `In order, within lanes_max ${r.resolved.lanes_max}.${HOSTED ? "" : " Paste this to get the run plan shown and approved in the session."}`),
             h("ol", { style: "margin:0 0 12px;padding-left:20px;display:flex;flex-direction:column;gap:6px" }, plan.commands.map((c) => h("li", { class: "mono", style: "font-size:13px" }, c))),
             directiveBox(plan.directive)
           ] : h("p", { class: "empty" }, "Nothing can start now. See the decision inbox.")))));
@@ -259,10 +292,11 @@ function viewDecisions() {
         h("h2", { id: "d-h", style: "margin:6px 0 12px;font-size:20px" }, cur.question || cur.ref),
         cur.artifact ? h("p", { class: "muted" }, "Artifact: ", cur.artifact) : null,
         cur.awaiting ? h("p", { class: "muted" }, "Awaiting: ", cur.awaiting) : null,
-        h("p", { class: "muted", style: "margin:16px 0 6px" }, "Directive for the orchestrating session"),
+        HOSTED ? null : h("p", { class: "muted", style: "margin:16px 0 6px" }, "Directive for the orchestrating session"),
         directiveBox(cur.directive),
         cur.artifact && graphFile(cur.artifact) ? h("p", { style: "margin-top:12px" }, h("a", { href: `#/r/${encodeURIComponent(r.name)}/file/${encodeURIComponent(graphFile(cur.artifact))}` }, "Open the artifact")) : null,
-        h("p", { class: "muted", style: "margin-top:16px" }, "Studio does not record the decision. The Claude Code session records it in the execution log and decisions.md, as the single writer.")))));
+        h("p", { class: "muted", style: "margin-top:16px" }, HOSTED ? "Read only. The decision is made on the ticket; the session working the release records it in the execution log and decisions.md."
+          : "Studio does not record the decision. The Claude Code session records it in the execution log and decisions.md, as the single writer.")))));
 }
 function graphFile(id) {
   const n = release.resolved && release.resolved.graph.find((x) => x.id === id);
@@ -369,14 +403,14 @@ function viewTickets(arg) {
           ticketRows(cur),
           h("p", { style: "margin-top:16px" }, h("a", { href: `#/r/${encodeURIComponent(r.name)}/file/${encodeURIComponent(cur.record)}` }, "Open the ticket record"),
             cur.url ? [" · ", h("a", { href: cur.url, target: "_blank", rel: "noopener noreferrer" }, "Open in the tracker")] : null),
-          cur.next !== "plain" && cur.next !== "cancelled" ? [h("p", { class: "muted", style: "margin:16px 0 6px" }, "Directive"), directiveBox(ticketDirective(r, cur))] : null)
+          !HOSTED && cur.next !== "plain" && cur.next !== "cancelled" ? [h("p", { class: "muted", style: "margin:16px 0 6px" }, "Directive"), directiveBox(ticketDirective(r, cur))] : null)
           : h("p", { class: "empty" }, "No tickets in the map.")),
       tk.link_check.length ? h("section", { class: "card", "aria-labelledby": "lc-h" },
         h("h2", { id: "lc-h" }, "Tracker link check", h("span", { class: "note" }, "Wire's order against the tracker's 'blocked by' links")),
         h("div", { class: "table-wrap" }, h("table", {},
           h("thead", {}, h("tr", {}, h("th", {}, "Ticket"), h("th", {}, "Missing in the tracker"), h("th", {}, "In the tracker, not in Wire's order"))),
           h("tbody", {}, tk.link_check.map((x) => h("tr", {}, h("td", { class: "mono" }, x.ticket), h("td", { class: "mono" }, x.missing_in_tracker.join(", ") || "-"), h("td", { class: "mono" }, x.not_in_wire_order.join(", ") || "-"))))))) : null,
-      h("section", { class: "card", "aria-labelledby": "rf-h" },
+      HOSTED ? null : h("section", { class: "card", "aria-labelledby": "rf-h" },
         h("h2", { id: "rf-h" }, "Tracker changed?"),
         h("p", { class: "muted", style: "margin:0 0 10px" }, "Wire lists new, changed and removed tickets and asks before changing the map."),
         directiveBox(`/wire:tickets-import ${r.name} --refresh`))));
@@ -408,8 +442,8 @@ function ticketProgress(r, t) {
       h("div", { class: "ph", role: "row" }, ["Wire step", "Generate", "Validate", "Review"].map((c) => h("span", { role: "columnheader" }, c))),
       p.progress.map((s) => h("div", { class: "pr", role: "row" }, h("span", { class: "mono", role: "rowheader" }, s.step), acts.map((a) => h("div", { role: "cell" }, cell(s.actions[a]))))))),
     missing.length ? h("div", { class: "found-note" },
-      h("p", { style: "margin:0 0 8px" }, `${missing.length} result${missing.length === 1 ? "" : "s"} found in the ticket's logs or changed files, not recorded in the ticket record. ` +
-        (t.merged ? "Status sync proposes them for your confirmation:" : "The ticket's session records them:")),
+      h("p", { style: "margin:0 0 8px" }, `${missing.length} result${missing.length === 1 ? "" : "s"} found in the ticket's logs or changed files, not recorded in the ticket record.` +
+        (HOSTED ? "" : t.merged ? " Status sync proposes them for your confirmation:" : " The ticket's session records them:")),
       directiveBox(t.merged ? `/wire:status-sync ${r.name}` : `/wire:work ${r.name} ${t.key}`)) : null);
 }
 function ticketFiles(r, t) {

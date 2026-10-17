@@ -23,6 +23,41 @@ Jira is where work is asked for, decided and recorded. Slack is where the team i
 
 ![A Jira board with the agents' tickets in To Do, In Progress, QA and Done columns](/img/hosted-agents/jira-board.png)
 
+## How the delivery manager writes tickets
+
+The delivery manager writes every ticket from a **ticket template**, chosen by the kind of work. A script fills the template and checks the result before the ticket is created. A ticket that fails the check is not created; the delivery manager fixes it and tries again. The check makes no model call, so the same ticket always gets the same result.
+
+| Template | Used for |
+|---|---|
+| Wire step | One Wire step's generate and validate for the whole release (requirements, business rules, design or build) |
+| Slice | One slice of a step, when the statement of work asks for the step in slices |
+| Data quality | Tests and acceptance evidence against the statement of work's acceptance criteria |
+| Investigation | A check or question with no artifact, such as confirming access or profiling data |
+| Release pull request | The last ticket: one pull request into the default branch, which a person reviews and merges |
+| Production | Work after the merge that changes production. It names the person who decides it. |
+| Kick-off | The kick-off ticket the engagement lead opens with the statement of work |
+
+Every ticket except the kick-off has these sections, in this order:
+
+| Section | What it is for |
+|---|---|
+| Goal | What the ticket produces, and which deliverable or acceptance criterion in the statement of work it serves |
+| Context | The statement of work and the sections that apply, the rulings and business rules, and the earlier tickets it builds on, with their files |
+| Scope | What is in and what is out, including what the statement of work leaves out |
+| Decisions needed from a person | Each open item a person must decide, with who, the kind of decision and what it holds up, or "None known". These are asked before work starts, not found halfway through |
+| Acceptance criteria | Numbered statements that are true or false. Each says how to check it, the expected value and tolerance (or "pass"), and the file that holds the evidence |
+| Tests | The named tests, and the reconciliation query with the source it is checked against |
+| How to work it | The Wire commands that do the work |
+| Constraints | A short fixed block pointing to the release's context file at a stated version |
+
+The check refuses a ticket when a section is missing or empty, an acceptance criterion has no check, expected value or evidence, a placeholder is left in the text, or the title does not follow the template. It also refuses a release pull request ticket that is not blocked by every other ticket in the release, and a production ticket that names no person.
+
+The engineer's plan, approved on the ticket, holds how the work is done. Tickets do not carry step-by-step instructions, and the definition of done is not repeated on each one.
+
+When the project's Jira create screen has a field named **Acceptance Criteria**, the criteria are written there as well as in the description. When it has none, they are in the description only. Tickets carry no story points.
+
+Each ticket also starts with three short lines (kind, Wire step and release folder), so Wire can link it to the release without guessing.
+
 ## Slack
 
 | Message | Where it goes |

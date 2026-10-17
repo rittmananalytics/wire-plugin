@@ -1,0 +1,50 @@
+# Wire model routing — workload tier → Claude Code model (wire 4.0.0, stage 1).
+#
+# A spec opts in with `workload: <tier>` in its frontmatter. At build time,
+# build-packages.sh stamps the tier's model into the generated Claude Code
+# command's frontmatter (`model: <value>`), so the command runs on that model
+# regardless of the session default. An empty value means "no stamp": the
+# command inherits the session model. Untagged specs are never stamped.
+#
+# Stage 1 maps only the extremes — mechanical work down to Haiku, planning
+# work up to the top tier — and leaves the middle tiers on the session
+# default until per-command token data (the execution log's Tokens/Cost
+# columns) shows where a split pays. Demote a command's tier only after an
+# eval comparison, never on intuition: a floor applies — nothing that
+# produces a client-facing deliverable goes below the session default.
+#
+# Gemini CLI has no per-command model field; this file affects the Claude
+# Code plugin only.
+#
+# The tier vocabulary here must match the `workload` enum in
+# wire/tests/schema/spec-frontmatter.schema.json — Tier 0 lint fails if the
+# two drift. Model values are pinned IDs (as of 2026-09); bump them here,
+# in one place, when models move on.
+
+tiers:
+  # Deterministic, low-judgment work: doc rendering, log summarisation,
+  # fixed-rule file migrations, status polling.
+  mechanical: "claude-haiku-4-5"
+
+  # Template-driven artifact generation. Session default until stage 2.
+  templated-generation: ""
+
+  # Validates and reviews needing interpretation. Session default until stage 2.
+  judgment: ""
+
+  # Engagement setup, autonomous orchestration, adoption assessment,
+  # sprint planning — the work where reasoning depth pays for itself.
+  planning: "claude-fable-5"
+
+# Lane economy model (wire#316). Used when a release sets
+# `budget.model_tier: economy` in status.md: the orchestrator dispatches a
+# lane on this model when the lane's command has no tier model and does not
+# produce a client-facing deliverable. The full order is in
+# specs/delegate.md ("Lane model"). Must be a model id; Tier 0 lint fails if
+# it is missing or empty, because economy mode would then name no model.
+#
+# This file is the only place lane models are set. Lane agent definitions
+# (wire/agents/*/AGENT.md) carry no `model:` field, so a lane with no tier
+# model and no economy model runs on the session default.
+# validate_model_routing.py fails if an agent definition carries one.
+lane_economy: "claude-haiku-4-5"

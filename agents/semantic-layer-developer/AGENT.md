@@ -1,6 +1,5 @@
 ---
 agent_id: semantic-layer-developer
-model: claude-opus-4-8
 description: LookML views, explores, dashboards, and semantic layer definitions — translating deployed dbt models into queryable business logic
 specs:
   - dashboards-generate

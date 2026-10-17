@@ -305,7 +305,7 @@ Three of its outputs change the plan directly:
 | Setting | Effect on the plan |
 |---|---|
 | `lanes_max: N` | No step dispatches more than N agents at once. Where the graph offers more, take them in the runnable set's order and queue the rest. Fan-out batches (Step 2.5) count individually: 5 `dbt-developer` batches under `lanes_max: 2` run 2 at a time. |
-| `model_tier: economy` | Pass the lower-tier model override to each lane. The consolidation pass runs regardless. |
+| `model_tier: economy` | Dispatch eligible lanes on the routing file's `lane_economy` model, by the order in Step 6 ("Lane model"). A lane whose command has a tier model, or produces a client-facing deliverable, is not eligible. The consolidation pass runs regardless. |
 | `warehouse_spend: none` | **Refuse** to dispatch any lane whose command queries a warehouse (`dbt-*` builds, `equivalency-validate`, `data_quality-validate`, `droughty-*`, any `-validate` with `auto_validate: false` that runs against a live system). Report them as budget-blocked, naming the setting. Do not silently drop them. |
 | `warehouse_spend: estimate_required` | Dispatch them, with the cost-governance rules in each lane brief. |
 | `warehouse_spend: cap:<amount>` | As above, plus: a lane whose estimate would take the release past the cap becomes a parked decision, not a dispatch. |
@@ -436,6 +436,7 @@ For each step in the plan, in sequence (launching parallel steps concurrently us
 
 1. Spawn a local subagent using the Agent tool with:
    - `subagent_type`: `[agent-id]` (matching the `agent_id` in the agent's `AGENT.md`)
+   - `model`: the lane's model from "Lane model" below, or no `model` parameter when that order resolves to the session default
    - Prompt: task instruction including release folder, specific artifact actions, and paths to input artifacts
    - The agent definition at `agents/[agent-name]/AGENT.md` is loaded as the subagent's system context
 
@@ -529,6 +530,71 @@ For each step in the plan, in sequence (launching parallel steps concurrently us
    instead that the lane updated `status.md` itself, as today.
 
 5. After each step completes, launch the next step (or the next parallel batch).
+
+#### Lane model
+
+`wire/model-routing.yaml` is the only place a lane's model is set. It ships at
+the plugin root as `model-routing.yaml`; read the tier models under `tiers:`
+and the economy model `lane_economy` from there. Agent definitions carry no
+`model:` field. Resolve one model for each lane, taking the first rule that
+applies:
+
+| Order | Rule | Model |
+|---|---|---|
+| 1 | **Command tier.** The lane's command has a `workload:` tag whose tier maps to a model (a non-empty value under `tiers:`). | That tier's model |
+| 2 | **Economy.** `budget.model_tier: economy` is set in `status.md`, and the command does not produce a client-facing deliverable. | `lane_economy` |
+| 3 | **Session default.** Neither rule applies. | No `model` parameter: the lane inherits the session model (or `CLAUDE_CODE_SUBAGENT_MODEL`, if the person has set it) |
+
+Pass the result of rule 1 or 2 as the Agent tool's `model` parameter. Do not
+rely on the agent definition or on the model stamped into the command (see the
+note below).
+
+**Floor.** Rule 2 never applies to a command that produces a client-facing
+deliverable, so economy mode cannot run one below the session default. Rule 1
+is not subject to this check at dispatch: a tier's model is chosen in the
+routing file, where the same floor applies and a demotion needs an eval
+comparison.
+
+**Client-facing deliverable.** Decided from the command spec's front matter.
+A command produces one when any of these holds:
+
+- `command: generate` with `action_type: artifact` (the artifact is the deliverable);
+- `command: review` (it is presented to, and approved by, the client's stakeholders);
+- a `produces` entry of type `document`, `deck` or `pr`.
+
+It does not when none holds and the command is a `validate` with no `produces`
+entry, or a `utility`, `lifecycle` or `meta` command. One case is not settled
+by the front matter: a `validate` whose `produces` entries are all of type
+`report`. Some of these reports are evidence the client sees (the
+`bi_equivalency` parity report gates cutover); others are internal checks.
+Until the spec says which, treat it as client-facing, so the floor holds.
+
+**One model per lane.** If the commands in one lane resolve to different
+models, split them into consecutive lanes, one per model, in the plan's order.
+A fan-out batch resolves on its command like any other lane.
+
+**Unknown economy model.** If `model_tier: economy` is set and the routing
+file has no `lane_economy` value, do not guess one. Dispatch on rules 1 and 3
+only and say so in the plan. (Tier 0 lint fails the build in that state, so it
+should not reach a release.)
+
+> **Which model a lane runs on, checked against Claude Code 2.1.302 (October
+> 2026), sub-agents and skills documentation.** A subagent's model is chosen,
+> highest first, by: the Agent tool call's `model` parameter; the agent
+> definition's `model:`; the `CLAUDE_CODE_SUBAGENT_MODEL` environment
+> variable; the main session's model. When `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`
+> is set (from 2.1.257) the environment variable wins over all of these. A
+> command's or skill's `model:` is not in that order. It is documented as an
+> override for the rest of the current turn; whether it changes the model of
+> a subagent that runs the command through the Skill tool is not documented.
+>
+> Until wire#316 every agent definition set `model: claude-opus-4-8`, so every
+> lane ran on that model whatever the session default and whatever the routing
+> file said. That was a live fault for lane work, not only a maintenance risk:
+> a model change in the routing file never reached a lane. Whether a stamped
+> command (for example a `planning` one) ran on its tier's model inside a lane
+> is unverified. This is why the orchestrator passes the model on the Agent
+> call, the top of the order, and does not depend on the stamp.
 
 ---
 

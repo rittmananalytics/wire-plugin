@@ -44,6 +44,23 @@ Recording decisions from Studio without opening a session needs a request queue 
 - **Same rules for tickets.** For a release built from tickets, Studio imports `scripts/ticket_delivery.py` from the framework it ships with, the script the Wire session uses, rather than keeping its own copy. The test runs the core ticket-delivery fixtures through Studio and compares ticket states, waits and the tracker link check with the core test's expected output. A framework older than 4.2.0 has no script, and Studio says so.
 - **Local, and no writes to the repository.** Binds to 127.0.0.1, refuses requests whose Host header is not this machine, answers GET and HEAD plus the one token-protected launch endpoint, and serves files only from inside the repository (not `.git`, not `.env`, text files under 2 MB).
 
+## Hosted mode
+
+`python3 studio/studio.py --hosted` serves the same views, read only, for releases read from GitHub repositories, for a site that puts its own sign-in in front of it (wire#335). Local mode is unchanged.
+
+| | Local mode | Hosted mode |
+|---|---|---|
+| Record read from | A clone on this machine (`--repo`) | A GitHub repository named on each request (`X-Wire-Repo: <owner>/<repo>`), set by the site serving the page, never by the browser |
+| Releases | `.wire/releases/` (and pre-3.4 folders) in the clone | `.wire/releases/` on the default branch, the branches the request names (`X-Wire-Branches`), and `feature/*` and `release/*` branches. A release on several branches is shown from the one whose `status.md` `last_updated` is latest (a tie goes to a named branch, then a discovered one, then the default). Most recent first. |
+| Actions | Directives to copy, Run in Claude Code | None. No `/api/launch`: every POST, PUT, PATCH and DELETE gets 405. The page shows no directive, Copy or Run in Claude Code, and no lanes. |
+| Binds to | 127.0.0.1, Host header checked | 0.0.0.0 on `PORT`; access is the job of the platform in front (a private service that only the signed-in site may call) |
+
+How it reads a repository: `wire_studio/hosted.py`. A blobless bare clone per repository (every branch's history and trees; file contents fetched when read) and a detached worktree per commit shown, so the same readers (`record.py`, `runnable.py`, `tickets.py`) run on a real checkout and a ticket's changed files still come from git. The read-only token reaches git only through `GIT_CONFIG_*` environment variables. Branch heads are cached for 30 seconds and loaded releases for 60 seconds, keyed by repository, branch and commit.
+
+Settings, from the environment: `GITHUB_TOKEN` (read-only Contents and Metadata), `PORT` (default 8080), `STUDIO_CACHE_DIR` (default a temporary folder), `STUDIO_ALLOWED_OWNERS` (comma-separated GitHub organisations; empty allows any the token can read). The page's requests go to the base path in `X-Wire-Base`, so a site can serve Studio under its own path; `X-Wire-Back` adds a link back to that site.
+
+The repository is reached through a client with four methods (`refs`, `list_releases`, `read`, `checkout`), so `wire/tests/studio/validate_studio_hosted.py` runs Studio's fixtures through the hosted loader with a fake client and checks they give the same result as local mode, then runs the real git client against a local repository.
+
 ## Layout
 
 ```text
@@ -55,6 +72,7 @@ studio/
     ├── record.py             reads .wire/: status, log, decisions, lanes, iterations; builds the inbox
     ├── tickets.py            releases built from tickets, through scripts/ticket_delivery.py
     ├── launcher.py           opens claude "<directive>" in a new terminal (stage 1)
+    ├── hosted.py             hosted mode: releases read from GitHub, read only, no launch
     ├── server.py             HTTP server (standard library)
     └── static/               index.html, app.js, app.css (no build step)
 ```

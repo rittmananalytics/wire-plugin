@@ -8,10 +8,19 @@ Studio reads `.wire/` in the repository and the release-type graph of the
 Wire framework it ships with, and serves a console at http://127.0.0.1:4800.
 It writes nothing to the record; 'Run in Claude Code' opens a new
 terminal with `claude "<directive>"`. Stop it with Ctrl+C.
+
+Hosted mode (`--hosted`) serves the same views, read only, for releases read
+from GitHub repositories, for a site that puts its own sign-in in front of it
+(wire_studio/hosted.py). It has no launch endpoint. Settings come from the
+environment: GITHUB_TOKEN (read-only), PORT (default 8080),
+STUDIO_CACHE_DIR (default a temporary folder), STUDIO_ALLOWED_OWNERS
+(comma-separated GitHub organisations; empty allows any the token can read).
 """
 
 import argparse
+import os
 import sys
+import tempfile
 import webbrowser
 from pathlib import Path
 
@@ -37,7 +46,11 @@ def main(argv=None):
     ap.add_argument("--launch", default="auto", choices=["auto", "terminal", "linux", "print"],
                     help="how 'Run in Claude Code' opens a session (default: Terminal on macOS; "
                          "print shows the command instead)")
+    ap.add_argument("--hosted", action="store_true",
+                    help="serve releases read from GitHub, read only, with no launch endpoint (see above)")
     args = ap.parse_args(argv)
+    if args.hosted:
+        return hosted_main(args)
 
     repo = Path(args.repo).expanduser().resolve()
     if not (repo / ".wire").is_dir():
@@ -54,6 +67,28 @@ def main(argv=None):
     print(f"Wire Studio {__version__}: {repo}\n  framework: {fw.root} ({fw.layout})\n  open {url}  (Ctrl+C to stop)")
     if not args.no_browser:
         webbrowser.open(url)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        httpd.server_close()
+    return 0
+
+
+def hosted_main(args):
+    from wire_studio.hosted import GitClient, HostedRecord, serve_hosted
+    try:
+        fw = Framework(args.framework or default_framework_root())
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Cannot load the Wire framework: {e}", file=sys.stderr)
+        return 2
+    cache = os.environ.get("STUDIO_CACHE_DIR") or tempfile.mkdtemp(prefix="wire-studio-")
+    client = GitClient(cache, token=os.environ.get("GITHUB_TOKEN") or None)
+    owners = [o.strip() for o in (os.environ.get("STUDIO_ALLOWED_OWNERS") or "").split(",") if o.strip()]
+    port = int(os.environ.get("PORT") or (args.port if args.port != 4800 else 8080))
+    httpd = serve_hosted(HostedRecord(fw, client, allowed_owners=owners), "0.0.0.0", port)
+    print(f"Wire Studio {__version__} hosted, read only, on port {port}\n  framework: {fw.root} ({fw.layout})", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

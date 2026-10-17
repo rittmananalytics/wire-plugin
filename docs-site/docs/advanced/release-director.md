@@ -183,7 +183,7 @@ budget:
 | Setting | Effect |
 |---|---|
 | `lanes_max` | `/wire:delegate` refuses to dispatch beyond it. Work queues in the runnable set's order. |
-| `model_tier: economy` | Lanes dispatch on a lower-tier model. The consolidation pass runs regardless: the model choice changes how much it finds, not whether it runs. Independent of per-command [workload routing](./model-routing). |
+| `model_tier: economy` | Lanes dispatch on the economy model, `lane_economy` in `wire/model-routing.yaml`, with two exceptions: a lane whose command has a tier model runs on that model, and a lane whose command produces a client-facing deliverable stays on the session default. See [Model routing: Lanes](./model-routing#lanes) for the full order. The consolidation pass runs regardless: the model choice changes how much it finds, not whether it runs. |
 | `warehouse_spend: none` | Refuses any lane whose command queries a warehouse, and says which and why. It never silently drops them. |
 | `warehouse_spend: estimate_required` | The dry-run bound is the authorisation figure; overruns are disclosed in the lane's report. |
 | `stop_at` | Where to stop: at the first parked decision, at the end of the phase or not at all. |

@@ -1,6 +1,5 @@
 ---
 agent_id: delivery-lead
-model: claude-opus-4-8
 description: Deployment guides, kickoff materials, training, playbooks, and enablement — the operational layer that wraps technical delivery
 specs:
   - deployment-generate

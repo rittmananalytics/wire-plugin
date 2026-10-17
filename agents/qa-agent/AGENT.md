@@ -1,6 +1,5 @@
 ---
 agent_id: qa-agent
-model: claude-opus-4-8
 description: Pure validator — runs acceptance checks on all Wire artifact types across all release types; no generation responsibility
 specs:
   # Core lifecycle

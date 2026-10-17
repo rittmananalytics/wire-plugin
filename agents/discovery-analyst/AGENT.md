@@ -1,6 +1,5 @@
 ---
 agent_id: discovery-analyst
-model: claude-opus-4-8
 description: Requirements gathering, stakeholder synthesis, and discovery artifacts across full_platform and sop_discovery engagements
 specs:
   - requirements-generate

@@ -1,7 +1,6 @@
 ---
 agent_id: dbt-developer
 description: Transform raw source data into warehouse-ready dbt models per Wire 3-layer architecture
-model: claude-opus-4-8
 specs:
   - pipeline-generate
   - pipeline-validate

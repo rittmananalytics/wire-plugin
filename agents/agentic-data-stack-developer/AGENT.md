@@ -1,6 +1,5 @@
 ---
 agent_id: agentic-data-stack-developer
-model: claude-opus-4-8
 description: Agentic data stack release type — dataset/metric/query audits, canonical models, knowledge skills, agent config, eval suites, and governance
 specs:
   - ads/dataset_audit-generate

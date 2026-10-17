@@ -8,9 +8,9 @@ title: Model routing
 **As of v4.0.0.** Not every Wire command needs the same intelligence, and paying frontier-model prices to render help text is as wasteful as asking a small model to set up an engagement. Wire therefore runs different commands on different Claude models, through two mechanisms that are independent of each other:
 
 1. **Workload routing**: a command tagged with a workload tier always runs on that tier's model, whatever the session default. It is set per command at build time, and it applies on Claude Code only.
-2. **Lane economy mode**: `budget.model_tier: economy` in a release's `status.md` makes the orchestrator dispatch delegated lanes on a lower-tier model. It is set per release by the director. See [The release director](./release-director#budget).
+2. **Lane economy mode**: `budget.model_tier: economy` in a release's `status.md` makes the orchestrator dispatch eligible lanes on the economy model, `lane_economy` in `wire/model-routing.yaml` (`claude-haiku-4-5`). It is set per release by the director. See [The release director](./release-director#budget).
 
-This page covers the first. Neither mechanism changes the record: `status.md`, `execution_log.md`, the precondition gate and validation run identically on every model, and the [execution log's Duration, Tokens and Cost columns](../getting-started/core-concepts#the-execution-log) show what each run consumed.
+Both take their models from the same file. This page covers the first, and [Lanes](#lanes) below sets out how the two combine when a lane runs a command. Neither mechanism changes the record: `status.md`, `execution_log.md`, the precondition gate and validation run identically on every model, and the [execution log's Duration, Tokens and Cost columns](../getting-started/core-concepts#the-execution-log) show what each run consumed.
 
 ## Why
 
@@ -55,6 +55,22 @@ At build time, `build-packages.sh` resolves the tag against `wire/model-routing.
 
 Specs live in the process registry, so a tag change is a registry PR, whereas the model a tier maps to is a wire-repo change to `wire/model-routing.yaml` alone, which gives you one place to bump when models move on.
 
+## Lanes
+
+A lane is a subagent the orchestrator starts to run one or more commands (see [The release director](./release-director)). `wire/model-routing.yaml` is the only place a lane's model is set: the lane agent definitions carry no `model:` field. The orchestrator picks one model for each lane, taking the first rule that applies:
+
+| Order | Rule | Model |
+|---|---|---|
+| 1 | The lane's command has a tier with a model | That tier's model |
+| 2 | `budget.model_tier: economy` is set, and the command does not produce a client-facing deliverable | `lane_economy` |
+| 3 | Neither | The session default |
+
+The orchestrator passes the model on the Agent tool call. Claude Code gives that value priority over the agent definition and the session default, so the lane runs on it whatever else is set.
+
+A command produces a client-facing deliverable when its spec is a `generate` for an artifact, a `review`, or lists a `document`, `deck` or `pr` in `produces`. Economy mode never moves one of these below the session default, which is the same floor the tiers follow. A `validate` that produces only a `report` is not settled by the spec, so it is treated as client-facing until it is.
+
+If a lane's commands resolve to different models, the orchestrator splits it into consecutive lanes, one per model. The full rule is in `specs/delegate.md` ("Lane model"), and `wire/tests/core/validate_lane_model_precedence.py` tests each case, including the floor.
+
 ## Limits and overrides
 
 - **Claude Code only.** Gemini CLI has no per-command model field, so the extension's commands are unaffected and run on the session model.
@@ -64,6 +80,6 @@ Specs live in the process registry, so a tag change is a registry PR, whereas th
 
 ## Guardrails
 
-- Tier 0 lint (`wire/tests/lint_specs.py`) fails on an unknown `workload` value in any spec, on registry tiers that drift from the vocabulary, on a malformed model id and on a build script that stops stamping.
-- `wire/tests/utils/validate_model_routing.py` verifies the full chain (registry, spec tags and the committed `wire/dist/` command files) against an expected list. Adding or re-tiering a tag fails the test until the expected file is updated deliberately.
+- Tier 0 lint (`wire/tests/lint_specs.py`) fails on an unknown `workload` value in any spec, on registry tiers that drift from the vocabulary, on a malformed model id, on a missing or empty `lane_economy` (economy mode would name no model) and on a build script that stops stamping.
+- `wire/tests/utils/validate_model_routing.py` verifies the full chain (registry, spec tags and the committed `wire/dist/` command files) against an expected list. Adding or re-tiering a tag fails the test until the expected file is updated deliberately. It also fails if a lane agent definition carries a `model:` line, and the build refuses one.
 - The execution log's Tokens and Cost columns are the measurement loop: they show, per command run, what the routing saves or costs.

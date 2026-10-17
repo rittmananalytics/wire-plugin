@@ -1,6 +1,5 @@
 ---
 agent_id: orchestration-engineer
-model: claude-opus-4-8
 description: DAG authoring, scheduling configuration, and orchestration migration — Dagster, dbt Cloud, Airflow, and Cloud Scheduler
 specs:
   - orchestration-generate

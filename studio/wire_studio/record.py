@@ -321,6 +321,21 @@ def load_release(framework, repo, name, now=None):
     return out
 
 
+def summarise(rel):
+    """The Releases-table row for one loaded release."""
+    states = (rel["resolved"] or {}).get("states", {})
+    return {
+        "name": rel["name"], "project_type": rel["project_type"], "legacy": rel["legacy"],
+        "complete": sum(1 for s in states.values() if s == "complete"),
+        "total": sum(1 for s in states.values() if s != "not applicable"),
+        "waiting": len(rel["inbox"]),
+        "lanes_live": sum(1 for l in rel["lanes"] if l["state"] != "complete"),
+        "delivery": rel["delivery"],
+        "tickets": (rel["tickets"] or {}).get("counts"),
+        "error": rel["error"],
+    }
+
+
 def release_summaries(framework, repo, now=None):
     out = []
     for r in find_releases(repo):
@@ -329,17 +344,7 @@ def release_summaries(framework, repo, now=None):
         except Exception as e:  # one broken release must not hide the others
             out.append({"name": r["name"], "error": str(e)})
             continue
-        states = (rel["resolved"] or {}).get("states", {})
-        out.append({
-            "name": rel["name"], "project_type": rel["project_type"], "legacy": rel["legacy"],
-            "complete": sum(1 for s in states.values() if s == "complete"),
-            "total": sum(1 for s in states.values() if s != "not applicable"),
-            "waiting": len(rel["inbox"]),
-            "lanes_live": sum(1 for l in rel["lanes"] if l["state"] != "complete"),
-            "delivery": rel["delivery"],
-            "tickets": (rel["tickets"] or {}).get("counts"),
-            "error": rel["error"],
-        })
+        out.append(summarise(rel))
     return out
 
 

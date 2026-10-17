@@ -284,9 +284,19 @@ For every model missing baseline coverage, record it as a gap in the output docu
 
 Unit tests are a distinct category from the schema tests in Step 2 and the dbt_expectations tests in Step 3 — they validate **transformation logic in isolation** (mock inputs → expected outputs), not production data quality. See `wire/skills/dbt-unit-testing/SKILL.md` for the Model-Inputs-Outputs pattern and format guidance.
 
-Per the RA Convention in `wire/skills/dbt-development/testing-reference.md`: unit tests are **required** for warehouse-layer models containing business logic (case statements, window functions, multi-join logic, conditional aggregation, regex extraction, date-boundary calculations) and **recommended but optional** for staging models with non-trivial transformations.
+Which models need a unit test is set by the "Unit test rule" section of `wire/skills/dbt-development/testing-reference.md`. That section is the only statement of the rule, the business logic signals and the outcome per model. Do not restate or change the rule here.
 
-Scan warehouse-layer models for these logic patterns and record any that lack a `unit_tests:` block as a gap in the output document — this command documents the gap, it does not author the unit test's mock inputs/outputs itself (that's a dbt-development task).
+Scan every model in the dbt project, in every layer:
+
+1. Find the model's layer from its name prefix, else its folder, as the rule says. A model in no recognised layer is listed as **Classify by hand**.
+2. Read the model's SQL (compiled SQL where `target/compiled/` exists, else the model file) with comments removed, and record each business logic signal it shows.
+3. Record whether the model has a `unit_tests:` block (in any YAML file in the project that names it as `model:`).
+4. Apply the rule's outcome table. List every model whose outcome is Required, Recommended, Check by hand or Classify by hand and that has no `unit_tests:` block, in the Unit Test Coverage Gaps table (Step 5), with its layer, the signals found and the gap type:
+   - **Required**: integration and warehouse models with business logic. These must be resolved or tracked before `/wire:data_quality-validate` passes.
+   - **Advisory**: staging models with non-trivial logic. Reported, never blocking.
+   - **Check by hand** and **Classify by hand**: the consultant decides and records the decision in the Notes column.
+
+This command documents gaps; it does not write unit tests (that is a dbt-development task).
 
 ### Step 3: Propose Supplemental dbt-expectations Tests
 
@@ -344,13 +354,16 @@ Models missing required tests per `wire/skills/dbt-development/testing-reference
 
 ## Unit Test Coverage Gaps
 
-Warehouse-layer models with business logic (case statements, window functions, multi-join logic, conditional aggregation) that lack a `unit_tests:` block, per `wire/skills/dbt-unit-testing/SKILL.md`:
+Models in any layer that lack a `unit_tests:` block where the unit test rule in `wire/skills/dbt-development/testing-reference.md` gives a gap:
 
-| Model | Logic Type | Required or Recommended |
-|-------|------------|--------------------------|
-| [model_fact] | Window function (row_number partition) | Required (warehouse layer) |
+| Model | Layer | Signals found | Gap | Notes |
+|-------|-------|---------------|-----|-------|
+| [int_group__entities] | integration | deduplication, window | Required | |
+| [wh_group__entity_fact] | warehouse | conditional_aggregation, rule_join | Required | |
+| [stg_source__entities] | staging | parsing | Advisory | |
+| [wh_group__entity_dim] | warehouse | (none; plain aggregation) | Check by hand | [consultant decision] |
 
-*(Empty table means unit test coverage is already complete for models with business logic.)*
+*(Empty table means no model the rule covers is missing a unit test.)*
 
 ## Supplemental dbt-expectations Tests (proposed)
 
@@ -407,7 +420,7 @@ If docstore sync fails, log the error and continue — do not block the generate
 ## Data Quality Test Plan Generated Successfully
 
 **Baseline coverage gaps found**: [N]
-**Unit test coverage gaps found**: [N]
+**Unit test coverage gaps found**: [N] required, [N] advisory, [N] check or classify by hand
 **Supplemental dbt-expectations tests proposed**: [N]
 **dbt_expectations package required**: Yes | No
 
@@ -416,7 +429,7 @@ If docstore sync fails, log the error and continue — do not block the generate
 ### Next Steps
 
 1. **Apply baseline coverage gaps** (if any) via `/wire:dbt-generate <project>`
-2. **Add unit tests** for warehouse models with business logic (see `wire/skills/dbt-unit-testing/SKILL.md`)
+2. **Add unit tests** for every Required gap (rule: `wire/skills/dbt-development/testing-reference.md`; how to write them: `wire/skills/dbt-unit-testing/SKILL.md`)
 3. **Add proposed schema.yml test entries** for the supplemental tests above
 4. **Validate data quality**: `/wire:data_quality-validate <project>`
 5. After validation, review: `/wire:data_quality-review <project>`

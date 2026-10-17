@@ -135,7 +135,7 @@ const sidebars = {
         {
           type: 'category',
           label: 'Hosted Agents (Rittman Analytics only)',
-          link: {type: 'generated-index', title: 'Hosted Agents (Rittman Analytics only)', slug: '/technical-reference/hosted-agents', description: 'A Rittman Analytics-only feature, not part of the plugin or extension. Wire agents that Rittman Analytics runs as members of a delivery team: pods and roles, the delivery process, governance templates, sprints, Jira and Slack.'},
+          link: {type: 'generated-index', title: 'Hosted Agents (Rittman Analytics only)', slug: '/technical-reference/hosted-agents', description: 'A Rittman Analytics-only feature, not part of the plugin or extension. Wire agents that Rittman Analytics runs as members of a delivery team: pods and roles, the delivery process, governance templates, sprints, Jira and Slack, and memory.'},
           items: [
             'hosted-agents/overview',
             'hosted-agents/pods-and-roles',
@@ -144,6 +144,7 @@ const sidebars = {
             'hosted-agents/sprints-and-backlog',
             'hosted-agents/jira-slack-and-files',
             'hosted-agents/platform-architecture',
+            'hosted-agents/memory',
             'hosted-agents/setting-up-a-pod',
           ],
         },

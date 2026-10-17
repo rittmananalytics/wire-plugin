@@ -1,6 +1,5 @@
 ---
 agent_id: mock-data-developer
-model: claude-opus-4-8
 description: Dashboard-first release type — generates CSV seed data from the approved viz catalog and data model requirements, then manages the later transition from seeds to real client data
 release_types:
   - dashboard_first

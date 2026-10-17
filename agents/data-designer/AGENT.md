@@ -1,6 +1,5 @@
 ---
 agent_id: data-designer
-model: claude-opus-4-8
 description: Conceptual model, data model, and pipeline design — translating approved requirements into technical architecture. Standard-mode mockups and viz catalog for non-dashboard_first releases.
 specs:
   - design/conceptual_model-generate

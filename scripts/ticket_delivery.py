@@ -227,6 +227,20 @@ def load_graph(status, graph_path=None):
 # ---------------------------------------------------------------------------
 # propose: the ticket map entry for each ticket read from the tracker
 # ---------------------------------------------------------------------------
+def stated_kind_and_steps(description):
+    """The kind and Wire steps a ticket states on its `Kind:` and `Wire step:`
+    lines (tickets written from a hosted-agent ticket template, wire#337), or
+    None when it does not state both or the kind is not a ticket kind.
+    `Wire step: none` states no steps (plain work)."""
+    text = description or ""
+    kind = re.search(r"^Kind:[ \t]*(\S+)[ \t]*$", text, re.M)
+    steps = re.search(r"^Wire steps?:[ \t]*(.+?)[ \t]*$", text, re.M)
+    if not kind or not steps or kind.group(1) not in TICKET_KINDS:
+        return None
+    named = [s.strip() for s in re.split(r"[,;]| and ", steps.group(1)) if s.strip()]
+    return kind.group(1), [] if named in ([], ["none"]) else named
+
+
 def propose(payload):
     """`payload`:
         design_source: wire | modality
@@ -234,9 +248,12 @@ def propose(payload):
         modality_objects: {object: mml_type}  every object in the model
         release_projects: [tracker project names that map to this release]
         tickets: [{key, title, project, kind, slice_hint, slice_kind,
-                   matched_object, state}]
+                   matched_object, state, description}]
     `kind`, `slice_hint`, `slice_kind` and `matched_object` are the Wire
-    session's proposals from the ticket's title and text.
+    session's proposals from the ticket's title and text. When `description`
+    has both a `Kind:` and a `Wire step:` line (wire#337), those are read in
+    place of the proposed kind and the recipe's steps, and the entry carries
+    `kind_source: ticket`. Otherwise the output is exactly as before.
     """
     modality = payload.get("design_source") == "modality"
     links = payload.get("modality_links") or {}
@@ -249,7 +266,10 @@ def propose(payload):
         if in_release and project not in in_release:
             unmatched.setdefault(project, []).append(t["key"])
             continue
-        kind = t.get("kind") or "plain"
+        # A ticket that states its kind and Wire steps (Kind: and Wire step:
+        # lines) is read, not proposed. Without both lines nothing changes.
+        stated = stated_kind_and_steps(t.get("description"))
+        kind = stated[0] if stated else (t.get("kind") or "plain")
         slices, slice_kinds, source, check = [], [], None, False
         linked = links.get(t["key"])
         if modality and linked:
@@ -282,12 +302,18 @@ def propose(payload):
             "blocked_by": list(t.get("blocked_by") or []),
             "steps_named": list(t.get("steps") or []),
         })
+        if stated:
+            entries[-1]["_stated_steps"] = stated[1]
 
     # Steps: a build ticket leaves out data_model where a design ticket covers
     # the same slice.
     design_slices = {s for e in entries if e["kind"] == "design" for s in e["slices"]}
     for e in entries:
-        if e["steps_named"]:
+        stated_steps = e.pop("_stated_steps", None)
+        if stated_steps is not None:
+            steps = list(stated_steps)
+            e["kind_source"] = "ticket"
+        elif e["steps_named"]:
             steps = e["steps_named"]
         else:
             steps = []
@@ -299,7 +325,9 @@ def propose(payload):
         del e["steps_named"]
         e["plain"] = not steps
         open_kinds = {"layer", "deliverable", "batch"}
-        if e["plain"] and (e["kind"] == "review" or set(e["slice_kinds"]) & open_kinds):
+        if e.get("kind_source") == "ticket" and e["plain"]:
+            pass  # the ticket says no Wire step builds it ("Wire step: none")
+        elif e["plain"] and (e["kind"] == "review" or set(e["slice_kinds"]) & open_kinds):
             e["plain"] = False
             questions.append({"ticket": e["key"], "question": "name_steps",
                               "text": "Which Wire steps does this ticket cover? They cannot be read from its slice."})

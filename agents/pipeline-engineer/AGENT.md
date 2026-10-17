@@ -1,6 +1,5 @@
 ---
 agent_id: pipeline-engineer
-model: claude-opus-4-8
 description: Ingestion pipeline implementation — Fivetran, Airbyte, dlt, and custom pipelines from source to landing zone
 specs:
   - pipeline-generate
