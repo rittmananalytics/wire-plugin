@@ -31,15 +31,16 @@ The Jira webhook that starts agents must cover every project agents work in. It 
 
 ## 3. Register any people
 
-Console admins register people on the **Admin** page, which also holds spawning agents and the list of admins. Import a person from the company directory, an issue tracker project or a chat channel, or add them by email; the console links their existing accounts. Only console admins see the Admin page and can spawn agents, register people or manage admins; everyone signed in can view agents, people, pods, projects and release views.
+Console admins register people on the **Admin** page, which also holds spawning agents and the list of admins. Import a person from the company directory, an issue tracker project or a Slack channel, or add them by email; the console links their existing Jira, Slack and GitHub accounts and their photo. Check that each person has a Slack account linked: without one, agents ask them on Jira tickets only, with no Slack message. For a person who will be an engineer, you can set how many tickets they take at once (3 unless changed). Only console admins see the Admin page and can spawn agents, register people or manage admins; everyone signed in can view agents, people, pods, projects and release views.
 
 ## 4. Create the pod
 
 On the **Pods** page:
 
 1. Name the pod and list the Jira project keys it covers.
-2. Add agents, people or both, and give each a role: one engagement lead, one delivery manager, and the analytics and data engineers the work needs. People must be registered first (below).
-3. Add the escalation contacts by email; the console finds their Jira accounts. A pod that covers a project needs at least one.
+2. Add agents, people or both, and give each a role: one engagement lead, one delivery manager, and the analytics and data engineers the work needs. People must be registered first (step 3). Giving the engagement lead or delivery manager role to someone new removes the member who held it from the pod, after you confirm, and hands their open work to the new holder.
+3. If a person is the delivery manager, choose whether the delivery assistant is on (it is by default) and whether it may **assign ready tickets directly** instead of proposing them for the person to approve.
+4. Add the escalation contacts by email; the console finds their Jira accounts. A pod that covers a project needs at least one.
 
 Saving gives each member access to the pod's Jira projects.
 
@@ -55,6 +56,8 @@ Each agent's page also holds its profile: a photo, the default persona it takes 
 
 Each agent posts as its own Slack user. On each agent's page, press **Connect Slack** and sign in as that agent. The connection includes reading files shared with the agent; an agent connected before that was added must connect again.
 
+Questions for people, their reminders and the delivery manager's proposals come from the Wire Agents app instead, so they need no connection per agent. The app must be in the workspace; nothing is set per agent or per person beyond the person's linked Slack account.
+
 The same page shows the tickets the agent is working on, its Slack connection and its scheduled tasks, such as a weekly progress report.
 
 ![An agent's page: state, tickets in progress, Slack connected, and two scheduled progress reports](/img/hosted-agents/console-agent-summary.png)
@@ -63,6 +66,10 @@ The same page shows the tickets the agent is working on, its Slack connection an
 
 On each Jira project, turn on sprints (Project settings, Features) so the delivery manager can keep the sprint whole.
 
+## 7. Agree how an agent delivery manager may act
+
+On a project it did not set up (for example a running project agents are joining), an agent delivery manager proposes its changes first and acts only on what is agreed. On the project's page, switch on each group of changes it may make (sprint, role labels, assignments, starts, sprint additions), or leave them off and answer its proposals in Slack. See [An agent delivery manager proposes first](./pods-and-roles#an-agent-delivery-manager-proposes-first).
+
 ## Then
 
-Agree the scope with the client, then share the statement of work with the engagement lead in the project's Slack channel. The lead opens a kick-off ticket, asks any open questions there once, records the answers and asks the delivery manager to deliver it. Follow progress on the board, in the ticket threads, and in the end-of-day summaries.
+Agree the scope with the client, then share the statement of work with the engagement lead in the project's Slack channel. The lead opens a kick-off ticket, asks any open questions there once, records the answers and asks the delivery manager to deliver it. Follow progress on the board, in the ticket threads, and in the end-of-day summaries. When an agent needs your answer, you get a Slack direct message from the Wire Agents app; reply in its thread or on the ticket.

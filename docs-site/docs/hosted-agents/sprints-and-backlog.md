@@ -11,6 +11,11 @@ Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them 
 
 Every ticket that is in scope when a sprint starts is in that sprint, whatever state it is in. Tickets that arrive after the sprint has started wait in the backlog until they are approved.
 
+This page describes an agent delivery manager. Two cases differ:
+
+- **A person is the delivery manager.** The delivery assistant, a scheduled job that is not an agent, does the sprint upkeep and assignment checks below every 15 minutes, by the same rules. It proposes assignments for the person to approve (see [Assigning work](#assigning-work-every-hour)).
+- **An agent delivery manager on a project it did not set up.** It proposes these changes to the project's people first and acts only on what they agree (see [An agent delivery manager proposes first](./pods-and-roles#an-agent-delivery-manager-proposes-first)).
+
 ## Planning the tickets
 
 When the engagement lead asks for a release to be delivered, the delivery manager:
@@ -32,11 +37,11 @@ The project's board must have sprints turned on. Scrum boards and team-managed b
 
 ## Tickets added after the sprint starts
 
-Kick-off and delivery request tickets are never sprint work: they don't start a sprint or count in one. The tickets the delivery manager creates for her delivery plan join the running sprint straight away, because the plan is hers to decide.
+Kick-off and delivery request tickets are never sprint work: they don't start a sprint or count in one. The tickets the delivery manager creates for its delivery plan join the running sprint straight away, because the plan is the delivery manager's to decide.
 
 Any other ticket created after the sprint started waits in the backlog:
 
-1. The delivery manager's agent posts **"Sprint addition requested:"** on the ticket once, mentioning whoever the project's governance names: the engagement lead (light) or the escalation contacts (strict). Under strict, a person approves by moving the ticket into the sprint on the board.
+1. The delivery manager's agent, or the delivery assistant, posts **"Sprint addition requested:"** on the ticket once, mentioning whoever the project's governance names: the engagement lead (light) or the escalation contacts (strict). A person who is the engagement lead is asked under both templates. A person approves by moving the ticket into the sprint on the board.
 2. An engineer assigned the ticket does not start it while it waits.
 3. If the addition is minor and does not change scope, the engagement lead approves it into the sprint, giving the reason; the ticket's assignee is told to start. Under the strict template, or when the addition changes scope, a person decides.
 
@@ -45,14 +50,16 @@ Any other ticket created after the sprint started waits in the backlog:
 In the same hourly check, the delivery manager goes through every open ticket in each of its projects, however the ticket was created, the way a person in the role would:
 
 1. **Gives each ticket a role.** A ticket with no role label gets one from the engineer it is assigned to, or from its summary and description (dbt models, the semantic layer and dashboards are analytics engineering; ingestion, pipelines and orchestration are data engineering). When the rules cannot tell, the delivery manager reads the ticket and decides: analytics engineer, data engineer, or not engineering work (a review with the customer, a decision). It is asked once per ticket.
-2. **Tells assigned engineers when to start.** A ticket that is assigned to an engineer, still in To Do, has nothing left blocking it and has not been started gets a **"Ready to start:"** comment mentioning the engineer, which starts it. So does a Blocked or paused ticket once a person has replied on it, and a ticket blocked on earlier tickets once those are all done. If the engineer does not start within a day, it is told again.
-3. **Assigns unassigned tickets that can start.** A ticket with no open blockers, not waiting in the backlog, goes to the engineer with its role who has the most free capacity: the number of tickets it can work at once, less the tickets it is working now. No engineer is given more than it has room for; a ticket that has to wait stays unassigned until someone has room.
+2. **Tells assigned agent engineers when to start.** People are never told to start; they pick up their own tickets. A ticket that is assigned to an agent engineer, still in To Do, has nothing left blocking it and has not been started gets a **"Ready to start:"** comment mentioning the engineer, which starts it. So does a Blocked or paused ticket once a person has replied on it, and a ticket blocked on earlier tickets once those are all done. If the engineer does not start within a day, it is told again.
+3. **Assigns unassigned tickets that can start.** A ticket with no open blockers, not waiting in the backlog, goes to the engineer with its role, agent or person, who has the most free capacity. For an agent, that is the number of tickets it can work at once, less the tickets it is working now. For a person, it is the capacity set on the console (3 unless changed), less their open tickets across all registered projects. No engineer is given more than they have room for; a ticket that has to wait stays unassigned until someone has room. A person assigned a ticket gets a note on it saying it is theirs to start when ready.
+
+When a person is the delivery manager, the delivery assistant does not assign: it proposes. It keeps a ticket of its own in the project, named "Delivery assistant:" followed by the pod's name, assigned to the person. Once an hour at most, it lists the tickets ready to assign and who should take each, on that ticket and in a Slack direct message. The person replies on that ticket to approve all or some of the list, and the assistant assigns them. A pod can let the assistant assign directly instead (the pod's **Assign ready tickets directly** setting); it then reports what it assigned.
 
 Tickets assigned to people, to the engagement lead or to the delivery manager are left alone. Tickets that are still blocked stay as they are until what they wait for is done.
 
 ## Delivery reviews
 
-Twice each working day (10:00 and 15:00 UK time) the delivery manager reviews each project's planned tickets:
+Twice each working day (10:00 and 15:00 UK time) an agent delivery manager reviews each project's planned tickets. A person delivery manager does this themselves; the delivery assistant drafts a weekly summary for them instead, every Friday at 15:00 UK time, on its ticket.
 
 | Finding | What the delivery manager does |
 |---|---|

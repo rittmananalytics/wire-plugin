@@ -11,6 +11,8 @@ Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them 
 
 A governance template says, for every kind of decision met on a project, who takes it: the **delivery manager** or the **engagement lead** of the pod working it, or a **person** (one of the pod's escalation contacts). Each project chooses one template, on the agents console's Projects page, so a pod working several projects can be lightly governed on one and strictly on another. The agents read it at every decision, so changing a project's template changes how it is governed from the next decision on.
 
+**When a person holds a role.** The engagement lead or delivery manager can be a person. Decisions the template gives that role then go to that person: an agent asks them on the ticket, with a Slack direct message, and waits. A person in the role is never overruled by an agent.
+
 Templates are a [process registry](../advanced/registries) entry type, like release types and conventions: authored in the registry, synced into the hosted agents' private repository (`rittmananalytics/wire-hosted-agents`), and checked by a validator there. Two ship; more can be added.
 
 ![Who takes a decision: some kinds always go to a person, release set-up and the delivery plan go to the delivery manager, and the rest follow the project's light or strict template](/img/hosted-agents/diagram-decisions.png)
@@ -71,9 +73,9 @@ Each Wire release type has required steps in a fixed order; for `dbt_development
 |---|---|---|
 | **Validate** | The engineer that generated the artifact | Wire 4.x validates automatically after each generate step; where a command does not, the engineer runs its validate step. The engineer reads the result, fixes every issue, regenerates and validates again until it passes. Only validated work is handed in. |
 | **Hand in** | The engineer | Moves the ticket to QA and posts **"Review requested:"** @mentioning the engagement lead |
-| **Review, light** | The engagement lead | Reviews the work and either approves it, or comments with what to change; the engineer reworks and resubmits. The lead escalates only a question that a person must answer. |
+| **Review, light** | The engagement lead | Reviews the work and either approves it, or comments with what to change; the engineer reworks and resubmits. The lead escalates only a question that a person must answer. When the lead is a person, the engineer asks them with **"Review by a person requested:"** instead, on the ticket and in Slack. |
 | **Review, strict** | A person | The lead asks a human reviewer (**"Review by a person requested:"**, on the ticket and in Slack): the named reviewer when one is recorded, else the escalation contacts. The person approves, or says what to change and the work goes back for rework and resubmission. The lead reports the person's review, not its own judgement. |
-| **Record** | The delivery manager | When the work merges, the review result and who approved it are recorded in the release record, as the step's `/wire:<artifact>-review` records it |
+| **Record** | The delivery manager, or the delivery assistant when a person is delivery manager | When the work merges, the review result and who approved it are recorded in the release record, as the step's `/wire:<artifact>-review` records it |
 
 The engagement lead's own work is reviewed by a person under both templates.
 
@@ -103,13 +105,13 @@ These checks are made by the agents' own tools, not left to an agent's judgement
 |---|---|
 | **Required steps** | A lead's approval to skip a required Wire step that cites no person's standing decision becomes a refusal. |
 | **Each question names its decision kind** | An agent asking for a decision says which kind it is. A kind the template gives to a person goes straight to the escalation contacts; the engagement lead never sees it, so it cannot rule on it by misreading it. |
-| **Only the people asked can answer** | A question for a person is answered only by the people it went to, not by another agent or anyone else who comments. |
+| **Only the people asked can answer** | A question for a person is answered only by the people it went to, not by another agent or anyone else who comments. A reply in Slack counts only when it comes from a person asked, in that question's thread. |
 | **A named reviewer** | When a person is recorded as reviewer for pull requests into the default branch, a release branch or both, no agent may approve or merge those pull requests; they are sent to that person. |
 | **A person in the review** | When a person comments on a ticket after its work was handed in, an agent may no longer merge it; a person does. |
 | **Client-facing work** | The engagement lead states in every QA whether the client will see the work. When the template gives client-facing work to a person, the lead cannot merge it, and work outside a pull request waits in QA for a person's sign-off ("Sign-off requested:"). |
 | **The lead's own work** | A ticket held by the engagement lead goes to a person for QA. |
 | **The release pull request** | The ticket that publishes a release always opens its pull request into the default branch; any other base is corrected. |
-| **Blocked on a person** | A ticket that ends blocked waiting on a person, with no question to a person open, asks them: a "Question for a person:" on the ticket @mentioning them, and a Slack message. Their reply starts the ticket again. |
+| **Blocked on a person** | A ticket that ends blocked waiting on a person, with no question to a person open, asks them: a "Question for a person:" on the ticket @mentioning them, and a Slack message. This includes a person who is the engagement lead. Their reply, on the ticket or in Slack, starts the ticket again. |
 | **Finished sprints** | A running sprint with every ticket done is completed, and the next starts with the open tickets. |
 
 ## Rules every template keeps
@@ -128,7 +130,7 @@ These checks are made by the agents' own tools, not left to an agent's judgement
 | Code into a release branch | `code_merge_release` |
 | Code into the default branch | `code_merge_default` |
 
-The agent the template names approves and merges with a plain merge, so no branch is ever deleted or rewritten. When a person must merge, the ticket passes QA but stays in QA, and a "Merge requested:" comment and a Slack message ask the escalation contacts; the ticket moves to Done when the pull request is merged. A person's comment on a ticket in QA goes to the engagement lead, who checks the work again with it. Approving code needs a written note of what was checked against the statement of work, the requirements and the business rules; it is posted on the pull request as the record of the review. Under the strict template every merge is a person's.
+The agent the template names approves and merges with a plain merge, so no branch is ever deleted or rewritten. When a person must merge, the ticket passes QA but stays in QA, and a "Merge requested:" comment and a Slack message ask the named reviewer if one is recorded; else, for a release branch, a person who is the engagement lead; else the escalation contacts; the ticket moves to Done when the pull request is merged. A person's comment on a ticket in QA goes to the engagement lead, who checks the work again with it. Approving code needs a written note of what was checked against the statement of work, the requirements and the business rules; it is posted on the pull request as the record of the review. Under the strict template every merge is a person's.
 
 ## Choosing and adding templates
 
