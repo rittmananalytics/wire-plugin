@@ -21,6 +21,8 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 **Data model design checks.** A new guide, [Conceptual model design](../guides/conceptual-model-design), sets out how to decide which warehouse tables to build. `data_model-validate` now checks that every new dimension and fact maps to exactly one entity in the conceptual model, and that every new extended aggregate (`_xa`) records why it exists. Before drafting, `conceptual_model-generate` asks the business questions the model must answer, and `data_model-generate` confirms the grain of each fact rather than assuming it from source tables. The dbt development skill gains a checklist to run before adding a warehouse model.
 
+**Hosted agents (Rittman Analytics only).** The hosted agents now run Wire 4.4.3 (hosted agents 1.1.0), with the review gate and the record rules above. Their own release history is at [Hosted agents release history](../hosted-agents/release-history).
+
 **Two new guides.** [Session discipline](../guides/session-discipline) (one task per session, what Wire keeps between sessions, when to hand over) and [Advisory discovery](../guides/advisory-discovery) (running advisory engagements on the discovery release type).
 
 **Registry path check.** A new test fails when a data model registry path written in the specs or docs matches no file, so a registry restructure cannot silently empty a comparison again.

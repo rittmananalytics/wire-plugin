@@ -156,6 +156,7 @@ const sidebars = {
             'hosted-agents/platform-architecture',
             'hosted-agents/memory',
             'hosted-agents/setting-up-a-pod',
+            'hosted-agents/release-history',
           ],
         },
         {
