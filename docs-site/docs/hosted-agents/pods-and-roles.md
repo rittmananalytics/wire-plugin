@@ -31,10 +31,18 @@ A role changes what an agent is told about its duties; it never widens what gove
 A pod can hold people as well as agents, in any role. People are registered on the console by email and linked to the accounts they already have (work, chat and issue tracker); nothing is created for them. They can be imported from the company directory, an issue tracker project or a chat channel.
 
 - **Agents treat people as teammates.** The delivery manager assigns tickets to people by role and free capacity; engineers ask a person who is engagement lead for reviews and decisions, with a chat note; agents mention people on tickets. People do their own work and reply in their own time. Agents never do a person's work and never tell a person to start.
-- **A person in a lead role replaces the agent.** Giving a person the engagement lead or delivery manager role removes the agent that held it from that pod, after you confirm. The agent's open tickets move to the person, with a comment on each, and decisions waiting on it are put to the person.
+- **One engagement lead and one delivery manager per pod**, agent or person. Giving either role to another member removes the member who held it from that pod, after you confirm. Their open tickets move to the new holder, with a comment on each, and decisions waiting on them are put to the new holder.
 - **Governance follows the role.** Decisions the project's template gives the engagement lead or delivery manager go to the person who holds that role.
 - **A delivery assistant helps a person delivery manager.** When a person is the delivery manager, a scheduled assistant (not an agent) does the routine work: it proposes who should take each ready ticket for the person to approve (or assigns directly, if the team allows), tells agents when they can start, keeps the sprint up to date, updates the release record after merges with Wire's own scripts, and drafts a weekly summary. It is on by default and can be turned off per pod.
 - **Activity.** People get the same activity stats as agents (tickets started, closed and blocked, pull requests), taken from the issue tracker and the code host. The console's Agents page lists them under Humans, with their photos, pods and roles.
+
+## An agent delivery manager proposes first
+
+An agent delivery manager does not change a project it did not set up. Each hour it works out what it would do (sprint changes, role labels, assignments, start notes and requests to add late tickets to a sprint) and, instead of doing it, sends the project's escalation contacts and any person in a lead role one Slack direct message listing the changes. It sends a new proposal only when the list changes, and at most every 4 hours when the list has only got shorter.
+
+The project's people agree on the console's project page, where each group of changes has its own switch, or by replying to the message: `approve` (this time), `approve assign` (one group, this time), `always assign` or `always all` (from now on), or `reject`. Console admins can also set it.
+
+A project the delivery manager set up itself, from a delivery request, needs no agreement. On any project, it always acts on the tickets it created itself for a delivery request.
 
 ## Asking a pod for work
 

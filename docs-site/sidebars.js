@@ -149,6 +149,7 @@ const sidebars = {
           items: [
             'hosted-agents/overview',
             'hosted-agents/pods-and-roles',
+            'hosted-agents/ways-to-run-a-project',
             'hosted-agents/delivery-process',
             'hosted-agents/governance',
             'hosted-agents/sprints-and-backlog',

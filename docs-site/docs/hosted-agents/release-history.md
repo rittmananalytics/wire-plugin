@@ -13,6 +13,9 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 
 | Version | Released | Runs on Wire |
 |---|---|---|
+| 2.2.2 | October 2026 | 4.4.3 |
+| 2.2.1 | October 2026 | 4.4.3 |
+| 2.2.0 | October 2026 | 4.4.3 |
 | 2.1.0 | October 2026 | 4.4.3 |
 | 2.0.0 | October 2026 | 4.4.3 |
 | 1.1.0 | October 2026 | 4.4.3 |
@@ -20,6 +23,21 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 | 1.0.0 | October 2026 | 4.4.2 |
 
 Before 1.0.0, the hosted agents shipped inside Wire releases 4.3.0 to 4.4.2.
+
+## 2.2.2: direct messages from the Wire Agents app
+
+- Questions, their reminders and the delivery manager's proposals now come from the Wire Agents app, shown with the agent's name and photo, so replies in their threads can be read for every agent without each agent reconnecting to Slack. Everything else the agents post still comes from each agent's own Slack account.
+
+## 2.2.1: questions in Slack
+
+- **Questions reach people in Slack.** When an agent asks a person something on a ticket, the person also gets a Slack direct message, and a reply in its thread is posted on the ticket as their answer. See [Questions in Slack](jira-slack-and-files#questions-in-slack).
+- **Agent machines remove old software images** after each update, so they no longer run out of disk space.
+
+## 2.2.0: propose first, one lead per role, and deleting memories
+
+- **An agent delivery manager proposes first** on a project it did not set up, and acts only when the project's people agree, all at once or one group of changes at a time. See [An agent delivery manager proposes first](pods-and-roles#an-agent-delivery-manager-proposes-first) and [Ways to run a project](ways-to-run-a-project).
+- **One engagement lead and one delivery manager per pod**, agent or person, with a handover when the role changes hands.
+- **Deleting memories** on the console, with restore and redact. See [Deleting a memory](memory#deleting-a-memory).
 
 ## 2.1.0: the Admin page
 

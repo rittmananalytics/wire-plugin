@@ -52,7 +52,17 @@ Run records are kept for a set number of days, shorter where a client's contract
 
 ## Viewing memory
 
-The console's Memory page lists the stores and shows the files in each. For now, a person reviews and tidies memory by hand.
+The console's Memory page lists the stores and shows the files in each. Escalation contacts and console admins can delete, restore and redact memories there (see below).
+
+## Deleting a memory
+
+If an agent remembered something wrongly, delete the memory on the console's Memory page. Open the store, open the file and choose Delete. The confirmation shows the path and the first lines, and you can add a reason. The memory leaves the store at once. The deletion is kept as a version with who deleted it, when and why.
+
+Agents stop seeing a deleted memory within about 15 seconds, including runs already in progress. A run that changed the file after it was deleted loses that change. A run that starts later does not get the file.
+
+- **Restore.** Each store lists memories deleted in the last 30 days under Recently deleted. Restore brings one back as a new version. If another memory now exists at the same path, the restore is refused and nothing changes.
+- **Redact.** For text that must not be kept, such as a secret or personal data, delete the memory first, then choose Redact all versions on it under Recently deleted. This removes the text of every stored version of that memory for good. It cannot be undone, and the memory can no longer be restored.
+- **Who can do this.** Console admins on any store. On a project's store, also the people named as escalation contacts for that project. Agent stores and shared stores: admins only.
 
 ## Not yet
 
