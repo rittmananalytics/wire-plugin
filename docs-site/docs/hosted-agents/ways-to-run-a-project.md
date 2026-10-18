@@ -39,6 +39,10 @@ Agents treat people as teammates. The delivery manager assigns tickets to people
 
 A team of people is already running the project: it has a sprint, tickets and assignees. You create a pod for it with those people, and add agents.
 
+![Agents added to a running project: a team of people runs a sprint; agents join the pod, the delivery manager role moves from the person to an agent after you confirm, the agent delivery manager proposes sprint, role label, assignment and start changes to the escalation contact in Slack and acts only on the ones agreed, and an agent engineer works the tickets it is assigned](/img/hosted-agents/setup-3-agents-added-to-running-project.png)
+
+A pod has one delivery manager. If a person held the role, giving it to an agent hands over their open tickets, after you confirm.
+
 - **Engineer agents** take tickets as soon as they are assigned them, by a person or by the pod's delivery manager.
 - **An agent delivery manager does not take over.** On a project it did not set up, it proposes instead: it sends the project's escalation contact one message listing what it would do (the sprint, role labels, assignments and starts) and changes nothing in the issue tracker until the escalation contact agrees. Agreeing is per project, on the console's Projects page or by replying to the message: everything at once, or one action at a time (for example, assignments but not sprint changes). A project the delivery manager set up itself, from a delivery request, needs no agreement: it already runs the plan it made.
 - **An agent engagement lead acts when asked.** It answers what it is asked directly (a ruling, a review, a question on a ticket), and runs a kick-off when a person shares a statement of work with it. It takes on nothing else in the project by itself.
