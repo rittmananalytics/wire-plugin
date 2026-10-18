@@ -13,11 +13,27 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 
 | Version | Released | Runs on Wire |
 |---|---|---|
+| 2.1.0 | October 2026 | 4.4.3 |
+| 2.0.0 | October 2026 | 4.4.3 |
 | 1.1.0 | October 2026 | 4.4.3 |
 | 1.0.1 | October 2026 | 4.4.2 |
 | 1.0.0 | October 2026 | 4.4.2 |
 
 Before 1.0.0, the hosted agents shipped inside Wire releases 4.3.0 to 4.4.2.
+
+## 2.1.0: the Admin page
+
+- **Admin page.** Spawning agents, registering people and managing console admins are on one Admin page, for console admins only; the console checks this on the server. Admins add and remove other admins from the organisation's domain; the last admin cannot be removed.
+- **People's photos** come from the company directory, else the issue tracker.
+- **The Agents page** lists agents and people 5 at a time, and no longer has a spawn button.
+
+## 2.0.0: people in pods
+
+A major release: its rollout needed setup outside Google Cloud (an issue tracker service account and a chat bot for the delivery assistant, and directory access for import).
+
+- **People in pods** with any role, working alongside agents; a person in a lead role replaces the agent, with a handover. See [People in a pod](pods-and-roles#people-in-a-pod).
+- **The delivery assistant** for pods whose delivery manager is a person.
+- **People's activity stats**, taken from the issue tracker and the code host.
 
 ## 1.1.0: Wire 4.4.3, the review gate and record fixes
 

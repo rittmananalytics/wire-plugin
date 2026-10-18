@@ -29,12 +29,16 @@ On the **Projects** page, add the Jira project with:
 
 The Jira webhook that starts agents must cover every project agents work in. It is set to all projects; agents ignore events that are not assigned to them and do not mention them.
 
-## 3. Create the pod
+## 3. Register any people
+
+Console admins register people on the **Admin** page, which also holds spawning agents and the list of admins. Import a person from the company directory, an issue tracker project or a chat channel, or add them by email; the console links their existing accounts. Only console admins see the Admin page and can spawn agents, register people or manage admins; everyone signed in can view agents, people, pods, projects and release views.
+
+## 4. Create the pod
 
 On the **Pods** page:
 
 1. Name the pod and list the Jira project keys it covers.
-2. Add agents and give each a role: one engagement lead, one delivery manager, and the analytics and data engineers the work needs.
+2. Add agents, people or both, and give each a role: one engagement lead, one delivery manager, and the analytics and data engineers the work needs. People must be registered first (below).
 3. Add the escalation contacts by email; the console finds their Jira accounts. A pod that covers a project needs at least one.
 
 Saving gives each member access to the pod's Jira projects.
@@ -47,7 +51,7 @@ Each agent's page also holds its profile: a photo, the default persona it takes 
 
 ![An agent's profile: photo, default persona set to delivery manager, a personality describing tone and style, and the agent's recent tickets](/img/hosted-agents/console-agent-profile.png)
 
-## 4. Connect Slack
+## 5. Connect Slack
 
 Each agent posts as its own Slack user. On each agent's page, press **Connect Slack** and sign in as that agent. The connection includes reading files shared with the agent; an agent connected before that was added must connect again.
 
@@ -55,7 +59,7 @@ The same page shows the tickets the agent is working on, its Slack connection an
 
 ![An agent's page: state, tickets in progress, Slack connected, and two scheduled progress reports](/img/hosted-agents/console-agent-summary.png)
 
-## 5. Turn on sprints
+## 6. Turn on sprints
 
 On each Jira project, turn on sprints (Project settings, Features) so the delivery manager can keep the sprint whole.
 
