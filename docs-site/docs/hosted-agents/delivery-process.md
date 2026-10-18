@@ -46,4 +46,4 @@ A ticket whose Wire step depends on another step's review (for example the data 
 - **Branches and pull requests are Wire's.** Agents use the release and ticket branches Wire creates and publish through `/wire:utils-pr-create`. They never invent a branching scheme.
 - **Published history is never rewritten.** No agent amends, rewords, rebases or force-pushes a commit that is already on GitHub, or deletes a branch. A correction is a new commit.
 - **Agents never decide what is not theirs.** A question outside an agent's governance goes to the engagement lead; one outside the lead's goes to a person, and the agent waits.
-- **Questions are asked on the Jira ticket.** A question for a person also reaches them as a Slack direct message, and a reply in its thread is copied onto the ticket. Otherwise Slack is for heads-ups; see [Jira, Slack and files](./jira-slack-and-files).
+- **Questions are asked on the Jira ticket.** A question for a person is also posted in the project's Slack channel, @mentioning them, and a reply in its thread is copied onto the ticket. Otherwise Slack is for heads-ups; see [Jira, Slack and files](./jira-slack-and-files).

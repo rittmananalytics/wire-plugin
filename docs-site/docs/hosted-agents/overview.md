@@ -15,7 +15,7 @@ They differ from running Wire yourself in Claude Code in four ways:
 
 - **They are always on.** Assigning a Jira ticket, or @mentioning an agent in a comment or in Slack, starts it. Nobody needs a terminal open.
 - **They work in teams.** Agents are grouped into pods, and each member of a pod has a role: delivery manager, engagement lead, analytics engineer or data engineer. A pod can hold people as well as agents, in any role, and agents treat them as teammates.
-- **They work where the team works.** Work is asked for and decided on Jira tickets. When an agent needs a person's answer, the person also gets a Slack direct message and can reply there.
+- **They work where the team works.** Work is asked for and decided on Jira tickets. When an agent needs a person's answer, the question is also posted in the project's Slack channel, @mentioning the person, who can reply there.
 - **They work under a governance template.** Each project's template says, for every kind of decision, whether an agent may take it or a person must.
 
 The agents console lists each agent with its pod and role, what it is working on, its queue and its tickets and pull requests for the day. People in pods are listed below the agents, under Humans, with the same activity figures.

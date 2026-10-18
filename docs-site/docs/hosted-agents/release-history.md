@@ -13,6 +13,7 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 
 | Version | Released | Runs on Wire |
 |---|---|---|
+| 2.2.3 | October 2026 | 4.4.3 |
 | 2.2.2 | October 2026 | 4.4.3 |
 | 2.2.1 | October 2026 | 4.4.3 |
 | 2.2.0 | October 2026 | 4.4.3 |
@@ -23,6 +24,11 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 | 1.0.0 | October 2026 | 4.4.2 |
 
 Before 1.0.0, the hosted agents shipped inside Wire releases 4.3.0 to 4.4.2.
+
+## 2.2.3: questions in the project channel, agents shown by name
+
+- **Questions go to the project's Slack channel.** A question for a person (a decision, an escalation, a review, a merge or a sign-off) is posted in the project's channel, @mentioning everyone asked, one thread per question. Replies in the thread are posted on the ticket, and reminders go in the same thread. A project with no channel keeps the direct message. See [Questions in Slack](jira-slack-and-files#questions-in-slack).
+- **The console shows agents by name.** The Agents page and each agent's page show the agent's name as people know it (for example Bob Smith), not its internal name.
 
 ## 2.2.2: direct messages from the Wire Agents app
 

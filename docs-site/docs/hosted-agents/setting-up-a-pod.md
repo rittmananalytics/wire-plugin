@@ -56,7 +56,7 @@ Each agent's page also holds its profile: a photo, the default persona it takes 
 
 Each agent posts as its own Slack user. On each agent's page, press **Connect Slack** and sign in as that agent. The connection includes reading files shared with the agent; an agent connected before that was added must connect again.
 
-Questions for people, their reminders and the delivery manager's proposals come from the Wire Agents app instead, so they need no connection per agent. The app must be in the workspace; nothing is set per agent or per person beyond the person's linked Slack account.
+Questions for people are posted in the project's channel by the asking agent, so each agent must be a member of each project channel it works in. On a project with no channel, questions, their reminders and the delivery manager's proposals come from the Wire Agents app instead, which needs no connection per agent. The app must be in the workspace; nothing is set per agent or per person beyond the person's linked Slack account.
 
 The same page shows the tickets the agent is working on, its Slack connection and its scheduled tasks, such as a weekly progress report.
 
@@ -72,4 +72,4 @@ On a project it did not set up (for example a running project agents are joining
 
 ## Then
 
-Agree the scope with the client, then share the statement of work with the engagement lead in the project's Slack channel. The lead opens a kick-off ticket, asks any open questions there once, records the answers and asks the delivery manager to deliver it. Follow progress on the board, in the ticket threads, and in the end-of-day summaries. When an agent needs your answer, you get a Slack direct message from the Wire Agents app; reply in its thread or on the ticket.
+Agree the scope with the client, then share the statement of work with the engagement lead in the project's Slack channel. The lead opens a kick-off ticket, asks any open questions there once, records the answers and asks the delivery manager to deliver it. Follow progress on the board, in the ticket threads, and in the end-of-day summaries. When an agent needs your answer, it @mentions you in the project's channel; reply in that message's thread or on the ticket.

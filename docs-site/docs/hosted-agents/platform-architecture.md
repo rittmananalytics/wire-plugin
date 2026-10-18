@@ -21,7 +21,7 @@ Hosted agents run on Google Cloud, in a project Rittman Analytics owns. Each age
 4. The supervisor on that agent's Compute Engine machine pulls the request from its subscription.
 5. The supervisor reads the project, pod and governance template from Firestore, and the agent's credentials from Secret Manager.
 6. Claude Code runs the ticket with Wire in its own working folder, calling Anthropic through Cloud NAT.
-7. Questions and rulings go to the Jira ticket. A question for a person also goes to them as a Slack direct message from the Wire Agents app. The agent waits for a reply from the engagement lead or an escalation contact, on the ticket or in the message's thread; a Slack reply is copied onto the ticket within 5 minutes.
+7. Questions and rulings go to the Jira ticket. A question for a person is also posted in the project's Slack channel, @mentioning them (a direct message from the Wire Agents app when the project has no channel). The agent waits for a reply from the engagement lead or an escalation contact, on the ticket or in the message's thread; a Slack reply is copied onto the ticket within 5 minutes.
 8. The agent pushes a ticket branch and opens a pull request on GitHub.
 9. The agent posts status changes to the ticket's Slack thread.
 10. The supervisor writes the agent's status to Firestore and its logs to Cloud Logging.
@@ -50,9 +50,9 @@ Hosted agents run on Google Cloud, in a project Rittman Analytics owns. Each age
 | See what agents did | Cloud Logging | Every run is logged in one place, and the console shows it live. |
 | Ship the agent | Cloud Build and Artifact Registry | One image for every agent, built once and deployed by digest, so every agent runs exactly the same code. |
 
-**Jira and Slack as the interface.** Agents work where the team already works. Work is asked for, decided and recorded on Jira tickets, which gives every decision an audit trail; Slack carries short heads-ups, and questions for a person as direct messages, whose replies are copied onto the ticket. Nobody needs a new tool to work with an agent, and the agents console is needed only to run them.
+**Jira and Slack as the interface.** Agents work where the team already works. Work is asked for, decided and recorded on Jira tickets, which gives every decision an audit trail; Slack carries short heads-ups, and questions for a person, @mentioned in the project channel, whose replies are copied onto the ticket. Nobody needs a new tool to work with an agent, and the agents console is needed only to run them.
 
-**One Slack app for direct messages.** Questions, their reminders and the delivery manager's proposals come from the Wire Agents app, shown with the asking agent's name and photo. The app reads the replies in its own conversations for every agent, so no agent needs extra Slack access to read a person's reply. Everything else an agent posts comes from its own Slack user.
+**One Slack app for direct messages.** The delivery manager's proposals, and questions on a project with no channel, come from the Wire Agents app, shown with the asking agent's name and photo. The app reads the replies in its own conversations for every agent, so no agent needs extra Slack access to read a person's reply. Everything else an agent posts comes from its own Slack user.
 
 **Each agent has its own identity.** Every agent has its own Jira account, Slack user, GitHub access, service account, credentials and queue. People in pods keep their own accounts: the console only links them, by email. Its actions show under its own name, its access can be granted or removed alone, and it can read only its own secrets and its own queue. The console can give a new agent only the roles on a fixed list, so it cannot give any agent more access than that.
 

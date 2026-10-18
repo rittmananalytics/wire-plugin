@@ -11,7 +11,7 @@ Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them 
 
 A governance template says, for every kind of decision met on a project, who takes it: the **delivery manager** or the **engagement lead** of the pod working it, or a **person** (one of the pod's escalation contacts). Each project chooses one template, on the agents console's Projects page, so a pod working several projects can be lightly governed on one and strictly on another. The agents read it at every decision, so changing a project's template changes how it is governed from the next decision on.
 
-**When a person holds a role.** The engagement lead or delivery manager can be a person. Decisions the template gives that role then go to that person: an agent asks them on the ticket, with a Slack direct message, and waits. A person in the role is never overruled by an agent.
+**When a person holds a role.** The engagement lead or delivery manager can be a person. Decisions the template gives that role then go to that person: an agent asks them on the ticket and in the project's Slack channel, @mentioning them, and waits. A person in the role is never overruled by an agent.
 
 Templates are a [process registry](../advanced/registries) entry type, like release types and conventions: authored in the registry, synced into the hosted agents' private repository (`rittmananalytics/wire-hosted-agents`), and checked by a validator there. Two ship; more can be added.
 
