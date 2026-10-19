@@ -13,7 +13,7 @@ The Tableau to Looker pair is experimental. Review every output before presentin
 
 This tutorial runs a `bi_migration` release with the `tableau_to_looker` pair. The client is a fictional retailer, Halcyon Outdoor, moving its Tableau Cloud reporting to Looker on the same BigQuery warehouse. It shows how Wire takes a snapshot of a Tableau site, which workbook constructs translate to LookML and which need a person, how duplicate data sources become one explore, and how parity works with Tableau as the source.
 
-The release is directed in prose, as in the [Looker to Omni tutorial](./looker-to-omni-migration). At each step we name the command Wire runs.
+The release is directed in prose, as in [A session at the terminal](./bi-to-looker-session). At each step we name the command Wire runs.
 
 ## How this pair works
 
@@ -46,7 +46,7 @@ A Desktop-only estate (a folder of `.twb` and `.twbx` files) runs in files mode:
 
 | You say | Wire replies |
 |---|---|
-| "Start a BI migration release for Halcyon: Tableau Cloud to Looker. Site halcyon, Looker project halcyon_retail." | Creates the release with `bi_pair: tableau_to_looker` and says the pair is experimental. The Looker-to-Omni phases are switched off; the Tableau audit, Looker target, LookML model and Looker content phases are switched on. |
+| "Start a BI migration release for Halcyon: Tableau Cloud to Looker. Site halcyon, Looker project halcyon_retail." | Creates the release with `bi_pair: tableau_to_looker` and says the pair is experimental. The Tableau audit, Looker target, LookML model and Looker content phases are switched on. |
 
 Ran: `new`.
 
@@ -148,6 +148,5 @@ The sheet's 34 rows from Query View Data were compared, with the standard compar
 
 - [BI Tool Migration](../release-types/bi-migration#migrating-to-looker)
 - [A session at the terminal: Tableau, Metabase and Looker Studio to Looker](./bi-to-looker-session)
-- [Tutorial: Tableau and Metabase to Omni](./tableau-and-metabase-to-omni): the same source, with Omni as the target
 - Pair files: `bi_pairs/tableau_to_looker/` (translation guide, property mapping, feature detection, content mapping, tooling, worked examples)
 - IR schema: `wire/schemas/bi_ir-schema.md`

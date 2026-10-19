@@ -11,7 +11,7 @@ The Looker Studio to Looker pair is experimental. Review every output before pre
 
 :::
 
-This tutorial runs a `bi_migration` release with the `looker_studio_to_looker` pair. The client is a fictional retailer, Halcyon Outdoor, moving its Looker Studio reports to Looker on the same BigQuery warehouse. The first half of the release, the capture, the audit and the metric catalogue, is the same as in the [Looker Studio to Omni tutorial](./looker-studio-to-omni); this page covers what changes when the target is Looker.
+This tutorial runs a `bi_migration` release with the `looker_studio_to_looker` pair. The client is a fictional retailer, Halcyon Outdoor, moving its Looker Studio reports to Looker on the same BigQuery warehouse. The first half of the release, the capture, the audit and the metric catalogue, is shown at the terminal in [A session at the terminal](./bi-to-looker-session); this page covers it briefly, then the conversion to Looker.
 
 ## How this pair works
 
@@ -41,10 +41,10 @@ Looker Studio keeps no shared model: each report has its own data sources and fo
 
 | You say | Wire replies |
 |---|---|
-| "Start a BI migration release for Halcyon: Looker Studio to Looker. These two reports; Looker project halcyon_retail." | Asks for the target (Omni or Looker) and records `bi_pair: looker_studio_to_looker`, saying the pair is experimental. Asks who approved automated read-only access to the reports. |
+| "Start a BI migration release for Halcyon: Looker Studio to Looker. These two reports; Looker project halcyon_retail." | Records `bi_pair: looker_studio_to_looker`, saying the pair is experimental. Asks who approved automated read-only access to the reports. |
 | "Approved by the head of analytics today. Capture them." | Opens Chrome for the sign-in, captures both reports, extracts `report.json`, builds the catalogs and the metric catalogue. |
 
-Ran: `new`, `looker-studio-audit-generate`, `metric-catalogue-generate`. The audit and the catalogue are validated and reviewed as in the Omni tutorial.
+Ran: `new`, `looker-studio-audit-generate`, `metric-catalogue-generate`. The audit and the catalogue are then validated (`looker-studio-audit-validate`, `metric-catalogue-validate`) and reviewed with the client (`looker-studio-audit-review`, `metric-catalogue-review`).
 
 ## Step 2: Convert
 
@@ -77,7 +77,7 @@ In October 2026 the pair ran on two Rittman Analytics reports. "Monthly Snapshot
 | Monthly Snapshot Report (Looker connector) | 7 | 6 identical. Invoices by month: 12 of 13 months identical; the current month differs, because the chart's range ends today and Looker's nearest filter takes in invoices dated later this month. Deals by month and company: Looker Studio drew the top 15 companies; Looker's rows for those 15 are the same 37, with the same values |
 | Example Report (BigQuery table and custom SQL) | 4 of 5 | All 4 identical (scorecards, cost of delivery by month in the same order, sessions by channel). The fifth chart is on a blend and was listed, not converted |
 
-The run found faults in the Looker Studio scripts the Omni pair shares, fixed for both pairs:
+The run found faults in the Looker Studio scripts, since fixed:
 - the extractor missed custom SQL, which the editor now sends beside the BigQuery configuration;
 - the extractor did not read the Looker connector's model and explore, or a chart's own date range;
 - the chart recordings treated Record Count, and measures from the Looker connector, as key columns.
@@ -89,7 +89,9 @@ Looker's validator also warned that a dashboard on the existing `analytics` mode
 | Limitation | Effect | What to do |
 |---|---|---|
 | Experimental | Outputs are drafts | Review them before presenting them to a client |
-| Undocumented endpoints | As for the Omni pair: the capture reads the editor's internal calls | See the [Looker Studio to Omni limitations](./looker-studio-to-omni#limitations) |
+| Undocumented endpoints | The capture reads the editor's internal calls, which Google can change without notice; a capture or extraction then fails | Each capture records the app version, and the extractor stops on structure it does not know |
+| Interactive sign-in | The capture needs a Google sign-in in a desktop Chrome window, so it cannot run unattended or in CI | Run it during the audit, on the consultant's machine |
+| Edit access on every data source | Without it, connections and data source formulas are missing and the data source is `blocked` | Send the access list the audit writes, then re-capture |
 | Blends | Not converted | Rule the join in the plan |
 | Unreachable connectors | Search Console, GA4, Sheets and community connectors are not converted | A pipeline task, or drop |
 | Date range control default | Not in the capture | Set it by hand; the recordings show the range at capture time |
@@ -101,4 +103,4 @@ Looker's validator also warned that a dashboard on the existing `analytics` mode
 
 - [BI Tool Migration](../release-types/bi-migration#migrating-to-looker)
 - [A session at the terminal: Tableau, Metabase and Looker Studio to Looker](./bi-to-looker-session)
-- Pair files: `bi_pairs/looker_studio_to_looker/`; the capture side: `bi_pairs/looker_studio_to_omni/`
+- Pair files: `bi_pairs/looker_studio_to_looker/`

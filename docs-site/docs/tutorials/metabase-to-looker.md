@@ -13,7 +13,7 @@ The Metabase to Looker pair is experimental. Review every output before presenti
 
 This tutorial runs a `bi_migration` release with the `metabase_to_looker` pair. The client is a fictional retailer, Halcyon Outdoor, moving its Metabase dashboards to Looker on the same BigQuery warehouse. It shows how Wire takes a snapshot of a Metabase instance, what converts to LookML and what needs a person, and how parity works with Metabase as the source.
 
-The release is directed in prose, as in the [Looker to Omni tutorial](./looker-to-omni-migration). At each step we name the command Wire runs.
+The release is directed in prose, as in [A session at the terminal](./bi-to-looker-session). At each step we name the command Wire runs.
 
 ## How this pair works
 
@@ -43,7 +43,7 @@ All four are deterministic and make no AI call.
 
 | You say | Wire replies |
 |---|---|
-| "Start a BI migration release for Halcyon: Metabase to Looker. Instance halcyon.metabaseapp.com, Looker project halcyon_retail." | Creates the release with `bi_pair: metabase_to_looker` and says the pair is experimental. The Looker-to-Omni phases are switched off; the Metabase source audit, Looker target, LookML model and Looker content phases are switched on. |
+| "Start a BI migration release for Halcyon: Metabase to Looker. Instance halcyon.metabaseapp.com, Looker project halcyon_retail." | Creates the release with `bi_pair: metabase_to_looker` and says the pair is experimental. The Metabase source audit, Looker target, LookML model and Looker content phases are switched on. |
 
 Ran: `new`.
 
@@ -114,6 +114,5 @@ The run confirmed the relative date translation both ways: "previous 12 months" 
 
 - [BI Tool Migration](../release-types/bi-migration#migrating-to-looker)
 - [A session at the terminal: Tableau, Metabase and Looker Studio to Looker](./bi-to-looker-session)
-- [Tutorial: Tableau and Metabase to Omni](./tableau-and-metabase-to-omni): the same source, with Omni as the target
 - Pair files: `bi_pairs/metabase_to_looker/` (translation guide, property mapping, feature detection, content mapping, tooling, worked examples)
 - IR schema: `wire/schemas/bi_ir-schema.md`
