@@ -13,6 +13,7 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 
 | Version | Released | Runs on Wire |
 |---|---|---|
+| 2.2.4 | October 2026 | 4.4.3 |
 | 2.2.3 | October 2026 | 4.4.3 |
 | 2.2.2 | October 2026 | 4.4.3 |
 | 2.2.1 | October 2026 | 4.4.3 |
@@ -24,6 +25,11 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 | 1.0.0 | October 2026 | 4.4.2 |
 
 Before 1.0.0, the hosted agents shipped inside Wire releases 4.3.0 to 4.4.2.
+
+## 2.2.4: no direct messages from agents
+
+- **Proposals go to the project's Slack channel.** The delivery manager's proposals are posted in the project's channel from its own Slack user, @mentioning the project's contacts. Reply in the thread as before.
+- **No project channel: the agents' own channel.** Questions, proposals and reminders on a project with no Slack channel go to the agents' own channel the same way. Agents no longer send direct messages.
 
 ## 2.2.3: questions in the project channel, agents shown by name
 

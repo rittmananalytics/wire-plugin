@@ -56,7 +56,7 @@ Each agent's page also holds its profile: a photo, the default persona it takes 
 
 Each agent posts as its own Slack user. On each agent's page, press **Connect Slack** and sign in as that agent. The connection includes reading files shared with the agent; an agent connected before that was added must connect again.
 
-Questions for people are posted in the project's channel by the asking agent, so each agent must be a member of each project channel it works in. On a project with no channel, questions, their reminders and the delivery manager's proposals come from the Wire Agents app instead, which needs no connection per agent. The app must be in the workspace; nothing is set per agent or per person beyond the person's linked Slack account.
+Questions for people are posted in the project's channel by the asking agent, so each agent must be a member of each project channel it works in. On a project with no channel, they go to the agents' own channel, so every agent and every person who may be asked should be a member of it. Agents send no direct messages.
 
 The same page shows the tickets the agent is working on, its Slack connection and its scheduled tasks, such as a weekly progress report.
 

@@ -67,9 +67,9 @@ Each ticket also starts with three short lines (kind, Wire step and release fold
 | A heads-up the team should see now (a blocker that holds up others) | A reply in the ticket's thread, written by the agent |
 | An agent's note after finishing a ticket | The ticket's thread, else the project's channel |
 | The delivery manager's end-of-day summary | The project's channel |
-| An agent asks you a question, or asks you to review, merge or sign off | The project's channel: one message from the agent, @mentioning everyone asked, one thread per question; reply in the thread. A project with no channel: a direct message from the Wire Agents app, shown with the agent's name and photo, one thread per question; reply in the thread |
+| An agent asks you a question, or asks you to review, merge or sign off | The project's channel: one message from the agent, @mentioning everyone asked, one thread per question; reply in the thread. A project with no channel: the agents' own channel, the same way |
 | A question has waited an hour | A reminder in that question's thread |
-| The delivery manager proposes changes on a project it did not set up | A direct message from the Wire Agents app, shown with the delivery manager's name, to the project's escalation contacts; reply `approve`, `always` or `reject` in its thread |
+| The delivery manager proposes changes on a project it did not set up | The project's channel (or the agents' channel), one message from the delivery manager @mentioning the escalation contacts and any person in a lead role; reply `approve`, `always` or `reject` in its thread |
 | Anything not about one project, or about a project with no channel | The agents' own channel |
 
 Each project's channel is set on the agents console. An agent refuses to post a message about a project with its own channel in the agents' channel, and says which channel to use. Agents never post routine progress.
@@ -86,14 +86,14 @@ When a person names several agents in one message, the first named is the one as
 
 ### Questions in Slack
 
-Jira stays the record of every question and answer. When an agent asks a person something on a ticket (a decision, an escalation, a review, a merge or a sign-off), the agent also posts it in the project's Slack channel, @mentioning everyone asked whose Slack account is registered on the console. It gives the ticket, the question and a link. A project with no Slack channel gets a direct message from the Wire Agents app instead, shown with the agent's name and photo. Reply in that message's thread: the agent posts your reply on the ticket as "Reply from Pat Smith (via Slack)", with your name, and the work carries on as if you had replied in Jira.
+Jira stays the record of every question and answer. When an agent asks a person something on a ticket (a decision, an escalation, a review, a merge or a sign-off), the agent also posts it in the project's Slack channel, @mentioning everyone asked whose Slack account is registered on the console. It gives the ticket, the question and a link. A project with no Slack channel uses the agents' own channel the same way. Agents send no direct messages. Reply in that message's thread: the agent posts your reply on the ticket as "Reply from Pat Smith (via Slack)", with your name, and the work carries on as if you had replied in Jira.
 
 - Replies are picked up within 5 minutes.
 - Only replies from the people asked count; anything else in the thread is ignored. When several people are asked, a reply from any of them is posted as theirs.
 - You can still reply in Jira. If you reply in both, the first reply is the answer.
 - If a question has waited an hour, the reminder goes in the same thread, @mentioning whoever has not replied.
 - People without a registered Slack account get the question on the ticket only.
-- Direct messages (questions on projects with no channel, and the delivery manager's proposals) come from the Wire Agents app, which Slack labels as an app. You have one conversation with the app for every agent; each question or proposal has its own thread, and only replies in that thread count.
+- Each question or proposal has its own thread, and only replies in that thread count. Later messages in the channel are not read as answers.
 
 ## Documents shared in Slack
 

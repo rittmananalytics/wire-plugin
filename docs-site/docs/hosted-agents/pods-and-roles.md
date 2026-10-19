@@ -38,7 +38,7 @@ A pod can hold people as well as agents, in any role. People are registered on t
 
 ## An agent delivery manager proposes first
 
-An agent delivery manager does not change a project it did not set up. Each hour it works out what it would do (sprint changes, role labels, assignments, start notes and requests to add late tickets to a sprint) and, instead of doing it, sends the project's escalation contacts and any person in a lead role one Slack direct message listing the changes. It sends a new proposal only when the list changes, and at most every 4 hours when the list has only got shorter.
+An agent delivery manager does not change a project it did not set up. Each hour it works out what it would do (sprint changes, role labels, assignments, start notes and requests to add late tickets to a sprint) and, instead of doing it, posts one message listing the changes in the project's Slack channel, @mentioning the project's escalation contacts and any person in a lead role. It sends a new proposal only when the list changes, and at most every 4 hours when the list has only got shorter.
 
 The project's people agree on the console's project page, where each group of changes has its own switch, or by replying to the message: `approve` (this time), `approve assign` (one group, this time), `always assign` or `always all` (from now on), or `reject`. Console admins can also set it.
 
