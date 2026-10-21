@@ -17,9 +17,10 @@ The console accepts Rittman Analytics Google accounts only.
 
 ## 1. Register the project
 
-On the **Projects** page, add the Jira project with:
+On the **Projects** page, add the project with:
 
-- **The project key exactly as Jira shows it** (the letters before the number in a ticket key, such as `ACME` in `ACME-12`). Agents look the project up by this key; the console checks that Jira has a project with it.
+- **Its tracker**: Jira, or **None** for a project that needs no tickets (for example one that only has a [context steward](context-steward)). A project with no tracker needs a repository and a Slack channel, and agents make no Jira calls for it.
+- **The project key**. For a Jira project, exactly as Jira shows it (the letters before the number in a ticket key, such as `ACME` in `ACME-12`); agents look the project up by this key, and the console checks that Jira has a project with it. For a project with no tracker, any key of capital letters and digits.
 - **The client repository** the agents work in.
 - **The project's Slack channel**, if it has one. Project updates go there; without one they go to the agents' own channel.
 - **The project's [governance template](./governance)**: lightly or strictly governed (strict when not set). A pod working several projects follows each project's own template.
@@ -37,14 +38,14 @@ Console admins register people on the **Admin** page, which also holds spawning 
 
 On the **Pods** page:
 
-1. Name the pod and list the Jira project keys it covers.
+1. Name the pod and list the projects it covers, by the keys the Projects page lists. The registered keys are shown under the field; click one to add it.
 2. Add agents, people or both, and give each a role: one engagement lead, one delivery manager, and the analytics and data engineers the work needs. People must be registered first (step 3). Giving the engagement lead or delivery manager role to someone new removes the member who held it from the pod, after you confirm, and hands their open work to the new holder.
 3. If a person is the delivery manager, choose whether the delivery assistant is on (it is by default) and whether it may **assign ready tickets directly** instead of proposing them for the person to approve.
 4. Add the escalation contacts by email; the console finds their Jira accounts. A pod that covers a project needs at least one.
 
-Saving gives each member access to the pod's Jira projects.
+Saving gives each member access to the pod's projects that are in Jira. A pod covering only projects with no tracker needs no delivery manager or analytics engineer.
 
-The Pods page shows each pod as a chart: escalation contacts at the top, the engagement lead below them, and the delivery manager and engineers below the lead.
+The Pods page shows each pod as a chart, with each member's photo: escalation contacts at the top, the engagement lead below them, and the delivery manager, engineers and any context steward below the lead. Each project key on the Projects page links to the project's page, which holds its delivery settings and context steward settings.
 
 ![The Pods page: a pod shown as an organisation chart with the escalation contact, engagement lead, delivery manager and two analytics engineers](/img/hosted-agents/console-pods.png)
 

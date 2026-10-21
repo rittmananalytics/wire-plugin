@@ -13,6 +13,21 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 
 | Version | Released | Runs on Wire |
 |---|---|---|
+| 2.8.2 | October 2026 | 4.4.3 |
+| 2.8.1 | October 2026 | 4.4.3 |
+| 2.8.0 | October 2026 | 4.4.3 |
+| 2.7.2 | October 2026 | 4.4.3 |
+| 2.7.1 | October 2026 | 4.4.3 |
+| 2.7.0 | October 2026 | 4.4.3 |
+| 2.6.0 | October 2026 | 4.4.3 |
+| 2.5.0 | October 2026 | 4.4.3 |
+| 2.4.2 | October 2026 | 4.4.3 |
+| 2.4.1 | October 2026 | 4.4.3 |
+| 2.4.0 | October 2026 | 4.4.3 |
+| 2.3.3 | October 2026 | 4.4.3 |
+| 2.3.2 | October 2026 | 4.4.3 |
+| 2.3.1 | October 2026 | 4.4.3 |
+| 2.3.0 | October 2026 | 4.4.3 |
 | 2.2.4 | October 2026 | 4.4.3 |
 | 2.2.3 | October 2026 | 4.4.3 |
 | 2.2.2 | October 2026 | 4.4.3 |
@@ -25,6 +40,71 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 | 1.0.0 | October 2026 | 4.4.2 |
 
 Before 1.0.0, the hosted agents shipped inside Wire releases 4.3.0 to 4.4.2.
+
+## 2.8.2: the context steward reads Slack threads
+
+- **Thread replies.** Each scan reads every new message in the source channel, thread replies included, with no limit on how many. A new reply in a thread started up to 30 days ago is read with the thread's first message, and its link opens the reply in its thread.
+
+## 2.8.1: photos on the Pods page
+
+- **People's photos** now show on the Pods page, and an agent shows the photo on its console profile before its issue tracker photo.
+
+## 2.8.0: the context steward's scan, record only
+
+- **Hourly scan.** For each project it stewards, the context steward reads the project's new Slack messages and the recorded calls that match its call rules, compares them with the engagement record, and records each finding with a link to its source. Nothing is posted yet. See [Context steward](context-steward).
+
+## 2.7.2: project page links
+
+- **Each project key on the Projects page links to the project's page.** A project with no tracker had no link to it.
+
+## 2.7.1: the Pods page Projects field
+
+- **Projects, not Jira keys.** The Pods page asks for the projects a pod covers by the keys the Projects page lists, and shows the registered keys to add with a click.
+
+## 2.7.0: the context steward persona and settings
+
+- **A new role, the context steward.** A hosted persona and pod role, under "Engagement" in the persona picker: an agent only, one per pod, under the engagement lead on the org chart.
+- **Its settings on each project's page**, changed by console admins: mode, which calls count, the channels it reads and asks in, the confirmation owner, the pull request reviewer and its schedule. See [Context steward](context-steward#settings).
+
+## 2.6.0: one persona list, and projects with no tracker
+
+- **One list of personas and roles** for the agents and the console. An agent added to a pod starts with its default persona as its role, when that persona is a pod role.
+- **Projects with no tracker.** A project can be registered with tracker None: no Jira project, for work that needs no tickets. Agents and the console make no Jira calls for it. See [Setting up a pod](setting-up-a-pod#1-register-the-project).
+
+## 2.5.0: Slack follow-ups and connectors in every run
+
+- **Connectors in every run.** Each run waits for the agent's claude.ai connectors to connect before it starts, so it can use them.
+- **Reply in a thread without @mentioning the agent.** A reply in a Slack thread an agent answered in within the last day reaches that agent.
+
+## 2.4.2: the Marketing persona asks before changing the website
+
+- Before any change to the company website, and again before publishing it, the Marketing persona asks a person and acts only on a clear yes.
+
+## 2.4.1: agent image fix
+
+- The agent image builds again after 2.4.0.
+
+## 2.4.0: charts in Slack and plugins per operations persona
+
+- **Charts and files in Slack.** Agents can show a chart or file in their Slack reply, in the same thread.
+- **Plugins per operations persona.** Each operations persona loads its own plugin in place of the Wire plugin.
+
+## 2.3.3: agents write in their personality
+
+- The personality set on the console now shapes how an agent writes and works, ahead of the house style. A short list of fixed writing rules still applies to every agent.
+
+## 2.3.2: a Slack mention is not lost after connecting
+
+- An agent mentioned in Slack just after it was connected no longer drops the message.
+
+## 2.3.1: Agents page tabs
+
+- The Agents page has three tabs: Delivery agents, Operations agents and Humans.
+
+## 2.3.0: operations personas
+
+- **Agents for work outside data delivery.** Marketing, Accountant and HR assistant personas work without a repository and take tasks from their board's Slack channel.
+- **A project can have no repository**, for an operations agent's board.
 
 ## 2.2.4: no direct messages from agents
 

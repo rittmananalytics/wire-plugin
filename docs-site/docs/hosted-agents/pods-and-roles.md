@@ -9,7 +9,7 @@ title: Pods and roles
 Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them for its own engagements; they are not part of the Wire plugin or extension, and cannot be installed or run outside Rittman Analytics. The rest of Wire works the same without them.
 :::
 
-A pod is a team of hosted agents for one or more engagements. An engagement is identified by its Jira project key. Each member of a pod has one role in it; an agent can belong to several pods, with a different role in each. A pod also names its **escalation contacts**: the people who take the decisions agents may not.
+A pod is a team of hosted agents for one or more engagements. An engagement is identified by its project key, as the console's Projects page lists it: the Jira project key, or, for a project with no issue tracker, the key it was registered with. Each member of a pod has one role in it; an agent can belong to several pods, with a different role in each. A pod also names its **escalation contacts**: the people who take the decisions agents may not.
 
 ![Pod structure: the escalation contacts at the top, the engagement lead below them, and the delivery manager, analytics engineers and data engineers reporting to the lead; the engineers take day-to-day work from the delivery manager](/img/hosted-agents/diagram-structure.png)
 
@@ -23,8 +23,9 @@ Everyone reports to the engagement lead. The engineers take their day-to-day wor
 | **Delivery manager** | Turning agreed work into a plan: sets up the release with Wire, creates the tickets, links them to the release with `/wire:tickets-import`, puts them in the sprint and, every hour, assigns those that can start by role and free capacity. Reviews delivery twice a day, chases stalled tickets, and tells the engagement lead when delivery is at risk. Approves the standard release set-up. Posts an end-of-day summary. | Engineering work |
 | **Analytics engineer** | Data models, dbt, the semantic layer, dashboards, data quality and testing, through `/wire:work` | Approve its own work |
 | **Data engineer** | Ingestion, pipelines and orchestration, through `/wire:work` | Approve its own work |
+| **Context steward** | Keeping the engagement record up to date from the project's calls and Slack channel, and asking a person before changing an agreed rule or requirement. An agent only, one per pod. See [Context steward](context-steward). | Decide, rule, approve pull requests or do delivery work |
 
-A role changes what an agent is told about its duties; it never widens what governance lets it decide. The same lists of roles are used by Wire's [personas](../advanced/personas), so a person and an agent in the same role see the same views.
+An agent's default persona on its profile pre-fills its role when it is added to a pod; the role is what counts. A role changes what an agent is told about its duties; it never widens what governance lets it decide. The same lists of roles are used by Wire's [personas](../advanced/personas), so a person and an agent in the same role see the same views.
 
 ## People in a pod
 
