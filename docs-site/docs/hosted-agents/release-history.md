@@ -13,6 +13,7 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 
 | Version | Released | Runs on Wire |
 |---|---|---|
+| 2.10.0 | October 2026 | 4.4.3 |
 | 2.9.0 | October 2026 | 4.4.3 |
 | 2.8.2 | October 2026 | 4.4.3 |
 | 2.8.1 | October 2026 | 4.4.3 |
@@ -41,6 +42,10 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 | 1.0.0 | October 2026 | 4.4.2 |
 
 Before 1.0.0, the hosted agents shipped inside Wire releases 4.3.0 to 4.4.2.
+
+## 2.10.0: the context steward's daily pull request
+
+- **One pull request for the engagement record.** In mode On, once a day, ready and confirmed findings are applied to the record and added to one pull request, after a check that only the record changed and that agreed rules and requirements changed only where the owner confirmed it. The reviewer is asked only when it changed. See [The daily pull request](context-steward#the-daily-pull-request).
 
 ## 2.9.0: the context steward asks the confirmation owner
 

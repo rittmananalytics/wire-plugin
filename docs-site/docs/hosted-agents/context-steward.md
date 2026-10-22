@@ -40,7 +40,7 @@ Console admins set these on the project's page. Others can see them.
 
 | Setting | What it does |
 |---|---|
-| Mode | **Off**: does nothing. **Record only**: finds and records, posts nothing. **On**: also asks the confirmation owner in Slack. |
+| Mode | **Off**: does nothing. **Record only**: finds and records, posts nothing. **On**: also asks the confirmation owner in Slack and opens the daily pull request. |
 | Call rules | Which recorded calls count, in plain words the steward applies, such as "calls with the client's attendees". |
 | Call exclusions | Calls never read, one per line, applied first, such as "company stand-ups". |
 | Source channel | The Slack channel it reads. Defaults to the project's channel. |
@@ -80,17 +80,28 @@ In mode **On**, after each scan:
 
 The steward never treats these threads as a conversation: a message there, even one that @mentions it, is read as a decision at the next scan, not answered.
 
+## The daily pull request
+
+In mode **On**, once a day at the review time on working days:
+
+1. The findings that are ready (facts) or confirmed are applied to the engagement record on one branch for the project, by a run that only edits files under `.wire/`.
+2. Before anything is pushed, the change is checked: every changed file must be under `.wire/`, and a requirements, business rules or decisions file may change only through a confirmed finding that names it. If the check fails, nothing is pushed, the findings stay as they were, and the confirmation owner is told in the feedback channel.
+3. The change is committed and pushed (never amended, rebased or force pushed). The first time, a pull request opens; after that, each day's change is added to the same pull request while it is open. Its description lists every finding in it, with source links and who confirmed each change.
+4. The reviewer is asked to review only when the pull request changed since they were last asked. A day with nothing new changes nothing.
+
+After the pull request is merged, the next day's change starts a new one.
+
 ## Seeing what it found
 
 - **The agent's page** on the console shows its live log. Each new finding is one line with its status, kind, the file and section it affects, a summary and its link. Each scan ends with a line counting the messages and calls read and the findings recorded. Questions asked and decisions recorded are logged too.
 - **The feedback channel** holds the question threads and the decisions.
+- **The pull request** on the project's repository lists everything applied to the record so far.
 - **The project's page** shows who the steward is and its settings.
 
 ## Still to come
 
 | Step | What it adds |
 |---|---|
-| Daily pull request | Once a day, ready and confirmed findings go into one pull request on the project's repository, and the reviewer is asked to review it when it has changed. |
 | Approval and merge | An approved pull request is left alone; after the merge, a new one starts. |
 
 Start a new project in **Record only** for a few working days and check the findings before turning it **On**.
