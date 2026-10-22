@@ -174,6 +174,29 @@ These rules are binding on every step below:
 1. Resolve the release folder from the argument or the inference above.
 2. Verify `.wire/releases/<release_folder>/status.md` exists. If not, stop: suggest `/wire:status` to list releases, or `/wire:new` if no engagement exists in this repo.
 
+### Step 1b: Check the Status File Can Be Read
+
+Run `python3 <wire>/scripts/status_file.py check .wire/releases/<release_folder>`
+before reading anything else. It reports a key that appears twice in one YAML
+block (`yaml.safe_load` keeps the last copy without an error) and a file that
+does not parse, in `status.md` and in each ticket record under `iterations/`,
+with the file and line. Each problem carries its drift category:
+
+| Script finding | Category | Proposal |
+|---|---|---|
+| `duplicate` | `status_duplicate_key` | Show both copies with their lines and values, and the evidence for which is newer: execution-log rows for that artifact and step, and `git log -L <line>,<line>:<file>` for when each line was written. Propose keeping the newer value as the key, and moving the other to a `prior_<key>` field when it is worth keeping (an earlier approval date), otherwise removing it. Ask, one at a time; the later line in the file is not always the newer value |
+| `parse` | `status_unparseable` | Show the line and the parser's message, and propose the smallest edit that makes the file parse. Ask |
+
+These two are resolved before Step 2, and before any other drift is
+classified, because every later step reads values from the file. Nothing else
+is proposed until the file reads cleanly; once it does, run the script again
+and continue. A declined repair ends the sync with the report alone, as Step 6
+allows. On a ticket branch, report only (see Edge Cases), except for a
+duplicate in that ticket's own record.
+
+In orchestrated mode this repair is made by the orchestrating session, the
+single writer of `status.md`, after the director has chosen the value.
+
 ### Step 2: Load the Recorded State
 
 1. Read `.wire/releases/<release_folder>/status.md`. Parse `last_updated` from the frontmatter and read the artifact lifecycle states **generically, per `specs/status.md` Step 2's "Reading artifacts generically" rules** — standard `artifacts:` map shape, the `droughty` step-status shape, the `agentic_data_stack` embedded-YAML-block shape, and `custom` releases (whose artifact keys are whatever `/wire:custom-define` decided). Do not hardcode an artifact list.
@@ -353,6 +376,14 @@ Present all findings before asking anything. Suggested shape:
 Items needing your call (record_ahead): none
 
 Apply repairs 1–5? (yes / pick numbers / no)
+```
+
+When Step 1b found problems, the report holds only those rows, for example:
+
+```markdown
+| # | Target | Drift | Proposed repair |
+|---|--------|-------|-----------------|
+| 1 | status.md line 12 | status_duplicate_key: `artifacts.dashboards.reviewed_date` at line 10 ("2026-10-20") and line 12 ("2026-09-30") | keep 2026-10-20 (dashboards-review logged 2026-10-20); move 2026-09-30 to `prior_reviewed_date` |
 ```
 
 If nothing drifted, report "Record and reality are in sync" and stop — write nothing.

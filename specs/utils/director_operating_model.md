@@ -126,6 +126,19 @@ model becomes a black box.
 
 ## The run plan
 
+**First, check the status file.** Before computing the runnable set, and so
+before any plan or dispatch, the orchestrator runs `python3
+<wire>/scripts/status_file.py check .wire/releases/<release>`. A duplicate key
+or a file that does not parse means the runnable set, the claim
+(`agents.coordinator_session`) and every gate would read whichever copy comes
+last (wire-plugin#2). If the script reports anything, the orchestrator
+dispatches nothing. It shows the lines as one decision for the director:
+which value to keep for each duplicate, or the edit that makes the file parse.
+It applies the choice through `/wire:status-sync` Step 1b, as the single
+writer of `status.md`, runs the check again, then continues. Checking here
+gives one stop instead of every lane in a batch failing on the same fault at
+`precondition_gate.md` Step A.
+
 Rule 8 in full. Before the orchestrator dispatches a run of more than one
 command, or any warehouse-touching command, it shows the plan and waits.
 
@@ -255,7 +268,9 @@ Budget:        <lane's share of the release budget; warehouse_spend setting>
 Flat:          Do not spawn sub-agents. If the work is bigger than one lane,
                report that and stop — the orchestrator splits it.
 Status:        Do not write status.md or execution_log.md. The orchestrator
-               writes them from your state file.
+               writes them from your state file. If the precondition gate
+               stops on the status file (duplicate key, does not parse),
+               record it in your state file and report blocked; do not fix it.
 Report:        Report once, at completion, at a stall, or when you hit a
                decision you cannot make. No running commentary.
 ```
@@ -290,7 +305,9 @@ ready for a ruling**, it runs a consolidation pass over their output:
    a gap to fill silently.)
 3. `status.md` was not written by the lane. A lane that wrote it is a rule-6
    violation: report it, and reconcile the file from the lane's state file
-   rather than trusting the lane's edit.
+   rather than trusting the lane's edit. After the orchestrator writes
+   `status.md` from the state files, `status_file.py check` reports nothing
+   (`specs/utils/execution_log.md` rule 8).
 4. For warehouse-touching work: re-check build results against the warehouse,
    not the lane's claim, and scan for the engagement's documented traps.
 5. Spot-check a sample at full depth.

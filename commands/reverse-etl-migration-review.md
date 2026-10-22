@@ -394,6 +394,20 @@ This check is self-contained within this utility, so every caller gets it automa
    state files and the orchestrator writes the log rows from them (rule 6 of
    the operating model). Outside orchestrated mode, every command writes its
    own row as it always has.
+8. **Update `status.md` keys in place, then check the file.** When a command
+   records a result in `status.md`, it changes the existing key; it never adds
+   a second copy of a key in the same block. A value worth keeping (an earlier
+   approval date) moves to a `prior_<key>` field or stays in this log, never
+   in a duplicate key, because YAML keeps only the last copy and ignores the
+   first without an error (wire-plugin#2). The same applies to anyone editing
+   the file by hand or by script. After writing `status.md` and before
+   appending the row, run `python3 <wire>/scripts/status_file.py check
+   .wire/releases/<release_folder>`. If it reports a problem in a line this
+   command just wrote, fix it now. If the problem was there before, leave it,
+   say so in the output and point to `/wire:status-sync <release_folder>`
+   (`specs/utils/status_sync.md` Step 1b). In orchestrated mode the
+   orchestrating session runs the check when it writes `status.md` from a
+   lane's state file.
 8. **Never fabricate metrics.** Tokens and Cost are written as `n/a` and only
    ever filled by tooling that measured them. A best guess is worse than
    `n/a` in a client-facing audit trail.

@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.4.4: Duplicate keys in status.md are caught
+
+**Released**: October 2026
+
+**Duplicate keys stop the command.** When a key appears twice in the same block of `status.md` (two `reviewed_date` lines under one artifact, say), YAML keeps only the last copy and gives no error, so an older value could quietly replace a newer one. Every command that runs the precondition gate now checks the file first. It stops on a duplicate key or a file that does not parse, lists the lines, and points to `/wire:status-sync`. No override or ruling gets past it.
+
+**Status sync repairs them.** `/wire:status-sync` deals with duplicates and parse errors before any other drift. For each duplicate it shows both values, with the log rows and the date each line was written, proposes which to keep and asks.
+
+**Keys are updated in place.** Commands update an existing key rather than adding a second copy, keep earlier values in a `prior_<key>` field or the execution log, and check the file after writing it.
+
+**Director mode.** The orchestration agent checks the file before it hands out any work, so you are asked once. A lane that finds a duplicate reports blocked and leaves the fix to the orchestration agent.
+
+**Wire Studio and the ticket script.** Studio shows a duplicate as an error on the release, with the lines, instead of showing the last value. `ticket_delivery.py` prints a warning.
+
+**A check for your own CI.** `python3 <wire plugin>/scripts/status_file.py check .` lists every duplicate key and parse error in a repository's status files and ticket records, and exits 1 when it finds any. Add it to CI or a pre-commit hook to stop duplicates at the pull request.
+
 ## v4.4.3: Review gates enforced on ticket-built releases, one time zone in the log, and data model design checks
 
 **Released**: October 2026

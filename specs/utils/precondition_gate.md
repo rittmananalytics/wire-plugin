@@ -1,5 +1,5 @@
 ---
-description: Internal utility — resolves a command's declared preconditions against status.md and blocks by default when unmet; overrides require a recorded name and reason
+description: Internal utility — checks status.md can be read safely (no duplicate keys, parses), then resolves a command's declared preconditions against it and blocks by default when unmet; overrides require a recorded name and reason
 ---
 
 # Precondition Gate Utility
@@ -24,13 +24,63 @@ completed.
 
 - `preconditions` — this command's own front-matter value: a list of
   `{artifact, action, outcome}` entries, the literal string `dynamic` (see
-  Step 0), or absent/`[]`. If absent or `[]`, this gate is a no-op: return to
-  the calling spec immediately with no output.
+  Step 0), or absent/`[]`. If absent or `[]`, run Step A only, then return to
+  the calling spec.
 - `artifact` and `command` — this command's own front-matter values, used to
   label the override record and to compose the remediation command hint.
 - `release_folder` — the release folder path passed to the calling spec.
 
 ## Procedure
+
+### Step A: Check the status file can be read (always runs)
+
+This step runs for every command that follows this gate, whatever its
+`preconditions` value, before anything reads `status.md`.
+
+`yaml.safe_load` keeps the last value when a key appears twice in one block,
+with no error. A status file with two `reviewed_date` lines in one artifact
+block then reads as whichever comes last, which may be the older date, and a
+second `agents:` block can hide a release claim. A file that does not parse
+cannot be read at all. Every gate below would then decide on a value nobody
+chose. (wire-plugin#2: 31 duplicate keys in 4 of 38 release status files on
+one client repository, all from edits made outside a Wire command.)
+
+Run:
+
+```bash
+python3 <wire>/scripts/status_file.py check .wire/releases/<release_folder>
+```
+
+It checks `status.md` (front matter, and the fenced YAML block a 3.x file
+keeps under `## Artifacts`) and each ticket record in `iterations/`, and
+prints one line per problem with the file and line. Exit 0: nothing found;
+continue to Step 0, or return to the calling spec if it declares no
+preconditions. Exit 1: stop and output:
+
+```
+🚫 status.md cannot be read safely — <release_folder>:
+  <one line per problem, as the script prints it>
+
+YAML keeps only the last copy of a duplicated key, so this command would read
+whichever value comes last. Fix the file first:
+  /wire:status-sync <release_folder>     (shows both values and asks which to keep)
+or edit the lines above by hand: keep one copy of each key, and move a value
+worth keeping to a prior_<key> field or the execution log.
+```
+
+This block is not overridable, and a ruling does not clear it: the gates and
+the command itself would read a value that may be wrong. It is not a
+precondition failure, so nothing is written to `status.md` or
+`execution_log.md`.
+
+**In orchestrated mode** (`specs/utils/director_operating_model.md`), a lane
+(`WIRE_INVOKED_BY=lane`) never edits `status.md` to clear this. It stops,
+records `blocked: status file` with the script's lines in its state file and
+reports once (`Not run: <command>, gate: status file`). The orchestrating
+session makes the fix after the director decides which value to keep. **On a
+ticket branch** (`delivery: tickets`) `status.md` is not written; stop and say
+the fix is made on the release branch. A duplicate in the ticket's own record
+(`iterations/<ticket>.md`) is fixed on the ticket branch.
 
 ### Step 0: Resolve `dynamic` preconditions, if declared
 

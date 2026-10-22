@@ -4,6 +4,7 @@ Every reader takes plain paths and returns plain data, so the behavioural test
 can run it against a fixture repository with a fixed clock.
 """
 
+import importlib.util
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -24,11 +25,37 @@ COMPLETE_MARK = re.compile(r"^\s*(status|state)\s*:\s*complete\b|^\s*complete\b"
 # ---------------------------------------------------------------------------
 # Files
 # ---------------------------------------------------------------------------
+def _status_file():
+    """The framework's `scripts/status_file.py`, the loader every Wire reader
+    of status.md uses (wire-plugin#2). It sits two folders above this file in
+    both layouts. None when absent, and then a duplicate key goes unreported."""
+    path = Path(__file__).resolve().parents[2] / "scripts" / "status_file.py"
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("wire_status_file", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+STATUS_FILE = _status_file()
+
+
 def split_front_matter(text):
     """(front matter dict, body). status.md is YAML between the first two
-    `---` lines, then Markdown."""
+    `---` lines, then Markdown. A key that appears twice is listed under
+    `_problems`, with its lines, rather than read silently."""
     if not text.startswith("---"):
         return {}, text
+    if STATUS_FILE:
+        data, body, problems = STATUS_FILE.front_matter(text)
+        parse = [p for p in problems if p["kind"] == "parse"]
+        if parse:
+            return {"_error": f"status.md front matter is not valid YAML: line {parse[0]['line']}, "
+                              f"{parse[0]['message']}", "_problems": problems}, body
+        if problems:
+            data = dict(data, _problems=problems)
+        return data, body
     parts = text.split("\n---", 1)
     head = parts[0][3:]
     body = parts[1].split("\n", 1)[1] if len(parts) > 1 and "\n" in parts[1] else ""
@@ -274,10 +301,20 @@ def load_release(framework, repo, name, now=None):
     if not text.startswith("---"):
         status["_error"] = ("status.md has no YAML front matter, so Studio cannot read its "
                             "artifact states")
+    problems = list(status.pop("_problems", []))
+    if STATUS_FILE:
+        problems += STATUS_FILE.body_artifacts(text)[1]
     if not status.get("artifacts"):
         body_artifacts = artifacts_from_body(body)
         if body_artifacts:
             status["artifacts"] = body_artifacts
+    duplicates = [p for p in problems if p["kind"] == "duplicate"]
+    if duplicates:
+        found = "; ".join(f"line {p['line']}: `{p['key']}` (first at line {p['first']})" for p in duplicates)
+        message = (f"status.md has {len(duplicates)} duplicate key{'s' if len(duplicates) > 1 else ''}, "
+                   "and YAML keeps only the last copy, so what Studio shows may be the older value. "
+                   f"Fix the file before relying on it: {found}")
+        status["_error"] = f"{status['_error']}. {message}" if status.get("_error") else message
     rulings, decisions_md = read_rulings(rel["dir"])
     out = {
         "name": name, "legacy": rel["legacy"],
@@ -296,6 +333,7 @@ def load_release(framework, repo, name, now=None):
         "tickets": None,
         "ticket_next": None,
         "error": status.get("_error"),
+        "status_problems": problems,
     }
     try:
         out["tickets"] = read_tickets(framework, name, rel["dir"], status, now, parse_markdown_table,

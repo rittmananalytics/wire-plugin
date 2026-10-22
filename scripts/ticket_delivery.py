@@ -62,6 +62,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import log_time  # noqa: E402  (same folder; the log's timestamp rule)
+import status_file  # noqa: E402  (same folder; duplicate keys reported, wire-plugin#2)
 
 HERE = Path(__file__).resolve().parent
 RELEASE_TYPES = HERE.parent / "release-types"
@@ -158,16 +159,9 @@ def step_artifact(step):
 # Reading a release folder
 # ---------------------------------------------------------------------------
 def _front_matter(text):
-    if not text.startswith("---"):
+    if not text.startswith("---") or text.find("\n---", 3) < 0:
         return {}
-    end = text.find("\n---", 3)
-    if end < 0:
-        return {}
-    try:
-        data = yaml.safe_load(text[3:end]) or {}
-    except yaml.YAMLError:
-        return {}
-    return data if isinstance(data, dict) else {}
+    return status_file.front_matter(text)[0]
 
 
 def load_map(release_dir):
@@ -1216,6 +1210,10 @@ def main(argv=None):
     if not (rel / "status.md").exists() and (Path(".wire/releases") / a.release / "status.md").exists():
         rel = Path(".wire/releases") / a.release
     status = load_status(rel)
+    # A key written twice in status.md or a ticket record is read as its last
+    # copy; say so on stderr so the JSON on stdout keeps its shape.
+    for p in status_file.check_paths([rel]):
+        print(f"Warning: {status_file.describe(p)}", file=sys.stderr)
 
     if a.cmd == "design-source":
         print(json.dumps({"design_source": design_source(

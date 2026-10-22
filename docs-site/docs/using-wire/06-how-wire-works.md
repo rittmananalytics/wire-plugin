@@ -202,6 +202,16 @@ It is the gate, and not the orchestration agent's discretion, that refused "star
 A ruling never satisfies a blocking gate, however sensible the ruling. If you find yourself wanting to override a blocking gate, the recorded override with your name and reason is the route, and it is deliberately more effort than approving the upstream artifact properly.
 :::
 
+Before the gate compares anything, it checks that `status.md` can be read safely. If a key appears twice in the same block (two `reviewed_date` lines under one artifact, say), YAML keeps only the last copy and gives no error, so Wire would read whichever value comes last, which may be the older one. The gate stops on a duplicate key or a file that does not parse, names the lines, and points you to `/wire:status-sync`, which shows both values and asks which to keep. No override or ruling gets past this stop: the fix is to correct the file. With the orchestration agent driving, it runs the same check before it hands out any work, so you are asked once rather than every lane failing on the same line.
+
+You can run the check yourself, for instance in your repository's CI or a pre-commit hook, so a duplicate never reaches the main branch:
+
+```bash
+python3 <wire plugin>/scripts/status_file.py check .
+```
+
+It prints one line per problem with the file and line number, and exits 1 when it finds any.
+
 ## And When the Work Is a Ticket?
 
 Everything above describes a release planned from its release-type graph: Wire works out what is runnable from the definition and the record, and dispatches it. Chapter 4 showed a different starting point, a ticket against a release that is already live, and the machinery is the same with one substitution. The ticket, not the graph, is what Wire plans from.
