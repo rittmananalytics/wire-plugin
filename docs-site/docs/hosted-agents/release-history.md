@@ -13,6 +13,7 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 
 | Version | Released | Runs on Wire |
 |---|---|---|
+| 2.9.0 | October 2026 | 4.4.3 |
 | 2.8.2 | October 2026 | 4.4.3 |
 | 2.8.1 | October 2026 | 4.4.3 |
 | 2.8.0 | October 2026 | 4.4.3 |
@@ -40,6 +41,10 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 | 1.0.0 | October 2026 | 4.4.2 |
 
 Before 1.0.0, the hosted agents shipped inside Wire releases 4.3.0 to 4.4.2.
+
+## 2.9.0: the context steward asks the confirmation owner
+
+- **Questions in Slack.** In mode On, findings that need the owner are posted in the feedback channel, one thread per part of the record, and the owner confirms or rejects each by number in the thread. Findings a reply does not mention stay open. See [Questions to the confirmation owner](context-steward#questions-to-the-confirmation-owner).
 
 ## 2.8.2: the context steward reads Slack threads
 

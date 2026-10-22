@@ -40,7 +40,7 @@ Console admins set these on the project's page. Others can see them.
 
 | Setting | What it does |
 |---|---|
-| Mode | **Off**: does nothing. **Record only**: finds and records, posts nothing. **On**: also asks the confirmation owner (being built). |
+| Mode | **Off**: does nothing. **Record only**: finds and records, posts nothing. **On**: also asks the confirmation owner in Slack. |
 | Call rules | Which recorded calls count, in plain words the steward applies, such as "calls with the client's attendees". |
 | Call exclusions | Calls never read, one per line, applied first, such as "company stand-ups". |
 | Source channel | The Slack channel it reads. Defaults to the project's channel. |
@@ -71,16 +71,25 @@ Reading the same call or message again never records the same finding twice. A s
 
 A fact that would change a requirements, business rules or decisions file under `.wire/` also goes to the confirmation owner.
 
+## Questions to the confirmation owner
+
+In mode **On**, after each scan:
+
+1. **New questions.** Findings for the owner are grouped by the file and section of the record they affect, one Slack thread per group in the feedback channel. A new thread starts with a fixed message, "🧹 @owner the engagement context steward needs your attention", and lists the findings by number, each with what was said and a link to its source. A new finding on a topic that already has an open thread goes into that thread.
+2. **Replies.** The owner replies in the thread, for example "confirm 1, reject 2", or answers a question. Only the owner's replies count. At the next scan the steward records each decision and says in the thread what it recorded. A finding the reply does not mention stays open. A thread closes when nothing in it is open.
+
+The steward never treats these threads as a conversation: a message there, even one that @mentions it, is read as a decision at the next scan, not answered.
+
 ## Seeing what it found
 
-- **The agent's page** on the console shows its live log. Each new finding is one line with its status, kind, the file and section it affects, a summary and its link. Each scan ends with a line counting the messages and calls read and the findings recorded.
+- **The agent's page** on the console shows its live log. Each new finding is one line with its status, kind, the file and section it affects, a summary and its link. Each scan ends with a line counting the messages and calls read and the findings recorded. Questions asked and decisions recorded are logged too.
+- **The feedback channel** holds the question threads and the decisions.
 - **The project's page** shows who the steward is and its settings.
 
 ## Still to come
 
 | Step | What it adds |
 |---|---|
-| Questions | In mode On, findings for the owner are posted in the feedback channel, grouped by the part of the record they affect, in one thread per topic. The owner confirms or rejects each one by replying in the thread. |
 | Daily pull request | Once a day, ready and confirmed findings go into one pull request on the project's repository, and the reviewer is asked to review it when it has changed. |
 | Approval and merge | An approved pull request is left alone; after the merge, a new one starts. |
 
