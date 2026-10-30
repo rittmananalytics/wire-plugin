@@ -43,6 +43,16 @@ Read `.wire/engagement/context.md` if present. Extract:
 - Key stakeholders
 - Current engagement state (which releases exist, which are active/completed)
 
+### Step 2b: List Related Repos
+
+If `context.md` has a `related_repos:` block or a `client_repo:` with a `github_url`, run:
+
+```bash
+python3 <wire>/scripts/related_repos.py list
+```
+
+It reads only what is on disk: no fetch, no search. Keep the repo id, role, commit, fetch age and state for Step 4. Do not search the repos, refresh them, or read their files at session start: a lookup in a related repo happens only when the person asks, or when a command offers one and the person accepts (`specs/utils/repos.md`). If the script is missing or fails, say "related repos: not read" in one line and carry on.
+
 ### Step 3: Read Release State
 
 Read the active release `status.md`. Extract:
@@ -66,6 +76,17 @@ Output a brief, scannable context block before responding to the user's request:
 ```
 
 Keep this to 4–6 lines. Do not dump the entire status file. If there is no prior session history, say so in one line.
+
+If Step 2b found related repos, add one short table after the block (one row per repo), then one line on how to use them:
+
+```
+| Related repo | Role | Commit | Fetched | State |
+|---|---|---|---|---|
+| airflow | orchestration | 1a2b3c4 | 2d | ready |
+| dbt | dbt | - | never | not fetched |
+
+Look up in these with /wire:utils-repos find <text>; refresh with /wire:utils-repos refresh.
+```
 
 ### Step 5: Proceed With the User's Request
 

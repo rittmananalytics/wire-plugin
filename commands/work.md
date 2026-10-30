@@ -138,6 +138,7 @@ delegates_to:
   - utils/meeting_context
   - utils/director_operating_model
   - utils/ticket_delivery
+  - utils/repos
 workload: planning
 ---
 
@@ -222,6 +223,24 @@ Read, in this order, and keep notes for Step 4:
 4. Requirements and design documents (`requirements/*.md`, `design/conceptual_model.md`, `design/data_model.md`, `design/pipeline_design.md`, `design/viz_catalog.md`, `design/mockups/*`): which requirement, entity, table, measure or page the ticket touches; whether the design already allows the change (a page with room for another tile, a fact that already carries the needed column).
 5. Conventions: `.wire/conventions/<domain>.yml` if present, else the framework defaults.
 6. The client repository: the models, views and dashboards named by the ticket, and whether the repository has a pull request template (`.github/PULL_REQUEST_TEMPLATE.md` or similar).
+7. Related repos, on acceptance only (`specs/utils/repos.md`, wire#381). If the engagement lists related repos (`python3 <wire>/scripts/related_repos.py list` shows any) and the ticket names a source, table, model or DAG, offer one lookup in the repos whose role matches what it names. Do not search before the person accepts.
+
+   | The ticket names | Offer a lookup in roles |
+   |---|---|
+   | A dbt source, staging table or model | `dbt`, `code` |
+   | A DAG, schedule, load job or landing table | `orchestration`, `ingestion`, `code` |
+   | A LookML view, explore or dashboard | `lookml`, `code` |
+   | An Omni topic or document | `omni`, `code` |
+
+   A name can match more than one row (a landing table is read by dbt and written by a DAG); take every matching role. The repo's `lookup` setting decides what happens next:
+
+   - `offer` or `auto`: offer the lookup, all such repos in one question: "The ticket names `orders_raw`. Look it up in `airflow` (orchestration) and `dbt` (dbt)? (yes / no / pick)".
+   - `on_request` (the default): do not offer. Name the repos in one line ("`airflow` (orchestration) may hold `orders_raw`; ask to look it up") and look only if the person asks.
+   - The person asked for a lookup in the ticket or the conversation: look in the repos they named, whatever the setting.
+
+   If a repo to be searched is `not fetched` or was fetched more than a day ago, say so and offer `/wire:utils-repos refresh <id>` first. The rule is tested by `wire/tests/core/validate_work_iteration.py` (Part 5).
+
+   On yes, run `related_repos.py find <name> --repo <id>` for each repo and show the hits with their citations. Record the hits the person keeps in the iteration file's `## Related repo lookups` table, each with its citation `<id>@<short commit>:<path>` and what it showed (the DAG that writes the table, its schedule and file format, the models that read it). On no, record nothing and do not offer again for the same name in this iteration. Never write to a related repo: a change one needs is named in the plan as an `external` step for whoever owns that repository.
 
 **Ticket delivery.** Also read, for each of the ticket's slices: its row in the `## Slices` table and the tickets that covered it before; the slice's design, from `python3 <wire>/scripts/ticket_delivery.py design-source <release> --slice <slice>` (Wire's `data_model` section, or the table in the Modality physical model, named with its file and columns); and which ticket approved that design. Say whether the ticket's own steps can start (`ticket_delivery.py runnable <release>`): what it waits on, by ticket, and any blocker on record.
 
@@ -294,10 +313,18 @@ For `human`, `external` and `decision` steps: do nothing but record that the ste
 
 ### Step 6: Publish and separate the two acceptances
 
-1. Run `/wire:utils-commit <release> work <id>` then `/wire:utils-pr-create <release>` on the client repository's own template where one exists. The PR body carries: the ticket, the plan steps, the validate result, the convention lint result, the business rules cited, the decisions made during the work with their reasons, and the document patches from Step 7 once applied.
+1. Run `/wire:utils-commit <release> work <id>` then `/wire:utils-pr-create <release>` on the client repository's own template where one exists. The PR body carries: the ticket, the plan steps, the validate result, the convention lint result, the business rules cited, the decisions made during the work with their reasons, the related repo lookups from Step 2 with their citations (`<id>@<short commit>:<path>`), and the document patches from Step 7 once applied.
 2. Record the PR number and URL on the iteration file and in the `## Iterations` row. State: `awaiting_review`.
    **Ticket delivery.** The pull request goes into the release branch. Record the PR on the ticket record only; say that `status.md` and `execution_log.md` are updated when the pull request merges. If the tracker is connected, move the ticket to its review state with a link to the pull request.
 3. Keep **technical acceptance** (PR review and merge by the client's engineer) and **business acceptance** (confirmation of a definition or a number by the person who owns it) separate on the iteration file. A PR approval satisfies the first. It never satisfies the second, whoever approved it, because a code reviewer does not own a business definition. Say so in the report if both are outstanding.
+
+**Review rules and tested-in-dev evidence (wire#380).** These apply to every PR this step raises. Settings come from `.wire/engagement/review_profile.yml` (schema in `wire/schemas/review-profile-schema.md`); without it, the defaults there apply.
+
+- **Rule findings are never blocking.** Each convention lint finding on the changed files carries a disposition: `fixed`, `justified` (with a reason) or `acknowledged`. Ask the consultant for any finding without one; an unanswered finding is listed as `open`, not hidden and not a reason to hold the PR.
+- **A requirements table per ticket.** Each requirement from the ticket is `met`, `not met` or `can't tell`, with evidence. `met` without evidence is `can't tell`. A `not met` requirement is a deviation: raise it as a question to the ticket owner in the PR body and the report; do not decide it.
+- `wire/scripts/review_rules.py` builds both tables from the findings and the requirements; paste its output into the PR body under the client template's headings.
+- **Tested in dev.** For a change to Airflow code, with `tested_in_dev` not `off`, run `/wire:utils-dev-test-evidence <release>` before `/wire:utils-pr-create` (after `/wire:utils-ci-parity` where the plan has it) and carry its table in the body, at the top when the verdict is not `yes`. The verdict does not block the PR.
+- An Airflow ticket's plan names the commands for each step: `/wire:pipeline-generate` (an ingestion load) or `/wire:orchestration-generate` (a schedule change, existing Airflow estate mode), their validate commands, `/wire:utils-dev-deploy`, a `human` step for the run in dev, `/wire:utils-dev-test-evidence`, then publish.
 
 ### Step 7: Close, in two stages
 
@@ -368,6 +395,10 @@ Left out, and why: <...>
 
 ## Run
 | Step | Ran | Command or skill | Scope | Result | Deviation |
+
+## Related repo lookups
+| Name looked up | Citation | What it showed |
+<one row per hit kept, e.g. orders_raw | airflow@1a2b3c4:dags_shop/load_orders.py | written nightly at 02:00, parquet, truncate and load>
 
 ## Decisions made during the work
 <id, text, reason, by — the same rows as in decisions.md>

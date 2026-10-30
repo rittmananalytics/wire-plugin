@@ -30,7 +30,7 @@ A project's [standing decisions](./governance.md) are people's rulings, and the 
 
 ## During a run
 
-1. When an agent starts a ticket, it gets a copy of the project store and its own store, plus the read-only stores, in a folder for that run.
+1. When an agent starts a ticket, it gets a copy of the project store and its own store, plus the read-only stores, in a folder for that run. An answer in a project's Slack channel gets that project's store too (writable only for agents in a pod covering it), and so does the context steward's scan (read only). So what was learned on a project's tickets, in its channel and by its steward is one context. A Slack answer outside any one project's channel, such as in the agents' own channel, gets no project store.
 2. Its instructions list each store, the writing rules, and an index of every file with its first line. It reads the files it needs.
 3. It writes a lesson when it finds one: the fact, the evidence and the ticket key. Changes are saved within about 15 seconds.
 4. If two agents change the same file at once, the saved copy wins and the other agent's text is kept aside for a person, or a later automated merge, to fold in.
@@ -47,6 +47,8 @@ Agents can read memory but cannot save to it directly. Every change goes through
 - an agent store names no client: no project key, client name, repository, dataset or table. Client detail goes in the project store, so it never reaches another client's work.
 
 A refused change is undone in the agent's folder, with the reason beside it. The practice and toolset stores are read-only to agents.
+
+Claude Code's own built-in memory, which keeps notes per working folder outside these stores, is turned off for every agent. Every Slack answer runs in the same working folder whatever the client, so those notes could have reached another client's channel. Notes written before it was turned off were set aside for a person to review, not deleted.
 
 Run records are kept for a set number of days, shorter where a client's contract asks, and a project's records are deleted when the engagement closes.
 

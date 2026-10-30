@@ -127,6 +127,7 @@ covers these steps for its slice:
 | Slice kind | Example | Steps |
 |---|---|---|
 | `source` | Stage the CRM | `dbt`, `data_quality` |
+| `ingestion` | Load the returns export with an Airflow DAG | `pipeline`, plus `orchestration` when the ticket changes a schedule |
 | `entity` | Organisation table | `data_model`, `dbt`, `data_quality` |
 | `derived` | Customer master | `data_model`, `dbt`, `data_quality` |
 | `metric` | Three agreed metrics | `semantic_layer` |
@@ -137,6 +138,15 @@ covers these steps for its slice:
 
 Where a `design` ticket already covers a slice's `data_model` step, the build
 tickets for that slice leave `data_model` out.
+
+An `ingestion` slice is a load built in the client's own pipeline code (an
+Airflow DAG, for one), where a `source` slice is the dbt staging of data
+that has already landed. The import proposes `ingestion` when the ticket is
+about loading data in (an extract, a DAG, a connector) rather than modelling
+it, and marks it for checking like any proposed slice. When the ticket also
+changes when a load runs (a new or changed schedule, trigger or dependency
+between DAGs), the import sets `changes_schedule: true` on its entry and the
+recipe adds `orchestration`. Both are proposals the consultant confirms.
 
 The import asks, rather than guesses, in three cases: a `review` ticket, whose
 reviewed steps come from its text; a `layer`, `deliverable` or `batch` slice

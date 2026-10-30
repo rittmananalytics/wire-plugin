@@ -206,7 +206,7 @@ preconditions:
   - artifact: pipeline_design
     action: review
     outcome: approved
-auto_validate: false          # validate makes live Fivetran MCP calls per connection (connection tests, schema/column config)
+auto_validate: false          # validate makes live Fivetran MCP calls per connection (connection tests, schema/column config); the airflow route makes none
 delegates_to:
   - utils/precondition_gate
 description: Create and configure data pipeline connections based on approved pipeline design
@@ -264,6 +264,7 @@ Based on `pipeline_tool`, load and execute the corresponding spec in full:
 | `fivetran` | `wire/specs/development/pipeline/fivetran/generate.md` |
 | `dlt` | `wire/specs/development/pipeline/dlt/generate.md` |
 | `airbyte` | `wire/specs/development/pipeline/airbyte/generate.md` |
+| `airflow` | `wire/specs/development/pipeline/airflow/generate.md` |
 | `custom` | Follow the bespoke approach documented in `.wire/<project_id>/design/pipeline_architecture.md` |
 
 Pass `project_id` as context to the delegated spec.

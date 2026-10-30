@@ -292,6 +292,8 @@ Write `.wire/<project_id>/development/orchestration/.orchestration_validation.md
 
 ### Step 2c: Validate Airflow (if tool = airflow)
 
+**Existing Airflow estate mode** (`orchestration_mode: existing_airflow_estate`): run the two local checks of `wire/specs/development/pipeline/airflow/validate.md` (rule lint on the changed files, and a `DagBag` parse in safe mode of each changed DAG file) in place of 2c.1 to 2c.3, then 2c.4 on each changed schedule and 2c.6. Skip 2c.5 unless the change added a connection. No live Airflow call is made; whether the change ran in dev is answered by `/wire:utils-dev-test-evidence`.
+
 #### 2c.1 — DAG parse check
 
 Run from the repo root:

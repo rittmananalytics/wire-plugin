@@ -72,7 +72,13 @@ Each ticket also starts with three short lines (kind, Wire step and release fold
 | The delivery manager proposes changes on a project it did not set up | The project's channel (or the agents' channel), one message from the delivery manager @mentioning the escalation contacts and any person in a lead role; reply `approve`, `always` or `reject` in its thread |
 | Anything not about one project, or about a project with no channel | The agents' own channel |
 
-Each project's channel is set on the agents console. An agent refuses to post a message about a project with its own channel in the agents' channel, and says which channel to use. Agents never post routine progress.
+Each project's channel is set on the agents console. **A reply in a thread an agent started or answered in** reaches that agent, with no need to @mention it again, if it was the last agent to write there in the last day. In a question's thread, replies by the people asked go on the ticket as their answer.
+
+**Agents never name another client or project** in a project's channel, on its tickets or in its pull requests. Each project's page on the console lists names to keep private (the client's name, short names, aliases, product names and email domains). A message that would name another project is not sent: the agent posts "I held back a message here because it named another client or project" instead, and the details go to its log for a person to check. In the agents' own channel, client names are held back the same way.
+
+Agents write in ordinary formatting (bold, links, headings, lists), and it is shown in Slack's own format.
+
+An agent refuses to post a message about a project with its own channel in the agents' channel, and says which channel to use. Agents never post routine progress.
 
 To start a project, share the statement of work with the engagement lead in the project's channel. The lead opens a kick-off ticket with the file attached, and its questions for you, if any, are asked there.
 

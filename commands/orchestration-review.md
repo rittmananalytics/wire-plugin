@@ -239,6 +239,8 @@ Present a structured summary for the reviewer:
 [Any items requiring stakeholder input before approval]
 ```
 
+For Airflow, add the review tables of `wire/specs/development/pipeline/airflow/review.md` (review rules C6): rule findings with their dispositions, never blocking; the requirements table (`met`, `not met`, `can't tell`, with evidence), each `not met` raised as a question; and the tested-in-dev verdict if `/wire:utils-dev-test-evidence` has run.
+
 ### Step 4: Gather Review Feedback
 
 Ask the reviewer:

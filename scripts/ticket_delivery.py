@@ -75,13 +75,17 @@ WHOLE_RELEASE = "whole_release"
 # "Slice kinds and their recipes")
 # ---------------------------------------------------------------------------
 TICKET_KINDS = ["requirements", "business_rules", "design", "build", "test", "review", "plain"]
-SLICE_KINDS = ["release", "source", "entity", "derived", "metric", "report",
+SLICE_KINDS = ["release", "source", "ingestion", "entity", "derived", "metric", "report",
                "dashboard", "layer", "deliverable", "batch", "app", "other"]
 
 # The steps a build ticket covers, by the kind of slice it builds. A slice
 # kind that maps to no steps is plain work: no Wire command builds it.
 BUILD_RECIPE = {
     "source": ["dbt", "data_quality"],
+    # An ingestion slice is a load into the warehouse built in the client's
+    # own pipeline code (an Airflow DAG, for one), not a dbt staging layer
+    # (wire#380). A ticket that also changes a schedule adds orchestration.
+    "ingestion": ["pipeline"],
     "entity": ["data_model", "dbt", "data_quality"],
     "derived": ["data_model", "dbt", "data_quality"],
     "metric": ["semantic_layer"],
@@ -133,17 +137,22 @@ CELL_SYMBOL = {
 }
 
 
-def recipe(kind, slice_kind, design_covered=False):
+def recipe(kind, slice_kind, design_covered=False, changes_schedule=False):
     """The Wire steps a ticket covers.
 
     `design_covered`: another ticket in the map already covers this slice's
     data_model step (a design ticket for several tables), so a build ticket
     leaves it out.
+    `changes_schedule`: the ticket changes when a load runs (a new or changed
+    schedule, trigger or dependency), so a build ticket for an ingestion slice
+    adds the orchestration step (wire#380).
     """
     if kind == "build":
         steps = list(BUILD_RECIPE.get(slice_kind, []))
         if design_covered and "data_model" in steps:
             steps.remove("data_model")
+        if changes_schedule and slice_kind == "ingestion" and "orchestration" not in steps:
+            steps.append("orchestration")
         return steps
     if kind == "review":
         return []  # named by the ticket itself: "<artifact>.review"; never guessed
@@ -251,7 +260,7 @@ def propose(payload):
         modality_objects: {object: mml_type}  every object in the model
         release_projects: [tracker project names that map to this release]
         tickets: [{key, title, project, kind, slice_hint, slice_kind,
-                   matched_object, state, description}]
+                   matched_object, state, description, changes_schedule}]
     `kind`, `slice_hint`, `slice_kind` and `matched_object` are the Wire
     session's proposals from the ticket's title and text. When `description`
     has both a `Kind:` and a `Wire step:` line (wire#337), those are read in
@@ -305,6 +314,8 @@ def propose(payload):
             "blocked_by": list(t.get("blocked_by") or []),
             "steps_named": list(t.get("steps") or []),
         })
+        if t.get("changes_schedule"):
+            entries[-1]["changes_schedule"] = True
         if stated:
             entries[-1]["_stated_steps"] = stated[1]
 
@@ -321,7 +332,8 @@ def propose(payload):
         else:
             steps = []
             for sk, sl in zip(e["slice_kinds"], e["slices"]):
-                for st in recipe(e["kind"], sk, design_covered=sl in design_slices):
+                for st in recipe(e["kind"], sk, design_covered=sl in design_slices,
+                                 changes_schedule=e.get("changes_schedule", False)):
                     if st not in steps:
                         steps.append(st)
         e["steps"] = steps

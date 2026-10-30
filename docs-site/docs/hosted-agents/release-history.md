@@ -13,6 +13,10 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 
 | Version | Released | Runs on Wire |
 |---|---|---|
+| 3.0.0 | October 2026 | 4.4.3 |
+| 2.12.0 | October 2026 | 4.4.3 |
+| 2.11.0 | October 2026 | 4.4.3 |
+| 2.10.1 | October 2026 | 4.4.3 |
 | 2.10.0 | October 2026 | 4.4.3 |
 | 2.9.0 | October 2026 | 4.4.3 |
 | 2.8.2 | October 2026 | 4.4.3 |
@@ -42,6 +46,27 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 | 1.0.0 | October 2026 | 4.4.2 |
 
 Before 1.0.0, the hosted agents shipped inside Wire releases 4.3.0 to 4.4.2.
+
+## 3.0.0: the steward's findings kept by the console, with a Steward page
+
+- **A Steward page per project.** Every finding with its status, source link and pull request, with filters, counts and the latest changes. The confirmation owner and console admins can reject or reopen a finding there. See [Seeing what it found](context-steward#seeing-what-it-found).
+- **Only the console saves the steward's records.** It checks the agent is the project's steward, and keeps every status change with who made it. A major release: the existing findings were copied across.
+
+## 2.12.0: client names kept private, calls chosen in code, project memory in Slack
+
+- **Agents never name another client or project** in a project's channel, tickets or pull requests. Each project's page lists names to keep private; a message that would name another project is held back with a notice. See [Slack](jira-slack-and-files#slack).
+- **The context steward reads only its project's calls.** Calls are chosen in code from title words, attendee domains and addresses, and excluded words; the steward cannot list or search other calls. See [What it does each scan](context-steward#what-it-does-each-scan).
+- **One project's memory across tickets, Slack and the steward.** See [Memory](memory#during-a-run).
+
+## 2.11.0: client memory kept apart, steward replies, Slack formatting
+
+- **Claude Code's own memory is off.** It kept notes per working folder that every Slack answer shared, whatever the client. See [Memory](memory#controls).
+- **The context steward answers in its threads.** Decisions are recorded as soon as they arrive, and questions are answered. See [Questions to the confirmation owner](context-steward#questions-to-the-confirmation-owner).
+- **Slack formatting.** Bold, links, headings and lists show in Slack's format.
+
+## 2.10.1: questions on Slack-made tickets reach the requester
+
+- **Questions reach the person who asked.** On a ticket made from a Slack request, the agent's questions now reach the requester in Slack, and their reply counts. A reply in a thread an agent started reaches it too.
 
 ## 2.10.0: the context steward's daily pull request
 

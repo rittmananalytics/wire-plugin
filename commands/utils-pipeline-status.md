@@ -159,6 +159,7 @@ Can also be invoked directly:
 | `fivetran` | `wire/specs/utils/fivetran_status.md` |
 | `dlt` | Not yet implemented — skip with a note |
 | `airbyte` | Not yet implemented — skip with a note |
+| `airflow` | No live check here. Report `healthy` with the note "Airflow loads are checked by `/wire:pipeline-validate` (lint and parse) and `/wire:utils-dev-test-evidence` (runs in dev)" |
 | `custom` | Not yet implemented — skip with a note |
 
 ### Step 3: Return Result

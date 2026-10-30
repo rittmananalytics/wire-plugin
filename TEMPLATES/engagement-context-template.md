@@ -11,6 +11,20 @@ client_repo:
   local_path: null
   default_branch: "main"
 
+# Other client repositories a session may look up, read only (wire#381).
+# client_repo above is read as one entry (id client_repo, role code).
+# Add entries with /wire:utils-repos add. Where your own clone is goes in
+# .wire/local/repos.yml (git-ignored), not here. Schema:
+# wire/schemas/related-repos-schema.md.
+# related_repos:
+#   - id: airflow
+#     github_url: https://github.com/<org>/<repo>
+#     default_branch: main
+#     role: orchestration   # code | dbt | orchestration | ingestion | lookml | omni | infrastructure | other
+#     paths: [dags_*/, plugins/]
+#     description: Airflow DAGs that land sources and schedule dbt runs
+#     lookup: on_request    # on_request | offer | auto
+
 docstore:
   provider: null  # confluence | notion | both | null
   confluence:

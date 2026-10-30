@@ -310,6 +310,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:utils-docstore-sync` | `<project-folder> <artifact>` | Sync a generated artifact to the document store |
 | `/wire:utils-docstore-fetch` | `<project-folder> <artifact>` | Fetch document store content and comments for review |
 | `/wire:utils-data-model-registry-setup` | `(no arguments - interactive)` | Clone the private wire-data-model-registry repo to this machine, for RA staff with access |
+| `/wire:utils-repos` | `list, refresh [<id>], find <text> [--repo <id>] [--path <glob>], add <github_url> --id <id> --role <role>, remove <id>, or check` | List the client's related repositories and look up code in them, read only, cited by repo and commit |
 | `/wire:utils-fathom-sync` | `[--after YYYY-MM-DD] [--before YYYY-MM-DD] [--limit N] [--dry-run] [--no-findings]` | Pull new Fathom call transcripts for this engagement's client into .wire/engagement/calls/, then extract findings |
 | `/wire:utils-migration-agent-delegate` | `(internal — called by migration generate commands)` | Auto-delegation protocol for migration generate commands — dispatch to migration-specialist subagent when available |
 | `/wire:utils-session-summary` | `<release-folder> [scope]` | Draft a Slack-shaped session summary from a release's execution log |
@@ -318,6 +319,8 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:utils-pipeline-status` | `<release-folder>` | Check configured pipeline tool connection status |
 | `/wire:utils-git-workflow` | `<release-folder> <artifact-id> <action>` | Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR (composes utils-commit and utils-pr-create) |
 | `/wire:utils-ci-parity` | `<release-folder> [--repo <path-or-role>] [--branch <name>]` | Client CI parity gate: detect the client repo's CI system, replicate its locally-runnable checks against a branch before raising, report pass/fail per check |
+| `/wire:utils-dev-deploy` | `<release-folder> [--target <env>] [--files <path>...] [--dry-run]` | Deploy a branch's changed Airflow files to the dev environment, one file at a time, after the deploy target check allows every file and the user confirms |
+| `/wire:utils-dev-test-evidence` | `<release-folder> [--target <env>]` | Tested-in-dev evidence: per changed file, the dev copy is the PR head, it parsed and it ran after the upload, every mapped task included; verdict yes, partially or no. Read only |
 | `/wire:utils-client-watch` | `<release-folder>` | One client-watch tick — channel replies to tracked posts recorded in the answers ledger, merged client PRs advance the register and fire the post-merge action |
 | `/wire:utils-ask-list-generate` | `<release-folder> [--max N]` | Draft the top-N client ask list from the register's blocker taxonomy — capped, and guarded against re-asking anything the answers ledger holds |
 | `/wire:utils-delivery-forecast` | `<client-name> [--release <folder>]` | Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates |

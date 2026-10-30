@@ -130,7 +130,7 @@ With the design approved, development is where the pipelines and models are buil
 
 | Artifact | Commands | Release types | What it produces |
 |---|---|---|---|
-| `pipeline` | `generate` `validate` `review` | `full_platform`, `pipeline_only` | Fivetran connector configs, Airbyte connection YAMLs or dlt pipeline scripts |
+| `pipeline` | `generate` `validate` `review` | `full_platform`, `pipeline_only` | Fivetran connector configs, Airbyte connection YAMLs, dlt pipeline scripts, or ingestion DAGs in an existing Airflow estate (`pipeline_tool: airflow`; see [Airflow](../advanced/airflow)) |
 | `dbt` | `generate` `validate` `review` | `full_platform`, `pipeline_only`, `dbt_development` | Staging, integration and mart `.sql` and `.yml` files across all specified domains |
 | `data_quality` | `generate` `validate` `review` | `full_platform`, `dbt_development` | Extended dbt schema tests, source freshness tests and a data quality report |
 | `data_refactor` | `generate` `validate` `review` | `dashboard_first` | Refactored dbt models replacing seed data with real warehouse sources |
@@ -211,4 +211,21 @@ What about the work that surrounds the artifacts, such as keeping Jira in step w
 | `/wire:utils-meeting-context <release>` | Search Fathom for recent meetings and surface relevant context (used internally by review commands) |
 | `/wire:utils-fathom-sync [--after date] [--before date] [--limit N] [--dry-run] [--no-findings]` | Pull new Fathom call transcripts for the engagement's client into `.wire/engagement/calls/`, with an analytical findings write-up per call. Runs automatically once per session if `fathom_sync.enabled`; see [Fathom Call Sync](../advanced/fathom-sync) |
 | `/wire:utils-data-model-registry-setup` | Clone the private `wire-data-model-registry` repo to your machine, for RA staff with access; see [The Process and Data Model Registries](../advanced/registries) |
+| `/wire:utils-repos <list \| refresh \| find \| add \| remove \| check>` | List the client's related repositories and look up code in them, read only, cited as `<id>@<short commit>:<path>`; see [Related Repos](../advanced/related-repos) |
 | `/wire:utils-run-dbt <release>` | Run dbt commands (compile, test, run) in the context of the release |
+
+Two utility commands support work in an Airflow repository. Both read the client's environment file, `.wire/engagement/airflow_environments.yml`, and stop if it is missing; see [Airflow](../advanced/airflow).
+
+| Command | Description |
+|---|---|
+| `/wire:utils-dev-deploy <release> [--target <env>] [--files <path>...] [--dry-run]` | Copy the files this branch changed to the dev environment, one file at a time, after the deploy check allows every file and you confirm. Refuses staging, prod, protected paths and protected DAGs. Never syncs a folder and never deletes |
+| `/wire:utils-dev-test-evidence <release> [--target <env>]` | Read only. For each changed file: is the dev copy the PR head, did it parse, did a run after the upload succeed with every mapped task. Verdict `yes`, `partially` or `no`, for the pull request body |
+
+```
+# Deploy this branch's changed DAG files to dev, showing the plan first
+/wire:utils-dev-deploy 01-airflow-dags --dry-run
+/wire:utils-dev-deploy 01-airflow-dags
+
+# After you trigger a run in the Airflow UI, record whether the change was tested
+/wire:utils-dev-test-evidence 01-airflow-dags
+```

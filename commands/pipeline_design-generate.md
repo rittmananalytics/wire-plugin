@@ -287,6 +287,7 @@ Options:
 | **Fivetran** | SaaS sources, minimal engineering, managed CDC | MAR-based (Monthly Active Rows) | 500+ pre-built | Fully managed, no infra |
 | **dlt (data load tool)** | Python-native teams, custom APIs, cost-sensitive | Open-source / dlt Cloud | Community + custom | Python scripts, self-hosted or dlt Cloud |
 | **Airbyte** | Mixed SaaS + custom sources, open-source preference | Open-source / Airbyte Cloud | 350+ connectors | Self-hosted (Docker/K8s) or Airbyte Cloud |
+| **Airflow (existing estate)** | A client that already loads data with its own Airflow DAGs (Cloud Composer or self-managed) | The client's Airflow environment | Client's own operators and helpers | The client's Airflow; Wire adds or changes DAGs, never the environment |
 | **Custom / bespoke** | Highly specialised sources, full control required | Engineering time | N/A | Self-managed |
 
 Recommendation: [Select based on source systems identified in Step 2 — SaaS-heavy projects
@@ -303,6 +304,7 @@ Once the tool is chosen, verify that it can handle each source system identified
 - **Fivetran**: Call `mcp__fivetran__list_metadata_connectors` and verify each source system has a matching connector. For any source where a connector is found, call `mcp__fivetran__get_metadata_connector_config` to confirm the required config fields (API keys, OAuth scopes, host/database params) — document these in the design so the implementation step is not blocked by missing credentials.
 - **dlt**: Check `dlthub.com/docs/dlt-ecosystem/verified-sources` for verified sources; note which require custom REST source implementation.
 - **Airbyte**: Check `docs.airbyte.com/integrations/sources` for connector availability and support tier (Generally Available / Beta / Alpha).
+- **Airflow**: Read the client's DAG folder and `.wire/engagement/airflow_environments.yml` (schema in `wire/schemas/airflow-environments-schema.md`). For each source, name the existing DAG that loads it, or say a new DAG is needed and which shared helpers it would use. No live call is made.
 - **Custom**: Document the ingestion approach (Cloud Function, Cloud Run job, direct JDBC) per source.
 
 Record the chosen tool in **Section 6 (Technology Stack)** and as `pipeline_tool` in status.md (Step 8).
@@ -497,7 +499,7 @@ pipeline_design:
   file: design/pipeline_architecture.md
   generated_date: [today]
 pipeline:
-  pipeline_tool: [fivetran | dlt | airbyte | custom]  # chosen in Step 3
+  pipeline_tool: [fivetran | dlt | airbyte | airflow | custom]  # chosen in Step 3
 ```
 
 Write `pipeline_tool` under `artifacts.pipeline` in status.md now, even though the pipeline artifact itself has not been generated yet. This records the design decision so downstream commands can route correctly without re-reading the design document.
@@ -526,7 +528,7 @@ If docstore sync fails, log the error and continue — do not block the generate
 
 **File**: .wire/<project_id>/design/pipeline_architecture.md
 
-**Pipeline tool**: [fivetran | dlt | airbyte | custom]
+**Pipeline tool**: [fivetran | dlt | airbyte | airflow | custom]
 **Source systems**: [count]
 **Connectors verified**: [count — connectors confirmed to exist in the chosen tool]
 **Design decisions requiring input**: [count — flag if > 0, include PD-1 tool choice if unresolved]

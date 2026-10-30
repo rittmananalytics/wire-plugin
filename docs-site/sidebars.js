@@ -123,6 +123,7 @@ const sidebars = {
             'advanced/worked-example',
             'advanced/release-director',
             'advanced/personas',
+            'advanced/related-repos',
             'advanced/wire-studio',
             'advanced/wire-agent-architecture',
             'advanced/wire-agents',
@@ -140,6 +141,9 @@ const sidebars = {
             'advanced/fathom-sync',
             'advanced/modality-models',
             'advanced/business-rules',
+            'advanced/airflow',
+            'advanced/review-profile',
+            'advanced/convention-rules',
           ],
         },
         {

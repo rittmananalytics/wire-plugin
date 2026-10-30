@@ -369,6 +369,20 @@ Extract:
 - Commit frequency (commits per week — signal for activity level)
 - Most-changed directories (indicates where active work is happening)
 
+### E5: Related Repo Signals
+
+Look for signs that the client's work spans other repositories (wire#381, `specs/utils/repos.md`). Read only this repo; never clone or fetch another one here.
+
+| Signal | Suggests a related repo with role |
+|---|---|
+| `sources:` in dbt YAML whose schema is loaded by nothing in this repo (no pipeline or DAG config here names it) | `orchestration` or `ingestion`: whatever lands those tables |
+| DAG files (`dags/`, `dags_*/`) that call `dbt` (`dbt run`, `dbt build`, a dbt operator) when this repo has no `dbt_project.yml` | `dbt` |
+| A `dbt_project.yml` here, and LookML or Omni files nowhere in this repo, with a BI tool named in the README | `lookml` or `omni` |
+| A GitHub URL to another repository of the same org in `README*`, `docs/`, CI files, `packages.yml` (git packages) or `.gitmodules` | by its contents' description, else `other` |
+| `client_repo:` in an existing `context.md` | already listed; do not propose again |
+
+For each candidate record: the URL if one was found, the proposed id (the repo name, shortened) and role, and the evidence with its path in this repo. A signal with no URL is still reported ("the dbt sources in schema `landing_shop` are loaded elsewhere; which repository?"), so the person can name it.
+
 Return all findings as a structured object.
 
 ## Agent F: Harvest (Sequential — requires Agent B output)
@@ -539,7 +553,14 @@ For each release where status is 🟡 At Risk or 🔴 Overdue, append a one-line
 | 3 | pipeline_design | ⏳ Wire-stalled | Wire artifact exists, validate failed |
 | 4 | data_model | ⬜ Not started | No content found |
 | ... | | | |
+
+### Related Repos (proposed)
+| Id | Role | URL | Evidence |
+|----|------|-----|----------|
+| airflow | orchestration | https://github.com/<org>/<repo> | `models/staging/shop/_shop__sources.yml`: schema `landing_shop` is loaded by nothing in this repo; README links the DAGs repo |
 ```
+
+Show the Related Repos table only when Agent E5 found a candidate. Each row is a proposal: nothing is written for it until Step 4.4.
 
 ## Step 4.2: Propose Adoption Mode
 
@@ -582,9 +603,12 @@ Ready to set up Wire structure for this project:
   - Release: .wire/releases/[release_folder]/status.md
   - Artifact states will reflect the assessment above
   - Adoption playbook will be written to planning/adoption_playbook.md
+  - Related repos: [ids, or "none"] added to context.md (read only lookups)
 
 Proceed? (yes/no)
 ```
+
+If related repos were proposed in Step 4.1, ask about them separately before this prompt: **Add all / Pick / None**. A candidate with no URL is added only if the person gives one. Only the repos the person keeps appear on the line above.
 
 If the target is a remote repo (`remote_repo: true`), skip the confirmation and instead output:
 ```
@@ -617,6 +641,14 @@ Write `.wire/engagement/context.md` with fields synthesised from the discovery:
 - `slack_channel` — confirmed channel names
 - `adoption_date` — today
 - `adoption_mode` — import / reference
+
+Then, for each related repo the person kept in Step 4.4, run `python3 <wire>/scripts/related_repos.py add <github_url> --id <id> --role <role> --yes` (with `--paths` where the evidence named a folder). It adds the entry to `context.md` without touching the rest of the file. Do not refresh or clone the repos here; offer `/wire:utils-repos refresh` in the final output.
+
+Make sure `.wire/local/` is git-ignored (it holds each person's own settings: persona override, where their clones are). If `.gitignore` has no `.wire/local/` line, append one:
+
+```bash
+grep -qxF '.wire/local/' .gitignore 2>/dev/null || echo '.wire/local/' >> .gitignore
+```
 
 ## Step 5.2: Create Release Folder and Status File
 
@@ -657,7 +689,7 @@ If HubSpot deal notes contain a SOW reference, or if a SOW-like file was found i
 ## Step 5.4: Commit Setup
 
 ```bash
-git add .wire/
+git add .wire/ .gitignore
 git commit -m "Wire adopt: set up engagement structure for [client_name]
 
 Adoption mode: [import/reference]
@@ -666,6 +698,20 @@ Release folder: [folder]
 Wire state at adoption: [none/legacy/stalled/active]
 Sources consulted: [list]"
 ```
+
+## Step 5.5: Propose Airflow and Review Settings (Airflow repos only)
+
+Run this step when Agent E found an Airflow estate (a `dags/` folder with Python files that import `airflow`, Cloud Build or CI files that deploy to a Composer bucket, or `.claude/skills/` that describe DAG work). Skip it otherwise. It proposes two files for the client's team to check and commit. Wire does not commit them, and never fills a value it did not read from the repo.
+
+1. **`.wire/engagement/airflow_environments.yml`** (schema in `wire/schemas/airflow-environments-schema.md`). Read:
+   - Cloud Build files (`cloudbuild*.yaml`), GitHub Actions or other CI files: Composer environment names, projects, regions and buckets in `gcloud composer` and `gcloud storage`/`gsutil` commands, and the branch each deploy runs on (`branch:` triggers, `on.push.branches`, `if: github.ref == ...`).
+   - Per-environment config files the DAGs read (`config/<env>.yml` and the like): worker sizes and fan-out caps where present.
+   - The DAG folder's location, for `repo_root` and `dags_prefix`.
+   Propose `deploy.allowed: [<the dev environment>]` and every other environment in `deploy.forbidden`. Leave `protected:` empty with a comment asking the team to list DAGs that run live only in dev and bucket paths not in the repo. Mark every value with the file it came from, and every value not found with `# TODO: not found in the repo`.
+2. **`.wire/engagement/review_profile.yml`** (schema in `wire/schemas/review-profile-schema.md`). Read: the PR template (`.github/pull_request_template.md` and the other places GitHub looks), the tracker key in branch names and commit messages, and any review instructions in existing `.claude/skills/` or `CLAUDE.md`. Propose `pr_template`, `tracker`, and `review_mode: new_functionality`.
+3. **Existing client skills.** List the repo's `.claude/skills/` and say, per skill, which parts Wire now covers (Airflow rules, deploy, run checks, review) and which are the client's own. Propose moving the client's own rules into `.wire/conventions/airflow.yml` with `extends: wire`, and keeping a short project skill in `.claude/skills/` for the rest that points to Wire's Airflow skill. Do not edit their skills.
+
+Show both proposed files in full and ask: **Write for review / Skip**. On Write, write them uncommitted and say: "Check these with the team, correct the TODOs, then commit them." Record the step in the playbook's Engagement Context section.
 
 ---
 

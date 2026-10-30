@@ -207,6 +207,8 @@ Read `TEMPLATES/pr_template.md` and populate each section:
 
 **Checklist**: Leave all items unchecked — the reviewer should tick them on inspection.
 
+**Client template and review rules (wire#380)**: If `.wire/engagement/review_profile.yml` names a `pr_template` (schema in `wire/schemas/review-profile-schema.md`), or the repo has its own PR template, use the client's headings and put the sections above under them; never drop a client heading. Draft the body in the profile's `drafts_folder` (default `.wire/local/pr_drafts/`, which must be git-ignored). When rule findings or ticket requirements are known, add the two tables `wire/scripts/review_rules.py` writes: rule findings with dispositions (never blocking) and the requirements table, with any `not met` requirement raised as a question. When `/wire:utils-dev-test-evidence` has run on this branch, add its verdict table.
+
 ### Step 5: Confirm and Create
 
 Show the populated PR body to the user in full, then ask:

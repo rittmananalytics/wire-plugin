@@ -209,6 +209,12 @@ This skill covers the hosted Airbyte Agent MCP (for AI agents using connectors) 
 
 This skill covers the "assets-first" pattern, `dagster-dbt` integration, automation (schedules, sensors, declarative automation), the component framework and CLI usage (`dg dev`, `dg launch`, `dg check`, `dg scaffold`), and it integrates with Wire's `orchestration-generate` command for Dagster-based orchestration layers.
 
+### `airflow`
+
+**Activates when**: writing or changing a DAG, a DAG helper or the config a DAG reads in a client's Airflow repo; deploying DAG files to dev; checking whether a DAG parsed or a run succeeded; or when tasks are stuck in queued.
+
+This skill covers Apache Airflow 2.x and Cloud Composer 2 and 3 in an estate the client already runs. It lints DAGs against the Airflow rules (`lint_conventions.py --domain airflow`), deploys to dev only through `/wire:utils-dev-deploy`, checks sync, parse and runs through Cloud Logging, and lists causes of queued tasks and known faults. Every environment value comes from the client's `.wire/engagement/airflow_environments.yml`. See [Airflow](../advanced/airflow.md).
+
 ---
 
 ## Warehouse

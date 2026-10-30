@@ -41,24 +41,28 @@ Console admins set these on the project's page. Others can see them.
 | Setting | What it does |
 |---|---|
 | Mode | **Off**: does nothing. **Record only**: finds and records, posts nothing. **On**: also asks the confirmation owner in Slack and opens the daily pull request. |
-| Call rules | Which recorded calls count, in plain words the steward applies, such as "calls with the client's attendees". |
-| Call exclusions | Calls never read, one per line, applied first, such as "company stand-ups". |
+| Call titles | A recorded call counts when its title has one of these words or phrases, such as the client's name or "David <> Jordan". |
+| Attendee domains and addresses | A call counts when an attendee's email domain or address is listed, such as the client's domain. |
+| Excluded title words | A call whose title has one of these never counts, whatever else matches, such as "stand-up". |
+| Guidance and leave out (optional) | Plain words for the steward on the calls chosen: what to report, and topics never to report. |
 | Source channel | The Slack channel it reads. Defaults to the project's channel. |
 | Feedback channel | Where it asks its questions. Defaults to the project's channel. |
 | Confirmation owner | The person who confirms changes. Needs a Slack account in the people registry. Defaults to a person engagement lead. |
 | Reviewer | The person who reviews its pull request. Needs a GitHub login in the people registry. Defaults to a person engagement lead. |
 | Working days and hours, scan interval, review time | When it works, in UTC. Default: Monday to Friday, 07:00 to 22:00, every 60 minutes, pull request at 20:00. |
 
-Any mode except Off needs the channels, the owner, the reviewer and call rules.
+Any mode except Off needs the channels, the owner, the reviewer, and at least one call title, domain or attendee. The person who recorded a call never counts on their own, because the same person records several clients' calls.
 
 ## What it does each scan
 
 Each scan interval in its working hours, for each project it stewards:
 
 1. It reads every new message in the source channel, thread replies included. A new reply in a thread started up to 30 days ago is read with the thread's first message, for context.
-2. It lists the calls recorded since the last scan, keeps those that match the call rules and no exclusion, and reads them.
+2. It lists the calls recorded since the last scan, by title, date and attendees only. The agents' own code, not the model, picks the project's calls by the settings above. The steward then reads only those, one by one, and cannot list or search any other call, so it never sees another client's calls.
 3. It compares what was said with the engagement record in the repository's default branch, without changing anything.
-4. It records each finding with a link to the call (and the time in it) or to the message.
+4. It records each finding with a link to the call (and the time in it) or to the message. A finding that cites a call it was not given is dropped.
+
+It also reads what agents have learned on the project ([memory](./memory.md)), so it sees what was agreed on the project's tickets and in its Slack channel.
 
 Reading the same call or message again never records the same finding twice. A scan that does not finish marks nothing as read, so the next scan reads the same messages and calls.
 
@@ -76,9 +80,10 @@ A fact that would change a requirements, business rules or decisions file under 
 In mode **On**, after each scan:
 
 1. **New questions.** Findings for the owner are grouped by the file and section of the record they affect, one Slack thread per group in the feedback channel. A new thread starts with a fixed message, "🧹 @owner the engagement context steward needs your attention", and lists the findings by number, each with what was said and a link to its source. A new finding on a topic that already has an open thread goes into that thread.
-2. **Replies.** The owner replies in the thread, for example "confirm 1, reject 2", or answers a question. Only the owner's replies count. At the next scan the steward records each decision and says in the thread what it recorded. A finding the reply does not mention stays open. A thread closes when nothing in it is open.
+2. **Replies.** The owner replies in the thread, for example "confirm 1, reject 2", or answers a question. There is no need to @mention the steward. As soon as the reply arrives, the steward records each decision and says in the thread what it recorded. A finding the reply does not mention stays open. A thread closes when nothing in it is open.
+3. **Questions back.** Ask the steward something in the thread ("which call was 2 from?") and it answers there, with the thread's findings in front of it. Anyone can ask, but only the owner's replies confirm or reject a finding.
 
-The steward never treats these threads as a conversation: a message there, even one that @mentions it, is read as a decision at the next scan, not answered.
+Each scan also reads any reply it missed, so a decision is never lost.
 
 ## The daily pull request
 
@@ -96,7 +101,10 @@ After the pull request is merged, the next day's change starts a new one.
 - **The agent's page** on the console shows its live log. Each new finding is one line with its status, kind, the file and section it affects, a summary and its link. Each scan ends with a line counting the messages and calls read and the findings recorded. Questions asked and decisions recorded are logged too.
 - **The feedback channel** holds the question threads and the decisions.
 - **The pull request** on the project's repository lists everything applied to the record so far.
+- **The Steward page**, linked from the project's page on the console, lists every finding with its kind, status, the part of the record it affects, its source link and its pull request. Filter by status, kind or source, see counts by status, and see the latest status changes with who made each. Console admins and the confirmation owner can reject an open finding or reopen a rejected one there.
 - **The project's page** shows who the steward is and its settings.
+
+Only the console saves the steward's records. It checks that the agent saving them is the steward the project's pod names, and keeps every status change with who made it, so the history of each finding can be checked.
 
 ## Still to come
 

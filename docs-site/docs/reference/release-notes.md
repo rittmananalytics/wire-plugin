@@ -9,6 +9,28 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.4.5: Airflow support, and lookups across related repositories
+
+**Released**: October 2026
+
+**Airflow rules checked by script.** `lint_conventions.py --domain airflow` checks DAG code against a new Airflow rule set: no project or bucket names written into Python, every mapped task capped, DAG arguments kept out of `default_args`, no `Variable.get()` or network calls at module level, a fixed `start_date`, sensors that do not hold a worker slot for hours, and no imports removed in Airflow 3. Run it on a whole repository to list what to fix in existing code; findings there are warnings. On a pull request, `--changed-from` holds the changed files to each rule's severity.
+
+**Client rules on top of Wire's.** A rule file in `.wire/conventions/<domain>.yml` can now say `extends: wire`. Wire's rules still apply, the client's are added, and a Wire rule can be switched off with a reason. This works for dbt, LookML, Cube and dbtcharts as well as Airflow. A client file without `extends` still replaces Wire's, as before.
+
+**An Airflow and Cloud Composer skill.** Wire writes and changes DAGs to the rules, deploys changed files to dev, checks that Airflow synced and parsed them before a run is triggered, and reads run and task outcomes through Cloud Logging, for teams that cannot run the Airflow command line. Every environment value comes from the client's `.wire/engagement/airflow_environments.yml`. `/wire:adopt` proposes that file from the repository's CI files.
+
+**Safe deploys to dev.** `/wire:utils-dev-deploy` copies a branch's changed files to dev one at a time, after a check that refuses staging, prod, protected paths and protected DAGs. If any file is refused, nothing is copied. It never syncs a folder and never deletes.
+
+**Tested in dev.** `/wire:utils-dev-test-evidence` says, per changed file, whether the dev copy is the pull request's version, whether it parsed, and whether a run after the upload succeeded with every mapped task. The verdict (`yes`, `partially` or `no`) goes in the pull request body.
+
+**Review rules.** Pull requests from `/wire:work` list rule findings as fixed, justified or acknowledged, never blocking, and carry a requirements table per ticket. The client's PR template, tracker and review mode come from `.wire/engagement/review_profile.yml`.
+
+**Airflow in pipeline and ticket work.** `pipeline_tool: airflow` covers building and changing ingestion DAGs in an existing estate, and the orchestration specs have an existing-estate mode. A ticket for a new `ingestion` slice maps to `/wire:pipeline-generate`, plus `/wire:orchestration-generate` when it changes a schedule.
+
+**Related repositories.** An engagement can list the client's other repositories in `related_repos:` in `context.md`, and `/wire:utils-repos` looks up code in them, read only, citing each hit as `<id>@<short commit>:<path>`. A session in the dbt repository can find the DAG that loads a source, and the other way round. Wire uses each person's own clone or git access, never stores a credential, and never writes to a related repository. Lookups run only when asked, or when `/wire:work` offers one for a repository set to `lookup: offer`. `/wire:new` and `/wire:adopt` now git-ignore `.wire/local/`.
+
+See [Airflow](../advanced/airflow), [Convention rules](../advanced/convention-rules), [Review profile](../advanced/review-profile) and [Related Repos](../advanced/related-repos).
+
 ## v4.4.4: Duplicate keys in status.md are caught
 
 **Released**: October 2026

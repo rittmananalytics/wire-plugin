@@ -221,7 +221,7 @@ Repeat up to `--max-iterations`:
 Stop the loop when no model has an `auto` finding left, or a full pass makes no progress (guards against an oscillating fix), or the iteration cap is hit. A model still carrying `auto` findings at the cap is escalated with reason `auto_fix_not_converged` — never silently left.
 
 ### Step 4 — Confirm with the client-review lens (once)
-If an engagement client-review profile is configured (`.wire/engagement/client_review_profile.yaml`), run it once over the now-fixed diff (per `dbt-migration-pre-pr-review`'s client-review lens). Any new `auto` findings it surfaces get one more bounded apply pass (Step 3, one iteration); anything else joins the escalation queue. This keeps the expensive lens as a final confirmation, not a loop body.
+If an engagement client-review profile is configured (`.wire/engagement/review_profile.yml` with a `review_lens`, schema in `wire/schemas/review-profile-schema.md`; an older engagement's `.wire/engagement/client_review_profile.yaml` is still read), run it once over the now-fixed diff (per `dbt-migration-pre-pr-review`'s client-review lens). Any new `auto` findings it surfaces get one more bounded apply pass (Step 3, one iteration); anything else joins the escalation queue. This keeps the expensive lens as a final confirmation, not a loop body.
 
 ### Step 5 — Escalation queue
 Emit the residue for the consultant — every `propose` and `decision` finding, grouped by policy then model, each with `severity`, `file:line`, the reason it was not auto-fixed, and (for `propose`) the drafted fix ready to apply. This is the **only** manual surface the consultant sees: the mechanical volume is already gone.

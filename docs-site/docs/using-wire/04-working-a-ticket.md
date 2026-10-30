@@ -44,6 +44,10 @@ Notice that Wire did not ask you what a return is. It found the refund transacti
 A ticket is opened on the release, not as a release of its own. Everything Wire found in that first reply came from the release's record: the requirements, the design, the definitions and the decisions log. Had the ticket been given a release of its own, none of that would have been in front of it, and the decision that excluded refunds in March would have been rediscovered the hard way, in a failing reconciliation.
 :::
 
+:::tip
+If the code a ticket depends on lives in another of the client's repositories, such as the Airflow DAGs that load a source, list that repository once with `/wire:utils-repos add`. Wire can then look things up in it during the ticket, read only, and cite what it read by repository and commit. See [Related Repos](../advanced/related-repos).
+:::
+
 ### Stage 2: The Plan
 
 Wire proposes a plan before it touches anything, and waits for you to say go, adjust or cancel. The plan names each step in the words of the method rather than in Wire's own terms: what will be agreed, designed, built, checked and published, and in what order. Where a step is a piece of work Wire will do, it gives the command in full. Where a step belongs to a person, it says whose, and that step is where the run stops.
@@ -115,6 +119,10 @@ Not every request that arrives as a ticket is one. The following week the direct
 | "Ticket NWR-34. Add complaints per store from the helpdesk system, on the Store League Table." | "This is not a change I would make as a ticket on the Store Performance release, and I want to say why before proposing anything. It adds a source system that has never been assessed, it adds a business concept (a complaint) that the design does not have, and it needs a pipeline that does not exist. Any of those on its own is a design change; together they are a small release. Two ways forward. Plan it as a new release alongside this one, which starts with a short look at the helpdesk data and an agreed definition of a complaint, and would take about a week; recommended. Or add it to this release as a formal design phase, which keeps it in one place but reopens the design documents that ticket NWR-31 left settled. Which?<br/><br/>Not run: anything. Iteration NWR-34 escalated; the next step is /wire:new or a formal phase" |
 
 Wire refused to treat the request as a small change, said exactly which of its properties made it larger than it looked, and offered the two sensible shapes for it with a recommendation. That boundary is one you will lean on. A ticket that quietly grows into a redesign is how a fortnight becomes a quarter, and it is far cheaper to notice at the planning step than in the third week.
+
+### A Ticket in an Airflow Repository
+
+Tickets are not only dbt and dashboard work. Many arrive against the DAGs that load the sources: a new file type, a changed schedule, a failing task. Wire works these the same way, with a few differences. The plan uses `/wire:pipeline-generate` and `/wire:pipeline-validate` with Airflow as the pipeline tool, the change is deployed to the client's dev environment with `/wire:utils-dev-deploy`, and before the pull request is raised `/wire:utils-dev-test-evidence` records whether the change ran in dev. The environments Wire may deploy to, and those it must never touch, come from a file in the client's repository. See [Airflow](../advanced/airflow) for the setup and a worked ticket.
 
 ### What You Should Now Have
 

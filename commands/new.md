@@ -712,6 +712,12 @@ touch .wire/engagement/org/.gitkeep
 touch .wire/research/sessions/.gitkeep
 ```
 
+Make sure `.wire/local/` is git-ignored. It holds each person's own settings (persona override, where their clones of related repos are; `specs/utils/personas.md`, `specs/utils/repos.md`) and is never committed:
+
+```bash
+grep -qxF '.wire/local/' .gitignore 2>/dev/null || echo '.wire/local/' >> .gitignore
+```
+
 ### Step 10.5: Scaffold GitHub PR Template
 
 Create `.github/pull_request_template.md` from the Wire PR template so that every PR raised against this repo is Wire-aware by default.
@@ -736,6 +742,8 @@ Read `TEMPLATES/engagement-context-template.md` and populate:
 - `{{FATHOM_SYNC_CLIENT_DOMAIN}}` → the client domain as a quoted string, or `null` (literal, unquoted) if not set — resolved in Step 2
 
 If repo mode is `dedicated_delivery`, populate the `client_repo` section with the provided URL, local path, and branch.
+
+Leave `related_repos` as the template's commented example. If the person mentioned other client repositories (an Airflow repo, a LookML repo), say they can be listed afterwards with `/wire:utils-repos add`, for read only lookups.
 
 Write to `.wire/engagement/context.md`.
 

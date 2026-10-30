@@ -183,6 +183,7 @@ Based on `pipeline_tool`, load and execute the corresponding review spec to buil
 | `fivetran` | `wire/specs/development/pipeline/fivetran/review.md` |
 | `dlt` | `wire/specs/development/pipeline/dlt/review.md` |
 | `airbyte` | `wire/specs/development/pipeline/airbyte/review.md` |
+| `airflow` | `wire/specs/development/pipeline/airflow/review.md` |
 | `custom` | Present the pipeline design document and connection configs directly |
 
 ### Step 3: Retrieve External Context (Optional)

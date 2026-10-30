@@ -182,6 +182,7 @@ Based on `pipeline_tool`, load and execute the corresponding validation spec in 
 | `fivetran` | `wire/specs/development/pipeline/fivetran/validate.md` |
 | `dlt` | `wire/specs/development/pipeline/dlt/validate.md` |
 | `airbyte` | `wire/specs/development/pipeline/airbyte/validate.md` |
+| `airflow` | `wire/specs/development/pipeline/airflow/validate.md` |
 | `custom` | Apply the validation checklist from the pipeline design document |
 
 ### Step 3: Verify Status Updated

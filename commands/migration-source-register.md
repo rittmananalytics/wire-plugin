@@ -135,6 +135,8 @@ argument-hint: <release-folder> <source_type> <github_url>
 
 Registers the git location of one source system in `status.md` under `migration_sources.<type>`. Multiple source types can be registered independently — each maps to a corresponding Wire audit command and is refreshed separately. Run once per source type, then run `/wire:migration-source-refresh $ARGUMENTS <source_type>` to pull a local snapshot.
 
+**Related repos.** `related_repos:` in `.wire/engagement/context.md` (`/wire:utils-repos`, `specs/utils/repos.md`, wire#381) is the general form of this: any release can list the client's other repositories for read only lookups, per engagement rather than per release. This command is unchanged and the migration audits still read `migration_sources`. Whether the two are merged is a later decision.
+
 ## Source types
 
 | `source_type` | Corresponding audit | Typical contents |

@@ -1,0 +1,141 @@
+schema_version: 1
+domain: airflow
+description: >
+  Rittman Analytics conventions for Apache Airflow 2.x code, including Cloud
+  Composer 2 and 3 estates: DAG files, the helpers they import, and the YAML
+  and SQL files they read. The machine-checkable subset of
+  wire/skills/airflow/SKILL.md. Enforced by wire/scripts/lint_conventions.py
+  --domain airflow, which parses Python with the standard library ast module.
+  Judgement calls (idempotent tasks, pools, deferrable operators, XCom size)
+  stay in the skill and in wire/skills/airflow/references/general_practice.md.
+  A client adds its own rules and helper names in .wire/conventions/airflow.yml
+  with `extends: wire` (see wire/schemas/convention-schema.md).
+
+# Every rule with a `check` is run by the linter; a rule without one is
+# advice for the agent. Every checked rule carries applies_to:
+# new_and_changed, so a whole-folder run over an existing estate lists every
+# finding as a warning (a list of what to fix), and a run with
+# --changed-from <base> holds the files a branch changed to each rule's own
+# severity.
+
+scope: >
+  Files: .py (ast checks and file_content rules), .yml, .yaml and .sql
+  (file_content rules only). Folders skipped: hidden folders, target,
+  node_modules, logs, __pycache__.
+
+# ----------------------------------------------------------------------
+# Structure: how DAGs and helpers are organised
+# ----------------------------------------------------------------------
+structure:
+  - id: AF-001
+    name: shared_helpers_first
+    description: "Use the repo's shared helpers (operator factories, config loaders, alerting callbacks) before writing new ones. A client lists its helper modules in its own airflow.yml."
+    severity: warning
+    note: "Advisory. The agent searches the repo's helper modules (and the client's `helpers:` list, if set) before adding a function."
+
+  - id: AF-004
+    name: one_dag_per_job
+    description: "One DAG per job, with mapped tasks (.expand) over the varying inputs, not one copied DAG file per table, source or country."
+    severity: warning
+    note: "Advisory. The agent compares new DAG files with existing ones for near copies."
+
+  - id: AF-006
+    name: dag_file_safe_mode_words
+    description: "A file in a DAGs folder that builds anything at module level must contain the words 'airflow' and 'dag'. In safe mode (the default) Airflow skips any file without both, with no error."
+    check: safe_mode_words
+    path_segments: [dags]
+    severity: error
+    applies_to: new_and_changed
+
+  - id: AF-007
+    name: dag_keys_not_in_default_args
+    description: "DAG-level arguments go on the DAG, never in default_args. default_args is passed to every task, so a DAG-level key there has no effect."
+    check: default_args_dag_keys
+    keys: [catchup, schedule, schedule_interval, timetable, max_active_runs, max_active_tasks, tags, dagrun_timeout, is_paused_upon_creation, render_template_as_native_obj, doc_md, dag_id]
+    severity: error
+    applies_to: new_and_changed
+    note: "start_date is left out: Airflow 2 applies a start_date in default_args to each task, and it is a common, working pattern."
+
+# ----------------------------------------------------------------------
+# Configuration: environment values live in config, not in code
+# ----------------------------------------------------------------------
+configuration:
+  - id: AF-002
+    name: no_literal_project_or_bucket
+    description: "No project id or bucket written into Python. Read it from the per-environment config (YAML) so the same code runs in every environment."
+    check: literal_value
+    keyword_names: [project_id, project, gcp_project, gcp_project_id, bucket, bucket_name, gcs_bucket, source_bucket, destination_bucket]
+    literal_patterns: ['^gs://']
+    severity: error
+    applies_to: new_and_changed
+    note: "A Jinja template ('{{ ... }}') is not a literal value. A client adds patterns that match its own project names in its airflow.yml."
+
+  - id: AF-003
+    name: no_literal_schedule_or_target
+    description: "Schedules and load targets (datasets, tables, environments) come from per-environment config, not from Python literals."
+    severity: warning
+    note: "Advisory. A literal cron string is common and often correct in a single-environment estate; the agent applies the rule where the repo already keeps schedules in config."
+
+  - id: AF-005
+    name: mapped_fanout_capped
+    description: "Every .expand() is capped: max_active_tis_per_dag, max_active_tis_per_dagrun or a pool on the task, or max_active_tasks on the DAG. Take the cap from the environment's config."
+    check: mapped_fanout_cap
+    cap_keywords: [max_active_tis_per_dag, max_active_tis_per_dagrun, pool]
+    dag_cap_keywords: [max_active_tasks]
+    severity: error
+    applies_to: new_and_changed
+
+# ----------------------------------------------------------------------
+# General practice: Airflow 2.x and Cloud Composer guidance a script can
+# check with few false positives. The rest is in the skill's
+# references/general_practice.md.
+# ----------------------------------------------------------------------
+general_practice:
+  - id: AF-101
+    name: no_top_level_variable_get
+    description: "No Variable.get() outside a function. Top-level code runs on every parse (every 30 seconds by default) and each call is a metadata database query. Use a Jinja template ({{ var.value.x }}) or read it inside the task."
+    check: top_level_variable_get
+    severity: warning
+    applies_to: new_and_changed
+
+  - id: AF-102
+    name: static_start_date
+    description: "start_date is a fixed date, never datetime.now(), utcnow(), today(), pendulum.now() or days_ago(). A moving start_date gives runs that never trigger or an unclear first run."
+    check: dynamic_start_date
+    severity: error
+    applies_to: new_and_changed
+
+  - id: AF-103
+    name: sensor_poke_timeout
+    description: "A sensor in poke mode (the default) holds a worker slot for its whole wait, up to 7 days by default. Use mode='reschedule' or deferrable=True, or set a timeout no longer than max_poke_seconds."
+    check: sensor_poke_timeout
+    max_poke_seconds: 3600
+    severity: warning
+    applies_to: new_and_changed
+    note: "Matches calls whose name ends in Sensor. A timeout that is not a number or a timedelta with literal arguments is not judged."
+
+  - id: AF-104
+    name: no_top_level_io
+    description: "No network, process or warehouse calls at module level. They run on every parse, slow the scheduler and can time the file out."
+    check: top_level_io
+    call_prefixes: ["requests.", "urllib.request.", "subprocess.", "bigquery.Client", "storage.Client", "httpx."]
+    severity: warning
+    applies_to: new_and_changed
+
+  - id: AF-105
+    name: schedule_not_schedule_interval
+    description: "Use schedule=, not schedule_interval=. schedule_interval is deprecated from Airflow 2.4 and removed in Airflow 3."
+    check: deprecated_keyword
+    callables: [DAG, dag]
+    keywords: [schedule_interval]
+    severity: warning
+    applies_to: new_and_changed
+
+  - id: AF-106
+    name: no_deprecated_imports
+    description: "No imports removed in Airflow 3 or deprecated in Airflow 2: airflow.contrib, the *_operator modules, DummyOperator and days_ago."
+    check: deprecated_import
+    modules: ["airflow.contrib", "airflow.operators.dummy_operator", "airflow.operators.dummy", "airflow.operators.python_operator", "airflow.operators.bash_operator", "airflow.sensors.base_sensor_operator"]
+    names: [DummyOperator, days_ago]
+    severity: warning
+    applies_to: new_and_changed

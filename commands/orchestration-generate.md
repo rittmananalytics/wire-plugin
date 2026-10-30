@@ -559,6 +559,20 @@ DBT_CLOUD_ENVIRONMENT_ID_DEV=
 
 ### Step 3c: Generate Airflow Orchestration (if Airflow chosen)
 
+#### 3c.0: Existing Airflow estate mode
+
+Use this mode instead of 3c.1 to 3c.4 when the client already runs Airflow: the repo has a DAG folder with DAG files, or `.wire/engagement/airflow_environments.yml` exists (schema in `wire/schemas/airflow-environments-schema.md`). Record `orchestration_mode: existing_airflow_estate` under `artifacts.orchestration` in status.md.
+
+1. Activate the Airflow skill (`skills/airflow/SKILL.md`; on Gemini CLI, read the file and follow it). Read every environment value from the environment file; stop if it is missing.
+2. Change only what the scope names: a schedule, a trigger, a dependency between DAGs (dataset, sensor or `TriggerDagRunOperator`), or a DAG that runs dbt. Do not scaffold a new pipeline DAG, and do not rewrite DAGs the scope does not name.
+3. Schedules and caps come from the repo's per-environment config, not literals (rules AF-003 and AF-005). A new dependency between DAGs uses a dataset or a sensor in `reschedule` mode (AF-103).
+4. Run the lint on the changed files before trusting the change:
+   ```bash
+   python3 <wire>/scripts/lint_conventions.py --domain airflow \
+     --convention <resolved airflow.yml> --path <dag folder> --changed-from <base branch>
+   ```
+5. Write `.wire/<project_id>/development/orchestration/airflow_setup.md` as a change note: the DAGs changed, the schedule before and after, the dependencies added or removed, the lint result, and the next steps (`/wire:utils-dev-deploy`, then `/wire:utils-dev-test-evidence`). Skip 3c.1 to 3c.4 and go to Step 4.
+
 #### 3c.1 — Scaffold DAG file
 
 Create `dags/<project_name>_pipeline.py` at the repo root (or inside an existing `dags/` directory if one is present). The DAG uses the Astronomer Cosmos `DbtTaskGroup` pattern to wrap all dbt models as Airflow tasks, preserving the dbt dependency graph.
@@ -722,7 +736,8 @@ Read `.wire/<project_id>/status.md` and update the `orchestration` artifact sect
 
 ```yaml
 orchestration:
-  orchestration_tool: "dagster"  # or "dbt_cloud"
+  orchestration_tool: "dagster"  # or "dbt_cloud", "airflow"
+  orchestration_mode: new        # or existing_airflow_estate (Step 3c.0)
   generate: complete
   validate: not_started
   review: not_started

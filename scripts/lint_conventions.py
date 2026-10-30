@@ -21,6 +21,16 @@ Usage:
       [--changed-from <base ref> | --new-project]
   python3 wire/scripts/lint_conventions.py --domain dbtcharts \\
       --convention wire/conventions/dbtcharts.yml --path charts/
+  python3 wire/scripts/lint_conventions.py --domain airflow \\
+      --convention .wire/conventions/airflow.yml --path dags/ \\
+      [--changed-from <base ref>]
+
+A client file with `extends: wire` (wire#380) is merged over Wire's own file
+for the domain (wire/conventions/<domain>.yml beside this script's folder, or
+--base-convention): its rules are added, a rule with the same id replaces
+Wire's, and each `disable: [{id, reason}]` entry removes a Wire rule. The
+removed rules and their reasons are listed in the output. A client file
+without `extends` replaces Wire's file, as before.
 
 Scope (wire#277): a rule carrying `applies_to: new_and_changed` is checked
 only on files added or changed on the current branch, and one carrying
@@ -34,6 +44,7 @@ Exit code: 1 if any error-severity finding fires, 0 otherwise. Warnings never
 fail the run.
 """
 import argparse
+import ast
 import json
 import os
 import re
@@ -51,6 +62,7 @@ DOMAIN_EXTENSIONS = {
     "lookml": (".lkml",),
     "cube": (".yml", ".yaml"),
     "dbtcharts": (".yml", ".yaml"),
+    "airflow": (".py", ".yml", ".yaml", ".sql"),
 }
 
 
@@ -78,6 +90,103 @@ def load_convention(path):
     return doc
 
 
+# ----------------------------------------------------------------------
+# extends: wire (wire#380)
+# ----------------------------------------------------------------------
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Keys that describe the file, not rules; the client's own values are kept.
+META_KEYS = {"schema_version", "domain", "description", "extends", "disable"}
+
+
+def wire_convention_path(domain):
+    """Wire's own file for a domain: conventions/ beside scripts/, which holds
+    in this repo (wire/scripts, wire/conventions) and in the installed plugin."""
+    return os.path.join(os.path.dirname(SCRIPT_DIR), "conventions", f"{domain}.yml")
+
+
+def _is_rule_list(value):
+    return isinstance(value, list) and all(isinstance(r, dict) and r.get("id") for r in value)
+
+
+def merge_extending(base, client):
+    """A client file with `extends: wire` merged over Wire's file.
+
+    Rule sections (lists of rules with an id): a client rule with an id Wire
+    already has replaces Wire's rule in place; any other client rule is added
+    at the end. Settings sections (mappings) merge key by key, the client's
+    value winning. Any other value: the client's wins. Then each `disable`
+    entry removes the Wire rule with that id from every section.
+
+    Returns (merged, info): info lists the rules disabled, with their reasons,
+    and the ids the client added or replaced, for the lint output."""
+    merged = {k: v for k, v in base.items() if k not in ("extends", "disable")}
+    added, replaced = [], []
+    for key, value in client.items():
+        if key in ("extends", "disable"):
+            continue
+        if key in ("schema_version", "domain"):
+            continue
+        current = merged.get(key)
+        if _is_rule_list(value) and isinstance(current, list):
+            rules = list(current)
+            index = {r.get("id"): i for i, r in enumerate(rules) if isinstance(r, dict)}
+            for rule in value:
+                if rule["id"] in index:
+                    rules[index[rule["id"]]] = rule
+                    replaced.append(rule["id"])
+                else:
+                    rules.append(rule)
+                    added.append(rule["id"])
+            merged[key] = rules
+        elif isinstance(value, dict) and isinstance(current, dict):
+            merged[key] = {**current, **value}
+        else:
+            merged[key] = value
+            if _is_rule_list(value):
+                added.extend(r["id"] for r in value)
+
+    disabled, unknown = [], []
+    all_ids = {r.get("id") for v in merged.values() if isinstance(v, list) for r in v if isinstance(r, dict)}
+    for entry in client.get("disable") or []:
+        if not isinstance(entry, dict) or not entry.get("id"):
+            raise ValueError("each disable entry needs an id and a reason")
+        if not str(entry.get("reason") or "").strip():
+            raise ValueError(f"disable entry for '{entry['id']}' has no reason")
+        if entry["id"] not in all_ids:
+            unknown.append(entry["id"])
+            continue
+        for key, value in list(merged.items()):
+            if isinstance(value, list):
+                merged[key] = [r for r in value if not (isinstance(r, dict) and r.get("id") == entry["id"])]
+        disabled.append({"id": entry["id"], "reason": str(entry["reason"]).strip()})
+
+    info = {"extends": "wire", "added": added, "replaced": replaced,
+            "disabled": disabled, "unknown_disabled": unknown}
+    return merged, info
+
+
+def resolve_convention(path, domain, base_path=None):
+    """The convention a lint runs with. A file without `extends` is used as it
+    is (a client file replaces Wire's, as before). A file with `extends: wire`
+    is merged over Wire's own file for the domain."""
+    doc = load_convention(path)
+    extends = doc.get("extends")
+    if not extends:
+        return doc, None
+    if extends != "wire":
+        raise ValueError(f"{path}: extends must be 'wire', got '{extends}'")
+    base_path = base_path or wire_convention_path(domain)
+    if os.path.realpath(base_path) == os.path.realpath(path):
+        raise ValueError(f"{path}: a file cannot extend itself")
+    base = load_convention(base_path)
+    if base.get("domain") != doc.get("domain"):
+        raise ValueError(f"{path}: domain '{doc.get('domain')}' does not match Wire's '{base.get('domain')}'")
+    merged, info = merge_extending(base, doc)
+    info["base"] = base_path
+    return merged, info
+
+
 def get_rule(conv, section, rule_id):
     for rule in conv.get(section, []) or []:
         if isinstance(rule, dict) and rule.get("id") == rule_id:
@@ -86,7 +195,7 @@ def get_rule(conv, section, rule_id):
 
 
 # Build output and installed packages, never the project's own code.
-SKIPPED_DIRS = {"target", "dbt_packages", "dbt_modules", "node_modules", "logs"}
+SKIPPED_DIRS = {"target", "dbt_packages", "dbt_modules", "node_modules", "logs", "__pycache__"}
 
 
 def iter_target_files(path, extensions):
@@ -926,7 +1035,358 @@ def check_dbtcharts(conv, filepath, text):
     return findings
 
 
-DISPATCH = {"dbt": check_dbt_file, "lookml": check_lookml, "cube": check_cube, "dbtcharts": check_dbtcharts}
+# ----------------------------------------------------------------------
+# Airflow (wire#380)
+# ----------------------------------------------------------------------
+#
+# Python is read with the standard library ast module, never with regular
+# expressions, so a comment or a string that mentions a call does not count
+# as the call. Each rule names its check in `check:` and carries the check's
+# settings (key lists, patterns, thresholds), so a client can add a second
+# rule that runs the same check with its own settings.
+
+FUNCTION_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+
+
+def _dotted(node):
+    """`requests.get` for requests.get, `Variable.get` for Variable.get, or
+    None for anything that is not a plain name or attribute chain."""
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        parts.append(node.id)
+        return ".".join(reversed(parts))
+    return None
+
+
+def _call_name(call):
+    return _dotted(call.func) if isinstance(call, ast.Call) else None
+
+
+def _last(name):
+    return (name or "").rsplit(".", 1)[-1]
+
+
+def _walk_with_scope(tree):
+    """Every node with a flag saying whether it sits inside a function body
+    (code that runs when a task runs, not when the file is parsed)."""
+    stack = [(tree, False)]
+    while stack:
+        node, in_function = stack.pop()
+        yield node, in_function
+        inside = in_function or isinstance(node, FUNCTION_NODES)
+        for child in ast.iter_child_nodes(node):
+            # A decorator runs when the file is parsed, so it is not inside.
+            if isinstance(node, FUNCTION_NODES[:2]) and child in node.decorator_list:
+                stack.append((child, in_function))
+            else:
+                stack.append((child, inside))
+
+
+def _str_value(node):
+    return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
+
+
+def _seconds(node):
+    """A timeout in seconds when it is a number or timedelta(...) with literal
+    arguments, else None (not judged)."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
+        return float(node.value)
+    if isinstance(node, ast.Call) and _last(_call_name(node)) == "timedelta":
+        units = {"weeks": 604800, "days": 86400, "hours": 3600, "minutes": 60, "seconds": 1}
+        total = 0.0
+        if node.args:
+            return None
+        for kw in node.keywords:
+            if kw.arg not in units or not isinstance(kw.value, ast.Constant) \
+                    or not isinstance(kw.value.value, (int, float)):
+                return None
+            total += kw.value.value * units[kw.arg]
+        return total
+    return None
+
+
+def _kw(call, name):
+    for kw in call.keywords:
+        if kw.arg == name:
+            return kw.value
+    return None
+
+
+def af_safe_mode_words(rule, tree, text, filepath):
+    parts = filepath.replace(os.sep, "/").split("/")
+    if os.path.basename(filepath) == "__init__.py":
+        return []
+    if not set(_as_list(rule.get("path_segments")) or ["dags"]) & set(parts):
+        return []
+    lowered = text.lower()
+    if "airflow" in lowered and "dag" in lowered:
+        return []
+    builds = any(
+        not isinstance(stmt, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.AsyncFunctionDef,
+                              ast.ClassDef, ast.Pass))
+        and not (isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant))
+        for stmt in tree.body
+    )
+    if not builds:
+        return []  # a helper module that only defines functions
+    missing = " or ".join(f"'{w}'" for w in ("airflow", "dag") if w not in lowered)
+    return [Finding(rule["id"], _severity(rule, "error"), filepath,
+                    f"no {missing} in the file; Airflow skips it in safe mode, with no error")]
+
+
+def _default_args_dicts(tree):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict):
+            if any(isinstance(t, ast.Name) and t.id.endswith("default_args") for t in node.targets):
+                yield node.value
+        elif isinstance(node, ast.keyword) and node.arg == "default_args" and isinstance(node.value, ast.Dict):
+            yield node.value
+
+
+def af_default_args_dag_keys(rule, tree, text, filepath):
+    keys = set(rule.get("keys") or [])
+    findings = []
+    for d in _default_args_dicts(tree):
+        for k in d.keys:
+            name = _str_value(k)
+            if name in keys:
+                findings.append(Finding(rule["id"], _severity(rule, "error"), filepath,
+                                        f"'{name}' is a DAG argument; set it on the DAG, not in default_args",
+                                        line=k.lineno))
+    return findings
+
+
+def af_mapped_fanout_cap(rule, tree, text, filepath):
+    cap_kws = set(rule.get("cap_keywords") or [])
+    dag_cap_kws = set(rule.get("dag_cap_keywords") or [])
+
+    def has_cap(call, names):
+        return any(kw.arg in names for kw in call.keywords)
+
+    # A DAG with max_active_tasks caps every task in it.
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and _last(_call_name(node)) in ("DAG", "dag") and has_cap(node, dag_cap_kws):
+            return []
+
+    capped = set()  # names of tasks or partials that carry a cap
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for dec in node.decorator_list:
+                if isinstance(dec, ast.Call) and (_call_name(dec) or "").split(".")[0] == "task" \
+                        and has_cap(dec, cap_kws):
+                    capped.add(node.name)
+        elif isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+            v = node.value
+            if isinstance(v.func, ast.Attribute) and v.func.attr == "partial" and has_cap(v, cap_kws):
+                capped.update(t.id for t in node.targets if isinstance(t, ast.Name))
+
+    findings = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr in ("expand", "expand_kwargs")):
+            continue
+        receiver = node.func.value
+        ok = False
+        if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Attribute) \
+                and receiver.func.attr == "partial":
+            ok = has_cap(receiver, cap_kws) or (isinstance(receiver.func.value, ast.Name)
+                                                and receiver.func.value.id in capped)
+        elif isinstance(receiver, ast.Name):
+            ok = receiver.id in capped
+        if not ok:
+            findings.append(Finding(rule["id"], _severity(rule, "error"), filepath,
+                                    f".{node.func.attr}() has no cap on parallel tasks; set "
+                                    "max_active_tis_per_dag or a pool from the environment's config",
+                                    line=node.lineno))
+    return findings
+
+
+def af_literal_value(rule, tree, text, filepath):
+    names = set(rule.get("keyword_names") or [])
+    patterns = [re.compile(p) for p in rule.get("literal_patterns") or []]
+    skip = set()  # docstrings and the fixed parts of f-strings are not values
+    for node in ast.walk(tree):
+        if isinstance(node, ast.JoinedStr):
+            skip.update(id(v) for v in node.values)
+        elif isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            body = getattr(node, "body", [])
+            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+                skip.add(id(body[0].value))
+    findings, reported = [], set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.keyword) and node.arg in names:
+            value = _str_value(node.value)
+            if value is not None and "{{" not in value:
+                reported.add(id(node.value))
+                findings.append(Finding(rule["id"], _severity(rule, "error"), filepath,
+                                        f"{node.arg}='{value}' is written into the code; read it from config",
+                                        line=node.value.lineno))
+    for node in ast.walk(tree):
+        value = _str_value(node)
+        if value is None or id(node) in skip or id(node) in reported or "{{" in value:
+            continue
+        if any(p.search(value) for p in patterns):
+            findings.append(Finding(rule["id"], _severity(rule, "error"), filepath,
+                                    f"'{value}' is written into the code; read it from config",
+                                    line=node.lineno))
+    return findings
+
+
+def af_top_level_variable_get(rule, tree, text, filepath):
+    return [Finding(rule["id"], _severity(rule), filepath,
+                    "Variable.get() runs on every parse; use {{ var.value.<key> }} or read it inside the task",
+                    line=node.lineno)
+            for node, in_function in _walk_with_scope(tree)
+            if not in_function and isinstance(node, ast.Call)
+            and (_call_name(node) or "").endswith("Variable.get")]
+
+
+MOVING_DATES = ("datetime.now", "datetime.utcnow", "datetime.today", "date.today", "pendulum.now",
+                "pendulum.today", "timezone.utcnow", "days_ago")
+
+
+def af_dynamic_start_date(rule, tree, text, filepath):
+    values = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.keyword) and node.arg == "start_date":
+            values.append(node.value)
+        elif isinstance(node, ast.Dict):
+            values += [v for k, v in zip(node.keys, node.values) if _str_value(k) == "start_date"]
+    findings = []
+    for value in values:
+        for sub in ast.walk(value):
+            name = _call_name(sub) if isinstance(sub, ast.Call) else None
+            if name and any(name == m or name.endswith("." + m) for m in MOVING_DATES):
+                findings.append(Finding(rule["id"], _severity(rule, "error"), filepath,
+                                        f"start_date uses {name}(); use a fixed date", line=sub.lineno))
+                break
+    return findings
+
+
+def af_sensor_poke_timeout(rule, tree, text, filepath):
+    limit = float(rule.get("max_poke_seconds", 3600))
+    findings = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and _last(_call_name(node)).endswith("Sensor")):
+            continue
+        mode = _kw(node, "mode")
+        if mode is not None and _str_value(mode) != "poke":
+            continue  # reschedule, or a value the script cannot judge
+        deferrable = _kw(node, "deferrable")
+        if deferrable is not None and not (isinstance(deferrable, ast.Constant) and deferrable.value is False):
+            continue
+        timeout = _kw(node, "timeout")
+        seconds = 604800.0 if timeout is None else _seconds(timeout)
+        if seconds is not None and seconds > limit:
+            findings.append(Finding(rule["id"], _severity(rule), filepath,
+                                    f"{_last(_call_name(node))} pokes for up to {int(seconds)}s "
+                                    f"(limit {int(limit)}s); use mode='reschedule' or deferrable=True",
+                                    line=node.lineno))
+    return findings
+
+
+def af_top_level_io(rule, tree, text, filepath):
+    prefixes = rule.get("call_prefixes") or []
+
+    def matches(name):
+        for p in prefixes:
+            if p.endswith("."):
+                if name.startswith(p) or ("." + p) in ("." + name):
+                    return True
+            elif name == p or name.endswith("." + p):
+                return True
+        return False
+
+    return [Finding(rule["id"], _severity(rule), filepath,
+                    f"{_call_name(node)}() runs on every parse; move it into a task",
+                    line=node.lineno)
+            for node, in_function in _walk_with_scope(tree)
+            if not in_function and isinstance(node, ast.Call) and _call_name(node)
+            and matches(_call_name(node))]
+
+
+def af_deprecated_keyword(rule, tree, text, filepath):
+    callables = set(rule.get("callables") or [])
+    keywords = set(rule.get("keywords") or [])
+    return [Finding(rule["id"], _severity(rule), filepath,
+                    f"{_last(_call_name(node))}({kw.arg}=...) is deprecated", line=kw.value.lineno)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and _last(_call_name(node)) in callables
+            for kw in node.keywords if kw.arg in keywords]
+
+
+def af_deprecated_import(rule, tree, text, filepath):
+    modules = rule.get("modules") or []
+    names = set(rule.get("names") or [])
+
+    def old(module):
+        return any(module == m or module.startswith(m + ".") for m in modules)
+
+    findings = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            if old(node.module):
+                findings.append(Finding(rule["id"], _severity(rule), filepath,
+                                        f"import from {node.module} is deprecated", line=node.lineno))
+            else:
+                for alias in node.names:
+                    if alias.name in names:
+                        findings.append(Finding(rule["id"], _severity(rule), filepath,
+                                                f"{alias.name} is deprecated", line=node.lineno))
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if old(alias.name):
+                    findings.append(Finding(rule["id"], _severity(rule), filepath,
+                                            f"import {alias.name} is deprecated", line=node.lineno))
+    return findings
+
+
+AIRFLOW_CHECKS = {
+    "safe_mode_words": af_safe_mode_words,
+    "default_args_dag_keys": af_default_args_dag_keys,
+    "mapped_fanout_cap": af_mapped_fanout_cap,
+    "literal_value": af_literal_value,
+    "top_level_variable_get": af_top_level_variable_get,
+    "dynamic_start_date": af_dynamic_start_date,
+    "sensor_poke_timeout": af_sensor_poke_timeout,
+    "top_level_io": af_top_level_io,
+    "deprecated_keyword": af_deprecated_keyword,
+    "deprecated_import": af_deprecated_import,
+}
+
+
+def check_airflow(conv, filepath, text):
+    """Airflow DAG folders: file_content rules on every file, and the ast
+    checks named by each rule's `check:` on Python files. A rule naming a
+    check this script does not have is reported once, not ignored."""
+    findings = check_file_content_rules(conv, filepath, text)
+    if not filepath.endswith(".py"):
+        return findings
+    try:
+        tree = ast.parse(text, filename=filepath)
+    except SyntaxError as e:
+        return findings + [Finding("python_syntax_error", "error", filepath,
+                                   f"could not parse Python: {e.msg}", line=e.lineno)]
+    for rules in conv.values():
+        if not isinstance(rules, list):
+            continue
+        for rule in rules:
+            if not isinstance(rule, dict) or not rule.get("check"):
+                continue
+            fn = AIRFLOW_CHECKS.get(rule["check"])
+            if fn is None:
+                findings.append(Finding(rule.get("id", "?"), "warning", filepath,
+                                        f"unknown check '{rule['check']}'; rule not run"))
+                continue
+            findings += fn(rule, tree, text, filepath)
+    return findings
+
+
+DISPATCH = {"dbt": check_dbt_file, "lookml": check_lookml, "cube": check_cube, "dbtcharts": check_dbtcharts,
+            "airflow": check_airflow}
 
 
 def main():
@@ -941,10 +1401,13 @@ def main():
                                  "are checked only on files added or changed since its merge base")
     scope_args.add_argument("--new-project", action="store_true",
                             help="treat every file as new, so every rule applies at its own severity")
+    ap.add_argument("--base-convention", metavar="PATH",
+                    help="Wire's file for the domain, read when --convention has extends: wire "
+                         "(default: conventions/<domain>.yml beside this script's folder)")
     args = ap.parse_args()
 
     try:
-        conv = load_convention(args.convention)
+        conv, extends_info = resolve_convention(args.convention, args.domain, args.base_convention)
     except (OSError, ValueError, yaml.YAMLError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(2)
@@ -983,19 +1446,28 @@ def main():
     warnings = [f for f in all_findings if f.severity == "warning"]
 
     if args.format == "json":
-        print(json.dumps({
+        report = {
             "domain": args.domain,
             "files_checked": files_checked,
             "scope": scope.to_dict(),
             "errors": len(errors),
             "warnings": len(warnings),
             "findings": [f.to_dict() for f in all_findings],
-        }, indent=2))
+        }
+        if extends_info:
+            report["convention"] = extends_info
+        print(json.dumps(report, indent=2))
     else:
         for f in sorted(all_findings, key=lambda x: (x.file, x.line or 0)):
             loc = f"{f.file}:{f.line}" if f.line else f.file
             print(f"  {f.severity.upper():7} [{f.rule_id}] {loc} — {f.message}")
         print()
+        if extends_info:
+            print(f"Convention: {args.convention} extends Wire's {extends_info['base']}")
+            for d in extends_info["disabled"]:
+                print(f"  Disabled by the client: [{d['id']}] {d['reason']}")
+            for rid in extends_info["unknown_disabled"]:
+                print(f"  WARNING: disable names '{rid}', which no Wire rule has")
         if scope.note:
             print(f"Scope: {scope.note}")
         elif scope.mode == "changed":
