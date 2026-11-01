@@ -304,11 +304,16 @@ One row per chart, KPI tile, and table in the mockup. For KPI tiles use `chart_t
 [List of filter pills and their dimensions]
 
 ## Interaction Notes
-[Drill-downs, cross-filtering, tab switching behaviour]
+- Tabs: [tab names in order, or none]
+- Cross-filter: [charts whose click filters the page, or none]
+- Drill: [tiles that open detail, and to what, or none]
+- Presentation: dashboard | data_app   [data_app when the page is to be delivered as a Looker Data App (experimental, wire#387); both when it gets both]
 ```
 
 This spec is intentionally free of colour, font, and Looker chrome details — it captures only the
-data visualization contents in enough detail for downstream LookML generation.
+data visualization contents in enough detail for downstream LookML generation. The four
+interaction lines are read by `data_app-generate` (tabs, cross-filtering and the presentation
+choice); `dashboards-generate` reads the filter list only.
 
 ### Step 5A: Update Status
 

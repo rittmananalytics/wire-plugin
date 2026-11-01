@@ -87,6 +87,10 @@ New and changed models also open their description with a `Grain:` line, documen
 
 **Existing projects.** Wire never renames or moves an existing model, column, seed or snapshot. `/wire:dbt-validate` applies the newer rules to models added or changed on the branch only, and still accepts the older forms. A project that keeps an older form for consistency records a ruling in `decisions.md` and sets it under `form_choices:` in `.wire/conventions/dbt.yml`. Differences from the new `dbt_project.yml` template are reported as suggestions, never applied.
 
+## Optional: Looker Data App (experimental)
+
+When the release's BI tool is Looker and the client wants an interactive page on the semantic layer, the optional `data_app` artifact builds a [Looker Data App](../advanced/data-apps) once `semantic_layer` validates. `/wire:data_app-generate <release>` plans one widget per row of the visualization catalog (or the requirements' dashboards section) and resolves every field against the live explore; `/wire:data_app-validate` runs Wire's rules and Google's verification; `/wire:data_app-publish` is the confirmed step that puts it on the instance.
+
 ## Optional: dbt Charts boards
 
 A dbt development release often has no BI tool in scope, and yet the client wants to see the numbers. The optional `dbtcharts` artifact answers that: once `dbt` passes validation, `/wire:dbtcharts-generate <release>` writes one [dbt Charts](../advanced/dbt-charts) board per warehouse subject area, as YAML in the dbt project reading the models through `ref()`, validated and rendered by the `dct` CLI. The scaffold is deterministic and the curation is recorded, so the reviewer sees what was proposed and what changed. `/wire:dbtcharts-validate` runs the `dct` checks and Wire's own, and `/wire:dbtcharts-review` presents the renders for sign-off.

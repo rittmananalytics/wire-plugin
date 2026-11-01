@@ -157,6 +157,7 @@ The second half of development sits on top of the dbt models: the semantic layer
 |---|---|---|---|
 | `semantic_layer` | `generate` `validate` `review` | `full_platform`, `dbt_development`, `dashboard_extension` | LookML views and explores (Looker), or dbt Semantic Layer MetricFlow models |
 | `dashboards` | `generate` `validate` `review` | `full_platform`, `dbt_development`, `dashboard_extension`, `dashboard_first` | LookML dashboard files and Looker dashboard tile definitions |
+| `data_app` | `generate` `validate` `review` `publish` | `full_platform`, `dbt_development`, `dashboard_first`, `dashboard_extension` (optional, experimental) | A Looker Data App on the semantic layer: one widget per row of the approved visualization catalog, fields resolved against the explore, written as a Lit module and previewed, verified and published through Google's Data Apps toolkit. `publish` is a confirmed step the release director runs typed (see [Looker Data Apps](../advanced/data-apps)) |
 | `agents_schema` | `generate` `validate` `review` | `full_platform`, `dbt_development`, `dashboard_first`, `agentic_data_stack`, `bi_migration` (optional) | Publication of the release's metadata into the warehouse `AGENTS` schema through dbt Labs' Agents Schema: a deterministic plan detects the providers (dbt manifest, LookML, Omni, OSI, Sigma, skills), writes the pinned GitHub workflow, `agents.yml` and the skills, the consultant completes the warehouse guide, validate compares the warehouse against the plan (see [Agents Schema](../advanced/agents-schema)) |
 | `dbtcharts` | `generate` `validate` `review` | `full_platform`, `dbt_development`, `dashboard_first` (optional) | dbt Charts dashboards, one per warehouse subject area, scaffolded from the dbt manifest and catalog, designed to the board brief (`--auto` for every area at once, `--subject-area` for one), validated and rendered by `dct` (see [dbt Charts Boards](../advanced/dbt-charts)) |
 | `orchestration` | `generate` `validate` `review` | `full_platform`, `pipeline_only` | Dagster asset graph or dbt Cloud job configuration |
@@ -166,6 +167,8 @@ The second half of development sits on top of the dbt models: the semantic layer
 /wire:semantic_layer-validate 20240115_acme_full_platform
 /wire:semantic_layer-review   20240115_acme_full_platform
 /wire:orchestration-generate  20240115_acme_full_platform
+/wire:data_app-generate       20240115_acme_full_platform
+/wire:data_app-publish        20240115_acme_full_platform --dry-run
 ```
 
 ---

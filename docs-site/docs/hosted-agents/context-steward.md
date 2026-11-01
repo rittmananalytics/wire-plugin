@@ -11,7 +11,21 @@ Hosted agents are a Rittman Analytics-only feature. Rittman Analytics runs them 
 
 A context steward is a hosted agent that keeps a project's engagement record (the `.wire/` folder in its repository) up to date with what is said in the project's calls and its Slack channel. It never decides. A change to an agreed requirement, business rule or decision goes to a person first.
 
-It is useful where much of what changes on an engagement is agreed in meetings and chat, and the record falls behind.
+It is useful where much of what changes on an engagement is agreed in meetings, chat and pull requests, and the record falls behind.
+
+## What it does on its own
+
+The steward does not wait for tickets. Once its mode is **Record only** or **On**, it works on a timer:
+
+| When | What it does, unprompted |
+|---|---|
+| Every scan interval in its working hours (default hourly) | Reads new Slack messages, the project's new calls and, if switched on, its updated pull requests; records what is new or different from the engagement record |
+| After each scan, mode **On** | Asks the confirmation owner about anything that changes an agreed rule, in Slack |
+| Once a day at the review time, mode **On** | Updates the engagement record in one pull request and asks the reviewer |
+| Saturdays | Proposes lessons from the project's memory for its own memory, for an admin to approve ([Memory](./memory#lessons-from-projects)) |
+| On any schedule you set | Runs a [routine](./instructions-and-tasks#routines), such as a weekly summary of open questions |
+
+With the mode **Off** it does none of this; it only answers when someone @mentions it in Slack. Give it a [purpose](./instructions-and-tasks#an-agents-purpose) that says its work does not come from tickets, so it never describes itself as idle.
 
 ## How it differs from the other roles
 
@@ -33,6 +47,7 @@ A person can be the engagement lead with an agent as the steward. The steward ne
 4. Share the project's calls with the agent's call recorder account. It sees only calls shared with it.
 5. Add it to the project's pod with the role **Context steward**.
 6. On the project's page on the console, fill in the **Context steward** section.
+7. Give the agent a [purpose](./instructions-and-tasks#an-agents-purpose), and add a project task read in the steward's scan that says what to report for this client ([Instructions, tasks and routines](./instructions-and-tasks)).
 
 ## Settings
 
@@ -44,12 +59,16 @@ Console admins set these on the project's page. Others can see them.
 | Call titles | A recorded call counts when its title has one of these words or phrases, such as the client's name or "David <> Jordan". |
 | Attendee domains and addresses | A call counts when an attendee's email domain or address is listed, such as the client's domain. |
 | Excluded title words | A call whose title has one of these never counts, whatever else matches, such as "stand-up". |
-| Guidance and leave out (optional) | Plain words for the steward on the calls chosen: what to report, and topics never to report. |
+| Read pull requests | Off by default. On: each scan also reads the project repository's pull requests (see below). |
 | Source channel | The Slack channel it reads. Defaults to the project's channel. |
 | Feedback channel | Where it asks its questions. Defaults to the project's channel. |
 | Confirmation owner | The person who confirms changes. Needs a Slack account in the people registry. Defaults to a person engagement lead. |
 | Reviewer | The person who reviews its pull request. Needs a GitHub login in the people registry. Defaults to a person engagement lead. |
-| Working days and hours, scan interval, review time | When it works, in UTC. Default: Monday to Friday, 07:00 to 22:00, every 60 minutes, pull request at 20:00. |
+| Time zone | The time zone of the working days, hours and review time, such as Europe/London or America/New_York. Clock changes are handled, so 15:00 stays 15:00 local. Default UTC. |
+| Working days and hours, scan interval, review time | When it works, in the time zone. Default: Monday to Friday, 07:00 to 22:00, every 60 minutes, pull request at 20:00. |
+| Question threads | **One per topic**: a Slack thread for each file and section of the record with questions (the default). **One per day**: one thread for the day's questions, each naming the file and section it affects. |
+
+What the steward should report for this client, and what to leave out, is not a setting: write it as a project task read in the steward's scan ([Instructions, tasks and routines](./instructions-and-tasks)). Tasks have versions, and the project's contacts can change them as well as admins.
 
 Any mode except Off needs the channels, the owner, the reviewer, and at least one call title, domain or attendee. The person who recorded a call never counts on their own, because the same person records several clients' calls.
 
@@ -59,8 +78,11 @@ Each scan interval in its working hours, for each project it stewards:
 
 1. It reads every new message in the source channel, thread replies included. A new reply in a thread started up to 30 days ago is read with the thread's first message, for context.
 2. It lists the calls recorded since the last scan, by title, date and attendees only. The agents' own code, not the model, picks the project's calls by the settings above. The steward then reads only those, one by one, and cannot list or search any other call, so it never sees another client's calls.
-3. It compares what was said with the engagement record in the repository's default branch, without changing anything.
-4. It records each finding with a link to the call (and the time in it) or to the message. A finding that cites a call it was not given is dropped.
+3. If **Read pull requests** is on, it reads the project repository's pull requests updated since the last scan: the description, new review and conversation comments and, when the branch has new commits, the code change. The agents' own code fetches them; the steward has no GitHub access of its own. From code it reports only a business rule or definition that changed, such as a filter, a status mapping, a metric's formula or a join that changes which records count, never refactoring, formatting or tests. Its own pull request is never read, and the same code change is read once.
+4. It compares all of it with the engagement record in the repository's default branch, without changing anything.
+5. It records each finding with a link to the call (and the time in it), the message or the pull request. A finding that cites a source it was not given is dropped.
+
+Findings are short: one sentence saying what changed, and at most two saying what was said and what the record says now. That is what the confirmation owner needs to decide, and no more.
 
 It also reads what agents have learned on the project ([memory](./memory.md)), so it sees what was agreed on the project's tickets and in its Slack channel.
 
@@ -79,7 +101,7 @@ A fact that would change a requirements, business rules or decisions file under 
 
 In mode **On**, after each scan:
 
-1. **New questions.** Findings for the owner are grouped by the file and section of the record they affect, one Slack thread per group in the feedback channel. A new thread starts with a fixed message, "🧹 @owner the engagement context steward needs your attention", and lists the findings by number, each with what was said and a link to its source. A new finding on a topic that already has an open thread goes into that thread.
+1. **New questions.** Findings for the owner are grouped by the file and section of the record they affect, one Slack thread per group in the feedback channel; with **One per day**, all of a day's questions share one thread. A new thread starts with a fixed message, "🧹 @owner the engagement context steward needs your attention", and lists the findings by number, each with what was said and a link to its source. A new finding on a topic that already has an open thread goes into that thread.
 2. **Replies.** The owner replies in the thread, for example "confirm 1, reject 2", or answers a question. There is no need to @mention the steward. As soon as the reply arrives, the steward records each decision and says in the thread what it recorded. A finding the reply does not mention stays open. A thread closes when nothing in it is open.
 3. **Questions back.** Ask the steward something in the thread ("which call was 2 from?") and it answers there, with the thread's findings in front of it. Anyone can ask, but only the owner's replies confirm or reject a finding.
 

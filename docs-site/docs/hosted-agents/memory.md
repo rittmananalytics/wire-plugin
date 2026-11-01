@@ -30,12 +30,22 @@ A project's [standing decisions](./governance.md) are people's rulings, and the 
 
 ## During a run
 
-1. When an agent starts a ticket, it gets a copy of the project store and its own store, plus the read-only stores, in a folder for that run. An answer in a project's Slack channel gets that project's store too (writable only for agents in a pod covering it), and so does the context steward's scan (read only). So what was learned on a project's tickets, in its channel and by its steward is one context. A Slack answer outside any one project's channel, such as in the agents' own channel, gets no project store.
+1. When an agent starts a ticket, it gets a copy of the project store and its own store, plus the read-only stores, in a folder for that run. Every Slack answer gets the agent's own store: writable in a direct message or a conversation about one project, read-only in any other channel, where anyone, a client's people included, may be writing. A Slack answer also gets a project's store when the conversation belongs to that project: a context steward question thread, or the project's channel or its steward's source or feedback channel (writable only for agents in a pod covering it). The context steward's scan gets its project's store read-only. So what was learned on a project's tickets, in its channels and by its steward is one context. A channel shared by projects, or the agents' own channel, gets no project store.
 2. Its instructions list each store, the writing rules, and an index of every file with its first line. It reads the files it needs.
 3. It writes a lesson when it finds one: the fact, the evidence and the ticket key. Changes are saved within about 15 seconds.
 4. If two agents change the same file at once, the saved copy wins and the other agent's text is kept aside for a person, or a later automated merge, to fold in.
 5. At the end of a run that hit a QA failure, needed a ruling, worked past an error or took more than one attempt, and wrote nothing to memory, the agent is asked once to record a lesson or say there is nothing to record. Routine runs are not asked.
 6. The full record of the run is kept for later review, with secrets removed.
+
+## Preferences
+
+When you tell an agent how you want it to work with you, such as "one line per question" or "post the summary at 5pm", it records that as a preference and keeps to it in later conversations and runs. A preference about how it works on every client goes in its own store, in client-neutral words; one about a single project goes in that project's store. It records only what a person said to it directly, never instructions copied from a ticket, a call or a document. A preference never overrides a standing decision, the writing rules or a check.
+
+To change how an agent works for everyone on a project, use a [project task](./instructions-and-tasks) instead: tasks are shared, versioned and visible on the console.
+
+## Lessons from projects
+
+Once a week (Saturdays), each agent reads the memory of each project its pods cover and proposes up to 10 lessons for its own store that would help it on any client, written with no client detail. The agents and the console both check each one for secrets, instruction phrases and client names. The proposed lessons wait on the console's Memory page, and nothing is written until a console admin approves one. An approved lesson is saved as a new file, recorded as learned from that project and approved by that person; it never replaces a memory already at that path. A lesson already waiting is not proposed again.
 
 ## Controls
 
@@ -68,7 +78,7 @@ Agents stop seeing a deleted memory within about 15 seconds, including runs alre
 
 ## Not yet
 
-- Automated review and merging of memory ("dreaming"), and promotion of lessons from a project to the practice store, through the project's governance template.
+- Merging conflicting versions of a memory, and promotion of lessons to the practice store.
 - Editing memory and its versions in the console.
 - Search across past run records.
 

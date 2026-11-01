@@ -25,6 +25,16 @@ client_repo:
 #     description: Airflow DAGs that land sources and schedule dbt runs
 #     lookup: on_request    # on_request | offer | auto
 
+# Looker Data Apps (experimental, wire#387). Where app sources live in the
+# client repo and which folder the toolkit publishes into. The toolkit path on
+# each person's machine goes in .wire/local/data_apps.yml (git-ignored) as
+# toolkit_path:, never here; credentials stay in the toolkit's own config.
+# data_apps:
+#   path: looker/data_apps          # <data_apps_path>/<slug>/app.js
+#   publish_folder_id: "1"
+#   model: analytics_warehouse
+#   explores: [orders]
+
 docstore:
   provider: null  # confluence | notion | both | null
   confluence:

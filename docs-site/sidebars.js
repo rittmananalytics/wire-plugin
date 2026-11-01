@@ -103,6 +103,7 @@ const sidebars = {
             'tutorials/upgrading-your-release',
             'tutorials/data-model-registry',
             'tutorials/dbt-charts',
+            'tutorials/looker-data-app',
           ],
         },
         {
@@ -142,6 +143,7 @@ const sidebars = {
             'advanced/modality-models',
             'advanced/business-rules',
             'advanced/airflow',
+            'advanced/data-apps',
             'advanced/review-profile',
             'advanced/convention-rules',
           ],
@@ -155,6 +157,7 @@ const sidebars = {
             'hosted-agents/pods-and-roles',
             'hosted-agents/ways-to-run-a-project',
             'hosted-agents/context-steward',
+            'hosted-agents/instructions-and-tasks',
             'hosted-agents/delivery-process',
             'hosted-agents/governance',
             'hosted-agents/sprints-and-backlog',

@@ -181,6 +181,10 @@ With the design approved, development is where the models get built. `/wire:dbt-
 
 **Ready criteria**: all five development artifacts are `review: approved` and the dbt tests are passing.
 
+### Optional: Looker Data App (experimental)
+
+Where the client wants an interactive page on the semantic layer rather than, or as well as, a dashboard grid, the optional `data_app` artifact builds a [Looker Data App](../advanced/data-apps) from the same mockup chain once the semantic layer validates: `/wire:data_app-generate <release>` plans one widget per catalog row and resolves every field against the explore, `/wire:data_app-validate` runs Wire's rules and Google's verification against Looker, and `/wire:data_app-publish` puts it on the instance after you confirm. Looker only.
+
 ### Optional: dbt Charts boards
 
 If the client wants dashboards that live with the dbt models rather than in a BI tool, ask for them and Wire adds the optional `dbtcharts` artifact after the dbt models pass validation: `/wire:dbtcharts-generate <release>` scaffolds one [dbt Charts](../advanced/dbt-charts) board per warehouse subject area from the dbt manifest and catalog, curates the charts against the requirements and the business rules register, and validates them with `dct`, including a warehouse dry-run. It can run alongside `dashboards`, or instead of it where no BI tool is in scope.

@@ -4,6 +4,9 @@ description: LookML views, explores, dashboards, and semantic layer definitions 
 specs:
   - dashboards-generate
   - dashboards-validate
+  # Looker Data Apps (wire#387, experimental): the widget plan, the app and its checks; publish stays with the release director
+  - data_app-generate
+  - data_app-validate
   - dbtcharts-generate
   - dbtcharts-validate
   - ads/lookml_views-generate
@@ -29,6 +32,7 @@ specs:
   - migration/looker_content-validate
 skills:
   - lookml-content-authoring
+  - data-apps
   - omni
   - tableau
   - metabase
@@ -42,9 +46,12 @@ output_contract:
     - artifacts.semantic_layer.validate
     - artifacts.dashboards.generate
     - artifacts.dashboards.validate
+    - artifacts.data_app.generate
+    - artifacts.data_app.validate
   writes_artifacts:
     - .wire/releases/{release}/artifacts/semantic_layer/
     - .wire/releases/{release}/artifacts/dashboards/
+    - .wire/releases/{release}/dev/data_app/
   appends_to: decisions.md
 ---
 

@@ -63,6 +63,7 @@ DOMAIN_EXTENSIONS = {
     "cube": (".yml", ".yaml"),
     "dbtcharts": (".yml", ".yaml"),
     "airflow": (".py", ".yml", ".yaml", ".sql"),
+    "data_apps": (".js",),
 }
 
 
@@ -1385,8 +1386,56 @@ def check_airflow(conv, filepath, text):
     return findings
 
 
+# ----------------------------------------------------------------------
+# Looker Data Apps (wire#387): one Lit module per app. Every rule but one is a
+# file_content regex (Google's tile sandbox rules and Wire's own); the one
+# named check finds a widget id used twice.
+# ----------------------------------------------------------------------
+
+DATA_APPS_SKIP_SEGMENTS = {"runtime", "vendor", "preview-server", "skills", "node_modules", "dist"}
+_DA_ID_RE = re.compile(r"""\bid\s*=\s*["']([A-Za-z][\w:.-]*)["']""")
+
+
+def da_widget_ids_unique(rule, text, filepath):
+    seen = {}
+    findings = []
+    for i, line in enumerate(text.splitlines(), start=1):
+        for wid in _DA_ID_RE.findall(line):
+            if wid in seen:
+                findings.append(Finding(rule["id"], _severity(rule, "error"), filepath,
+                                        f"id \"{wid}\" is also used on line {seen[wid]}", line=i))
+            else:
+                seen[wid] = i
+    return findings
+
+
+DATA_APPS_CHECKS = {"widget_ids_unique": da_widget_ids_unique}
+
+
+def check_data_apps(conv, filepath, text):
+    """A Data App's app.js: the file_content rules, plus the named checks.
+    The toolkit's own folders are never linted."""
+    parts = set(os.path.normpath(filepath).split(os.sep))
+    if parts & DATA_APPS_SKIP_SEGMENTS:
+        return []
+    findings = check_file_content_rules(conv, filepath, text)
+    for rules in conv.values():
+        if not isinstance(rules, list):
+            continue
+        for rule in rules:
+            if not isinstance(rule, dict) or not rule.get("check"):
+                continue
+            fn = DATA_APPS_CHECKS.get(rule["check"])
+            if fn is None:
+                findings.append(Finding(rule.get("id", "?"), "warning", filepath,
+                                        f"unknown check '{rule['check']}'; rule not run"))
+                continue
+            findings += fn(rule, text, filepath)
+    return findings
+
+
 DISPATCH = {"dbt": check_dbt_file, "lookml": check_lookml, "cube": check_cube, "dbtcharts": check_dbtcharts,
-            "airflow": check_airflow}
+            "airflow": check_airflow, "data_apps": check_data_apps}
 
 
 def main():

@@ -1,0 +1,167 @@
+schema_version: 1
+domain: data_apps
+description: >
+  Rittman Analytics rules for Looker Data Apps (experimental, wire#387): the
+  single Lit ES module (apps/<slug>/app.js) Google's Data Apps toolkit
+  previews and publishes as a dashboard-mounted extension. The
+  machine-checkable subset of wire/skills/data-apps/SKILL.md. Enforced by
+  wire/scripts/lint_conventions.py --domain data_apps over .js files. Rules
+  DA-004 to DA-010 are Google's own tile sandbox rules
+  (skills/data-app-creator/tools/check-tile-safety.py in the toolkit), kept
+  here so a client can see and extend them; the rest are Wire's. Judgement
+  calls (layout, formats, what to cross-filter) stay in the skill and in
+  Google's data-app-creator skill. A client adds its own rules in
+  .wire/conventions/data_apps.yml with `extends: wire`
+  (see wire/schemas/convention-schema.md).
+
+# Every rule with scope: file_content is run by the linter as a regex over
+# the file; a rule with `check:` runs the named check in lint_conventions.py.
+# Every app Wire writes is new, so validate runs the lint with --new-project
+# and each rule applies at its own severity. A run with no scope flag lists
+# every finding as a warning.
+
+scope: >
+  Files: .js. Folders skipped: hidden folders, node_modules, runtime, vendor,
+  preview-server, skills (the toolkit's own code is never linted).
+
+# ----------------------------------------------------------------------
+# Structure: one self-contained module with a header
+# ----------------------------------------------------------------------
+structure:
+  - id: DA-001
+    name: jsdoc_header
+    description: "The file starts with a JSDoc header carrying @title and @description; the publisher adds its own tags (@looker-dashboard-id and the rest) to the same header, which later edits keep."
+    scope: file_content
+    required_pattern: '^\s*/\*\*[\s\S]{0,400}@title\s+\S'
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-002
+    name: runtime_import
+    description: "The app imports the runtime from /runtime/data-app.js (the served path). Publish rewrites that specifier, and lit.mjs, to the hosted bundle."
+    scope: file_content
+    required_pattern: 'from\s*["'']/runtime/data-app\.js["'']'
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-003
+    name: no_relative_import
+    description: "No import from a relative path. Only data-app.js and lit.mjs are rewritten on publish; a second local module returns 404 in the tile."
+    scope: file_content
+    forbidden_pattern: '^\s*import\s[^;]*from\s*["'']\.'
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-014
+    name: element_defined
+    description: "The module registers its element with customElements.define and exports the class as the default export."
+    scope: file_content
+    required_pattern: 'customElements\.define\('
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-016
+    name: widget_ids_unique
+    description: "No two widgets carry the same id attribute. Google's publisher keys each widget's saved query by id; a duplicate makes 'Explore from here' open the wrong query."
+    check: widget_ids_unique
+    severity: error
+    applies_to: new_and_changed
+
+# ----------------------------------------------------------------------
+# Tile sandbox: what works in the preview and breaks in the published tile
+# (Google's rules, one for one)
+# ----------------------------------------------------------------------
+sandbox:
+  - id: DA-004
+    name: no_inline_handler
+    description: "No inline on* handler in HTML (onclick=\"...\"). Blocked by the tile's CSP. Use a Lit binding: @click=${() => ...}."
+    scope: file_content
+    forbidden_pattern: '\bon(?:click|change|input|submit|load|error|mouse\w+|key\w+)\s*=\s*["'']'
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-005
+    name: no_dialog
+    description: "No alert, confirm or prompt. They are no-ops in the sandbox. Render a modal template instead."
+    scope: file_content
+    forbidden_pattern: '(?<![.\w])(?:alert|confirm|prompt)\s*\('
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-006
+    name: no_web_storage
+    description: "No localStorage or sessionStorage. Storage throws in an opaque origin. Keep state in Lit component properties."
+    scope: file_content
+    forbidden_pattern: '\b(?:localStorage|sessionStorage)\b'
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-007
+    name: no_window_open
+    description: "No window.open and no target=\"_blank\". window.open returns null in the sandbox. Render the view inside the app."
+    scope: file_content
+    forbidden_pattern: 'window\.open\s*\(|target\s*=\s*["'']_blank["'']'
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-008
+    name: no_relative_asset
+    description: "No relative URL to an external asset (src=\"./x.png\"). There is no <base> in the tile. Use an absolute URL or inline SVG."
+    scope: file_content
+    forbidden_pattern: '\b(?:src|href)\s*=\s*["'']\.{1,2}/'
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-009
+    name: no_duplicate_connect
+    description: "No connectExtensionHost(). The runtime already performs the handshake; a second one fails. Use this.runQuery()."
+    scope: file_content
+    forbidden_pattern: '\bconnectExtensionHost\s*\('
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-010
+    name: no_outer_dom_mutation
+    description: "No mutation of document.body or document.documentElement (classList, style, setAttribute). It leaks or breaks in embedded sandboxes. Scope theme classes to the app's own container."
+    scope: file_content
+    forbidden_pattern: '\bdocument\.(?:body|documentElement)\.(?:classList|style|setAttribute)\b'
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-015
+    name: no_direct_network
+    description: "No fetch() or XMLHttpRequest. The tile has no outbound network; every query goes through the runtime (this.runQuery or a widget's .query)."
+    scope: file_content
+    forbidden_pattern: '(?<![.\w])fetch\s*\(|\bXMLHttpRequest\b'
+    severity: warning
+    applies_to: new_and_changed
+    note: "A warning, not an error, because a comment or a string can match. Validate reads the line."
+
+# ----------------------------------------------------------------------
+# Data: the app shows the semantic layer, nothing else
+# ----------------------------------------------------------------------
+data:
+  - id: DA-011
+    name: no_literal_data
+    description: "No widget carries literal rows (.data=${[...]} or data=\"[...]\") in place of a query. The app shows the semantic layer; the same rule semantic_layer-generate applies to views applies here."
+    scope: file_content
+    forbidden_pattern: '\.data\s*=\s*\$\{\s*\[|\bdata\s*=\s*["'']\['
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-012
+    name: no_credentials
+    description: "No API credential in the app: no client_id, client_secret or LOOKERSDK_* value. The runtime queries as the viewing user; the toolkit's data-apps-config.json stays on the builder's machine."
+    scope: file_content
+    forbidden_pattern: '\b(?:client_secret|client_id|LOOKERSDK_CLIENT_SECRET|LOOKERSDK_CLIENT_ID)\b'
+    severity: error
+    applies_to: new_and_changed
+
+  - id: DA-013
+    name: dashboard_filters_spread
+    description: "getEffectiveFilters() spreads this.dashboardFilters and this.crossFilters, so Looker's own filter bar and cross-filtering reach every widget. An app that does not spread them ignores the dashboard filters silently."
+    scope: file_content
+    required_pattern: 'this\.dashboardFilters'
+    severity: warning
+    applies_to: new_and_changed
+    note: "Checked as presence of this.dashboardFilters anywhere in the file; the spread itself is a judgement call the skill describes."

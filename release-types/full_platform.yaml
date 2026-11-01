@@ -171,6 +171,17 @@ phases:
             action: validate
             outcome: PASS
             enforcement: advisory
+      # Optional, experimental (wire#387). A Looker Data App on the semantic
+      # layer, built from the same mockup chain as dashboards and gated the
+      # same way. Looker only in this release; bi_tool: omni stops.
+      - id: data_app
+        command: data_app
+        required: false
+        sequence: 8
+        depends_on:
+          - artifact: semantic_layer
+            action: validate
+            outcome: PASS
 
   - id: testing
     name: "Testing"

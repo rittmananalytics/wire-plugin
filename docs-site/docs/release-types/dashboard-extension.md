@@ -60,6 +60,10 @@ A worked example of a Dashboard Extension engagement, using a fictional client s
 - Add existing LookML view files to `requirements/` before generating dashboards, since the AI needs to know which dimensions and measures are available
 - Screenshots of existing Looker explores also help
 
+## Optional: Looker Data App (experimental)
+
+Where the new page is better served as an interactive app than a dashboard grid (tabs, cross-filtering, a freeform layout), the optional `data_app` artifact builds a [Looker Data App](../advanced/data-apps) from the approved mockup: `/wire:data_app-generate <release>` after `mockups-review`, then `-validate`, `-review` and the confirmed `-publish`. It reads the same catalog and spec as `dashboards`, so the two can be delivered together from one approved mockup. Looker only; a Data App cannot be embedded, printed or scheduled, so keep `dashboards` for anything that goes out by email.
+
 ## Business rules discovery (optional first phase)
 
 Before the design work begins, there is a question that is easy to skip and expensive to leave open: what do the numbers actually mean? New in 4.0, `/wire:business-rules-generate` runs before design and establishes this, one business domain at a time.

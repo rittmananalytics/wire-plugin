@@ -13,6 +13,10 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 
 | Version | Released | Runs on Wire |
 |---|---|---|
+| 3.4.0 | October 2026 | 4.4.3 |
+| 3.3.0 | October 2026 | 4.4.3 |
+| 3.2.0 | October 2026 | 4.4.3 |
+| 3.1.0 | October 2026 | 4.4.3 |
 | 3.0.0 | October 2026 | 4.4.3 |
 | 2.12.0 | October 2026 | 4.4.3 |
 | 2.11.0 | October 2026 | 4.4.3 |
@@ -46,6 +50,29 @@ The hosted agents have their own version numbers, separate from Wire's, and each
 | 1.0.0 | October 2026 | 4.4.2 |
 
 Before 1.0.0, the hosted agents shipped inside Wire releases 4.3.0 to 4.4.2.
+
+## 3.4.0: confirm a task change in the Slack thread
+
+- **Confirm in the thread.** A change to a project task proposed in Slack can now be confirmed by replying `confirm <code>` in the thread, as well as on the project's page. The console checks the reply in Slack and records who confirmed. See [Changing a project task from Slack](instructions-and-tasks#changing-a-project-task-from-slack).
+
+## 3.3.0: the steward's instructions in one place
+
+- **What the steward reports is a project task.** The two free-text steward settings, guidance and leave out, are gone. Which calls count stays in the call filters; what to report, and what to leave out, is a project task read in the steward's scan, with versions, which the project's contacts can change. Existing text was moved before the release. See [Context steward settings](context-steward#settings).
+
+## 3.2.0: the steward reads pull requests, and findings are shorter
+
+- **Pull requests, including code changes.** A new steward setting, Read pull requests, adds the project repository's pull requests to each scan. From code the steward reports only a business rule or definition that changed. See [What it does each scan](context-steward#what-it-does-each-scan).
+- **Shorter findings, from every source.** One sentence on what changed, and at most two on what was said and what the record says now.
+
+## 3.1.0: instructions on the console, agents that work without tickets, memory beyond tickets
+
+- **Purpose and tasks.** Change how an agent works in plain language on the console, for one agent or one project, with every version kept and restorable. See [Instructions, tasks and routines](instructions-and-tasks).
+- **Agents that work without tickets, and routines.** A purpose can say an agent's work does not come from tickets; a task can run on a schedule and post its result in Slack.
+- **Changes asked for in Slack.** An agent drafts a change to a project's task from a conversation; a contact confirms it on the console.
+- **Why each run started**, on the agent's page.
+- **The steward's times in a named time zone, and one question thread a day** if wanted. See [Context steward settings](context-steward#settings).
+- **Memory in every Slack conversation, and preferences kept.** See [Memory](memory#preferences).
+- **Lessons from projects**, proposed weekly and approved by an admin. See [Lessons from projects](memory#lessons-from-projects).
 
 ## 3.0.0: the steward's findings kept by the console, with a Steward page
 

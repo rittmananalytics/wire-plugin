@@ -215,6 +215,12 @@ This skill covers the "assets-first" pattern, `dagster-dbt` integration, automat
 
 This skill covers Apache Airflow 2.x and Cloud Composer 2 and 3 in an estate the client already runs. It lints DAGs against the Airflow rules (`lint_conventions.py --domain airflow`), deploys to dev only through `/wire:utils-dev-deploy`, checks sync, parse and runs through Cloud Logging, and lists causes of queued tasks and known faults. Every environment value comes from the client's `.wire/engagement/airflow_environments.yml`. See [Airflow](../advanced/airflow.md).
 
+### `data-apps`
+
+**Activates when**: writing or changing a Looker Data App (`apps/<slug>/app.js`), when `/wire:data_app-generate`, `-validate`, `-review` or `-publish` runs, when the user asks for an app or an interactive page on the Looker semantic layer, or when a mockup's interaction notes say `Presentation: data_app`.
+
+Experimental. This skill carries Wire's rules for a Data App (`lint_conventions.py --domain data_apps`), the widget plan (`data_app_plan.py`) and the toolkit wrapper (`data_app_toolkit.py`: check, push, pull, diff, verify, publish), and defers to Google's `data-app-creator` skill, read as a file from the installed toolkit, for the code itself. It never reads the toolkit's credentials and never publishes without the user's confirmation. Looker only. See [Looker Data Apps](../advanced/data-apps.md).
+
 ---
 
 ## Warehouse

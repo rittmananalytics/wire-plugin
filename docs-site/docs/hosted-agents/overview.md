@@ -29,6 +29,8 @@ Everything they produce goes through Wire: releases are set up with `/wire:new`,
 | Page | What it covers |
 |---|---|
 | [Pods and roles](./pods-and-roles) | What a pod is, the four roles, people in pods, and how an agent delivery manager proposes first |
+| [Context steward](./context-steward) | The agent that keeps a project's engagement record up to date from calls, Slack and pull requests |
+| [Instructions, tasks and routines](./instructions-and-tasks) | Changing how an agent works in plain language on the console, scheduled routines, and changes asked for in Slack |
 | [Ways to run a project](./ways-to-run-a-project) | Five ways to set up a project: all agents, a mixed pod, agents joining a running project, changing who is in a pod, and asking one agent |
 | [The delivery process](./delivery-process) | From an agreed scope to merged work: each step, who does it and the decision points |
 | [Governance](./governance) | The rules for who decides what, the light and strict templates, and pull request approvals |

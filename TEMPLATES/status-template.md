@@ -92,6 +92,11 @@ jira:
       generate_key: null
       validate_key: null
       review_key: null
+    data_app:
+      task_key: null
+      generate_key: null
+      validate_key: null
+      review_key: null
     dbtcharts:
       task_key: null
       generate_key: null
@@ -470,6 +475,17 @@ artifacts:
     generated_date: null
     generated_files: []
     revision_history: []
+  data_app:                        # optional, experimental (wire#387): a Looker Data App on the semantic layer
+    generate: not_started
+    validate: not_started
+    review: not_started
+    bi_tool: null                  # looker (only value supported)
+    experimental: true
+    toolkit_version: null
+    data_apps_path: null
+    apps: []                       # one entry per app: slug, source, counts, verify, looker_dashboard_id
+    generated_date: null
+    revision_history: []
   dbtcharts:
     generate: not_started
     validate: not_started
@@ -622,6 +638,7 @@ Then run:
 | | seed_data *(dashboard_first only)* | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | semantic_layer | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | dashboards | ⏸️ | ⏸️ | ⏸️ | ❌ |
+| | data_app *(optional, experimental)* | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | data_refactor *(dashboard_first only)* | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | **Testing** | data_quality | ⏸️ | ⏸️ | ⏸️ | ❌ |
 | | uat | ⏸️ | - | ⏸️ | ❌ |
