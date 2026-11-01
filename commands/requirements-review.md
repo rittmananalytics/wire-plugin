@@ -276,6 +276,8 @@ requirements:
   reviewed_date: 2026-02-13
 ```
 
+On Claude Code the same state can be written with no model turn: `/wire-approve <artifact> --final [--as internal|client] [--evidence <url>]` (the Wire mod, wire#270) sets `review: approved`, `reviewed_by` and `reviewed_date` as above and appends the approval to the artifact's `review_events` list, which this command does not write. Without `--final` it records the event alone and leaves the review state to this command.
+
 ### Step 4b: If Changes Requested
 
 **Ask for specific feedback**:
@@ -447,6 +449,7 @@ Then append one row per execution:
   - `activated` — a skill was auto-activated (used with `skill` in the Command column)
   - `override` — `specs/utils/precondition_gate.md` recorded a consultant overriding an unmet precondition, or an advisory gate satisfied by a director's ruling
   - `mode` — the director handed control over or took it back ("you drive" / "I'll drive"), per `specs/utils/director_operating_model.md`
+  - `blocked` — `specs/utils/precondition_gate.md` Step 2 stopped the command on an unmet blocking precondition and the consultant chose not to override; Detail is `gate: <dep_artifact>.<dep_action> required <outcome>, was <actual>` and the Command cell carries the command in full. The Wire mod's commands band shows these rows as `Not run: <command>, gate: <...>`
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
@@ -646,9 +649,10 @@ transcript after each turn.
 5. Cost comes from the mod's price table; an unrecognised model leaves Cost
    at `n/a` with Tokens filled.
 
-`/wire-usage` prints the session's runs with their duration, tokens and cost.
-The plugin's `metrics` option, or `WIRE_METRICS=false`, turns the backfill
-off. On runtimes without the mod (Gemini CLI), the metric cells keep the
+`/wire-usage` prints the session's runs with their duration, tokens and cost;
+`/wire-ran` prints each run in full with its result (4.5.0), as the band above
+the prompt draws it. The plugin's `metrics` option, or `WIRE_METRICS=false`,
+turns the backfill off. On runtimes without the mod (Gemini CLI), the metric cells keep the
 values the workflow wrote.
 
 ## Legacy five-column rows

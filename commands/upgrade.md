@@ -395,6 +395,19 @@ Report in the summary: `execution_log.md: header extended to 9 columns (N existi
 
 ---
 
+### Step 6f: Offer to remove the session-check hook (4.5.0, Claude Code)
+
+The Wire mod's `prompt.compose` section now carries the session line once per
+session (wire#270 D2), so the `UserPromptSubmit` hook `/wire:new` installed
+before 4.5.0 (`.claude/hooks/wire-session-check.sh`, registered in
+`.claude/settings.json`) prints the same line a second time. If
+`.claude/settings.json` has a `UserPromptSubmit` entry whose command names
+`wire-session-check.sh`, offer to remove that entry and the script; apply only
+on yes. An engagement that keeps it sees the line twice and nothing worse.
+Under `--dry-run`, report the removal that would be offered.
+
+---
+
 ### Step 7: Surface New Commands
 
 Based on `release_type` and the detected additions, report any commands that are now available but were not present in the installed version when the release was created. Use the following known command introductions as the reference:
@@ -537,6 +550,7 @@ Then append one row per execution:
   - `activated` — a skill was auto-activated (used with `skill` in the Command column)
   - `override` — `specs/utils/precondition_gate.md` recorded a consultant overriding an unmet precondition, or an advisory gate satisfied by a director's ruling
   - `mode` — the director handed control over or took it back ("you drive" / "I'll drive"), per `specs/utils/director_operating_model.md`
+  - `blocked` — `specs/utils/precondition_gate.md` Step 2 stopped the command on an unmet blocking precondition and the consultant chose not to override; Detail is `gate: <dep_artifact>.<dep_action> required <outcome>, was <actual>` and the Command cell carries the command in full. The Wire mod's commands band shows these rows as `Not run: <command>, gate: <...>`
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
@@ -736,9 +750,10 @@ transcript after each turn.
 5. Cost comes from the mod's price table; an unrecognised model leaves Cost
    at `n/a` with Tokens filled.
 
-`/wire-usage` prints the session's runs with their duration, tokens and cost.
-The plugin's `metrics` option, or `WIRE_METRICS=false`, turns the backfill
-off. On runtimes without the mod (Gemini CLI), the metric cells keep the
+`/wire-usage` prints the session's runs with their duration, tokens and cost;
+`/wire-ran` prints each run in full with its result (4.5.0), as the band above
+the prompt draws it. The plugin's `metrics` option, or `WIRE_METRICS=false`,
+turns the backfill off. On runtimes without the mod (Gemini CLI), the metric cells keep the
 values the workflow wrote.
 
 ## Legacy five-column rows

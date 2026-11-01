@@ -313,6 +313,22 @@ Output inline as a single line and proceed immediately to Phase 2.
 
 ---
 
+**Mod state (Claude Code, 4.5.0 and later).** After the version case, in a
+repository with `.wire/`, read `.wire/local/mod.json`. The Wire mod writes it
+at every session start (`version`, `session_id`, `loaded_at`, `release`,
+`mode`). If the file is absent, or its `loaded_at` is older than this
+session's start, output one line:
+
+```
+⚠️  Wire mod not loaded: enforcement, release context and metrics are off this session.
+    Likely cause: Claude Code older than 2.1.287, hooks disabled (disableAllHooks or --safe-mode),
+    or a managed-settings policy (allowManagedModsOnly). Commands still run; the lane rules are conventions.
+```
+
+On Gemini CLI skip this: there is no mod, and nothing is wrong.
+
+---
+
 **Case D — Legacy project structure detected (`.dp/` directory exists):**
 
 Output this **in addition to** whichever version case applies above:

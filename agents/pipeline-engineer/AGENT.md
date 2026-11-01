@@ -63,6 +63,8 @@ and these five rules apply. Outside orchestrated mode — a single command
 auto-delegating, or an engagement with `orchestration.mode: manual` — behaviour
 is unchanged and this section does not apply.
 
+On Claude Code the Wire mod (`hooks/register.ts`, wire#270) refuses what the brief forbids before it happens: a write to `status.md` or `execution_log.md`, a write outside the `Owns:` trees, a sub-agent spawn, a warehouse call under `warehouse_spend: none`. Each refusal names the rule and what to do instead. The rules below still apply where the mod is off (manual mode, Gemini CLI); the consolidation pass remains the backstop.
+
 You are running as a lane when `WIRE_INVOKED_BY=lane` is set in your
 environment, or when the dispatch carries a `State file:` line.
 

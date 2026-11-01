@@ -197,7 +197,7 @@ Two adaptations when `migration.scope == tenant_carveout`:
 
 ## Build-slot lock (mechanical)
 
-One dbt build per project at a time (the fleet rule, `specs/utils/migration_fleet.md`). Before building, create `migration/locks/build_{project}.lock` containing the lane id and a UTC timestamp; if the file already exists and is younger than 60 minutes, refuse to start and report who holds it. Remove the lock when the build ends, success or failure. A lock older than 60 minutes is stale: report it, remove it, proceed.
+One dbt build per project at a time (the fleet rule, `specs/utils/migration_fleet.md`). On Claude Code the Wire mod holds the slot in its own state for any lane's `dbt build`, `run`, `snapshot` or `seed` (wire#270), so a second lane's build on the same project is refused before the command runs; the file lock below is the Gemini CLI path and the backstop where the mod is off. Before building, create `migration/locks/build_{project}.lock` containing the lane id and a UTC timestamp; if the file already exists and is younger than 60 minutes, refuse to start and report who holds it. Remove the lock when the build ends, success or failure. A lock older than 60 minutes is stale: report it, remove it, proceed.
 
 ## Workflow
 
@@ -299,6 +299,7 @@ Then append one row per execution:
   - `activated` — a skill was auto-activated (used with `skill` in the Command column)
   - `override` — `specs/utils/precondition_gate.md` recorded a consultant overriding an unmet precondition, or an advisory gate satisfied by a director's ruling
   - `mode` — the director handed control over or took it back ("you drive" / "I'll drive"), per `specs/utils/director_operating_model.md`
+  - `blocked` — `specs/utils/precondition_gate.md` Step 2 stopped the command on an unmet blocking precondition and the consultant chose not to override; Detail is `gate: <dep_artifact>.<dep_action> required <outcome>, was <actual>` and the Command cell carries the command in full. The Wire mod's commands band shows these rows as `Not run: <command>, gate: <...>`
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
@@ -498,9 +499,10 @@ transcript after each turn.
 5. Cost comes from the mod's price table; an unrecognised model leaves Cost
    at `n/a` with Tokens filled.
 
-`/wire-usage` prints the session's runs with their duration, tokens and cost.
-The plugin's `metrics` option, or `WIRE_METRICS=false`, turns the backfill
-off. On runtimes without the mod (Gemini CLI), the metric cells keep the
+`/wire-usage` prints the session's runs with their duration, tokens and cost;
+`/wire-ran` prints each run in full with its result (4.5.0), as the band above
+the prompt draws it. The plugin's `metrics` option, or `WIRE_METRICS=false`,
+turns the backfill off. On runtimes without the mod (Gemini CLI), the metric cells keep the
 values the workflow wrote.
 
 ## Legacy five-column rows

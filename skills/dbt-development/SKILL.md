@@ -146,6 +146,8 @@ python3 wire/scripts/lint_conventions.py --domain dbt \
 
 With neither `--new-project` nor `--changed-from`, section A rules report as warnings.
 
+On Claude Code the Wire mod runs this checker on every write to a file under `models/` (wire#270) and hands the findings back in the same turn as a note, so a model written through the Write or Edit tool is checked without this skill calling it. Keep the call above for files written another way (a script, a generator, `git apply`) and for whole-folder runs.
+
 Treat its findings as ground truth for the rules it covers (filename patterns, column suffixes tied to type-cast macros, bare `join`, `union distinct`, the `final` CTE, layer boundaries, missing primary-key tests, the `Grain:` line, the test key). Do not re-argue a pass or fail the checker already gave. Everything it does not cover (grain choice, CTE quality, whether a join direction makes sense, whether a staging filter is about correctness) is your call, applied through Steps 1 to 10. If the checker is not available (no Python or PyYAML), fall back to the manual review below and say so in your output.
 
 ### 0.6 Before Adding a Warehouse Model

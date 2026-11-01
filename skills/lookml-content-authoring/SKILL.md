@@ -298,6 +298,8 @@ python3 wire/scripts/lint_conventions.py --domain lookml \
   --format json
 ```
 
+On Claude Code the Wire mod runs this checker on every write to a `.lkml` file (wire#270) and hands the findings back in the same turn. Keep the call above for files written another way and for whole-folder runs.
+
 Treat its findings as ground truth for what it covers — `.layer.lkml` /
 `.model.lkml` filename suffixes, base-layer views never using a `+`
 refinement, staging/aggregate-layer files always using one, warehouse view

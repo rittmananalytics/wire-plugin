@@ -309,6 +309,15 @@ Three of its outputs change the plan directly:
 | `warehouse_spend: none` | **Refuse** to dispatch any lane whose command queries a warehouse (`dbt-*` builds, `equivalency-validate`, `data_quality-validate`, `droughty-*`, any `-validate` with `auto_validate: false` that runs against a live system). Report them as budget-blocked, naming the setting. Do not silently drop them. |
 | `warehouse_spend: estimate_required` | Dispatch them, with the cost-governance rules in each lane brief. |
 | `warehouse_spend: cap:<amount>` | As above, plus: a lane whose estimate would take the release past the cap becomes a parked decision, not a dispatch. |
+
+On Claude Code the Wire mod (wire#270) applies the same budget at the moment
+of the call, after dispatch: a brief past `lanes_max` is refused at
+`agent.spawn` and named as queued; a lane's warehouse tool call or dbt run
+under `warehouse_spend: none` is refused; every warehouse call from a lane is
+recorded in `lanes/_spend.jsonl`, and under `cap:<amount>` the call that passes
+the cap raises a parked decision (kind `budget`) and the next is refused. This
+command's check at planning time is still the first line: it keeps a refused
+lane out of the plan rather than letting it start and be stopped.
 | `stop_at: decisions` | Stop the plan at the first parked decision and report. |
 | `stop_at: phase_end` | Continue past a parked decision on one artifact to other runnable work in the phase. |
 | `stop_at: never` | Run until nothing is runnable. |
@@ -757,6 +766,7 @@ Then append one row per execution:
   - `activated` — a skill was auto-activated (used with `skill` in the Command column)
   - `override` — `specs/utils/precondition_gate.md` recorded a consultant overriding an unmet precondition, or an advisory gate satisfied by a director's ruling
   - `mode` — the director handed control over or took it back ("you drive" / "I'll drive"), per `specs/utils/director_operating_model.md`
+  - `blocked` — `specs/utils/precondition_gate.md` Step 2 stopped the command on an unmet blocking precondition and the consultant chose not to override; Detail is `gate: <dep_artifact>.<dep_action> required <outcome>, was <actual>` and the Command cell carries the command in full. The Wire mod's commands band shows these rows as `Not run: <command>, gate: <...>`
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
@@ -956,9 +966,10 @@ transcript after each turn.
 5. Cost comes from the mod's price table; an unrecognised model leaves Cost
    at `n/a` with Tokens filled.
 
-`/wire-usage` prints the session's runs with their duration, tokens and cost.
-The plugin's `metrics` option, or `WIRE_METRICS=false`, turns the backfill
-off. On runtimes without the mod (Gemini CLI), the metric cells keep the
+`/wire-usage` prints the session's runs with their duration, tokens and cost;
+`/wire-ran` prints each run in full with its result (4.5.0), as the band above
+the prompt draws it. The plugin's `metrics` option, or `WIRE_METRICS=false`,
+turns the backfill off. On runtimes without the mod (Gemini CLI), the metric cells keep the
 values the workflow wrote.
 
 ## Legacy five-column rows

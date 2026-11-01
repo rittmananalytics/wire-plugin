@@ -80,15 +80,28 @@ Each rule states its enforcement: **mechanical** (a command refuses) or
 **convention** (stated in every lane brief, checked by the orchestrator). A
 convention is still binding; the difference is only who catches the violation.
 
+**The Wire mod (wire#270).** On Claude Code the plugin's function-hook module
+makes rules 1, 2, 3 and 6 and the budget mechanical: it sees every tool call
+with the id of the lane that made it, and refuses the write, the spawn or the
+warehouse call before it happens, naming the rule and what to do instead. It
+registers a lane from the brief its `agent.spawn` carries (a brief lacking
+`Owns:`, `State file:` or `Resume:` is refused naming the line) and forgets it
+when the lane's turn ends. It refuses only in orchestrated mode on a release
+whose claim this session or this user holds; in manual mode, on an unclaimed
+release, and on Gemini CLI, the rules stay conventions and nothing is refused.
+Its lane stall timer applies the 30-minute rule below: a lane with no
+state-file write for 30 minutes gets one note to the orchestrator to
+re-dispatch its remaining items.
+
 | # | Rule | Enforcement | Why (observed failure) |
 |---|---|---|---|
-| 1 | Lanes run **flat**: no sub-agent fan-out below a lane | Convention (lane brief) | Nested fan-out multiplied token burn into two hard usage-limit outages in one day |
-| 2 | **One build per warehouse project** at a time | Mechanical where a lock exists (`dbt-migration-defer-build`'s build-slot lock); convention elsewhere | Concurrent builds against one project contend and duplicate cost |
-| 3 | **Tree ownership declared per lane**: each lane names the directories it may write; no two live lanes overlap | Convention (lane brief; orchestrator checks before dispatch) | A build lane and a reconciliation lane corrupted each other's file sets |
+| 1 | Lanes run **flat**: no sub-agent fan-out below a lane | Mechanical on Claude Code (the Wire mod, `hooks/register.ts`, wire#270); convention on Gemini CLI and where the mod is off: a registered lane's Agent tool call is refused | Nested fan-out multiplied token burn into two hard usage-limit outages in one day |
+| 2 | **One build per warehouse project** at a time | Mechanical on Claude Code (the Wire mod holds a build slot per project in its state for a lane's `dbt build`, `run`, `snapshot` or `seed`, stale after 60 minutes); mechanical where a file lock exists (`dbt-migration-defer-build`, the Gemini CLI path); convention elsewhere | Concurrent builds against one project contend and duplicate cost |
+| 3 | **Tree ownership declared per lane**: each lane names the directories it may write; no two live lanes overlap | Mechanical on Claude Code (the Wire mod, `hooks/register.ts`, wire#270); convention on Gemini CLI and where the mod is off: a write whose real path is outside the brief's `Owns:` trees (the state file and `decisions.md` excepted) is refused; the orchestrator still checks for overlap before dispatch | A build lane and a reconciliation lane corrupted each other's file sets |
 | 4 | Every lane writes **incremental state with a resume contract** (below) | Convention (lane brief template carries it) | Two hard outages resumed with near-zero loss only because every lane had incremental state |
-| 5 | Every lane's spend counts against the release **budget** | Mechanical: `specs/delegate.md`'s budget check plus the cost governance rules below | A single unguarded build day cost four figures |
-| 6 | **Single writer of `status.md` and `execution_log.md`: the orchestrating session.** Lanes write only their own artifact tree and their own state file | Convention (lane brief; orchestrator's consolidation check) | Concurrent writes corrupted rows; 46 commits in 24 hours across 4 people silently discarded 54 models of completed work |
-| 7 | **Name the command, before and after, in full.** A reply that starts work ends with `Running: <command>[, <command>]`; every report ends with `Ran: <command>[, <command>]`; a step a gate stopped is named as well (`Not run: <command>, gate: <precondition>`). Each `<command>` is the command as it would be typed: `/wire:` prefix, release folder and any flags (`/wire:business-rules-generate 01-dbt-foundation --domain revenue`), never a bare name. A plan names a command or skill for every step (`specs/session/plan.md`) | Convention (every orchestrator reply; the consolidation pass compares each `Ran:` line with the execution-log rows it wrote) | Consultants directing Wire could not say which command had done the work, could not learn the commands by using Wire, and could not answer a client who asked which command to use (wire#265). `specs/start.md` already keeps the command name in its output for this reason; this rule extends it to every reply |
+| 5 | Every lane's spend counts against the release **budget** | Mechanical: `specs/delegate.md`'s budget check at dispatch, and on Claude Code the Wire mod at the call (`lanes_max` at `agent.spawn`, `warehouse_spend: none` on warehouse tools and dbt runs, the spend ledger at `lanes/_spend.jsonl` and `cap:<amount>` raising a parked decision); plus the cost governance rules below | A single unguarded build day cost four figures |
+| 6 | **Single writer of `status.md` and `execution_log.md`: the orchestrating session.** Lanes write only their own artifact tree and their own state file | Mechanical on Claude Code (the Wire mod, `hooks/register.ts`, wire#270); convention on Gemini CLI and where the mod is off: a lane's write to either file is refused, with the write tools and best effort for Bash (a redirect, `sed -i`, `tee`, `python3 -c`); the consolidation pass's check 3 remains the backstop | Concurrent writes corrupted rows; 46 commits in 24 hours across 4 people silently discarded 54 models of completed work |
+| 7 | **Name the command, before and after, in full.** A reply that starts work ends with `Running: <command>[, <command>]`; every report ends with `Ran: <command>[, <command>]`; a step a gate stopped is named as well (`Not run: <command>, gate: <precondition>`). Each `<command>` is the command as it would be typed: `/wire:` prefix, release folder and any flags (`/wire:business-rules-generate 01-dbt-foundation --domain revenue`), never a bare name. A plan names a command or skill for every step (`specs/session/plan.md`) | Convention (every orchestrator reply; the consolidation pass compares each `Ran:` line with the execution-log rows it wrote). Measured on Claude Code: the Wire mod checks the reply that closed each orchestrator run for a `Ran:` line naming it in full, shows a toast on a miss, and sends a `wire_ran_line_missing` telemetry event, so compliance has a rate | Consultants directing Wire could not say which command had done the work, could not learn the commands by using Wire, and could not answer a client who asked which command to use (wire#265). `specs/start.md` already keeps the command name in its output for this reason; this rule extends it to every reply |
 | 8 | **Set out the run before it starts.** A directive that would run two or more commands before the next stop point, or any warehouse-touching command, is first shown as a **run plan** (below): the runnable set in its order, each command in full, with its scope, what it produces, and the point where the run will stop. The orchestrator then waits for **go / adjust / cancel**. A directive that runs one command that does not query a warehouse needs no plan, whether it runs in the foreground or as a lane; its `Running:` line is the plan | Convention (orchestrator reply; `/wire:delegate` Step 4 and `/wire:work` Step 4 are the same rule at their entry points) | Lanes and warehouse spend are committed at dispatch. A director who first met the commands in a `Ran:` line had approved the work by intent alone and could not have caught a wrong scope or an unwanted build before it cost anything; a ticket got a command-level plan under `/wire:work` while a whole phase run from one word got none (wire#265) |
 
 **Rule 6 is the change for linear release types.** Outside orchestrated mode,
@@ -362,6 +375,7 @@ director for one of three answers:
 | Answer | What runs | What is recorded |
 |---|---|---|
 | **Approve now** | `/wire:<artifact>-review <release>` | Approval under the director's name, through the review spec's normal path |
+| **Approve now, recorded instantly** (Claude Code) | `/wire-approve <artifact> --final [--as internal\|client] [--evidence <url>]` (the Wire mod, wire#270) | The same `review: approved`, `reviewed_by` and `reviewed_date` the review spec writes, plus an entry in the artifact's `review_events` list (actor, date, kind, evidence, outcome); no model turn, nothing else written. Use it when the ruling has been given and the review's context has already been read; the review command remains the path that gathers that context. |
 | **Changes** | `/wire:<artifact>-generate <release>` again | The change list in `decisions.md`, then the re-generate |
 | **Park for client sign-off** | Nothing | A `parked_decisions` entry naming who is expected to sign off. No review row is written. |
 
@@ -397,8 +411,13 @@ decisions") and the orchestrator writes the block, echoing back what it wrote.
 | `stop_at: phase_end` | It continues past parked decisions on other artifacts until the phase has no runnable work left. |
 | `stop_at: never` | It runs until nothing is runnable. Parked decisions still park; they just do not stop the other lanes. |
 
-Token and API spend are not observable in-session and are out of scope. The
-budget covers lanes, models and warehouse spend only.
+Token and API spend per lane are observable on Claude Code through the Wire
+mod (each run's Tokens and Cost cells in the execution log, and `/wire-usage`),
+but are not budgeted. The budget covers lanes, models and warehouse spend only.
+Warehouse actuals are recorded by the mod in
+`.wire/releases/<release>/lanes/_spend.jsonl` (one row per warehouse call from
+a lane: lane, tool, bytes billed, USD at the BigQuery on-demand rate, time),
+which is what the shared-credential attribution rule below reads.
 
 ### Cost governance
 
@@ -509,7 +528,10 @@ parked_decisions:
 answer; absent means the director.
 
 **The first line of every session in orchestrated mode is the count of parked
-decisions and their questions.** A parked decision is cleared by a ruling: the
+decisions and their questions.** On Claude Code the Wire mod carries them
+into the system prompt once per session (its `prompt.compose` section), and
+`/wire-park <artifact> "<question>" [--awaiting <who>]` appends an entry with
+no model turn. A parked decision is cleared by a ruling: the
 ruling is written to `decisions.md` (see "Rulings") and the entry is removed
 from the list in the same write.
 
@@ -538,4 +560,4 @@ There is no global switch. Four controls, matching surfaces Wire already uses:
 **Collision guard.** A command started by hand on a release with a live claim
 by another session, or on an artifact tree owned by a live lane, warns before
 proceeding and names the holder. It does not block — a person typing a command
-is exercising control, and the warning is what they need, not a refusal.
+is exercising control, and the warning is what they need, not a refusal. On Claude Code the Wire mod shows the warning as a toast on the `command.run` and main-loop `Skill` events; it never refuses.

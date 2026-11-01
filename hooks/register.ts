@@ -1,7 +1,25 @@
-// The Wire mod, 4.1.0: telemetry and execution-log metrics as Claude Code
-// function hooks (wire#270, release 1, sections D3 and D4). Replaces the
-// UserPromptExpansion hook (wire-telemetry.sh) and the Stop hook
-// (wire-metrics.sh + wire_metrics.py).
+// The Wire mod: Claude Code function hooks for the Wire plugin (wire#270).
+//
+// This file carries release 1 (4.1.0): telemetry and execution-log metrics,
+// /wire-usage and /wire-studio. It replaced the UserPromptExpansion hook
+// (wire-telemetry.sh) and the Stop hook (wire-metrics.sh + wire_metrics.py).
+// The later releases are one file per concern under hooks/wire/, registered
+// at the end of `register`:
+//
+// - context.ts  (D2, D6) the active release, the status line, the session
+//                system-prompt section with the release's decisions, the
+//                context percentage, the next-action suggestion
+// - enforce.ts  (D5) the operating model's rules 1, 3 and 6, the budget
+//                (lanes_max, warehouse_spend, build slot, spend ledger and
+//                cap), the collision guard
+// - lint.ts     (D6) convention lint on every write to a dbt, LookML, Cube,
+//                dbt Charts or Airflow file
+// - band.tsx    (D6) the commands band above the prompt, /wire-ran, the
+//                rule-7 `Ran:` check
+// - review.ts   (D7) /wire-approve, /wire-park, the hard gate with
+//                --override-gate
+// - session.ts  (D7) the lane stall timer, compaction instructions,
+//                /wire-handoff, the opt-in drift watch
 //
 // - Telemetry: one `wire_command` event per Wire command, from the event that
 //   ran it, so `invoked_by` comes from the engine (typed, orchestrator, lane,
@@ -19,14 +37,36 @@
 //   repository as a detached local process (one per repository, ports
 //   4800-4820), with no model turn.
 //
-// Off switches: the plugin's `telemetry` and `metrics` options, or
-// WIRE_TELEMETRY=false / WIRE_METRICS=false. The mod refuses nothing and
-// rewrites no tool call.
+// Off switches: the plugin's options (telemetry, metrics, enforce, context,
+// lintOnWrite, driftWatch), or WIRE_TELEMETRY / WIRE_METRICS / WIRE_ENFORCE /
+// WIRE_CONTEXT / WIRE_LINT = false and WIRE_DRIFT_WATCH = true. Refusals come
+// only from enforce.ts and review.ts, only in orchestrated mode, and every
+// one names the rule and what to do instead. Nothing here approves a call.
 
 import type { Register } from 'claude-code'
 
-import type { WireIdentity, WireRun } from '../types'
+import type { WireActiveRelease, WireLane, WireRun } from '../types'
+import { blockedRowsOf, checkRanLine, ranCommand, registerBandCommand, renderBand } from './wire/band'
 import { SEGMENT_IDENTIFY, SEGMENT_TRACK, SEGMENT_WRITE_KEY, WIRE_VERSION } from './wire/constants'
+import { afterStatusWrite, composePrompt, measureContext, startContext } from './wire/context'
+import { denyAgentCall, denyWrite, onAgentSpawn, onBash, onLaneTurnComplete, onWarehouseCall, warnCollision } from './wire/enforce'
+import { type Options, toast } from './wire/host'
+const NOT_RUN = { plugin: 'wire', key: 'notRun' } as const
+const ACTIVE = { plugin: 'wire', key: 'active' } as const
+const LANES = { plugin: 'wire', key: 'lanes' } as const
+
+async function activeOf($: any): Promise<WireActiveRelease | null> {
+  const { value } = await $.state.get(ACTIVE)
+  return value ?? null
+}
+async function lanesOf($: any): Promise<WireLane[]> {
+  const { value } = await $.state.get(LANES)
+  return Array.isArray(value) ? value : []
+}
+import { afterWrite } from './wire/lint'
+import { approveCommand, hardGate, parkCommand, registerReviewCommands } from './wire/review'
+import { handoffCommand, onCompact, onMainTurnComplete, startSession } from './wire/session'
+import { identityOf, post, sendEvent } from './wire/telemetry'
 import {
   addUsage,
   backfillLog,
@@ -37,10 +77,12 @@ import {
   personaOf,
   isOn,
   logCommandOf,
+  logRowResult,
   logStamp,
   parseStudioArgs,
   parseStudioRecord,
   releaseOf,
+  restArgsOf,
   STUDIO_PORT_FIRST,
   STUDIO_PORT_LAST,
   studioStateName,
@@ -52,12 +94,9 @@ import {
 
 const RUNS = { plugin: 'wire', key: 'runs' } as const
 const AUTOPILOT = { plugin: 'wire', key: 'autopilot' } as const
-const IDENTITY = { plugin: 'wire', key: 'identity' } as const
 const STEP = { plugin: 'wire', key: 'stepUsage' } as const
 const MAX_RUNS = 200
 const LOG_WINDOW_MS = 30 * 60_000
-
-type Options = { telemetry?: boolean; metrics?: boolean }
 
 async function runsOf($: any): Promise<WireRun[]> {
   const { value } = await $.state.get(RUNS)
@@ -74,50 +113,6 @@ async function run1($: any, argv: string[], cwd: string): Promise<string> {
     return r.exitCode === 0 ? String(r.stdout ?? '').trim() : ''
   } catch {
     return ''
-  }
-}
-
-async function identityOf($: any): Promise<{ identity: WireIdentity; isNew: boolean }> {
-  const { value } = await $.state.get(IDENTITY)
-  if (value) {
-    return { identity: value, isNew: false }
-  }
-  const cwd = await $.session.cwd()
-  const home = (await $.env.get('HOME')) ?? ''
-  const idFile = `${home}/.wire/telemetry_id`
-  let userId = ''
-  let isNew = false
-  try {
-    userId = String(await $.fs.read(idFile)).trim()
-  } catch {
-    userId = ''
-  }
-  if (!userId) {
-    userId = crypto.randomUUID()
-    isNew = true
-    try {
-      await $.fs.write(idFile, userId)
-    } catch {
-      // No home folder to write to: the id lasts this session only.
-    }
-  }
-  const identity: WireIdentity = {
-    userId,
-    username: (await $.env.get('USER')) ?? (await $.env.get('USERNAME')) ?? '',
-    hostname: await run1($, ['hostname'], cwd),
-    os: await run1($, ['uname', '-s'], cwd),
-    gitRepo: (await run1($, ['git', 'config', '--get', 'remote.origin.url'], cwd)) || 'unknown',
-    gitBranch: (await run1($, ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd)) || 'unknown',
-  }
-  await $.state.set(IDENTITY, identity)
-  return { identity, isNew }
-}
-
-async function post($: any, url: string, body: string): Promise<void> {
-  try {
-    await $.http.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
-  } catch {
-    // Telemetry never fails or blocks a command.
   }
 }
 
@@ -298,7 +293,7 @@ async function backfillPending($: any, options: Options): Promise<void> {
       })
       if (updated !== null && updated !== text) {
         await $.fs.write(path, updated)
-        runs[i] = { ...r, filled: true }
+        runs[i] = { ...r, filled: true, result: logRowResult(updated, r.command) }
         changed = true
         break
       }
@@ -326,9 +321,40 @@ async function personaFor($: any, args: string): Promise<string> {
 }
 
 async function newRun($: any, id: string, command: string, args: string, agentId: string | null, by: WireRun['invokedBy']): Promise<WireRun> {
+  const laneLabel = agentId ? (await lanesOf($)).find(l => l.agentId === agentId)?.label ?? null : null
   return {
-    id, command, release: releaseOf(args), agentId, invokedBy: by, persona: await personaFor($, args),
-    startedAt: await $.clock.now(), endedAt: null, usage: emptyUsage(), model: null, filled: false,
+    id, command, args: restArgsOf(args), release: releaseOf(args), agentId, invokedBy: by, persona: await personaFor($, args),
+    startedAt: await $.clock.now(), endedAt: null, usage: emptyUsage(), model: null, filled: false, result: null, laneLabel,
+  }
+}
+
+// Rule 7: the orchestrator's reply names every command it ran, in full.
+async function checkRanLines($: any, options: Options, open: WireRun[], answer: string): Promise<void> {
+  const missing = checkRanLine(open, answer)
+  if (missing.length === 0) {
+    return
+  }
+  const runs = await runsOf($)
+  const ids = new Set(missing.map(m => m.id))
+  await saveRuns($, runs.map(r => (ids.has(r.id) ? { ...r, ranLineMissing: true } : r)))
+  toast($, `Rule 7: the reply ran ${missing.map(m => `${m.command}${m.release ? ` ${m.release}` : ''}`).join(', ')} and ended with no Ran: line naming it.`)
+  for (const m of missing) {
+    await sendEvent($, options, 'wire_ran_line_missing', { command: m.command.replace(/^\/wire:/, ''), release: m.release, invoked_by: m.invokedBy, agent_id: m.agentId })
+  }
+}
+
+// The band's `Not run:` rows: the precondition gate's `blocked` rows in the active release's log.
+async function refreshNotRun($: any): Promise<void> {
+  const active = await activeOf($)
+  if (!active?.release) {
+    return
+  }
+  const cwd = await $.session.cwd()
+  const text = await readText($, `${cwd}/.wire/releases/${active.release}/execution_log.md`)
+  const { value } = await $.state.get(NOT_RUN)
+  const rows = blockedRowsOf(text, logStamp(await $.clock.now(), 24 * 60).slice(0, 10))
+  if (JSON.stringify(rows) !== JSON.stringify(value ?? [])) {
+    await $.state.set(NOT_RUN, rows)
   }
 }
 
@@ -468,11 +494,19 @@ async function studioStatus($: any, cwd: string): Promise<string> {
   return 'Wire Studio is not running for this repository. Start it with /wire-studio.'
 }
 
+// One `on()` per event and matcher: the engine admits one unmatched hook per
+// event per module, so every concern's handler is called from here, in the
+// order that keeps a refusal ahead of a run record and a note after a result.
 export const register: Register = (on, options: Options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'wire-usage', description: "Wire: this session's Wire commands with duration, tokens and cost" })
     await $.command.register({ name: 'wire-studio', description: 'Wire: start, restart, stop or check Wire Studio for this repository', argumentHint: '[start|restart|stop|status] [--port <n>]' })
-    return next(e)
+    await registerReviewCommands($)
+    await registerBandCommand($)
+    await startSession($)
+    const result = await next(e)
+    await startContext($, options, (e as any).cwd ?? (await $.session.cwd()))
+    return result
   })
 
   on('command.run', { command: 'wire-usage' }, async $ => {
@@ -501,30 +535,97 @@ export const register: Register = (on, options: Options) => {
     return { text: await startStudio($, cwd, parsed.port) }
   })
 
-  // A typed Wire command (also the first prompt of a session Studio opened).
+  on('command.run', { command: 'wire-ran' }, async $ => ranCommand($))
+  on('command.run', { command: 'wire-approve' }, async ($, e) => approveCommand($, String(e.args ?? '')))
+  on('command.run', { command: 'wire-park' }, async ($, e) => parkCommand($, String(e.args ?? '')))
+  on('command.run', { command: 'wire-handoff' }, async $ => handoffCommand($))
+
+  // A typed Wire command (also the first prompt of a session Studio opened):
+  // the hard gate, then the collision warning, then the run record.
   on('command.run', async ($, e, next) => {
     const command = logCommandOf(e.command)
-    if (command) {
-      if (command === '/wire:autopilot') {
-        await $.state.set(AUTOPILOT, true)
-      }
-      const by = invokedBy('command', null, false, await $.env.get('WIRE_INVOKED_BY'))
-      await startRun($, options, await newRun($, `cmd-${crypto.randomUUID()}`, command, e.args, null, by))
+    if (!command) {
+      return next(e)
     }
+    const deny = await hardGate($, options, command, String(e.args ?? ''))
+    if (deny) {
+      return { text: deny }
+    }
+    try {
+      await warnCollision($, command, String(e.args ?? ''))
+    } catch {
+      // the warning is best effort
+    }
+    if (command === '/wire:autopilot') {
+      await $.state.set(AUTOPILOT, true)
+    }
+    const by = invokedBy('command', null, false, await $.env.get('WIRE_INVOKED_BY'))
+    await startRun($, options, await newRun($, `cmd-${crypto.randomUUID()}`, command, e.args, null, by))
     return next(e)
   })
 
   // A Wire command run through the Skill tool: the orchestrator, Autopilot, or a lane.
   on('tool.call', { tool: 'Skill' }, async ($, e, next) => {
     const command = logCommandOf(String(e.skill ?? ''))
-    if (command) {
-      const agentId = e.agentId ?? null
-      const { value: autopilot } = await $.state.get(AUTOPILOT)
-      const by = invokedBy('skill', agentId, autopilot === true, undefined)
-      await startRun($, options, await newRun($, e.tool_use_id ?? `skill-${crypto.randomUUID()}`, command, String(e.args ?? ''), agentId, by))
+    if (!command) {
+      return next(e)
     }
+    const agentId = e.agentId ?? null
+    const deny = await hardGate($, options, command, String(e.args ?? ''))
+    if (deny) {
+      return { deny }
+    }
+    if (!agentId) {
+      try {
+        await warnCollision($, command, String(e.args ?? ''))
+      } catch {
+        // best effort
+      }
+    }
+    const { value: autopilot } = await $.state.get(AUTOPILOT)
+    const by = invokedBy('skill', agentId, autopilot === true, undefined)
+    await startRun($, options, await newRun($, e.tool_use_id ?? `skill-${crypto.randomUUID()}`, command, String(e.args ?? ''), agentId, by))
     return next(e)
-  })
+  }).catch(($, e, next) => (next.called ? next(e) : { deny: 'Wire mod: the gate check failed; the command was not run.' }))
+
+  // Rule 1: a lane does not fan out.
+  on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
+    const deny = await denyAgentCall($, options, e)
+    return deny ? { deny } : next(e)
+  }).catch(($, e, next) => (next.called ? next(e) : { deny: 'Wire mod: rule 1 check failed; the spawn was not admitted.' }))
+
+  // The write tools: rules 3 and 6 before; then the lane's late log row, the
+  // status line and convention lint after.
+  for (const tool of ['Write', 'Edit', 'MultiEdit', 'NotebookEdit'] as const) {
+    on('tool.call', { tool }, async ($, e, next) => {
+      const deny = await denyWrite($, options, e)
+      if (deny) {
+        return { deny }
+      }
+      const result = await next(e)
+      const path = String((e as any).file_path ?? '')
+      if (path.endsWith('execution_log.md')) {
+        await backfillPending($, options)
+      }
+      await afterStatusWrite($, e, result)
+      if (tool !== 'NotebookEdit') {
+        await afterWrite($, options, e, result)
+      }
+      return result
+    }).catch(($, e, next) => (next.called ? next(e) : { deny: 'Wire mod: the tree-ownership check failed; the write was not made.' }))
+  }
+
+  // Bash from a lane: rule 6 best effort, warehouse_spend: none, the build slot.
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => onBash($, options, e, next))
+    .catch(($, e, next) => (next.called ? next(e) : { deny: 'Wire mod: the Bash guard failed; the command was not run.' }))
+
+  // Warehouse tools (MCP): warehouse_spend: none, the spend ledger and the cap.
+  on('tool.call', async ($, e, next) => onWarehouseCall($, options, e, next))
+    .catch(($, e, next) => (next.called ? next(e) : { deny: 'Wire mod: the warehouse guard failed; the query was not run.' }))
+
+  // Lane registry: a spawn carrying a Wire lane brief.
+  on('agent.spawn', async ($, e, next) => onAgentSpawn($, options, e, next))
+    .catch(($, e, next) => (next.called ? next(e) : { deny: 'Wire mod: the lane registry failed; the spawn was not admitted.' }))
 
   // Each model request's measured usage goes to the Wire run open in its loop.
   on('turn.step', async function* ($, e, next) {
@@ -533,22 +634,31 @@ export const register: Register = (on, options: Options) => {
     return result
   })
 
-  // The loop's turn ended: its runs close and their log rows are filled.
+  // The loop's turn ended: its runs close and their log rows are filled; a
+  // lane leaves the registry; the main loop's reply is checked for rule 7.
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
-    await closeRuns($, e.agentId ?? null, e.turnId, e.usage ?? result?.usage ?? null)
+    const agentId = e.agentId ?? null
+    const open = (await runsOf($)).filter(r => r.endedAt === null && r.agentId === agentId)
+    await closeRuns($, agentId, e.turnId, e.usage ?? result?.usage ?? null)
     await backfillPending($, options)
+    await onLaneTurnComplete($, agentId)
+    if (agentId === null) {
+      await checkRanLines($, options, open, String(e.answer ?? ''))
+      await refreshNotRun($)
+      await onMainTurnComplete($, options)
+    }
     return result
   })
 
-  // An orchestrator writing a lane's row after the lane's turn ended.
-  for (const tool of ['Write', 'Edit', 'MultiEdit'] as const) {
-    on('tool.call', { tool }, async ($, e, next) => {
-      const result = await next(e)
-      if (String(e.file_path ?? '').endsWith('execution_log.md')) {
-        await backfillPending($, options)
-      }
-      return result
-    })
-  }
+  on('prompt.compose', async ($, e, next) => composePrompt($, options, await next(e)))
+
+  on('session.measure', async ($, e, next) => {
+    await measureContext($, e)
+    return next(e)
+  })
+
+  on('session.compact', async ($, e, next) => onCompact($, e, next))
+
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => renderBand($, e, next))
 }

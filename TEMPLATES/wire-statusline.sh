@@ -1,4 +1,8 @@
 #!/bin/sh
+# Superseded in 4.5.0 (wire#270 D2): the Wire mod pins a status-line entry
+# ([Wire v<version>] <release> (<type>) · <n> approved · <k> parked · claim: <user>
+# · ctx:<percent>%) resolved by /wire:start's active-release order, not by the
+# most recently modified folder. Kept for one release; removed in the next.
 # Wire-aware Claude Code status line
 # Reads JSON from stdin, outputs a formatted status line
 

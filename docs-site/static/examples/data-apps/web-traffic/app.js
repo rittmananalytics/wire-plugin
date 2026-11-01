@@ -44,21 +44,32 @@ const TREND_OPTIONS = {
   legend: { enabled: false },
   xAxis: { lineWidth: 0, tickLength: 0, labels: { style: { fontSize: '11px' } } },
   yAxis: { min: 0, title: { text: null }, gridLineColor: 'rgba(15, 26, 43, .08)' },
-  plotOptions: { areaspline: { fillOpacity: 0.18, lineWidth: 2.5, marker: { enabled: false } } },
+  plotOptions: { areaspline: { fillOpacity: 0.28, lineWidth: 2.5, marker: { enabled: false } } },
 };
 const TREEMAP_OPTIONS = {
   plotOptions: { treemap: { borderWidth: 2, borderColor: '#ffffff', dataLabels: { style: { fontSize: '12px', fontWeight: '600', textOutline: 'none' } } } },
 };
 
-// Heat-mapped scorecard cells: background opacity scaled to the column's max.
-function heatCell(field, format, maxByField, tone) {
+// Heat-mapped scorecard cells. The column's maximum is read from the grid's
+// own rows each time a cell renders (12 rows, so cheap), never from app state:
+// state set from a grid callback is not there for the first render. The scale
+// is square root, so a column running from 15,000 down to 4 still grades
+// instead of putting every row but the top one at the floor. Text goes white
+// once the blended cell is dark.
+function heatCell(field, format, tone) {
+  const [r, g, b] = tone.split(',').map(Number);
   return (params) => {
     if (!params.data) return '';
     const raw = Number(params.data[field]) || 0;
-    const max = maxByField[field] || 1;
-    const alpha = Math.max(0.08, (raw / max) * 0.55);
+    let max = 0;
+    params.api.forEachNode(n => { const v = Number((n.data || {})[field]) || 0; if (v > max) max = v; });
+    const share = max > 0 ? Math.sqrt(Math.max(raw, 0) / max) : 0;
+    const alpha = 0.06 + share * 0.9;
+    // luminance of the cell over white, to pick the text colour
+    const lum = (0.2126 * (alpha * r + (1 - alpha) * 255) + 0.7152 * (alpha * g + (1 - alpha) * 255) + 0.0722 * (alpha * b + (1 - alpha) * 255)) / 255;
+    const text = lum < 0.62 ? '#ffffff' : '#0b1a2b';
     const shown = format === 'percent1' ? `${(raw * 100).toFixed(1)}%` : raw.toLocaleString('en-GB');
-    return `<div style="background: rgba(${tone}, ${alpha.toFixed(2)}); border-radius: 6px; padding: 4px 8px; text-align: right; font-weight: 600;">${shown}</div>`;
+    return `<div style="background: rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)}); color: ${text}; border-radius: 6px; padding: 4px 8px; text-align: right; font-weight: 600;">${shown}</div>`;
   };
 }
 
@@ -71,7 +82,6 @@ export class WebTrafficApp extends DataApp {
     topN: { type: Number },
     pageSearch: { type: String },
     drawer: { type: Object },
-    scorecardMax: { type: Object },
   };
 
   constructor() {
@@ -85,7 +95,6 @@ export class WebTrafficApp extends DataApp {
     this.topN = 8;
     this.pageSearch = '';
     this.drawer = null;
-    this.scorecardMax = {};
   }
 
   // Every widget's filters: Looker's own filter bar, cross-filters from the
@@ -147,7 +156,7 @@ export class WebTrafficApp extends DataApp {
         <p class="wt-drawer-text">Sessions that started on this page, by week, under the page's current filters.</p>
         <p class="wt-panel-label">Sessions by week</p>
         <app-chart bare id="drawer-page-trend" type="areaspline" title="Sessions by week" height="260px"
-          value-format="int" color="var(--app-primary)" .options=${TREND_OPTIONS}
+          value-format="int" color="var(--wt-primary)" .options=${TREND_OPTIONS}
           .query=${{ fields: [WEEK, 'web_sessions_fact.total_sessions'], sorts: [WEEK] }}
           .filters=${this.getEffectiveFilters({ 'web_sessions_fact.first_page_title': d.title })}></app-chart>
         <p class="wt-panel-label" style="margin-top: 14px;">Channel mix for this page</p>
@@ -184,7 +193,7 @@ export class WebTrafficApp extends DataApp {
             </div>
             <!-- catalog row 7: Weekly Trend -->
             <app-chart bare id="da-chart-weekly-trend" type="areaspline" title="Weekly Trend" height="320px"
-              value-format=${metric.format} color="var(--app-primary)" .options=${TREND_OPTIONS}
+              value-format=${metric.format} color="var(--wt-primary)" .options=${TREND_OPTIONS}
               .query=${{ fields: [WEEK, this.trendMetric], sorts: [WEEK] }}
               .filters=${filters}></app-chart>
           </div>
@@ -226,7 +235,7 @@ export class WebTrafficApp extends DataApp {
           <div class="wt-panel">
             <p class="wt-panel-label">Top Referrers <em>sessions with a referrer</em></p>
             <app-chart bare id="da-chart-top-referrers" type="bar" title="Top Referrers" height="300px" cross-filter
-              value-format="int" color="var(--wt-amber)" .options=${BAR_OPTIONS}
+              value-format="int" color="var(--wt-secondary)" .options=${BAR_OPTIONS}
               .query=${{ fields: ['web_sessions_fact.referrer_host', 'web_sessions_fact.total_sessions'], sorts: ['web_sessions_fact.total_sessions desc'], limit: String(this.topN) }}
               .filters=${this.getEffectiveFilters({ 'web_sessions_fact.referrer_host': '-NULL' })}></app-chart>
           </div>
@@ -292,12 +301,11 @@ export class WebTrafficApp extends DataApp {
 
   renderEngagement() {
     const filters = this.getEffectiveFilters();
-    const maxBy = this.scorecardMax;
     const scoreFields = [
-      ['web_sessions_fact.total_sessions', 'Sessions', 'int', '15, 157, 143'],
-      ['web_events_fact.total_page_views', 'Page views', 'int', '59, 110, 165'],
-      ['web_events_fact.total_conversions', 'Meetings', 'int', '240, 163, 58'],
-      ['web_sessions_fact.bounced_session_rate', 'Bounce rate', 'percent1', '224, 93, 111'],
+      ['web_sessions_fact.total_sessions', 'Sessions', 'int', '79, 96, 255'],
+      ['web_events_fact.total_page_views', 'Page views', 'int', '37, 51, 166'],
+      ['web_events_fact.total_conversions', 'Meetings', 'int', '255, 141, 115'],
+      ['web_sessions_fact.bounced_session_rate', 'Bounce rate', 'percent1', '232, 103, 74'],
     ];
     return html`
       <section class="wt-section">
@@ -328,18 +336,10 @@ export class WebTrafficApp extends DataApp {
         <div class="wt-panel">
           <!-- catalog row 18: Channel Scorecard -->
           <app-grid bare id="da-grid-channel-scorecard" title="Channel Scorecard" height="380px"
-            .gridOptions=${{
-              defaultColDef: { resizable: true, sortable: true }, rowHeight: 38,
-              onRowDataUpdated: (ev) => {
-                const rows = []; ev.api.forEachNode(n => rows.push(n.data || {}));
-                const max = {};
-                for (const [f] of scoreFields) max[f] = Math.max(1, ...rows.map(r => Number(r[f]) || 0));
-                this.scorecardMax = max;
-              },
-            }}
+            .gridOptions=${{ defaultColDef: { resizable: true, sortable: true }, rowHeight: 38 }}
             .columnDefs=${[
               { field: 'web_sessions_fact.channel', headerName: 'Channel', flex: 1.4, minWidth: 160, pinned: 'left', cellStyle: { fontWeight: '600' } },
-              ...scoreFields.map(([f, name, fmt, tone]) => ({ field: f, headerName: name, flex: 1, minWidth: 120, type: 'rightAligned', cellRenderer: heatCell(f, fmt, maxBy, tone) })),
+              ...scoreFields.map(([f, name, fmt, tone]) => ({ field: f, headerName: name, flex: 1, minWidth: 120, type: 'rightAligned', cellRenderer: heatCell(f, fmt, tone) })),
             ]}
             .query=${{ fields: ['web_sessions_fact.channel', 'web_sessions_fact.total_sessions', 'web_events_fact.total_page_views', 'web_events_fact.total_conversions', 'web_sessions_fact.bounced_session_rate'], sorts: ['web_sessions_fact.total_sessions desc'], limit: '12' }}
             .filters=${filters}></app-grid>
@@ -354,22 +354,29 @@ export class WebTrafficApp extends DataApp {
     return html`
       <style>
         web-traffic-app {
-          --wt-ink: #0b1a2b; --wt-ink-soft: #40546a; --wt-teal: #0f9d8f; --wt-teal-deep: #0b6b62; --wt-amber: #f0a33a;
-          --wt-line: #e3e9ef; --wt-canvas: #f4f7fa;
+          /* Rittman Analytics brand: primary #4F60FF, secondary #FF8D73, grey #F7F7FA, chart
+             series #AD86FF and #87D5FC, with tints (towards white) and shades (towards ink). */
+          --wt-ink: #0b1a2b; --wt-ink-soft: #4b5868;
+          --wt-primary: #4f60ff; --wt-primary-t1: #8c97ff; --wt-primary-t2: #b9c0ff; --wt-primary-t3: #e4e7ff;
+          --wt-primary-s1: #3545d6; --wt-primary-deep: #2533a6; --wt-primary-s3: #17206b;
+          --wt-secondary: #ff8d73; --wt-secondary-t1: #ffbbab; --wt-secondary-t2: #ffd9d0; --wt-secondary-t3: #ffefeb;
+          --wt-secondary-s1: #e8674a; --wt-secondary-deep: #b84b32;
+          --wt-canvas: #f7f7fa; --wt-line: #e4e6ee;
           --app-bg: var(--wt-canvas); --app-card-bg: #ffffff; --app-border: var(--wt-line); --app-text: var(--wt-ink);
-          --app-title: var(--wt-ink); --app-muted: var(--wt-ink-soft); --app-primary: var(--wt-teal); --app-primary-hover: var(--wt-teal-deep);
-          --app-chart-1: #0f9d8f; --app-chart-2: #f0a33a; --app-chart-3: #3b6ea5; --app-chart-4: #9b5de5; --app-chart-5: #e05d6f;
-          --app-chart-6: #5aa9e6; --app-chart-7: #7cb342; --app-chart-unselected: #d7dee6;
-          --app-tabs-bg: #e6edf3; --app-radius: 18px;
+          --app-title: var(--wt-ink); --app-muted: var(--wt-ink-soft); --app-primary: var(--wt-primary); --app-primary-hover: var(--wt-primary-s1);
+          --wt-series-3: #ad86ff; --wt-series-4: #87d5fc;
+          --app-chart-1: #4f60ff; --app-chart-2: #ff8d73; --app-chart-3: #ad86ff; --app-chart-4: #87d5fc; --app-chart-5: #2533a6;
+          --app-chart-6: #ffbbab; --app-chart-7: #8c97ff; --app-chart-unselected: #dde1ea;
+          --app-tabs-bg: #e9ebf2; --app-radius: 18px;
           font-family: 'Google Sans', 'Inter', system-ui, -apple-system, sans-serif;
         }
         .wt-root { max-width: 1480px; margin: 0 auto; padding: 18px 22px 44px; color: var(--wt-ink); background: var(--wt-canvas); }
 
         /* Hero band, with the KPI cards floating over its lower edge */
         .wt-hero { position: relative; overflow: hidden; border-radius: 22px; padding: 26px 30px 70px;
-          background: linear-gradient(118deg, #0b1a2b 0%, #0e3147 48%, #0f9d8f 120%); color: #fff; box-shadow: 0 18px 40px -24px rgba(11, 26, 43, .7); }
+          background: linear-gradient(118deg, #0b1a2b 0%, #141f4d 45%, #3545d6 100%, #4f60ff 130%); color: #fff; box-shadow: 0 18px 40px -24px rgba(11, 26, 43, .7); }
         .wt-hero::after { content: ''; position: absolute; right: -80px; top: -120px; width: 360px; height: 360px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(240, 163, 58, .35) 0%, rgba(240, 163, 58, 0) 65%); }
+          background: radial-gradient(circle, rgba(255, 141, 115, .45) 0%, rgba(255, 141, 115, 0) 65%); }
         .wt-hero-row { display: flex; justify-content: space-between; align-items: stretch; gap: 20px; flex-wrap: wrap; position: relative; z-index: 1; }
         .wt-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.72); margin: 0 0 6px; }
         .wt-eyebrow-dark { color: var(--wt-ink-soft); }
@@ -377,7 +384,7 @@ export class WebTrafficApp extends DataApp {
         .wt-hero p { margin: 10px 0 0; max-width: 680px; font-size: 14px; line-height: 1.5; color: rgba(255,255,255,.82); }
         .wt-scope { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 6px 12px; border-radius: 999px;
           background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); font-size: 12px; font-weight: 500; }
-        .wt-scope::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--wt-amber); }
+        .wt-scope::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--wt-secondary); }
         .wt-hero-side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 16px; }
         .wt-logo { height: 64px; width: auto; display: block; }
         .wt-hero-controls { display: flex; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); }
@@ -387,12 +394,12 @@ export class WebTrafficApp extends DataApp {
         .wt-kpi { position: relative; background: #fff; border: 1px solid var(--wt-line); border-radius: 18px; padding: 14px 18px 10px; overflow: hidden; cursor: pointer;
           box-shadow: 0 16px 36px -20px rgba(11, 26, 43, .55); transition: transform .15s ease, box-shadow .15s ease; }
         .wt-kpi:hover { transform: translateY(-2px); box-shadow: 0 22px 40px -22px rgba(11, 26, 43, .6); }
-        .wt-kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--wt-teal); }
-        .wt-kpi.is-amber::before { background: var(--wt-amber); }
-        .wt-kpi.is-navy::before { background: #3b6ea5; }
+        .wt-kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--wt-primary); }
+        .wt-kpi.is-secondary::before { background: var(--wt-secondary); }
+        .wt-kpi.is-primary-deep::before { background: var(--wt-primary-deep); }
         .wt-kpi app-kpi { display: block; }
         .wt-kpi-foot { display: flex; justify-content: space-between; font-size: 11px; color: var(--wt-ink-soft); margin-top: 6px; }
-        .wt-kpi-more { color: var(--wt-teal-deep); font-weight: 600; }
+        .wt-kpi-more { color: var(--wt-primary); font-weight: 600; }
 
         .wt-tabs-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin: 22px 0 4px; }
         .wt-tabs-row .da-tabs { width: max-content; }
@@ -411,18 +418,18 @@ export class WebTrafficApp extends DataApp {
         /* Controls: segmented buttons, range slider, search */
         .wt-segment { display: inline-flex; background: var(--app-tabs-bg); border-radius: 10px; padding: 3px; gap: 2px; }
         .wt-seg-btn { border: 0; background: transparent; padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--wt-ink-soft); border-radius: 8px; cursor: pointer; }
-        .wt-seg-btn.active { background: #fff; color: var(--wt-teal-deep); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+        .wt-seg-btn.active { background: #fff; color: var(--wt-primary); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
         .wt-slider { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; font-size: 12px; color: var(--wt-ink-soft); }
-        .wt-slider input { accent-color: var(--wt-teal); width: 140px; }
+        .wt-slider input { accent-color: var(--wt-primary); width: 140px; }
         .wt-search input { width: 260px; max-width: 100%; padding: 7px 12px; border: 1px solid var(--wt-line); border-radius: 10px; font: inherit; font-size: 13px; background: #fff; color: var(--wt-ink); }
-        .wt-search input:focus { outline: 2px solid rgba(15, 157, 143, .35); border-color: var(--wt-teal); }
+        .wt-search input:focus { outline: 2px solid rgba(79, 96, 255, .35); border-color: var(--wt-primary); }
 
         /* Layouts */
         .wt-story { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 14px; }
         .wt-stack { display: grid; grid-template-rows: 1fr 1fr; gap: 14px; }
         .wt-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 14px; }
         .wt-split { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2.6fr); gap: 14px; align-items: start; }
-        .wt-summary { background: linear-gradient(160deg, #ffffff 0%, #eef6f5 100%); border: 1px solid var(--wt-line); border-radius: 18px; padding: 20px; }
+        .wt-summary { background: linear-gradient(160deg, #ffffff 0%, var(--wt-primary-t3) 100%); border: 1px solid var(--wt-line); border-radius: 18px; padding: 20px; }
         .wt-summary h3 { margin: 0 0 8px; font-size: 17px; line-height: 1.25; letter-spacing: -0.01em; }
         .wt-summary p { margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--wt-ink-soft); }
         .wt-summary-note { border-top: 1px solid var(--wt-line); padding-top: 12px; }
@@ -481,17 +488,17 @@ export class WebTrafficApp extends DataApp {
             <app-kpi bare id="da-kpi-sessions" label="Sessions" format="int" sparkline sparkline-agg="sum"
               .query=${{ fields: ['web_sessions_fact.session_start_ts_week', 'web_sessions_fact.total_sessions'], sorts: ['web_sessions_fact.session_start_ts_week desc'], limit: '13' }}
               .filters=${spark}></app-kpi>`)}
-          ${this.kpiCard('is-navy', 'web_events_fact.total_unique_users', 'Distinct visitors in the window', html`
+          ${this.kpiCard('is-primary-deep', 'web_events_fact.total_unique_users', 'Distinct visitors in the window', html`
             <app-kpi bare id="da-kpi-unique-users" label="Unique Users" format="int"
               query-field="web_events_fact.total_unique_users" .filters=${filters}></app-kpi>`)}
           ${this.kpiCard('', 'web_events_fact.total_page_views', '13 weeks, week on week', html`
             <app-kpi bare id="da-kpi-page-views" label="Page Views" format="int" sparkline sparkline-agg="sum"
               .query=${{ fields: ['web_sessions_fact.session_start_ts_week', 'web_events_fact.total_page_views'], sorts: ['web_sessions_fact.session_start_ts_week desc'], limit: '13' }}
               .filters=${spark}></app-kpi>`)}
-          ${this.kpiCard('is-amber', 'web_sessions_fact.bounced_session_rate', 'Single-page sessions, lower is better', html`
+          ${this.kpiCard('is-secondary', 'web_sessions_fact.bounced_session_rate', 'Single-page sessions, lower is better', html`
             <app-kpi bare id="da-kpi-bounce-rate" label="Bounce Rate" format="percent1" polarity="lower-better"
               query-field="web_sessions_fact.bounced_session_rate" .filters=${filters}></app-kpi>`)}
-          ${this.kpiCard('is-amber', 'web_events_fact.total_conversions', 'Meeting Booked events, 13 weeks', html`
+          ${this.kpiCard('is-secondary', 'web_events_fact.total_conversions', 'Meeting Booked events, 13 weeks', html`
             <app-kpi bare id="da-kpi-meetings-booked" label="Meetings Booked" format="int" sparkline sparkline-agg="sum"
               .query=${{ fields: ['web_sessions_fact.session_start_ts_week', 'web_events_fact.total_conversions'], sorts: ['web_sessions_fact.session_start_ts_week desc'], limit: '13' }}
               .filters=${spark}></app-kpi>`)}

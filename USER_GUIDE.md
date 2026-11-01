@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.4.7 | **Date**: October 2026
+**Version**: 4.5.0 | **Date**: October 2026
 
 ---
 
@@ -575,7 +575,7 @@ In addition to `status.md`, each project maintains an `execution_log.md` file th
 | 2026-02-22 16:00 | /wire:requirements-review | approved | Reviewed by Jane Smith | Jane Smith | typed | 24m 10s | 98764 | $0.74 |
 ```
 
-Each row records who ran the command (`By`, the git user) and what invoked it (`Session`: `typed`, `orchestrator [id]`, a lane label such as `dbt-developer [staging 1/2]`, or `autopilot`), plus what the run took. Duration is measured by the command itself. Token count and estimated cost are filled in by the Wire mod on Claude Code (4.1.0 and later) when the command's turn ends, from the usage each model request reports. Values are never estimated, so a cell is either measured or `n/a` (always `n/a` on Gemini CLI, which has no hook mechanism). A lane's row, written by the orchestrating session after the lane reports, is filled when it is written. `/wire-usage` lists the session's Wire commands with their duration, tokens and cost. Opt out of the backfill with `WIRE_METRICS=false` or the plugin's **Execution-log metrics** option.
+Each row records who ran the command (`By`, the git user) and what invoked it (`Session`: `typed`, `orchestrator [id]`, a lane label such as `dbt-developer [staging 1/2]`, or `autopilot`), plus what the run took. Duration is measured by the command itself. Token count and estimated cost are filled in by the Wire mod on Claude Code (4.1.0 and later) when the command's turn ends, from the usage each model request reports. Values are never estimated, so a cell is either measured or `n/a` (always `n/a` on Gemini CLI, which has no hook mechanism). A lane's row, written by the orchestrating session after the lane reports, is filled when it is written. `/wire-usage` lists the session's Wire commands with their duration, tokens and cost. Opt out of the backfill with `WIRE_METRICS=false` or the plugin's **Execution-log metrics** option. From 4.5.0 the mod also carries the active release's parked decisions, rulings and next command into every session, lints dbt, LookML, Cube, dbt Charts and Airflow files as they are written, enforces the release director's lane rules in orchestrated mode, and adds `/wire-ran`, `/wire-approve`, `/wire-park` and `/wire-handoff`. See the Wire mod page of the docs site.
 
 The log is useful for handovers (a new team member can see the full history of what was done), for auditing (confirming when artifacts were generated, who approved them, and what each step cost), and for debugging (identifying when a failure occurred and what preceded it).
 

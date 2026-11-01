@@ -1,7 +1,7 @@
 {
   "name": "wire",
   "description": "The Wire Framework \u2014 AI-accelerated data platform delivery for the full lifecycle: requirements, design, development, testing, deployment, enablement",
-  "version": "4.4.7",
+  "version": "4.5.0",
   "author": {
     "name": "Rittman Analytics",
     "email": "hello@rittmananalytics.com"
@@ -22,6 +22,36 @@
       "title": "Execution-log metrics",
       "description": "Fill the Duration, Tokens and Cost cells of each Wire command's execution_log.md row from measured usage. WIRE_METRICS=false also turns it off.",
       "default": true
+    },
+    "enforce": {
+      "type": "boolean",
+      "title": "Lane rule enforcement",
+      "description": "In orchestrated mode, refuse what the release director's lane rules forbid before it happens: a lane writing status.md or execution_log.md, writing outside its owned tree, or spawning a sub-agent; lanes past lanes_max; warehouse calls under warehouse_spend: none or past a cap; two builds on one project; a gated command on an unapproved upstream. Never refuses in manual mode. WIRE_ENFORCE=false also turns it off.",
+      "default": true
+    },
+    "context": {
+      "type": "boolean",
+      "title": "Release context in the system prompt",
+      "description": "Add the active release's parked decisions, last rulings, business-rules summary and next action to the system prompt once per session, and suggest the next command when the prompt is empty. WIRE_CONTEXT=false also turns it off.",
+      "default": true
+    },
+    "contextLines": {
+      "type": "number",
+      "title": "Release context lines",
+      "description": "The most lines the release-context section may take (default 60).",
+      "default": 60
+    },
+    "lintOnWrite": {
+      "type": "boolean",
+      "title": "Convention lint on write",
+      "description": "Run scripts/lint_conventions.py on every write to a dbt, LookML, Cube, dbt Charts or Airflow file and hand the findings back in the same turn. WIRE_LINT=false also turns it off.",
+      "default": true
+    },
+    "driftWatch": {
+      "type": "boolean",
+      "title": "Drift watch (experimental)",
+      "description": "Every eight turns once the context passes 50 percent, ask the model one tool-less question: which recent instructions contradict a ruling in decisions.md. Costs one forked request each time. WIRE_DRIFT_WATCH=true also turns it on.",
+      "default": false
     }
   }
 }

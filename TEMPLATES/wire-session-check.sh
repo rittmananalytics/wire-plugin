@@ -1,4 +1,9 @@
 #!/bin/bash
+# Superseded in 4.5.0 (wire#270 D2): the Wire mod's prompt.compose hook adds the
+# same line once per session, with no hourly marker file. /wire:new no longer
+# installs this hook and /wire:upgrade offers to remove it. Kept for one
+# release for engagements that still have it in .claude/settings.json; an
+# engagement with both sees the line twice until it upgrades.
 # Wire Framework — session-start status check
 # Configured as a UserPromptSubmit hook in .claude/settings.json (created by /wire:new).
 # Outputs a one-line Wire status reminder on the first prompt of each session.

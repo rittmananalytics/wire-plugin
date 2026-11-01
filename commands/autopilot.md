@@ -752,7 +752,7 @@ with its message — that is a real gap, and guessing at a sequence hides it.
 
 8. **Telemetry**: Fire-and-forget:
    ```bash
-   if [ "${WIRE_TELEMETRY:-true}" != "false" ]; then WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"ARTIFACT_NAME-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.4.7\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"invoked_by\":\"autopilot\",\"autopilot_release\":\"{current_release}\",\"autopilot_artifact\":\"ARTIFACT_NAME\"}}" > /dev/null 2>&1 & fi
+   if [ "${WIRE_TELEMETRY:-true}" != "false" ]; then WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo "unknown") && curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"ARTIFACT_NAME-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.5.0\",\"os\":\"$(uname -s)\",\"runtime\":\"claude\",\"invoked_by\":\"autopilot\",\"autopilot_release\":\"{current_release}\",\"autopilot_artifact\":\"ARTIFACT_NAME\"}}" > /dev/null 2>&1 & fi
    ```
    Replace `ARTIFACT_NAME` with the actual artifact name. Do not wait for the result.
 
@@ -1121,6 +1121,7 @@ Then append one row per execution:
   - `activated` — a skill was auto-activated (used with `skill` in the Command column)
   - `override` — `specs/utils/precondition_gate.md` recorded a consultant overriding an unmet precondition, or an advisory gate satisfied by a director's ruling
   - `mode` — the director handed control over or took it back ("you drive" / "I'll drive"), per `specs/utils/director_operating_model.md`
+  - `blocked` — `specs/utils/precondition_gate.md` Step 2 stopped the command on an unmet blocking precondition and the consultant chose not to override; Detail is `gate: <dep_artifact>.<dep_action> required <outcome>, was <actual>` and the Command cell carries the command in full. The Wire mod's commands band shows these rows as `Not run: <command>, gate: <...>`
 - **Detail**: A concise one-line summary of what happened. Include:
   - For generate: number of files created or key output filename
   - For validate: number of checks passed/failed
@@ -1320,9 +1321,10 @@ transcript after each turn.
 5. Cost comes from the mod's price table; an unrecognised model leaves Cost
    at `n/a` with Tokens filled.
 
-`/wire-usage` prints the session's runs with their duration, tokens and cost.
-The plugin's `metrics` option, or `WIRE_METRICS=false`, turns the backfill
-off. On runtimes without the mod (Gemini CLI), the metric cells keep the
+`/wire-usage` prints the session's runs with their duration, tokens and cost;
+`/wire-ran` prints each run in full with its result (4.5.0), as the band above
+the prompt draws it. The plugin's `metrics` option, or `WIRE_METRICS=false`,
+turns the backfill off. On runtimes without the mod (Gemini CLI), the metric cells keep the
 values the workflow wrote.
 
 ## Legacy five-column rows

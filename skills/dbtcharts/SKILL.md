@@ -73,6 +73,8 @@ python3 <plugin>/scripts/lint_conventions.py --domain dbtcharts \
     --convention <resolved file> --path charts/          # and again with --path dbt_charts.yml
 ```
 
+On Claude Code the Wire mod runs this checker on every write to a file under `charts/` (wire#270) and hands the findings back in the same turn. Keep the call above for `dbt_charts.yml`, for files written another way and for whole-folder runs.
+
 Errors fail a board (missing title, label or notes; a `serve:` key in the anchor; a raw-string regex). Warnings are the design nudges (KPI label length, a `## Section` row, a hidden endpoint label, a trend without `time_unit`); fix them or record why not. To change house style for one engagement, copy the framework file to `.wire/conventions/dbtcharts.yml` and edit the values; the whole file is read, so keep it complete.
 
 ## The Wire rules for a board

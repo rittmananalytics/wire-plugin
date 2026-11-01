@@ -9,6 +9,24 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.5.0: The Wire mod, releases 2 to 4
+
+**Released**: November 2026
+
+**Enforcement before a breach.** In orchestrated mode, on a release this session holds, the Wire mod refuses what the release director's lane rules forbid at the moment it is attempted: a lane writing `status.md` or `execution_log.md` (with the write tools, or Bash by redirect, `sed -i`, `tee` or `python3 -c`), a lane writing outside its `Owns:` trees (judged on the real path, so a symlink into the tree is allowed), a lane spawning a sub-agent, a fifth lane under `lanes_max: 4`, a warehouse call or dbt build under `warehouse_spend: none`, two lanes building one project at once, and a gated command whose blocking precondition is unmet. Each refusal names the rule and what to do instead. A lane brief lacking `Owns:`, `State file:` or `Resume:` is refused naming the line. Every warehouse call from a lane is recorded in `lanes/_spend.jsonl`; past `cap:<amount>` a parked decision is raised and the next call is refused. Manual mode, an unclaimed release and Gemini CLI never see a refusal.
+
+**Release context without a command.** The status line shows the active release by `/wire:start`'s resolution order (two live releases show "say which", never a guess). The system prompt gains one session-scoped section: the release's parked decisions and their questions, the last ten rulings, the business-rules register by domain with any assumed rule past its confirm-by date, iterations in flight, the claim and the next command. The next command is suggested in the empty prompt box. The context percentage joins the status line, with one toast at 85 percent. The session-check hook and the status-line script are superseded.
+
+**Lint on write.** `lint_conventions.py` runs on every write to a dbt, LookML, Cube, dbt Charts or Airflow file and hands the findings back in the same turn. The skills keep their own call for files written another way.
+
+**The commands band and rule 7.** A band above the prompt lists the Wire commands the session ran, in full, with result, tokens and cost, and the steps the precondition gate stopped as `Not run:` rows. `/wire-ran` prints the same. A reply that ran Wire commands without a `Ran:` line naming each in full is flagged, and the miss is measurable in telemetry.
+
+**Review and session commands with no model turn.** `/wire-approve` appends a typed review event to the artifact (`--final` sets `review: approved`); `/wire-park` appends a parked decision. A lane silent for 30 minutes raises one stall note. Compaction uses Wire's handoff template; `/wire-handoff` writes the summary to the release's `lanes/` folder through one forked request. The drift watch is opt-in.
+
+**Tests.** 125 plugin tests across eleven files (`claude plugin test`), a contract check that every state key, option and gated command matches the types, the manifest and the specs, and a test of the new `wire_gate.py`, the deterministic front on Studio's runnable-set resolver that the hard gate and the next-action suggestion read.
+
+See [The Wire mod](../advanced/wire-mod).
+
 ## v4.4.7: Data app push after a publish
 
 **Released**: November 2026

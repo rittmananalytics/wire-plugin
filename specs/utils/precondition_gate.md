@@ -224,8 +224,13 @@ their name with a reason — it is never silent.
 Override and proceed anyway? (yes / no)
 ```
 
-- **no** — output `Stopping — clear the blocker(s) above, then re-run.` and do
-  not proceed with the calling spec's workflow.
+- **no** — output `Stopping — clear the blocker(s) above, then re-run.`, append
+  one row to `execution_log.md` with Result `blocked` and Detail
+  `gate: <dep_artifact>.<dep_action> required <outcome>, was <actual>`, the
+  Command cell carrying the command in full (`/wire:<command> <release_folder>`),
+  and do not proceed with the calling spec's workflow. The row is what lets a
+  reader see a step that did not run (operating-model rule 7's `Not run:` line
+  is drawn from it by the Wire mod's commands band).
 - **yes** — continue to Step 3.
 
 ### Step 2a: Advisory — look for a ruling first
@@ -314,6 +319,17 @@ absent. An advisory gate that logged nothing would be indistinguishable from a
 gate nobody had thought about.
 
 ### Step 3: Capture the override
+
+**`--override-gate "<reason>"`.** A command run with this flag skips the
+prompts below: the name is the git user (`git config user.name`) and the reason
+is the flag's text. A blank reason is refused as a blank prompt answer is. The
+flag exists for the Wire mod's hard gate (wire#270): on Claude Code, in
+orchestrated mode, the mod refuses a destructive or warehouse-touching command
+(`deployment-*`, `cutover-*`, `dbt-migration-defer-build`, and every generate
+whose spec declares `auto_validate: false`) when a blocking precondition is
+unmet, before the command starts, and names this flag as the way through. The
+override is recorded exactly as below either way. A ruling never satisfies a
+blocking gate, so the mod does not read `decisions.md` for one.
 
 Prompt:
 

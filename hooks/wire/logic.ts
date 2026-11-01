@@ -169,6 +169,27 @@ export function releaseOf(args: string): string | null {
   return /^[A-Za-z0-9][A-Za-z0-9_.-]{0,120}$/.test(first) && !first.startsWith('-') ? first : null
 }
 
+/** The arguments after the release folder, whitespace-normalised; '' when none. Shown in the band, never sent. */
+export function restArgsOf(args: string): string {
+  const words = (args ?? '').trim().split(/\s+/).filter(Boolean)
+  return (releaseOf(args) ? words.slice(1) : words).join(' ')
+}
+
+/** The Result cell of the newest log row for `command`, or null. */
+export function logRowResult(text: string, command: string): string | null {
+  const lines = text.split('\n')
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const cells = cellsOf(lines[i] ?? '')
+    if (!cells || cells.length < 3) {
+      continue
+    }
+    if ((cells[1] ?? '').split(/\s+/)[0] === command) {
+      return cells[2] || null
+    }
+  }
+  return null
+}
+
 /**
  * The persona list (specs/utils/personas.md); wire/tests/core/validate_personas.py
  * checks this copy matches the spec.

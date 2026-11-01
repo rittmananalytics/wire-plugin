@@ -355,6 +355,15 @@ modality_path: null
 # is not.
 advisory_skips: []
 
+# Each artifact may carry a review_events list (wire#112 R2, wire#270 D7),
+# appended by /wire-approve with no model turn, additive to the single
+# `review:` value the review commands keep:
+#   review_events:
+#     - actor: "Jane Smith"
+#       date: "2026-10-02"
+#       kind: internal          # internal | client
+#       evidence: "https://..." # optional
+#       outcome: approved
 artifacts:
   # Optional first phase. Discover, define and agree what the numbers mean before
   # design bakes a definition in. Warning-level gate, not blocking.

@@ -96,6 +96,8 @@ python3 wire/scripts/lint_conventions.py --domain cube \
   --format json
 ```
 
+On Claude Code the Wire mod runs this checker on every write to a Cube file under `model/` or `schema/` (wire#270) and hands the findings back in the same turn. Keep the call above for files written another way and for whole-folder runs.
+
 Treat its findings as ground truth for what it covers — snake_case naming,
 the `_view` suffix, boolean-dimension phrasing, the deprecated
 `belongsTo`/`hasMany` join vocabulary, and required fields on every cube
