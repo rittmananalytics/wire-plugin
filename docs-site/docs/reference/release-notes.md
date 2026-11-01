@@ -9,6 +9,14 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.5.1: Repositories upgrade themselves
+
+**Released**: November 2026
+
+**The safe upgrade steps run at session start.** Most engagement repositories never have `/wire:upgrade` run on them. The Wire mod now applies the two steps that need no judgment itself, every time a session starts in a Wire repository: it removes the 4.0 session-check hook from `.claude/settings.json` with its script (every other hook and setting stays), and extends an execution-log header that still has four or six columns to the nine-column shape, leaving every data row as it was. Both are idempotent, so a current repository sees nothing. When something changed, one note says what and asks for it to be committed with the next pull request. The same note names any release whose `wire_plugin_version` is older than the plugin, or absent, so you run `/wire:upgrade <release>` for it; that command changes `status.md` and asks first, which the mod never does. A log on a release another person holds with a live claim is left alone. Queuing the full command automatically is [wire#400](https://github.com/rittmananalytics/wire/issues/400).
+
+See [The Wire mod](../advanced/wire-mod).
+
 ## v4.5.0: The Wire mod, releases 2 to 4
 
 **Released**: November 2026

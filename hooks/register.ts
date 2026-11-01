@@ -20,6 +20,9 @@
 //                --override-gate
 // - session.ts  (D7) the lane stall timer, compaction instructions,
 //                /wire-handoff, the opt-in drift watch
+// - upgrade.ts  the safe /wire:upgrade steps applied at session start (the
+//                4.0 session-check hook removed, short log headers extended)
+//                and the releases that still need the full command
 //
 // - Telemetry: one `wire_command` event per Wire command, from the event that
 //   ran it, so `invoked_by` comes from the engine (typed, orchestrator, lane,
@@ -67,6 +70,7 @@ import { afterWrite } from './wire/lint'
 import { approveCommand, hardGate, parkCommand, registerReviewCommands } from './wire/review'
 import { handoffCommand, onCompact, onMainTurnComplete, startSession } from './wire/session'
 import { identityOf, post, sendEvent } from './wire/telemetry'
+import { autoUpgrade } from './wire/upgrade'
 import {
   addUsage,
   backfillLog,
@@ -505,7 +509,13 @@ export const register: Register = (on, options: Options) => {
     await registerBandCommand($)
     await startSession($)
     const result = await next(e)
-    await startContext($, options, (e as any).cwd ?? (await $.session.cwd()))
+    const cwd = (e as any).cwd ?? (await $.session.cwd())
+    try {
+      await autoUpgrade($, cwd)
+    } catch {
+      // the upgrade is best effort; the session starts either way
+    }
+    await startContext($, options, cwd)
     return result
   })
 

@@ -69,6 +69,15 @@ The spend ledger is `.wire/releases/<release>/lanes/_spend.jsonl`, one row per w
 
 Both review commands take `--release <folder>` when more than one release is active. Mod command names cannot contain a colon, which is why these are `/wire-` and not `/wire:`.
 
+## Automatic upgrade at session start
+
+Most engagement repositories never have `/wire:upgrade` run on them. From 4.5.1 the mod applies the two upgrade steps that need no judgment itself, at every session start in a Wire repository:
+
+- The 4.0 session-check hook (`UserPromptSubmit` running `wire-session-check.sh` in `.claude/settings.json`) is removed with its script. Every other hook and setting stays.
+- An execution log whose header still has four or six columns gets the nine-column header and separator. Data rows are never touched.
+
+Both are idempotent, so a repository that is current sees nothing. When something changed, one note says what and asks you to commit it with your next pull request. The same note names any release whose `wire_plugin_version` is older than the plugin, or absent, so you run `/wire:upgrade <release>` for it; that command changes `status.md` and asks first, which the mod does not do for it. A release another person holds with a live claim is left alone. Queuing `/wire:upgrade` automatically for a release that is behind is [wire#400](https://github.com/rittmananalytics/wire/issues/400).
+
 ## How `/wire:start` knows the mod is loaded
 
 At session start the mod writes `.wire/local/mod.json` with its version, the session id, the resolved release and the mode. `/wire:start` reads it and reports "Wire mod not loaded" with the likely reason (Claude Code older than 2.1.316, which the mod's multi-file layout needs; hooks disabled; a managed-settings policy) when the record is absent or from another session.
@@ -117,6 +126,6 @@ The mod never approves or allows a call it did not refuse, rewrites nothing exce
 |---|---|
 | `hooks/wire-telemetry.sh` on `UserPromptExpansion` | The `command.run` and `tool.call` hooks |
 | `hooks/wire-metrics.sh` and `wire_metrics.py` on `Stop` | The `turn.step` and `turn.complete` hooks |
-| `TEMPLATES/wire-session-check.sh` on `UserPromptSubmit` (an hourly marker file) | The `prompt.compose` section, once per session. `/wire:new` no longer installs the hook; `/wire:upgrade` offers to remove it. An engagement that keeps it sees the line twice until it upgrades. |
+| `TEMPLATES/wire-session-check.sh` on `UserPromptSubmit` (an hourly marker file) | The `prompt.compose` section, once per session. `/wire:new` no longer installs the hook; the mod removes it at session start (4.5.1), and `/wire:upgrade` offers to where the mod is off. |
 | `TEMPLATES/wire-statusline.sh` (most recently modified folder) | `$.ui.status`, by `/wire:start`'s resolution order |
 | The build-slot file lock in `dbt-migration-defer-build` | The slot in the mod's state on Claude Code; the file lock remains for Gemini CLI |
