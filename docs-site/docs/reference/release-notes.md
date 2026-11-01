@@ -9,6 +9,16 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.5.2: Releases behind the plugin are upgraded through the real command
+
+**Released**: November 2026
+
+**`/wire:upgrade` is queued for you.** At session start, when a release's `wire_plugin_version` is older than the installed plugin or absent, the Wire mod now runs `/wire:upgrade --from-mod <release> ...` as the session's next turn. The command shows the `status.md` changes for each release and asks before writing, exactly as a typed run does; the mod itself never writes `status.md`. It queues once per repository per plugin version, so declining is remembered until the plugin changes; only in an interactive session (a headless run queues nothing); and never for a release another person holds with a live claim, which the note names instead. A version the mod cannot read on either side compares equal, so it never calls a release behind when it cannot tell. `upgrade.md` gains the `--from-mod` form: the folders after the flag, in order, one confirmation each, with the "which release" question skipped. Closes [wire#400](https://github.com/rittmananalytics/wire/issues/400).
+
+**Studio reads the mod's new files correctly.** The mod writes session handoffs (`lanes/handoff-<session>.md`) and the warehouse spend ledger (`lanes/_spend.jsonl`) into the folder Studio reads lane state files from. A handoff would have shown as a lane, stalled after 30 minutes. Handoffs are now listed in their own card on the Lanes view, newest first, and the ledger is summed on the Overview beside the AI spend.
+
+See [The Wire mod](../advanced/wire-mod) and [Wire Studio](../advanced/wire-studio).
+
 ## v4.5.1: Repositories upgrade themselves
 
 **Released**: November 2026

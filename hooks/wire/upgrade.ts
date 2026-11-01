@@ -13,9 +13,12 @@
 //
 // Both edits are idempotent, so they run every start without a marker. A
 // release whose `wire_plugin_version` is older than the plugin, or absent, is
-// named in one note so the person runs `/wire:upgrade <release>`; that command
-// changes status.md and asks first, which the mod does not do for it. The log
-// header is left alone while another person's claim on the release is live.
+// named in one note, and (wire#400) the real command is queued for it:
+// `/wire:upgrade --from-mod <release> ...` through $.command.run, which shows
+// the status.md diff and asks before writing, as a typed run does. Queued once per repository per
+// plugin version (a $.store marker), only in an interactive session, and never
+// for a release another person holds with a live claim. The log header is left
+// alone for such a release too.
 
 import { WIRE_VERSION } from './constants'
 import { appendNote, exists, gitUserName, listReleases, readText, sessionIdOf, toast } from './host'
@@ -81,17 +84,29 @@ export function extendLogHeader(logText: string): string | null {
   return lines.join('\n')
 }
 
-/** -1, 0 or 1 comparing dotted versions; a missing or unreadable version is older than any. */
+/**
+ * -1, 0 or 1 comparing dotted versions. A missing version is older than any
+ * readable one. An unreadable version on either side (the source tree's
+ * unsubstituted version placeholder, a hand-typed value) compares equal: the mod
+ * cannot say, so it does not call a release behind.
+ */
 export function compareVersions(a: string | null, b: string | null): number {
   const parse = (v: string | null) => (v ?? '').trim().split('.').map(n => Number(n))
+  const readable = (v: string | null) => v !== null && v.trim() !== '' && parse(v).every(n => Number.isInteger(n))
+  if (a === null && b === null) {
+    return 0
+  }
+  if (a === null) {
+    return readable(b) ? -1 : 0
+  }
+  if (b === null) {
+    return readable(a) ? 1 : 0
+  }
+  if (!readable(a) || !readable(b)) {
+    return 0
+  }
   const pa = parse(a)
   const pb = parse(b)
-  if (pa.some(n => !Number.isInteger(n)) || pa.length === 0 || a === null) {
-    return pb.some(n => !Number.isInteger(n)) || b === null ? 0 : -1
-  }
-  if (pb.some(n => !Number.isInteger(n)) || b === null) {
-    return 1
-  }
   for (let k = 0; k < Math.max(pa.length, pb.length); k++) {
     const d = (pa[k] ?? 0) - (pb[k] ?? 0)
     if (d !== 0) {
@@ -107,6 +122,17 @@ export type UpgradeReport = {
   logsExtended: string[]
   /** Releases whose wire_plugin_version is older than the plugin, with the version recorded or 'none'. */
   behind: { release: string; version: string }[]
+  /** Releases behind that another person holds with a live claim: named, not queued. */
+  heldElsewhere: string[]
+  /** The /wire:upgrade prompt queued this start, or null. */
+  queued: string | null
+}
+
+export const QUEUED_STORE_KEY = 'upgradeQueued'
+
+/** The prompt that upgrades `releases` in order through the real command. */
+export function upgradePrompt(releases: readonly string[]): string {
+  return `/wire:upgrade --from-mod ${releases.join(' ')}`
 }
 
 export function upgradeNote(r: UpgradeReport, pluginVersion: string): string | null {
@@ -118,7 +144,13 @@ export function upgradeNote(r: UpgradeReport, pluginVersion: string): string | n
     lines.push(`- Extended the header of ${log} to the nine-column shape (existing rows unchanged; metrics are recorded from the next command).`)
   }
   if (r.behind.length > 0) {
-    lines.push(`- Releases last upgraded before Wire ${pluginVersion}: ${r.behind.map(b => `${b.release} (${b.version})`).join(', ')}. Run /wire:upgrade <release> for each; it shows the status.md changes and asks before writing them.`)
+    const tail = r.queued
+      ? `The next turn runs \`${r.queued}\`, which shows the status.md changes and asks before writing them.`
+      : 'Run /wire:upgrade <release> for each; it shows the status.md changes and asks before writing them.'
+    lines.push(`- Releases last upgraded before Wire ${pluginVersion}: ${r.behind.map(b => `${b.release} (${b.version})`).join(', ')}. ${tail}`)
+  }
+  if (r.heldElsewhere.length > 0) {
+    lines.push(`- Not queued: ${r.heldElsewhere.join(', ')} (held by another person's live session; upgrade it from that session, or after their claim lapses).`)
   }
   if (lines.length === 0) {
     return null
@@ -130,8 +162,8 @@ export function upgradeNote(r: UpgradeReport, pluginVersion: string): string | n
 }
 
 /** Runs the automatic upgrade for the repository at `cwd` and reports what it did. */
-export async function autoUpgrade($: any, cwd: string): Promise<UpgradeReport> {
-  const report: UpgradeReport = { hookRemoved: false, scriptRemoved: false, logsExtended: [], behind: [] }
+export async function autoUpgrade($: any, cwd: string, isInteractive: boolean): Promise<UpgradeReport> {
+  const report: UpgradeReport = { hookRemoved: false, scriptRemoved: false, logsExtended: [], behind: [], heldElsewhere: [], queued: null }
   if (!(await exists($, `${cwd}/.wire`))) {
     return report
   }
@@ -167,6 +199,9 @@ export async function autoUpgrade($: any, cwd: string): Promise<UpgradeReport> {
     const claim = claimOf(front)
     const heldElsewhere = !!claim && claim.sessionId !== sid && claim.user !== me && minutesSince(claim.lastWrite, now) <= CLAIM_LIVE_MINUTES
     if (heldElsewhere) {
+      if (report.behind.some(b => b.release === rel.folder)) {
+        report.heldElsewhere.push(rel.folder)
+      }
       continue
     }
     const logPath = `${cwd}/.wire/releases/${rel.folder}/execution_log.md`
@@ -176,6 +211,31 @@ export async function autoUpgrade($: any, cwd: string): Promise<UpgradeReport> {
       if (extended !== null) {
         await $.fs.write(logPath, extended)
         report.logsExtended.push(`.wire/releases/${rel.folder}/execution_log.md`)
+      }
+    }
+  }
+  // Queue the real command for the releases behind, once per repository per
+  // plugin version. Not in a headless session: a queued turn there would run
+  // with nobody to answer the confirmation.
+  const toQueue = report.behind.map(b => b.release).filter(r => !report.heldElsewhere.includes(r))
+  if (toQueue.length > 0 && isInteractive) {
+    let marks: Record<string, string> = {}
+    try {
+      const v = await $.store.get(QUEUED_STORE_KEY)
+      marks = v && typeof v === 'object' ? (v as Record<string, string>) : {}
+    } catch {
+      marks = {}
+    }
+    if (marks[cwd] !== WIRE_VERSION) {
+      const prompt = upgradePrompt(toQueue)
+      try {
+        // A command is run as one, not submitted as prompt text (the engine
+        // refuses a submitted text that starts with `/`).
+        await $.command.run({ command: 'wire:upgrade', args: `--from-mod ${toQueue.join(' ')}` })
+        report.queued = prompt
+        await $.store.set(QUEUED_STORE_KEY, { ...marks, [cwd]: WIRE_VERSION })
+      } catch {
+        report.queued = null
       }
     }
   }

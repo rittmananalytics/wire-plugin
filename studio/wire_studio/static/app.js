@@ -239,7 +239,8 @@ function viewOverview() {
            : kpi("Runnable now", r.resolved.order.length, `parallel ${r.resolved.parallel.length} of ${r.resolved.lanes_max}`),
         kpi(HOSTED ? "Waiting on a decision" : "Waiting on you", r.inbox.length),
         HOSTED ? null : kpi("Lanes live", r.lanes.filter((l) => l.state !== "complete").length, r.lanes.some((l) => l.state === "stalled") ? "1+ stalled" : ""),
-        r.spend ? kpi("AI spend recorded", `$${r.spend.cost.toFixed(2)}`, `${r.spend.measured_rows} of ${r.spend.rows} log rows measured`) : null),
+        r.spend ? kpi("AI spend recorded", `$${r.spend.cost.toFixed(2)}`, `${r.spend.measured_rows} of ${r.spend.rows} log rows measured`) : null,
+        r.warehouse_spend && r.warehouse_spend.rows ? kpi("Warehouse spend recorded", `$${r.warehouse_spend.usd.toFixed(2)}`, `${r.warehouse_spend.rows} call${r.warehouse_spend.rows === 1 ? "" : "s"} from lanes, ${(r.warehouse_spend.bytes / 2 ** 40).toFixed(2)} TiB (lanes/_spend.jsonl)`) : null),
       h("section", { class: "card", "aria-labelledby": "g-h" },
         h("div", { class: "row", style: "justify-content:space-between;margin-bottom:12px" },
           h("h2", { id: "g-h", style: "margin:0" }, "Artifact graph", h("span", { class: "note" }, tk ? "release-level states: a step is complete only when complete in every slice" : `release-types/${r.project_type}.yaml`)),
@@ -303,14 +304,26 @@ function graphFile(id) {
   return n && n.file;
 }
 
+// Session handoffs the Wire mod wrote with /wire-handoff (lanes/handoff-<session>.md).
+// Not lanes: never stalled, never re-dispatched; the next session reads them.
+function handoffsCard(r) {
+  const hs = r.handoffs || [];
+  if (!hs.length) return null;
+  return h("section", { class: "card", "aria-labelledby": "ho-h" },
+    h("h2", { id: "ho-h" }, "Session handoffs", h("span", { class: "note" }, "lanes/handoff-<session>.md, written by /wire-handoff")),
+    hs.map((hd) => h("details", {},
+      h("summary", {}, h("span", { class: "mono" }, hd.session), h("span", { class: "muted" }, ` · ${hd.written}`)),
+      h("pre", { class: "state" }, hd.text))));
+}
+
 function viewLanes() {
   const r = release;
-  if (!r.lanes.length) return h("div", {}, releaseHeader("Lanes"), h("div", { class: "content" }, h("p", { class: "empty" }, "No lane state files in lanes/.")));
+  if (!r.lanes.length) return h("div", {}, releaseHeader("Lanes"), h("div", { class: "content" }, h("p", { class: "empty" }, "No lane state files in lanes/."), handoffsCard(r)));
   if (!r.lanes.find((l) => l.label === selected.lane)) selected.lane = (r.lanes.find((l) => l.state === "stalled") || r.lanes[0]).label;
   const cur = r.lanes.find((l) => l.label === selected.lane);
   return h("div", {},
     releaseHeader("Lanes", h("span", { class: "muted" }, `${r.lanes.length} state file${r.lanes.length === 1 ? "" : "s"}`)),
-    h("div", { class: "content" }, h("div", { class: "split" },
+    h("div", { class: "content" }, handoffsCard(r), h("div", { class: "split" },
       h("ul", { class: "list", "aria-label": "Lanes" }, r.lanes.map((l) => h("li", {},
         h("button", { type: "button", class: "item", "aria-pressed": l.label === cur.label ? "true" : "false", onclick: () => { selected.lane = l.label; render("lanes"); } },
           h("span", { class: "meta" }, h("span", { class: "mono" }, l.label), h("span", { class: `badge ${l.state}` }, l.state)),

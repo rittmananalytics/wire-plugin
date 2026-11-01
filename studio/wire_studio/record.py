@@ -5,6 +5,7 @@ can run it against a fixture repository with a fixed clock.
 """
 
 import importlib.util
+import json
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -186,11 +187,18 @@ def read_rulings(release_dir):
     return out, text
 
 
+HANDOFF_PREFIX = "handoff-"
+
+
 def read_lanes(release_dir, now):
     """One entry per lane state file. A lane not marked complete with no write
-    for 30 minutes is stalled (the resume contract makes re-dispatch safe)."""
+    for 30 minutes is stalled (the resume contract makes re-dispatch safe).
+    The Wire mod's session handoffs (`lanes/handoff-<session>.md`, 4.5.0) sit
+    in the same folder and are not lanes; `read_handoffs` lists them."""
     lanes = []
     for p in sorted((Path(release_dir) / "lanes").glob("*.md")):
+        if p.name.startswith(HANDOFF_PREFIX):
+            continue
         text = p.read_text(encoding="utf-8", errors="replace")
         modified = datetime.fromtimestamp(p.stat().st_mtime)
         age = now - modified
@@ -207,6 +215,55 @@ def read_lanes(release_dir, now):
             "text": text[:20000],
         })
     return lanes
+
+
+def read_handoffs(release_dir):
+    """Session handoffs the Wire mod wrote (`/wire-handoff`), newest first:
+    what was built, rulings made, state and the next command, for the next
+    session to read. Not lanes, and never stalled."""
+    out = []
+    for p in sorted((Path(release_dir) / "lanes").glob(f"{HANDOFF_PREFIX}*.md")):
+        text = p.read_text(encoding="utf-8", errors="replace")
+        written = datetime.fromtimestamp(p.stat().st_mtime)
+        m = re.search(r"^Written:\s*(\S+)", text, re.M)
+        out.append({
+            "session": p.stem[len(HANDOFF_PREFIX):],
+            "path": str(p.relative_to(Path(release_dir))),
+            "written": m.group(1) if m else written.strftime("%Y-%m-%d %H:%M"),
+            "text": text[:20000],
+        })
+    out.sort(key=lambda h: h["written"], reverse=True)
+    return out
+
+
+def read_spend_ledger(release_dir):
+    """Warehouse spend the Wire mod recorded in `lanes/_spend.jsonl` (4.5.0):
+    one row per warehouse call from a lane (lane, tool, bytes, usd, timestamp).
+    Totals in bytes and USD, and by lane. A row that does not parse is counted
+    as skipped, never guessed."""
+    p = Path(release_dir) / "lanes" / "_spend.jsonl"
+    out = {"rows": 0, "skipped": 0, "bytes": 0, "usd": 0.0, "by_lane": {}}
+    if not p.is_file():
+        return out
+    for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+            b = int(row.get("bytes", 0))
+            u = float(row.get("usd", 0))
+        except (ValueError, TypeError, AttributeError):
+            out["skipped"] += 1
+            continue
+        lane = str(row.get("lane", "?"))
+        out["rows"] += 1
+        out["bytes"] += b
+        out["usd"] = round(out["usd"] + u, 4)
+        by = out["by_lane"].setdefault(lane, {"rows": 0, "bytes": 0, "usd": 0.0})
+        by["rows"] += 1
+        by["bytes"] += b
+        by["usd"] = round(by["usd"] + u, 4)
+    return out
 
 
 def read_iterations(body, release_dir):
@@ -328,6 +385,8 @@ def load_release(framework, repo, name, now=None):
         "execution_log": read_execution_log(rel["dir"]),
         "spend": None,
         "lanes": read_lanes(rel["dir"], now),
+        "handoffs": read_handoffs(rel["dir"]),
+        "warehouse_spend": read_spend_ledger(rel["dir"]),
         "iterations": read_iterations(body, rel["dir"]),
         "delivery": status.get("delivery") or "artifacts",
         "tickets": None,

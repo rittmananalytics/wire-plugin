@@ -511,7 +511,7 @@ export const register: Register = (on, options: Options) => {
     const result = await next(e)
     const cwd = (e as any).cwd ?? (await $.session.cwd())
     try {
-      await autoUpgrade($, cwd)
+      await autoUpgrade($, cwd, (e as any).isInteractive === true)
     } catch {
       // the upgrade is best effort; the session starts either way
     }

@@ -155,9 +155,21 @@ What it does not do:
 /wire:upgrade 20260210_acme_analytics   # upgrade a specific release folder
 /wire:upgrade                            # auto-detect the most recently modified release
 /wire:upgrade --dry-run 20260210_acme   # show what would change without modifying anything
+/wire:upgrade --from-mod 01-discovery 02-data-foundation
+                                         # queued by the Wire mod: these releases, in order
 ```
 
 `--dry-run` prints the diff as a YAML patch and exits without writing.
+
+`--from-mod` is how the Wire mod (Claude Code, 4.5.2 and later, wire#400)
+queues this command at session start when a release's `wire_plugin_version`
+is older than the plugin or absent: the arguments after the flag are the
+release folders to upgrade, in that order. Step 1's question is skipped; every
+other step runs as typed, including the confirmation before anything is
+written, one release at a time. The mod queues it once per repository per
+plugin version, only in an interactive session on the main loop, and leaves
+out a release another person holds with a live claim; declining here is
+recorded nowhere, and the mod does not ask again until the plugin changes.
 
 ## Prerequisites
 
@@ -173,6 +185,12 @@ What it does not do:
 If a `<release-folder>` argument is provided:
 1. Look for `.wire/releases/<release-folder>/status.md`
 2. If not found, try `.wire/<release-folder>/status.md` (pre-v3.4 flat layout — redirect the user to `/wire:migrate` first)
+
+If `--from-mod` is given, the arguments after it are release folders. Upgrade
+each in the order given, running Steps 2 to 8 for one before starting the
+next, and do not ask which release. A folder that does not exist is reported
+and skipped. With `--from-mod` and no folders, say that nothing was named and
+stop.
 
 If no argument is provided:
 1. Glob `.wire/releases/*/status.md`

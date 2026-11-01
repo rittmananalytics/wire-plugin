@@ -76,7 +76,9 @@ Most engagement repositories never have `/wire:upgrade` run on them. From 4.5.1 
 - The 4.0 session-check hook (`UserPromptSubmit` running `wire-session-check.sh` in `.claude/settings.json`) is removed with its script. Every other hook and setting stays.
 - An execution log whose header still has four or six columns gets the nine-column header and separator. Data rows are never touched.
 
-Both are idempotent, so a repository that is current sees nothing. When something changed, one note says what and asks you to commit it with your next pull request. The same note names any release whose `wire_plugin_version` is older than the plugin, or absent, so you run `/wire:upgrade <release>` for it; that command changes `status.md` and asks first, which the mod does not do for it. A release another person holds with a live claim is left alone. Queuing `/wire:upgrade` automatically for a release that is behind is [wire#400](https://github.com/rittmananalytics/wire/issues/400).
+Both are idempotent, so a repository that is current sees nothing. When something changed, one note says what and asks you to commit it with your next pull request.
+
+**Releases behind the plugin.** The same note names any release whose `wire_plugin_version` is older than the plugin, or absent, and from 4.5.2 the mod queues the real command for them as the session's next turn: `/wire:upgrade --from-mod <release> ...`, which shows the `status.md` changes for each release and asks before writing them, as a typed run does. The mod never writes `status.md` itself. It queues once per repository per plugin version (declining is remembered until the plugin changes), only in an interactive session, and leaves out a release another person holds with a live claim, which the note says. In a headless session (`claude -p`, the SDK) nothing is queued.
 
 ## How `/wire:start` knows the mod is loaded
 
