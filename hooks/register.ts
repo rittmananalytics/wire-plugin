@@ -49,11 +49,15 @@
 import type { Register } from 'claude-code'
 
 import type { WireActiveRelease, WireLane, WireRun } from '../types'
-import { blockedRowsOf, checkRanLine, ranCommand, registerBandCommand, renderBand } from './wire/band'
 import { SEGMENT_IDENTIFY, SEGMENT_TRACK, SEGMENT_WRITE_KEY, WIRE_VERSION } from './wire/constants'
-import { afterStatusWrite, composePrompt, measureContext, startContext } from './wire/context'
-import { denyAgentCall, denyWrite, onAgentSpawn, onBash, onLaneTurnComplete, onWarehouseCall, warnCollision } from './wire/enforce'
-import { type Options, toast } from './wire/host'
+import { BUILD_SLOT_MINUTES, absolutePath, bashWritesRecord, bytesBilledOf, bytesToUsd, dbtProjectOf, isDbtBuild, isDbtWarehouseRun, isRecordFile, isUnderAny, isWarehouseWriteTool, normalisePath, parseLaneBrief, refusal } from './wire/lanes'
+import { approvedCount, artifactStatesOf, budgetOf, businessRulesSummary, capOf, claimOf, frontMatterOf, minutesSince, nextParkedId, openIterationsOf, orchestrationModeOf, parkedDecisionsOf, releaseContext, resolveActiveRelease, rulingsOf, scalarOf, sessionLine, stampOf, statusLine } from './wire/release'
+import { type Options, isOn } from './wire/host'
+import { type Finding, type LintDomain, domainOf, findingsNote, findingsOf } from './wire/lint'
+import { BAND_MAX_RUNS, bandText, blockedRowsOf, checkRanLine, notRunLine, runLine } from './wire/band'
+import { type ReviewEvent, appendParkedDecision, appendReviewEvent, gateDeny, hasOverride, isGated, parseApproveArgs, parseParkArgs } from './wire/review'
+import { DRIFT_EVERY_TURNS, DRIFT_FROM_PERCENT, HANDOFF_FALLBACK, STALL_CHECK_MS, STALL_MINUTES, driftPrompt, stallNote, stalledLanes } from './wire/session'
+import { QUEUED_STORE_KEY, SESSION_CHECK_SCRIPT, type UpgradeReport, compareVersions, extendLogHeader, removeSessionCheckHook, upgradeNote, upgradePrompt } from './wire/upgrade'
 const NOT_RUN = { plugin: 'wire', key: 'notRun' } as const
 const ACTIVE = { plugin: 'wire', key: 'active' } as const
 const LANES = { plugin: 'wire', key: 'lanes' } as const
@@ -66,35 +70,7 @@ async function lanesOf($: any): Promise<WireLane[]> {
   const { value } = await $.state.get(LANES)
   return Array.isArray(value) ? value : []
 }
-import { afterWrite } from './wire/lint'
-import { approveCommand, hardGate, parkCommand, registerReviewCommands } from './wire/review'
-import { handoffCommand, onCompact, onMainTurnComplete, startSession } from './wire/session'
-import { identityOf, post, sendEvent } from './wire/telemetry'
-import { autoUpgrade } from './wire/upgrade'
-import {
-  addUsage,
-  backfillLog,
-  computeCost,
-  emptyUsage,
-  identifyBody,
-  invokedBy,
-  personaOf,
-  isOn,
-  logCommandOf,
-  logRowResult,
-  logStamp,
-  parseStudioArgs,
-  parseStudioRecord,
-  releaseOf,
-  restArgsOf,
-  STUDIO_PORT_FIRST,
-  STUDIO_PORT_LAST,
-  studioStateName,
-  type StudioRecord,
-  totalTokens,
-  trackBody,
-  usageReport,
-} from './wire/logic'
+import { addUsage, backfillLog, computeCost, emptyUsage, identifyBody, invokedBy, personaOf, logCommandOf, logRowResult, logStamp, parseStudioArgs, parseStudioRecord, releaseOf, restArgsOf, STUDIO_PORT_FIRST, STUDIO_PORT_LAST, studioStateName, type StudioRecord, totalTokens, trackBody, usageReport } from './wire/logic'
 
 const RUNS = { plugin: 'wire', key: 'runs' } as const
 const AUTOPILOT = { plugin: 'wire', key: 'autopilot' } as const
@@ -672,3 +648,1045 @@ export const register: Register = (on, options: Options) => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => renderBand($, e, next))
 }
+
+// ---------------------------------------------------------------------------
+// Everything below takes `$`. It lives in this file because Claude Code's
+// validator (2.1.287 and later) follows `$` only into functions declared in the
+// same file as the hook; the concern files under wire/ keep the pure logic.
+// ---------------------------------------------------------------------------
+
+async function exists($: any, path: string): Promise<boolean> {
+  try {
+    return (await $.fs.exists(path)) === true
+  } catch {
+    return false
+  }
+}
+
+async function mtimeOf($: any, path: string): Promise<number> {
+  try {
+    const st = await $.fs.stat(path)
+    return typeof st?.mtimeMs === 'number' ? st.mtimeMs : 0
+  } catch {
+    return 0
+  }
+}
+
+async function realPathOf($: any, path: string): Promise<string> {
+  try {
+    const own = await $.fs.stat(path, { resolve: true })
+    if (own?.realPath) {
+      return String(own.realPath)
+    }
+  } catch {
+    // not there yet
+  }
+  const i = path.lastIndexOf('/')
+  if (i > 0) {
+    try {
+      const dir = await $.fs.stat(path.slice(0, i), { resolve: true })
+      if (dir?.realPath) {
+        return `${String(dir.realPath).replace(/\/$/, '')}/${path.slice(i + 1)}`
+      }
+    } catch {
+      // parent not there either
+    }
+  }
+  return path
+}
+
+async function gitUserName($: any, cwd: string): Promise<string> {
+  return (await run1($, ['git', 'config', '--get', 'user.name'], cwd)) || 'unknown'
+}
+
+async function gitBranch($: any, cwd: string): Promise<string> {
+  const b = await run1($, ['git', 'branch', '--show-current'], cwd)
+  if (b) {
+    return b
+  }
+  const h = await run1($, ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd)
+  return h === 'HEAD' ? '' : h
+}
+
+async function frameworkFile($: any, rel: string): Promise<string | null> {
+  for (const path of [`${$.plugin.root}/${rel}`, `${$.plugin.root}/../../${rel}`]) {
+    if (await exists($, path)) {
+      return path
+    }
+  }
+  return null
+}
+
+async function sessionIdOf($: any): Promise<string> {
+  try {
+    return String((await $.session.id()) ?? '')
+  } catch {
+    return ''
+  }
+}
+
+function toast($: any, text: string): void {
+  try {
+    $.ui.toast(text)
+  } catch {
+    // a surface with no toasts
+  }
+}
+
+async function appendNote($: any, text: string, agentId?: string | null): Promise<void> {
+  try {
+    await $.session.append({ message: { type: 'user', content: [{ type: 'text', text }] }, ...(agentId ? { agentId } : {}) })
+  } catch {
+    // a loop that is no longer running
+  }
+}
+
+async function listReleases($: any, cwd: string): Promise<{ folder: string; mtime: number; statusText: string | null }[]> {
+  const out: { folder: string; mtime: number; statusText: string | null }[] = []
+  try {
+    for (const d of await $.fs.list(`${cwd}/.wire/releases`)) {
+      if (d.kind !== 'dir') {
+        continue
+      }
+      const path = `${cwd}/.wire/releases/${d.name}/status.md`
+      out.push({ folder: d.name, mtime: await mtimeOf($, path), statusText: await readText($, path) })
+    }
+  } catch {
+    return []
+  }
+  return out.sort((a, b) => a.folder.localeCompare(b.folder))
+}
+
+const IDENTITY = { plugin: 'wire', key: 'identity' } as const
+
+async function identityOf($: any): Promise<{ identity: WireIdentity; isNew: boolean }> {
+  const { value } = await $.state.get(IDENTITY)
+  if (value) {
+    return { identity: value, isNew: false }
+  }
+  const cwd = await $.session.cwd()
+  const home = (await $.env.get('HOME')) ?? ''
+  const idFile = `${home}/.wire/telemetry_id`
+  let userId = ''
+  let isNew = false
+  try {
+    userId = String(await $.fs.read(idFile)).trim()
+  } catch {
+    userId = ''
+  }
+  if (!userId) {
+    userId = crypto.randomUUID()
+    isNew = true
+    try {
+      await $.fs.write(idFile, userId)
+    } catch {
+      // No home folder to write to: the id lasts this session only.
+    }
+  }
+  const identity: WireIdentity = {
+    userId,
+    username: (await $.env.get('USER')) ?? (await $.env.get('USERNAME')) ?? '',
+    hostname: await run1($, ['hostname'], cwd),
+    os: await run1($, ['uname', '-s'], cwd),
+    gitRepo: (await run1($, ['git', 'config', '--get', 'remote.origin.url'], cwd)) || 'unknown',
+    gitBranch: (await run1($, ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd)) || 'unknown',
+  }
+  await $.state.set(IDENTITY, identity)
+  return { identity, isNew }
+}
+
+async function post($: any, url: string, body: string): Promise<void> {
+  try {
+    await $.http.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
+  } catch {
+    // Telemetry never fails or blocks a command.
+  }
+}
+
+async function sendEvent($: any, options: Options, event: string, properties: Record<string, unknown>): Promise<void> {
+  if (!isOn(options.telemetry, await $.env.get('WIRE_TELEMETRY'))) {
+    return
+  }
+  const { identity } = await identityOf($)
+  let sessionId: string | null = null
+  try {
+    sessionId = await $.session.id()
+  } catch {
+    sessionId = null
+  }
+  const timestamp = new Date(await $.clock.now()).toISOString().replace(/\.\d{3}Z$/, 'Z')
+  await post($, SEGMENT_TRACK, JSON.stringify({
+    writeKey: SEGMENT_WRITE_KEY, userId: identity.userId, event,
+    properties: { ...properties, timestamp, plugin_version: WIRE_VERSION, runtime: 'claude', session_id: sessionId, git_repo: identity.gitRepo, git_branch: identity.gitBranch },
+  }))
+}
+
+async function identifyIfNew($: any, identity: WireIdentity, isNew: boolean, timestamp: string): Promise<void> {
+  if (isNew) {
+    await post($, SEGMENT_IDENTIFY, identifyBody(SEGMENT_WRITE_KEY, identity.userId, {
+      username: identity.username, hostname: identity.hostname, os: identity.os, version: WIRE_VERSION, timestamp,
+    }))
+  }
+}
+
+const CONTEXT = { plugin: 'wire', key: 'context' } as const
+
+const CONTEXT_PERCENT = { plugin: 'wire', key: 'contextPercent' } as const
+
+const CONTEXT_WARNED = { plugin: 'wire', key: 'contextWarned' } as const
+
+async function resolveActive($: any, cwd: string): Promise<WireActiveRelease> {
+  const releases = await listReleases($, cwd)
+  const now = await $.clock.now()
+  const infos = releases.map(r => ({
+    folder: r.folder,
+    claimedBranch: r.statusText ? claimOf(frontMatterOf(r.statusText).front)?.branch || null : null,
+    daysSinceWrite: r.mtime > 0 ? (now - r.mtime) / DAY_MS : null,
+  }))
+  const branch = await gitBranch($, cwd)
+  const r = resolveActiveRelease(infos, null, branch || null)
+  const contextMd = await readText($, `${cwd}/.wire/engagement/context.md`)
+  const clientName = contextMd ? scalarOf(frontMatterOf(contextMd).front || contextMd, 'client_name') ?? '' : ''
+  return { resolution: r.resolution, release: r.release, candidates: r.candidates, mode: orchestrationModeOf(contextMd), clientName }
+}
+
+async function snapshot($: any, cwd: string, active: WireActiveRelease): Promise<Snapshot> {
+  const text = active.release ? await readText($, `${cwd}/.wire/releases/${active.release}/status.md`) : null
+  const { front, body } = frontMatterOf(text ?? '')
+  return {
+    active, front, body,
+    projectType: scalarOf(front, 'project_type') ?? scalarOf(front, 'release_type'),
+    approved: approvedCount(artifactStatesOf(front)),
+    parked: parkedDecisionsOf(front),
+    claimUser: claimOf(front)?.user ?? null,
+  }
+}
+
+async function refreshStatus($: any): Promise<void> {
+  const active = await activeOf($)
+  if (!active) {
+    return
+  }
+  const cwd = await $.session.cwd()
+  const s = await snapshot($, cwd, active)
+  const { value: percent } = await $.state.get(CONTEXT_PERCENT)
+  try {
+    $.ui.status(statusLine({
+      version: WIRE_VERSION, release: active.release, candidates: active.candidates, projectType: s.projectType,
+      approved: s.approved, parked: s.parked.length, claimUser: s.claimUser,
+      contextPercent: typeof percent === 'number' && percent > 0 ? percent : null,
+    }))
+  } catch {
+    // no surface
+  }
+}
+
+async function nextActionOf($: any, cwd: string, release: string): Promise<string | null> {
+  const script = await frameworkFile($, 'scripts/wire_gate.py')
+  if (!script) {
+    return null
+  }
+  const out = await run1($, ['python3', script, 'next', '--repo', cwd, '--release', release], cwd, 20_000)
+  try {
+    const j = JSON.parse(out)
+    return typeof j.next === 'string' ? j.next : null
+  } catch {
+    return null
+  }
+}
+
+async function composeSection($: any, options: Options, cwd: string, active: WireActiveRelease): Promise<string> {
+  const release = active.release
+  const statusPath = release ? `${cwd}/.wire/releases/${release}/status.md` : ''
+  const decisionsPath = release ? `${cwd}/.wire/releases/${release}/decisions.md` : ''
+  const rulesPath = release ? `${cwd}/.wire/releases/${release}/artifacts/business_rules.yaml` : ''
+  const mtimes = release ? [await mtimeOf($, statusPath), await mtimeOf($, decisionsPath), await mtimeOf($, rulesPath)] : [0, 0, 0]
+  const { value: cached } = await $.state.get(CONTEXT)
+  const hit = cached as WireContextCache | null
+  if (hit && hit.release === release && hit.mtimes.join(',') === mtimes.join(',')) {
+    return hit.text
+  }
+  const releases = await listReleases($, cwd)
+  const s = await snapshot($, cwd, active)
+  const lines = [sessionLine({
+    clientName: active.clientName, release, candidates: active.candidates, projectType: s.projectType,
+    approved: s.approved, parked: s.parked, mode: active.mode, releaseCount: releases.length,
+  })]
+  if (release) {
+    const now = await $.clock.now()
+    lines.push('', releaseContext({
+      release,
+      projectType: s.projectType,
+      profile: scalarOf(s.front, 'build_profile') ?? scalarOf(s.front, 'discovery_profile') ?? scalarOf(s.front, 'migration_profile'),
+      phase: scalarOf(s.front, 'current_phase'),
+      nextAction: await nextActionOf($, cwd, release),
+      parked: s.parked,
+      rulings: rulingsOf(await readText($, decisionsPath)),
+      rules: businessRulesSummary(await readText($, rulesPath), new Date(now).toISOString()),
+      iterations: openIterationsOf(s.body),
+      claim: claimOf(s.front),
+      mode: active.mode,
+      maxLines: typeof options.contextLines === 'number' && options.contextLines > 0 ? options.contextLines : 60,
+    }))
+  }
+  const text = lines.join('\n')
+  await $.state.set(CONTEXT, { text, mtimes, release } satisfies WireContextCache)
+  return text
+}
+
+async function writeModRecord($: any, cwd: string, active: WireActiveRelease): Promise<void> {
+  // /wire:start reads this to say whether the mod is loaded (wire#270 D8).
+  try {
+    const now = await $.clock.now()
+    await $.fs.write(`${cwd}/.wire/local/mod.json`, JSON.stringify({
+      version: WIRE_VERSION, session_id: await sessionIdOf($), loaded_at: new Date(now).toISOString(),
+      release: active.release, mode: active.mode,
+    }))
+  } catch {
+    // .wire/local may not exist; /wire:start then reports the mod as not seen
+  }
+}
+
+async function startContext($: any, options: Options, cwd: string): Promise<void> {
+  if (!(await exists($, `${cwd}/.wire`))) {
+    return
+  }
+  const active = await resolveActive($, cwd)
+  await $.state.set(ACTIVE, active)
+  await refreshStatus($)
+  await writeModRecord($, cwd, active)
+  if (active.release && isOn(options.context, await $.env.get('WIRE_CONTEXT'))) {
+    const nextAction = await nextActionOf($, cwd, active.release)
+    if (nextAction) {
+      try {
+        await $.prompt.suggest({ text: nextAction })
+      } catch {
+        // no prompt box (headless)
+      }
+    }
+  }
+}
+
+async function composePrompt($: any, options: Options, result: any): Promise<any> {
+  if (!isOn(options.context, await $.env.get('WIRE_CONTEXT'))) {
+    return result
+  }
+  const active = await activeOf($)
+  if (!active) {
+    return result
+  }
+  const cwd = await $.session.cwd()
+  const text = await composeSection($, options, cwd, active)
+  return { ...result, sections: [...(result?.sections ?? []), { id: 'wire:release', text, scope: 'session' }] }
+}
+
+async function measureContext($: any, e: any): Promise<void> {
+  const percent = e?.context?.percent
+  if (typeof percent !== 'number') {
+    return
+  }
+  await $.state.set(CONTEXT_PERCENT, percent)
+  await refreshStatus($)
+  const { value: warned } = await $.state.get(CONTEXT_WARNED)
+  if (percent >= CONTEXT_WARN_AT && warned !== true) {
+    await $.state.set(CONTEXT_WARNED, true)
+    toast($, `Context at ${percent}%. /wire-handoff writes a handoff file for the next session; /compact summarises in place.`)
+  }
+}
+
+async function afterStatusWrite($: any, e: any, result: any): Promise<void> {
+  if (/\/status\.md$/.test(String(e.file_path ?? '')) && !result?.deny) {
+    await refreshStatus($)
+  }
+}
+
+const BUILD_SLOTS = { plugin: 'wire', key: 'buildSlots' } as const
+
+const SPEND = { plugin: 'wire', key: 'spend' } as const
+
+async function saveLanes($: any, lanes: WireLane[]): Promise<void> {
+  await $.state.set(LANES, lanes)
+}
+
+async function enforcing($: any, options: Options): Promise<boolean> {
+  if (!isOn(options.enforce, await $.env.get('WIRE_ENFORCE'))) {
+    return false
+  }
+  const active = await activeOf($)
+  return !!active && active.mode !== 'manual'
+}
+
+async function statusFrontOf($: any, cwd: string, release: string | null): Promise<string> {
+  if (!release) {
+    return ''
+  }
+  return frontMatterOf((await readText($, `${cwd}/.wire/releases/${release}/status.md`)) ?? '').front
+}
+
+async function claimHeldHere($: any, cwd: string, release: string | null): Promise<boolean> {
+  const claim = claimOf(await statusFrontOf($, cwd, release))
+  if (!claim) {
+    return false
+  }
+  if (claim.sessionId && claim.sessionId === (await sessionIdOf($))) {
+    return true
+  }
+  return claim.user === (await gitUserName($, cwd))
+}
+
+async function laneOf($: any, agentId: string | null | undefined): Promise<WireLane | null> {
+  if (!agentId) {
+    return null
+  }
+  return (await lanesOf($)).find(l => l.agentId === agentId) ?? null
+}
+
+async function slotsOf($: any): Promise<WireBuildSlot[]> {
+  const { value } = await $.state.get(BUILD_SLOTS)
+  return Array.isArray(value) ? value : []
+}
+
+async function writeRecordDeny($: any, lane: WireLane, cwd: string, filePath: string): Promise<string | null> {
+  const abs = absolutePath(String(filePath), cwd)
+  const real = normalisePath(await realPathOf($, abs))
+  if (isRecordFile(real) || isRecordFile(abs)) {
+    return refusal.singleWriter(lane.label, filePath, lane.stateFile)
+  }
+  if (lane.stateFile && (real === normalisePath(await realPathOf($, lane.stateFile)) || abs === normalisePath(lane.stateFile))) {
+    return null
+  }
+  // decisions.md is the lane's to append to (the lane contract, rule 4).
+  if (lane.release && real === `${cwd}/.wire/releases/${lane.release}/decisions.md`) {
+    return null
+  }
+  // Judged on the real path alone: a symlink into the tree is allowed, one out of it is not.
+  if (lane.owns.length > 0 && !isUnderAny(real, lane.owns)) {
+    return refusal.outsideTree(lane.label, filePath, lane.owns)
+  }
+  return null
+}
+
+async function spendOf($: any, release: string): Promise<WireSpend> {
+  const { value } = await $.state.get(SPEND)
+  const s = value as WireSpend | null
+  return s && s.release === release ? s : { release, bytes: 0, usd: 0, capBreached: false }
+}
+
+async function recordSpend($: any, cwd: string, lane: WireLane, tool: string, bytes: number): Promise<WireSpend | null> {
+  if (!lane.release) {
+    return null
+  }
+  const spend = await spendOf($, lane.release)
+  spend.bytes += bytes
+  spend.usd = Math.round((spend.usd + bytesToUsd(bytes)) * 10_000) / 10_000
+  await $.state.set(SPEND, spend)
+  const now = await $.clock.now()
+  const row = JSON.stringify({ lane: lane.label, tool, bytes, usd: bytesToUsd(bytes), timestamp: new Date(now).toISOString() })
+  const path = `${cwd}/.wire/releases/${lane.release}/lanes/_spend.jsonl`
+  try {
+    const current = (await readText($, path)) ?? ''
+    await $.fs.write(path, `${current}${current && !current.endsWith('\n') ? '\n' : ''}${row}\n`)
+  } catch {
+    // the lanes folder may not exist yet; the state total still holds
+  }
+  return spend
+}
+
+async function raiseBudgetDecision($: any, cwd: string, release: string, spend: WireSpend, cap: number): Promise<void> {
+  const path = `${cwd}/.wire/releases/${release}/status.md`
+  const text = await readText($, path)
+  if (!text) {
+    return
+  }
+  const now = await $.clock.now()
+  const updated = appendParkedDecision(text, {
+    id: nextParkedId(frontMatterOf(text).front),
+    artifact: 'budget',
+    kind: 'budget',
+    question: `Warehouse spend is $${spend.usd.toFixed(2)} against cap:${cap}. Raise the cap, or stop the warehouse work?`,
+    parkedAt: stampOf(now),
+    awaiting: null,
+  })
+  if (typeof updated === 'string') {
+    await $.fs.write(path, updated)
+  }
+}
+
+async function onAgentSpawn($: any, options: Options, e: any, next: any): Promise<any> {
+  const brief = parseLaneBrief(String(e.prompt ?? ''))
+  if (!brief || e.resume || e.workflow) {
+    return next(e)
+  }
+  const cwd = e.cwd ?? (await $.session.cwd())
+  const release = brief.release ?? (await activeOf($))?.release ?? null
+  if (!(await enforcing($, options)) || !(await claimHeldHere($, cwd, release))) {
+    return next(e)
+  }
+  if (brief.missing.length > 0) {
+    return { deny: refusal.missingBrief(brief.label, brief.missing) }
+  }
+  const lanes = await lanesOf($)
+  const { lanesMax } = budgetOf(await statusFrontOf($, cwd, release))
+  if (lanes.length >= lanesMax) {
+    return { deny: refusal.lanesMax(lanesMax, lanes.map(l => l.label)) }
+  }
+  const result = await next(e)
+  if (result?.agentId) {
+    const owns: string[] = []
+    for (const d of brief.owns) {
+      owns.push(normalisePath(await realPathOf($, absolutePath(d, cwd))))
+    }
+    const lane: WireLane = {
+      agentId: result.agentId, label: brief.label, release, tasks: brief.tasks,
+      owns, stateFile: brief.stateFile ? absolutePath(brief.stateFile, cwd) : null,
+      budget: brief.budget, startedAt: await $.clock.now(), stalledAt: null,
+    }
+    await saveLanes($, [...(await lanesOf($)).filter(l => l.agentId !== lane.agentId), lane])
+  }
+  return result
+}
+
+async function onLaneTurnComplete($: any, agentId: string | null): Promise<void> {
+  if (!agentId) {
+    return
+  }
+  const lanes = await lanesOf($)
+  if (lanes.some(l => l.agentId === agentId)) {
+    await saveLanes($, lanes.filter(l => l.agentId !== agentId))
+    await $.state.set(BUILD_SLOTS, (await slotsOf($)).filter(s => s.agentId !== agentId))
+  }
+}
+
+async function denyAgentCall($: any, options: Options, e: any): Promise<string | null> {
+  const lane = await laneOf($, e.agentId)
+  return lane && (await enforcing($, options)) ? refusal.flatLane(lane.label) : null
+}
+
+async function denyWrite($: any, options: Options, e: any): Promise<string | null> {
+  const lane = await laneOf($, e.agentId)
+  if (!lane || !(await enforcing($, options))) {
+    return null
+  }
+  const path = e.file_path ?? e.notebook_path ?? ''
+  return writeRecordDeny($, lane, await $.session.cwd(), String(path))
+}
+
+async function onBash($: any, options: Options, e: any, next: any): Promise<any> {
+  const lane = await laneOf($, e.agentId)
+  if (!lane || !(await enforcing($, options))) {
+    return next(e)
+  }
+  const command = String(e.command ?? '')
+  if (bashWritesRecord(command)) {
+    return { deny: refusal.singleWriter(lane.label, 'status.md or execution_log.md', lane.stateFile) }
+  }
+  const cwd = await $.session.cwd()
+  const { warehouseSpend } = budgetOf(await statusFrontOf($, cwd, lane.release))
+  if (warehouseSpend === 'none' && isDbtWarehouseRun(command)) {
+    return { deny: refusal.warehouseNone(lane.label, 'a dbt build, run, snapshot, seed or test') }
+  }
+  if (!isDbtBuild(command)) {
+    return next(e)
+  }
+  const project = dbtProjectOf(command, lane.release ?? 'default')
+  const now = await $.clock.now()
+  const slots = (await slotsOf($)).filter(s => now - s.heldAt < BUILD_SLOT_MINUTES * 60_000)
+  const held = slots.find(s => s.project === project && s.agentId !== lane.agentId)
+  if (held) {
+    return { deny: refusal.buildSlot(project, held.laneLabel, Math.round((now - held.heldAt) / 60_000)) }
+  }
+  await $.state.set(BUILD_SLOTS, [...slots.filter(s => s.project !== project), { project, agentId: lane.agentId, laneLabel: lane.label, heldAt: now }])
+  try {
+    return await next(e)
+  } finally {
+    await $.state.set(BUILD_SLOTS, (await slotsOf($)).filter(s => !(s.project === project && s.agentId === lane.agentId)))
+  }
+}
+
+async function onWarehouseCall($: any, options: Options, e: any, next: any): Promise<any> {
+  const tool = String(e.tool ?? '')
+  if (!isWarehouseWriteTool(tool)) {
+    return next(e)
+  }
+  const lane = await laneOf($, e.agentId)
+  if (!lane || !(await enforcing($, options))) {
+    return next(e)
+  }
+  const cwd = await $.session.cwd()
+  const { warehouseSpend } = budgetOf(await statusFrontOf($, cwd, lane.release))
+  if (warehouseSpend === 'none') {
+    return { deny: refusal.warehouseNone(lane.label, tool) }
+  }
+  const cap = capOf(warehouseSpend)
+  if (cap !== null && lane.release) {
+    const spend = await spendOf($, lane.release)
+    if (spend.capBreached) {
+      return { deny: refusal.capPassed(spend.usd, cap, lane.release) }
+    }
+  }
+  const result = await next(e)
+  const bytes = bytesBilledOf(result?.text ?? (result?.result ? JSON.stringify(result.result) : ''))
+  const spend = await recordSpend($, cwd, lane, tool, bytes)
+  if (spend && cap !== null && spend.usd > cap && !spend.capBreached && lane.release) {
+    await $.state.set(SPEND, { ...spend, capBreached: true })
+    await raiseBudgetDecision($, cwd, lane.release, spend, cap)
+    toast($, `Warehouse spend for ${lane.release} is $${spend.usd.toFixed(2)}, past cap:${cap}. Parked for the director.`)
+    await appendNote($, `Wire budget: warehouse spend for ${lane.release} has passed cap:${cap} ($${spend.usd.toFixed(2)}). A parked decision has been raised in status.md; the next warehouse call from a lane will be refused until the director rules.`)
+  }
+  return result
+}
+
+async function warnCollision($: any, command: string, args: string): Promise<void> {
+  const active = await activeOf($)
+  if (!active || active.mode === 'manual') {
+    return
+  }
+  const cwd = await $.session.cwd()
+  const release = releaseOf(args) ?? active.release
+  const claim = claimOf(await statusFrontOf($, cwd, release))
+  if (claim && release) {
+    const now = await $.clock.now()
+    const age = minutesSince(claim.lastWrite, now)
+    if (claim.sessionId !== (await sessionIdOf($)) && claim.user !== (await gitUserName($, cwd)) && age <= CLAIM_LIVE_MINUTES) {
+      toast($, `${release} is claimed by ${claim.user} (last write ${Math.max(0, Math.round(age))} min ago). ${command} runs anyway; they may be mid-flight.`)
+    }
+  }
+  const base = command.replace(/^\/wire:/, '').replace(/-(generate|validate|review|lint|publish)$/, '')
+  const owner = (await lanesOf($)).find(l => l.tasks && new RegExp(`(^|[\\s,])${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(-|\\b)`).test(l.tasks))
+  if (owner) {
+    toast($, `${command} touches work lane "${owner.label}" is doing now. Running anyway.`)
+  }
+}
+
+async function liveLaneLabels($: any): Promise<string[]> {
+  return (await lanesOf($)).map(l => l.label)
+}
+
+const BAND_HIDDEN = { plugin: 'wire', key: 'bandHidden' } as const
+
+const DRIFT = { plugin: 'wire', key: 'drift' } as const
+
+async function registerBandCommand($: any): Promise<void> {
+  await $.command.register({ name: 'wire-ran', description: "Wire: the Wire commands this session ran, in full, with result, tokens and cost" })
+}
+
+async function ranCommand($: any): Promise<{ text: string }> {
+  const { value: notRun } = await $.state.get(NOT_RUN)
+  const { value: drift } = await $.state.get(DRIFT)
+  return { text: bandText(await runsOf($), Array.isArray(notRun) ? notRun : [], typeof drift === 'string' ? drift : null) }
+}
+
+async function renderBand($: any, e: any, next: any): Promise<any> {
+  const runs = await runsOf($)
+  const { value: notRun } = await $.state.get(NOT_RUN)
+  const { value: drift } = await $.state.get(DRIFT)
+  const { value: hidden } = await $.state.get(BAND_HIDDEN)
+  const rows = runs.slice(-BAND_MAX_RUNS)
+  const gates: WireNotRun[] = Array.isArray(notRun) ? notRun.slice(-3) : []
+  const hit = typeof drift === 'string' ? drift : null
+  if (e.props.hasSurvey || hidden === true || (rows.length === 0 && gates.length === 0 && !hit)) {
+    return next(e)
+  }
+  const { Box, Button, Text } = $.ui.resolve(e)
+  // Built with the global `h` factory rather than JSX, so this file stays .ts.
+  const children: any[] = [
+    ...rows.map(r => h(Text, { key: r.id, dimColor: r.endedAt !== null, wrap: 'truncate-end' }, runLine(r))),
+    ...gates.map((g, i) => h(Text, { key: `gate-${i}`, wrap: 'truncate-end' }, notRunLine(g))),
+  ]
+  if (hit) {
+    children.push(h(Box, {},
+      h(Text, { wrap: 'truncate-end' }, `Drift: ${hit} `),
+      h(Button, { key: 'dismiss-drift', label: 'Dismiss', onPress: async () => { await $.state.set(DRIFT, null) } })))
+  }
+  children.push(h(Box, {},
+    h(Text, { dimColor: true }, '/wire-ran for the full list '),
+    h(Button, { key: 'hide-band', label: 'Hide', onPress: async () => { await $.state.set(BAND_HIDDEN, true) } })))
+  return h(Box, { flexDirection: 'column' }, ...children)
+}
+
+const TURNS = { plugin: 'wire', key: 'turns' } as const
+
+async function handoffTemplate($: any): Promise<string> {
+  const path = await frameworkFile($, 'TEMPLATES/handoff-template.md')
+  const text = path ? await readText($, path) : null
+  return text?.trim() || HANDOFF_FALLBACK
+}
+
+async function startSession($: any): Promise<void> {
+  await $.command.register({ name: 'wire-handoff', description: "Wire: write a session handoff (built, rulings, state, next command) to the release's lanes folder" })
+  $.clock.every(STALL_CHECK_MS, async () => {
+    try {
+      await checkStalls($)
+    } catch {
+      // the timer is best effort
+    }
+  })
+}
+
+async function checkStalls($: any): Promise<WireLane[]> {
+  const lanes = await lanesOf($)
+  if (lanes.length === 0) {
+    return []
+  }
+  const now = await $.clock.now()
+  const mtimes = new Map<string, number>()
+  const texts = new Map<string, string | null>()
+  for (const l of lanes) {
+    if (l.stateFile) {
+      mtimes.set(l.stateFile, await mtimeOf($, l.stateFile))
+      texts.set(l.stateFile, await readText($, l.stateFile))
+    }
+  }
+  const stalled = stalledLanes(lanes, mtimes, texts, now)
+  for (const l of stalled) {
+    toast($, `Lane "${l.label}" stalled: no state-file write for ${STALL_MINUTES} minutes.`)
+    await appendNote($, stallNote(l))
+  }
+  if (stalled.length > 0) {
+    await saveLanes($, lanes.map(l => (stalled.some(s => s.agentId === l.agentId) ? { ...l, stalledAt: now } : l)))
+  }
+  return stalled
+}
+
+async function onCompact($: any, e: any, next: any): Promise<any> {
+  if (e.agentId) {
+    return next(e)
+  }
+  const cwd = await $.session.cwd()
+  if (!(await exists($, `${cwd}/.wire`))) {
+    return next(e)
+  }
+  const template = await handoffTemplate($)
+  const instructions = e.instructions ? `${e.instructions}\n\n${template}` : template
+  return next({ ...e, instructions })
+}
+
+async function handoffCommand($: any): Promise<{ text: string }> {
+  const active = await activeOf($)
+  const cwd = await $.session.cwd()
+  if (!active?.release) {
+    return { text: 'No active release to write a handoff for. Run /wire:start to pick one.' }
+  }
+  const reply = await $.model.fork({ prompt: await handoffTemplate($) })
+  if (!reply?.isAnswered) {
+    return { text: `No handoff written: ${reply?.reason ?? 'the model did not answer'}.` }
+  }
+  const sid = (await sessionIdOf($)) || 'session'
+  const path = `${cwd}/.wire/releases/${active.release}/lanes/handoff-${sid}.md`
+  const now = await $.clock.now()
+  const header = `# Session handoff — ${active.release}\n\nSession: ${sid}\nWritten: ${new Date(now).toISOString()}\n\n`
+  try {
+    await $.fs.write(path, `${header}${reply.text.trim()}\n`)
+  } catch {
+    return { text: `Could not write ${path}. The handoff:\n\n${reply.text}` }
+  }
+  const u = reply.usage ?? {}
+  const tokens = (u.input_tokens ?? 0) + (u.output_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0)
+  return { text: `Handoff written to ${path} (${tokens} tokens, ${u.cache_read_input_tokens ?? 0} read from cache).` }
+}
+
+async function onMainTurnComplete($: any, options: Options): Promise<void> {
+  const { value: turns } = await $.state.get(TURNS)
+  const n = (typeof turns === 'number' ? turns : 0) + 1
+  await $.state.set(TURNS, n)
+  const watch = options.driftWatch === true || (await $.env.get('WIRE_DRIFT_WATCH')) === 'true'
+  if (!watch || n % DRIFT_EVERY_TURNS !== 0) {
+    return
+  }
+  const { value: percent } = await $.state.get(CONTEXT_PERCENT)
+  if (typeof percent !== 'number' || percent < DRIFT_FROM_PERCENT) {
+    return
+  }
+  const active = await activeOf($)
+  if (!active?.release) {
+    return
+  }
+  try {
+    const cwd = await $.session.cwd()
+    const decisions = await readText($, `${cwd}/.wire/releases/${active.release}/decisions.md`)
+    const reply = await $.model.fork({ prompt: driftPrompt(decisions, null) })
+    if (reply?.isAnswered && !/^\s*none\b/i.test(reply.text)) {
+      const hit = reply.text.trim().split('\n')[0] ?? ''
+      await $.state.set(DRIFT, hit)
+      toast($, `Wire drift watch: ${hit}`)
+      await sendEvent($, options, 'wire_drift_hit', { release: active.release, turn: n })
+    }
+  } catch {
+    // the watch is advisory
+  }
+}
+
+async function autoUpgrade($: any, cwd: string, isInteractive: boolean): Promise<UpgradeReport> {
+  const report: UpgradeReport = { hookRemoved: false, scriptRemoved: false, logsExtended: [], behind: [], heldElsewhere: [], queued: null }
+  if (!(await exists($, `${cwd}/.wire`))) {
+    return report
+  }
+  const settingsPath = `${cwd}/.claude/settings.json`
+  const settingsText = await readText($, settingsPath)
+  if (settingsText !== null) {
+    const { text, removed } = removeSessionCheckHook(settingsText)
+    if (removed) {
+      await $.fs.write(settingsPath, text)
+      report.hookRemoved = true
+      const script = `${cwd}/.claude/hooks/${SESSION_CHECK_SCRIPT}`
+      if (await exists($, script)) {
+        try {
+          const r = await $.process.run(['rm', '-f', script], { cwd, timeoutMs: 3000 })
+          report.scriptRemoved = r.exitCode === 0
+        } catch {
+          report.scriptRemoved = false
+        }
+      }
+    }
+  }
+  const now = await $.clock.now()
+  const me = await gitUserName($, cwd)
+  const sid = await sessionIdOf($)
+  for (const rel of await listReleases($, cwd)) {
+    const front = frontMatterOf(rel.statusText ?? '').front
+    const recorded = scalarOf(front, 'wire_plugin_version')
+    // Absent means never upgraded, whatever the plugin version reads (the
+    // source tree's placeholder included); present is compared.
+    if (recorded === null || compareVersions(recorded, WIRE_VERSION) < 0) {
+      report.behind.push({ release: rel.folder, version: recorded ?? 'none' })
+    }
+    const claim = claimOf(front)
+    const heldElsewhere = !!claim && claim.sessionId !== sid && claim.user !== me && minutesSince(claim.lastWrite, now) <= CLAIM_LIVE_MINUTES
+    if (heldElsewhere) {
+      if (report.behind.some(b => b.release === rel.folder)) {
+        report.heldElsewhere.push(rel.folder)
+      }
+      continue
+    }
+    const logPath = `${cwd}/.wire/releases/${rel.folder}/execution_log.md`
+    const log = await readText($, logPath)
+    if (log !== null) {
+      const extended = extendLogHeader(log)
+      if (extended !== null) {
+        await $.fs.write(logPath, extended)
+        report.logsExtended.push(`.wire/releases/${rel.folder}/execution_log.md`)
+      }
+    }
+  }
+  // Queue the real command for the releases behind, once per repository per
+  // plugin version. Not in a headless session: a queued turn there would run
+  // with nobody to answer the confirmation.
+  const toQueue = report.behind.map(b => b.release).filter(r => !report.heldElsewhere.includes(r))
+  if (toQueue.length > 0 && isInteractive) {
+    let marks: Record<string, string> = {}
+    try {
+      const v = await $.store.get(QUEUED_STORE_KEY)
+      marks = v && typeof v === 'object' ? (v as Record<string, string>) : {}
+    } catch {
+      marks = {}
+    }
+    if (marks[cwd] !== WIRE_VERSION) {
+      const prompt = upgradePrompt(toQueue)
+      try {
+        // A command is run as one, not submitted as prompt text (the engine
+        // refuses a submitted text that starts with `/`).
+        await $.command.run({ command: 'wire:upgrade', args: `--from-mod ${toQueue.join(' ')}` })
+        report.queued = prompt
+        await $.store.set(QUEUED_STORE_KEY, { ...marks, [cwd]: WIRE_VERSION })
+      } catch {
+        report.queued = null
+      }
+    }
+  }
+  const note = upgradeNote(report, WIRE_VERSION)
+  if (note) {
+    await appendNote($, note)
+    // A release behind the plugin is said in the note alone: a toast at every
+    // session start would nag until someone runs the command.
+    if (report.hookRemoved || report.logsExtended.length > 0) {
+      toast($, `Wire upgrade: ${[report.hookRemoved ? 'session-check hook removed' : '', report.logsExtended.length ? `${report.logsExtended.length} log header(s) extended` : ''].filter(Boolean).join(', ')}. Commit the change.`)
+    }
+  }
+  return report
+}
+
+async function conventionFor($: any, cwd: string, domain: LintDomain): Promise<string | null> {
+  const own = `${cwd}/.wire/conventions/${domain}.yml`
+  if (await exists($, own)) {
+    return own
+  }
+  return frameworkFile($, `conventions/${domain}.yml`)
+}
+
+async function lintFile($: any, cwd: string, path: string, agentId: string | null): Promise<Finding[]> {
+  let text: string | null = null
+  try {
+    text = String(await $.fs.read(path))
+  } catch {
+    return []
+  }
+  const domain = domainOf(path, text)
+  if (!domain) {
+    return []
+  }
+  const script = await frameworkFile($, 'scripts/lint_conventions.py')
+  const convention = await conventionFor($, cwd, domain)
+  if (!script || !convention) {
+    return []
+  }
+  let out = ''
+  try {
+    const r = await $.process.run(['python3', script, '--domain', domain, '--convention', convention, '--path', path, '--format', 'json'], { cwd, timeoutMs: 30_000 })
+    out = String(r.stdout ?? '')
+  } catch {
+    return []
+  }
+  const findings = findingsOf(out, path)
+  if (findings.length > 0) {
+    toast($, `Wire conventions: ${findings.length} finding${findings.length === 1 ? '' : 's'} in ${path.split('/').pop()}`)
+    await appendNote($, findingsNote(domain, path, findings), agentId)
+  }
+  return findings
+}
+
+/** After a write tool ran and did not fail: lint the file it wrote. Never changes the result. */
+async function afterWrite($: any, options: Options, e: any, result: any): Promise<void> {
+  if (result?.deny || result?.isError || !isOn(options.lintOnWrite, await $.env.get('WIRE_LINT'))) {
+    return
+  }
+  try {
+    const cwd = await $.session.cwd()
+    const path = absolutePath(String(e.file_path ?? ''), cwd)
+    if (path.startsWith(`${cwd}/`)) {
+      await lintFile($, cwd, path, e.agentId ?? null)
+    }
+  } catch {
+    // lint never changes the write's result
+  }
+}
+
+/** The gate's answer for one command, from wire_gate.py; null when it cannot be asked. */
+async function gateCheck($: any, cwd: string, release: string, command: string): Promise<{ decision: string; reason: string } | null> {
+  const script = await frameworkFile($, 'scripts/wire_gate.py')
+  if (!script) {
+    return null
+  }
+  const out = await run1($, ['python3', script, 'gate', '--repo', cwd, '--release', release, '--command', command.replace(/^\/wire:/, '')], cwd, 20_000)
+  try {
+    const j = JSON.parse(out)
+    return typeof j.decision === 'string' ? { decision: j.decision, reason: String(j.reason ?? '') } : null
+  } catch {
+    return null
+  }
+}
+
+/** The deny for a gated command whose blocking precondition is unmet, or null. */
+async function hardGate($: any, options: Options, command: string, args: string): Promise<string | null> {
+  if (!isGated(command) || hasOverride(args) || !isOn(options.enforce, await $.env.get('WIRE_ENFORCE'))) {
+    return null
+  }
+  const active = await activeOf($)
+  if (!active || active.mode === 'manual') {
+    return null
+  }
+  const release = releaseOf(args) ?? active.release
+  if (!release) {
+    return null
+  }
+  const verdict = await gateCheck($, await $.session.cwd(), release, command)
+  return verdict?.decision === 'refuse' ? gateDeny(command, release, verdict.reason) : null
+}
+
+async function releaseFor($: any, named: string | null): Promise<string | { error: string }> {
+  if (named) {
+    return named
+  }
+  const active = await activeOf($)
+  if (active?.release) {
+    return active.release
+  }
+  return { error: active && active.candidates.length > 1
+    ? `More than one release is active (${active.candidates.join(', ')}); pass --release <folder>.`
+    : 'No active release; pass --release <folder>.' }
+}
+
+async function checkStatusFile($: any, cwd: string, release: string): Promise<string> {
+  const script = await frameworkFile($, 'scripts/status_file.py')
+  if (!script) {
+    return ''
+  }
+  try {
+    const r = await $.process.run(['python3', script, 'check', `${cwd}/.wire/releases/${release}`], { cwd, timeoutMs: 20_000 })
+    return r.exitCode === 0 ? '' : ` status_file.py check reports: ${String(r.stdout ?? '').trim()}`
+  } catch {
+    return ''
+  }
+}
+
+async function registerReviewCommands($: any): Promise<void> {
+  await $.command.register({ name: 'wire-approve', description: 'Wire: record a review approval on an artifact in status.md, no model turn', argumentHint: '<artifact> [--as internal|client] [--evidence <url>] [--final]' })
+  await $.command.register({ name: 'wire-park', description: 'Wire: park a decision for the release director in status.md, no model turn', argumentHint: '<artifact> "<question>" [--awaiting <who>]' })
+}
+
+async function approveCommand($: any, args: string): Promise<{ text: string }> {
+  const parsed = parseApproveArgs(args)
+  if ('error' in parsed) {
+    return { text: parsed.error }
+  }
+  const release = await releaseFor($, parsed.release)
+  if (typeof release !== 'string') {
+    return { text: release.error }
+  }
+  const cwd = await $.session.cwd()
+  const path = `${cwd}/.wire/releases/${release}/status.md`
+  const text = await readText($, path)
+  if (text === null) {
+    return { text: `No status.md at ${path}.` }
+  }
+  const now = await $.clock.now()
+  const event: ReviewEvent = { actor: await gitUserName($, cwd), date: stampOf(now).slice(0, 10), kind: parsed.as, evidence: parsed.evidence, outcome: 'approved' }
+  const updated = appendReviewEvent(text, parsed.artifact, event, parsed.final)
+  if (typeof updated !== 'string') {
+    return { text: updated.error }
+  }
+  await $.fs.write(path, updated)
+  const check = await checkStatusFile($, cwd, release)
+  return { text: `Recorded ${parsed.as} approval of ${parsed.artifact} in ${release} by ${event.actor} (${event.date})${parsed.final ? '; review: approved' : ''}.${check}` }
+}
+
+async function parkCommand($: any, args: string): Promise<{ text: string }> {
+  const parsed = parseParkArgs(args)
+  if ('error' in parsed) {
+    return { text: parsed.error }
+  }
+  const release = await releaseFor($, parsed.release)
+  if (typeof release !== 'string') {
+    return { text: release.error }
+  }
+  const cwd = await $.session.cwd()
+  const path = `${cwd}/.wire/releases/${release}/status.md`
+  const text = await readText($, path)
+  if (text === null) {
+    return { text: `No status.md at ${path}.` }
+  }
+  const now = await $.clock.now()
+  const id = nextParkedId(frontMatterOf(text).front)
+  const updated = appendParkedDecision(text, { id, artifact: parsed.artifact, kind: 'ruling', question: parsed.question, parkedAt: stampOf(now), awaiting: parsed.awaiting })
+  if (typeof updated !== 'string') {
+    return { text: updated.error }
+  }
+  await $.fs.write(path, updated)
+  const check = await checkStatusFile($, cwd, release)
+  return { text: `Parked ${id} on ${parsed.artifact} in ${release}${parsed.awaiting ? `, awaiting ${parsed.awaiting}` : ''}: ${parsed.question}${check}` }
+}
+
+const DAY_MS = 24 * 60 * 60_000
+
+const CONTEXT_WARN_AT = 85
+
+type Snapshot = {
+  active: WireActiveRelease
+  front: string
+  body: string
+  projectType: string | null
+  approved: number
+  parked: ReturnType<typeof parkedDecisionsOf>
+  claimUser: string | null
+}
+
+const CLAIM_LIVE_MINUTES = 30

@@ -6,9 +6,6 @@
 // findings, nothing shown. The skills keep their own call for files written
 // another way.
 
-import { type Options, appendNote, exists, frameworkFile, isOn, toast } from './host'
-import { absolutePath } from './lanes'
-
 export type LintDomain = 'dbt' | 'lookml' | 'dbtcharts' | 'cube' | 'airflow'
 
 /** The convention domain a written file belongs to, or null. `text` decides the Cube case. */
@@ -56,59 +53,4 @@ export function findingsNote(domain: LintDomain, file: string, findings: readonl
     lines.push(`- (${findings.length - shown.length} more)`)
   }
   return lines.join('\n')
-}
-
-async function conventionFor($: any, cwd: string, domain: LintDomain): Promise<string | null> {
-  const own = `${cwd}/.wire/conventions/${domain}.yml`
-  if (await exists($, own)) {
-    return own
-  }
-  return frameworkFile($, `conventions/${domain}.yml`)
-}
-
-export async function lintFile($: any, cwd: string, path: string, agentId: string | null): Promise<Finding[]> {
-  let text: string | null = null
-  try {
-    text = String(await $.fs.read(path))
-  } catch {
-    return []
-  }
-  const domain = domainOf(path, text)
-  if (!domain) {
-    return []
-  }
-  const script = await frameworkFile($, 'scripts/lint_conventions.py')
-  const convention = await conventionFor($, cwd, domain)
-  if (!script || !convention) {
-    return []
-  }
-  let out = ''
-  try {
-    const r = await $.process.run(['python3', script, '--domain', domain, '--convention', convention, '--path', path, '--format', 'json'], { cwd, timeoutMs: 30_000 })
-    out = String(r.stdout ?? '')
-  } catch {
-    return []
-  }
-  const findings = findingsOf(out, path)
-  if (findings.length > 0) {
-    toast($, `Wire conventions: ${findings.length} finding${findings.length === 1 ? '' : 's'} in ${path.split('/').pop()}`)
-    await appendNote($, findingsNote(domain, path, findings), agentId)
-  }
-  return findings
-}
-
-/** After a write tool ran and did not fail: lint the file it wrote. Never changes the result. */
-export async function afterWrite($: any, options: Options, e: any, result: any): Promise<void> {
-  if (result?.deny || result?.isError || !isOn(options.lintOnWrite, await $.env.get('WIRE_LINT'))) {
-    return
-  }
-  try {
-    const cwd = await $.session.cwd()
-    const path = absolutePath(String(e.file_path ?? ''), cwd)
-    if (path.startsWith(`${cwd}/`)) {
-      await lintFile($, cwd, path, e.agentId ?? null)
-    }
-  } catch {
-    // lint never changes the write's result
-  }
 }

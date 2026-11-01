@@ -6,18 +6,8 @@
 // Rule 7 (director_operating_model.md): a reply that ran Wire commands ends
 // with a `Ran:` line naming each in full. checkRanLine says which of a turn's
 // runs the reply left out; register.ts marks them and sends the telemetry.
-
 import type { WireNotRun, WireRun } from '../types'
-import { MAX_RUNS,  } from './host'
-const BAND_HIDDEN = { plugin: 'wire', key: 'bandHidden' } as const
-const DRIFT = { plugin: 'wire', key: 'drift' } as const
-const NOT_RUN = { plugin: 'wire', key: 'notRun' } as const
-const RUNS = { plugin: 'wire', key: 'runs' } as const
 
-async function runsOf($: any): Promise<WireRun[]> {
-  const { value } = await $.state.get(RUNS)
-  return Array.isArray(value) ? value : []
-}
 import { computeCost, totalTokens } from './logic'
 
 export const BAND_MAX_RUNS = 8
@@ -98,49 +88,4 @@ export function blockedRowsOf(logText: string | null, notBefore: string): WireNo
     out.push({ command, gate })
   }
   return out
-}
-
-export async function registerBandCommand($: any): Promise<void> {
-  await $.command.register({ name: 'wire-ran', description: "Wire: the Wire commands this session ran, in full, with result, tokens and cost" })
-}
-
-export async function ranCommand($: any): Promise<{ text: string }> {
-  const { value: notRun } = await $.state.get(NOT_RUN)
-  const { value: drift } = await $.state.get(DRIFT)
-  return { text: bandText(await runsOf($), Array.isArray(notRun) ? notRun : [], typeof drift === 'string' ? drift : null) }
-}
-
-/** The AbovePrompt tree, or next(e) when there is nothing to show. */
-export async function renderBand($: any, e: any, next: any): Promise<any> {
-  const runs = await runsOf($)
-  const { value: notRun } = await $.state.get(NOT_RUN)
-  const { value: drift } = await $.state.get(DRIFT)
-  const { value: hidden } = await $.state.get(BAND_HIDDEN)
-  const rows = runs.slice(-BAND_MAX_RUNS)
-  const gates: WireNotRun[] = Array.isArray(notRun) ? notRun.slice(-3) : []
-  const hit = typeof drift === 'string' ? drift : null
-  if (e.props.hasSurvey || hidden === true || (rows.length === 0 && gates.length === 0 && !hit)) {
-    return next(e)
-  }
-  const { Box, Button, Text } = $.ui.resolve(e)
-  return (
-    <Box flexDirection="column">
-      {rows.map(r => (
-        <Text key={r.id} dimColor={r.endedAt !== null} wrap="truncate-end">{runLine(r)}</Text>
-      ))}
-      {gates.map((g, i) => (
-        <Text key={`gate-${i}`} wrap="truncate-end">{notRunLine(g)}</Text>
-      ))}
-      {hit ? (
-        <Box>
-          <Text wrap="truncate-end">Drift: {hit} </Text>
-          <Button key="dismiss-drift" label="Dismiss" onPress={async () => { await $.state.set(DRIFT, null) }} />
-        </Box>
-      ) : null}
-      <Box>
-        <Text dimColor>/wire-ran for the full list </Text>
-        <Button key="hide-band" label="Hide" onPress={async () => { await $.state.set(BAND_HIDDEN, true) }} />
-      </Box>
-    </Box>
-  )
 }

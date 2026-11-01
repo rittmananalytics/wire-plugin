@@ -9,6 +9,16 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.5.3: The Wire mod loads on Claude Code 2.1.287 again
+
+**Released**: November 2026
+
+**What went wrong.** A host running Claude Code 2.1.287 refused the 4.5.0 to 4.5.2 hooks module: its validator follows `$` only into functions declared in the hook's own file, and the mod's concern files took `$` across imports. On that host the mod did not load at all: no telemetry, no execution-log metrics, no release context, no enforcement. Claude Code 2.1.316 allows the cross-file layout, which is why local validation and CI passed. The CI pin bump in 4.5.0 was the wrong fix.
+
+**The fix.** Every function that takes `$` now lives in `register.ts`; the concern files hold only pure logic. Behaviour is unchanged and the same 139 plugin tests pass. The mod check now fails on a `$` parameter outside `register.ts` and validates the module with Claude Code 2.1.287 as well as the current version. 2.1.287 is the minimum again, and `/wire:start` says so when the mod is not loaded.
+
+**If you saw the error.** Update the plugin and the mod loads on the next session; nothing else needs doing. The hosted agents pick it up when their plugin pin moves.
+
 ## v4.5.2: Releases behind the plugin are upgraded through the real command
 
 **Released**: November 2026

@@ -19,11 +19,6 @@
 // plugin version (a $.store marker), only in an interactive session, and never
 // for a release another person holds with a live claim. The log header is left
 // alone for such a release too.
-
-import { WIRE_VERSION } from './constants'
-import { appendNote, exists, gitUserName, listReleases, readText, sessionIdOf, toast } from './host'
-import { claimOf, frontMatterOf, minutesSince, scalarOf } from './release'
-
 export const SESSION_CHECK_SCRIPT = 'wire-session-check.sh'
 export const LOG_HEADER_9 = '| Timestamp | Command | Result | Detail | By | Session | Duration | Tokens | Cost (USD) |'
 export const LOG_SEPARATOR_9 = '|-----------|---------|--------|--------|----|---------|----------|--------|------------|'
@@ -159,94 +154,4 @@ export function upgradeNote(r: UpgradeReport, pluginVersion: string): string | n
     ? 'Wire upgrade: the mod applied the safe steps for this plugin version. Commit these changes with your next pull request.'
     : 'Wire upgrade: nothing was changed automatically.'
   return [head, ...lines].join('\n')
-}
-
-/** Runs the automatic upgrade for the repository at `cwd` and reports what it did. */
-export async function autoUpgrade($: any, cwd: string, isInteractive: boolean): Promise<UpgradeReport> {
-  const report: UpgradeReport = { hookRemoved: false, scriptRemoved: false, logsExtended: [], behind: [], heldElsewhere: [], queued: null }
-  if (!(await exists($, `${cwd}/.wire`))) {
-    return report
-  }
-  const settingsPath = `${cwd}/.claude/settings.json`
-  const settingsText = await readText($, settingsPath)
-  if (settingsText !== null) {
-    const { text, removed } = removeSessionCheckHook(settingsText)
-    if (removed) {
-      await $.fs.write(settingsPath, text)
-      report.hookRemoved = true
-      const script = `${cwd}/.claude/hooks/${SESSION_CHECK_SCRIPT}`
-      if (await exists($, script)) {
-        try {
-          const r = await $.process.run(['rm', '-f', script], { cwd, timeoutMs: 3000 })
-          report.scriptRemoved = r.exitCode === 0
-        } catch {
-          report.scriptRemoved = false
-        }
-      }
-    }
-  }
-  const now = await $.clock.now()
-  const me = await gitUserName($, cwd)
-  const sid = await sessionIdOf($)
-  for (const rel of await listReleases($, cwd)) {
-    const front = frontMatterOf(rel.statusText ?? '').front
-    const recorded = scalarOf(front, 'wire_plugin_version')
-    // Absent means never upgraded, whatever the plugin version reads (the
-    // source tree's placeholder included); present is compared.
-    if (recorded === null || compareVersions(recorded, WIRE_VERSION) < 0) {
-      report.behind.push({ release: rel.folder, version: recorded ?? 'none' })
-    }
-    const claim = claimOf(front)
-    const heldElsewhere = !!claim && claim.sessionId !== sid && claim.user !== me && minutesSince(claim.lastWrite, now) <= CLAIM_LIVE_MINUTES
-    if (heldElsewhere) {
-      if (report.behind.some(b => b.release === rel.folder)) {
-        report.heldElsewhere.push(rel.folder)
-      }
-      continue
-    }
-    const logPath = `${cwd}/.wire/releases/${rel.folder}/execution_log.md`
-    const log = await readText($, logPath)
-    if (log !== null) {
-      const extended = extendLogHeader(log)
-      if (extended !== null) {
-        await $.fs.write(logPath, extended)
-        report.logsExtended.push(`.wire/releases/${rel.folder}/execution_log.md`)
-      }
-    }
-  }
-  // Queue the real command for the releases behind, once per repository per
-  // plugin version. Not in a headless session: a queued turn there would run
-  // with nobody to answer the confirmation.
-  const toQueue = report.behind.map(b => b.release).filter(r => !report.heldElsewhere.includes(r))
-  if (toQueue.length > 0 && isInteractive) {
-    let marks: Record<string, string> = {}
-    try {
-      const v = await $.store.get(QUEUED_STORE_KEY)
-      marks = v && typeof v === 'object' ? (v as Record<string, string>) : {}
-    } catch {
-      marks = {}
-    }
-    if (marks[cwd] !== WIRE_VERSION) {
-      const prompt = upgradePrompt(toQueue)
-      try {
-        // A command is run as one, not submitted as prompt text (the engine
-        // refuses a submitted text that starts with `/`).
-        await $.command.run({ command: 'wire:upgrade', args: `--from-mod ${toQueue.join(' ')}` })
-        report.queued = prompt
-        await $.store.set(QUEUED_STORE_KEY, { ...marks, [cwd]: WIRE_VERSION })
-      } catch {
-        report.queued = null
-      }
-    }
-  }
-  const note = upgradeNote(report, WIRE_VERSION)
-  if (note) {
-    await appendNote($, note)
-    // A release behind the plugin is said in the note alone: a toast at every
-    // session start would nag until someone runs the command.
-    if (report.hookRemoved || report.logsExtended.length > 0) {
-      toast($, `Wire upgrade: ${[report.hookRemoved ? 'session-check hook removed' : '', report.logsExtended.length ? `${report.logsExtended.length} log header(s) extended` : ''].filter(Boolean).join(', ')}. Commit the change.`)
-    }
-  }
-  return report
 }

@@ -82,7 +82,7 @@ Both are idempotent, so a repository that is current sees nothing. When somethin
 
 ## How `/wire:start` knows the mod is loaded
 
-At session start the mod writes `.wire/local/mod.json` with its version, the session id, the resolved release and the mode. `/wire:start` reads it and reports "Wire mod not loaded" with the likely reason (Claude Code older than 2.1.316, which the mod's multi-file layout needs; hooks disabled; a managed-settings policy) when the record is absent or from another session.
+At session start the mod writes `.wire/local/mod.json` with its version, the session id, the resolved release and the mode. `/wire:start` reads it and reports "Wire mod not loaded" with the likely reason (Claude Code older than 2.1.287; hooks disabled; a managed-settings policy) when the record is absent or from another session.
 
 ## Turning parts off
 
