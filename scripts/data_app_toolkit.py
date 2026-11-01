@@ -120,13 +120,22 @@ def title_tag(text: str) -> str | None:
 
 
 def strip_tags(text: str) -> str:
-    """The file without the publish tag lines, for comparison."""
+    """The file without the publish tag lines, for comparison. The publisher
+    (1.2.0) writes a blank ` *` separator line before its tags; that line
+    goes too, or a copy that was only published reads as an edit."""
     span = header_span(text)
     if not span:
         return text
     head = text[span[0]:span[1]]
-    kept = [l for l in head.splitlines(keepends=True)
-            if not re.match(r"^\s*\*?\s*(" + "|".join(re.escape(t) for t in PUBLISH_TAGS) + r")\b", l)]
+    tag_re = re.compile(r"^\s*\*?\s*(" + "|".join(re.escape(t) for t in PUBLISH_TAGS) + r")\b")
+    lines = head.splitlines(keepends=True)
+    kept = []
+    for i, line in enumerate(lines):
+        if tag_re.match(line):
+            continue
+        if line.strip() == "*" and any(tag_re.match(l) for l in lines[i + 1:]):
+            continue
+        kept.append(line)
     return text[:span[0]] + "".join(kept) + text[span[1]:]
 
 

@@ -9,6 +9,14 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.4.7: Data app push after a publish
+
+**Released**: November 2026
+
+**A push after a publish was refused.** Google's publisher writes a blank ` *` separator line into the app's header before its tags. `data_app_toolkit.py push` compared the toolkit copy with the last push after removing the tag lines but not that separator, so every push after a first publish was refused as an edit made in the toolkit, and a re-publish ran on the previous copy. The separator is now removed with the tags; the stand-in publisher in the test fixture writes the header the way the real one does, and the test covers a push after a publish.
+
+**The worked example carries the Wire logo.** The tutorial app has the wordmark inline as SVG in the hero band (a tile cannot load images from another host), and the four screenshots are refreshed.
+
 ## v4.4.6: Looker Data Apps (experimental)
 
 **Released**: November 2026
