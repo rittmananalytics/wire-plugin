@@ -321,7 +321,7 @@ session's start, output one line:
 
 ```
 ⚠️  Wire mod not loaded: enforcement, release context and metrics are off this session.
-    Likely cause: Claude Code older than 2.1.287, hooks disabled (disableAllHooks or --safe-mode),
+    Likely cause: Claude Code older than 2.1.316, hooks disabled (disableAllHooks or --safe-mode),
     or a managed-settings policy (allowManagedModsOnly). Commands still run; the lane rules are conventions.
 ```
 
