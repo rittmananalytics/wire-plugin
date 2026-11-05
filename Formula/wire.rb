@@ -9,16 +9,16 @@
 #
 # The formula installs the packaged CLI and framework under libexec, a Python
 # virtualenv with PyYAML (the resolver's one dependency), and the `wire`
-# launcher. It does not install codex or claude; `wire doctor` says which are
-# present.
+# launcher, and on a Mac the standalone agent (wire-agent). It does not
+# install OpenAI's codex or Claude Code; `wire doctor` says which are present.
 
 class Wire < Formula
   include Language::Python::Virtualenv
 
   desc "Wire Framework CLI: the release loop for data platform engagements (experimental)"
   homepage "https://github.com/rittmananalytics/wire"
-  url "https://github.com/rittmananalytics/wire-plugin/releases/download/v5.0.0-alpha.1/wire-cli-5.0.0-alpha.1.tar.gz"
-  sha256 "311307e65f11bc868fea43847359200ed51fa06124c6bd27ccc1d7972c4212b0"
+  url "https://github.com/rittmananalytics/wire-plugin/releases/download/v5.0.0-alpha.2/wire-cli-5.0.0-alpha.2.tar.gz"
+  sha256 "66a79f6f0747f77c1591425a1dc860e0b62e132f3b34e0f8f93024e8adad5546"
   license "FSL-1.1-ALv2"
 
   depends_on "python@3.12"
@@ -28,10 +28,38 @@ class Wire < Formula
     sha256 "d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e"
   end
 
+  # One block per Mac chip. The release step removes a block when the release
+  # ships no agent for that chip, and the formula then installs the CLI only there.
+  # >>> wire-agent-darwin-arm64
+  on_macos do
+    on_arm do
+      resource "wire-agent" do
+        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v5.0.0-alpha.2/wire-agent-5.0.0-alpha.2-darwin-arm64.tar.gz"
+        sha256 "891b26b86d55101977c0f90bf3af1c43cc7c34b99a4a71234275cdc695e9a300"
+      end
+    end
+  end
+  # <<< wire-agent-darwin-arm64
+  # >>> wire-agent-darwin-x86_64
+  on_macos do
+    on_intel do
+      resource "wire-agent" do
+        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v5.0.0-alpha.2/wire-agent-5.0.0-alpha.2-darwin-x86_64.tar.gz"
+        sha256 "f4dcafde509fb87498cdedff7cda0cee12d27c3add641ff5474cf6f2f0d182f5"
+      end
+    end
+  end
+  # <<< wire-agent-darwin-x86_64
+
   def install
     venv = virtualenv_create(libexec/"venv", "python3.12")
-    venv.pip_install resources
+    venv.pip_install resource("pyyaml")
     (libexec/"wire").install Dir["*"]
+    if resources.map(&:name).include?("wire-agent")
+      # the standalone agent (Codex with Wire's changes; LICENSE, NOTICE and
+      # WIRE-CHANGES.txt travel with it), where the CLI looks for it
+      resource("wire-agent").stage { (libexec/"wire/bin").install Dir["*"] }
+    end
     (bin/"wire").write <<~EOS
       #!/bin/sh
       exec "#{libexec}/venv/bin/python" "#{libexec}/wire/cli/wire.py" "$@"
@@ -40,7 +68,8 @@ class Wire < Formula
 
   def caveats
     <<~EOS
-      Wire runs its steps through an agent harness you install separately:
+      Wire runs its steps through an agent harness: the bundled wire-agent on
+      a Mac, or one you install:
         codex   npm install -g @openai/codex
         claude  https://claude.com/claude-code
       Keys go in ~/.wire/secrets.env (see wire/cli/README.md). Run `wire doctor`.
