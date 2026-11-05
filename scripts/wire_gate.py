@@ -53,9 +53,19 @@ def _status_and_decisions(repo, release, split_front_matter, read_rulings):
     status_path = rel_dir / "status.md"
     if not status_path.is_file():
         raise FileNotFoundError(f"no status.md for release {release!r}")
-    status, _body = split_front_matter(status_path.read_text(encoding="utf-8", errors="replace"))
+    text = status_path.read_text(encoding="utf-8", errors="replace")
+    status, body = split_front_matter(text)
     if status.get("_error"):
         raise ValueError(status["_error"])
+    if not status.get("artifacts"):
+        # A 3.x status keeps the artifacts in a fenced block in the body (Studio's
+        # load_release reads them the same way); without this every artifact
+        # would read as not started.
+        from wire_studio.record import artifacts_from_body  # noqa: E402
+        from_body = artifacts_from_body(body)
+        if from_body:
+            status = dict(status)
+            status["artifacts"] = from_body
     _rulings, decisions_md = read_rulings(rel_dir)
     return status, decisions_md
 

@@ -79,11 +79,12 @@ function setNav(view) {
 }
 
 const TOKEN = meta("studio-token");
-async function runInClaude(text, out) {
+async function runInClaude(text, out, target) {
   if (HOSTED) return;
-  out.replaceChildren(h("span", { class: "muted" }, "Opening Claude Code…"));
+  out.replaceChildren(h("span", { class: "muted" }, target === "wire" ? "Opening the Wire CLI…" : "Opening Claude Code…"));
   try {
-    const r = await fetch(BASE + "api/launch", { method: "POST", headers: { "Content-Type": "application/json", "X-Studio-Token": TOKEN }, body: JSON.stringify({ directive: text }) });
+    const payload = target === "wire" ? { directive: text, target: "wire" } : { directive: text };
+    const r = await fetch(BASE + "api/launch", { method: "POST", headers: { "Content-Type": "application/json", "X-Studio-Token": TOKEN }, body: JSON.stringify(payload) });
     const body = await r.json();
     if (!r.ok) throw new Error(body.error || r.statusText);
     out.replaceChildren(h("p", { class: body.launched ? "muted" : "error", style: "margin:8px 0 0" }, body.message),
@@ -105,6 +106,9 @@ function directiveBox(text) {
     h("div", { class: "row", style: "margin-top:10px" },
       h("button", { type: "button", class: "btn", onclick: () => runInClaude(ta.value, out), disabled: launchable ? null : true,
                     title: launchable ? "Opens a new terminal running claude with this directive" : "claude is not on PATH" }, "Run in Claude Code"),
+      summary && summary.launch && summary.launch.wire_on_path
+        ? h("button", { type: "button", class: "btn ghost", onclick: () => runInClaude(ta.value, out, "wire"),
+                        title: "Opens a new terminal running the Wire CLI session with this directive" }, "Run in Wire CLI") : null,
       h("button", { type: "button", class: "btn ghost", onclick: () => copy(ta.value) }, "Copy")),
     claim, out);
 }

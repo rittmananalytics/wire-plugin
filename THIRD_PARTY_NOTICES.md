@@ -53,7 +53,17 @@ add-analytics-instrumentation, analyze-account-health, analyze-ai-topics, analyz
 
 Product names and logos in the kick-off deck (`decks/kickoff/assets/`), including partner badges, are trademarks of their owners and are used to describe Rittman Analytics' partnerships. No licence to them is granted.
 
-## 2. Not shipped: installed or loaded at run time
+## 2. Distributed separately: the Wire CLI's standalone agent
+
+Experimental (wire#408). Not part of the plugin or extension packages. Published as release assets of the Wire CLI on `rittmananalytics/wire-plugin`.
+
+| Component | Built from | Copyright | Licence |
+|---|---|---|---|
+| `wire-agent`: OpenAI Codex CLI with Wire branding | https://github.com/openai/codex, forked at https://github.com/rittmananalytics/codex (branch `wire/brand-<codex version>`, cut from the upstream release tag) | Copyright 2025 OpenAI; changes by Rittman Analytics Ltd | Apache License 2.0 (`third_party/licenses/openai-codex.Apache-2.0.txt`, upstream NOTICE in `third_party/licenses/openai-codex.NOTICE.txt`) |
+
+Each `wire-agent` archive carries the upstream `LICENSE`, the upstream `NOTICE` and `WIRE-CHANGES.txt`, which states the files Rittman Analytics changed (Apache License 2.0, section 4). The changes are branding only: the welcome screen and the session title. "OpenAI" and "Codex" are names of OpenAI's company and software, used to say what the agent is built on; no endorsement by OpenAI is implied. The binary also contains the Rust crates Codex depends on, under their own licences (mostly MIT and Apache-2.0); Codex's NOTICE records the code it derives from Ratatui.
+
+## 3. Not shipped: installed or loaded at run time
 
 These are not part of the Wire packages. Wire's instructions install or load them on the user's machine, under their own licences.
 
@@ -77,3 +87,6 @@ These are not part of the Wire packages. Wire's instructions install or load the
 | vis-network (unpkg) | 9.1.2 | Apache-2.0 OR MIT |
 | Font Awesome Free (cdnjs) | 5.15.4 | CC-BY-4.0 (icons), OFL-1.1 (fonts), MIT (code) |
 | Inter, IBM Plex Mono, Lato, Roboto (Google Fonts) | | OFL-1.1 |
+| OpenAI Codex CLI (`npm install -g @openai/codex`; the Wire CLI's `codex` harness) | | Apache-2.0 |
+| Claude Code (the Wire CLI's `claude` harness) | | Proprietary, Anthropic Commercial Terms |
+| LiteLLM (`wire bridge`, installed with pip into `~/.wire/bridge`) | | MIT, outside its enterprise folder |

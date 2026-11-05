@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.5.3 | **Date**: October 2026
+**Version**: 4.6.0 | **Date**: October 2026
 
 ---
 
@@ -5564,6 +5564,17 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v4.6.0: the Wire CLI, experimental (November 2026)
+
+A second way to run Wire: a terminal program, `wire`, that does not need Claude Code. It runs the release loop in code (reads `status.md`, works out what can run next, runs each step as a lane in its own git worktree, merges clean work, writes the record) and runs each step through an agent harness: the standalone `wire-agent` on OpenAI models, on Claude through an API key, or on a local model; or Claude Code. It is experimental. The Claude Code plugin remains the reference way to run Wire, and nothing changes for people who use only the plugin. See the docs site's **Wire CLI (experimental)** section and `wire/cli/README.md`.
+
+- **Install**: `curl` or a Homebrew tap on the public `wire-plugin` repository; the standalone agent for Macs (Apple silicon and Intel).
+- **Use**: `wire` opens a session (plain English is direction, command names run commands, `/approve`, `/park`, `/rule` record decisions); `wire run <release>` runs one pass of the loop; `wire <command> <release>` runs one command.
+- **Connections**: keys in `~/.wire/secrets.env`; MCP servers chosen once per engagement with `wire mcp`; `wire eval` compares models before they are used.
+- **For plugin users**: the Wire mod's lane rules no longer refuse a trailing-slash owned folder or a read of `status.md` with `2>/dev/null`; `wire_gate.py` reads 3.x-format status files; Studio shows "Run in Wire CLI" when `wire` is installed.
 
 ---
 

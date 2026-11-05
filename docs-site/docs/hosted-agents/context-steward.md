@@ -56,7 +56,7 @@ Console admins set these on the project's page. Others can see them.
 | Setting | What it does |
 |---|---|
 | Mode | **Off**: does nothing. **Record only**: finds and records, posts nothing. **On**: also asks the confirmation owner in Slack and opens the daily pull request. |
-| Call titles | A recorded call counts when its title has one of these words or phrases, such as the client's name or "David <> Jordan". |
+| Call titles | A recorded call counts when its title has one of these words or phrases, such as the client's name or "David &lt;&gt; Jordan". |
 | Attendee domains and addresses | A call counts when an attendee's email domain or address is listed, such as the client's domain. |
 | Excluded title words | A call whose title has one of these never counts, whatever else matches, such as "stand-up". |
 | Read pull requests | Off by default. On: each scan also reads the project repository's pull requests (see below). |

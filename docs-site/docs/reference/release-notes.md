@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.0: the Wire CLI (experimental)
+
+**Released**: November 2026
+
+**What it is.** A second way to run Wire, as a terminal program called `wire` that does not need Claude Code. It owns the release loop in code: it reads `status.md`, works out what can run next with the same resolver Wire Studio uses, runs each step as a lane in its own git worktree, checks what the lane changed, merges clean work and writes the record. Each step runs through an agent harness: the standalone `wire-agent` (OpenAI's open-source Codex with Wire's changes) on OpenAI models, on Claude through an Anthropic API key, or on a local model through LM Studio or Ollama; or Claude Code. `wire` alone opens a session where plain English is direction, bare command names run Wire commands, and `/approve`, `/park` and `/rule` record the director's decisions. It is experimental: the Claude Code plugin remains the reference way to run Wire, and nothing changes for people who use only the plugin.
+
+**What comes with it.** An installer (`curl`, or a Homebrew tap on the public `wire-plugin` repository) and the standalone agent for Macs (Apple silicon and Intel; Linux to follow). MCP servers chosen once per engagement (`wire mcp`) and passed to every run, plus Wire's own tools (`wire_status`, `wire_gate`, `wire_lint`, `dbt`). An operating-system sandbox for each lane on macOS, the warehouse spend ledger and cap, and one dbt build per project at a time. `wire eval`, a five-case suite to compare models before they are used. A Codex plugin target (`wire/dist/codex-plugin`) built with the other packages. A new docs section, **Wire CLI (experimental)**, covers installing, API connections, MCP servers, platforms and limitations, and a session walked through.
+
+**Changes for plugin users.**
+- The Wire mod's lane rules no longer refuse two cases they refused by mistake: an owned folder written with a trailing slash (`models/`), and a read of `status.md` with `2>/dev/null`.
+- The gate script (`wire_gate.py`) reads the artifacts of a 3.x-format `status.md` from its body, as Studio does, instead of reading every artifact as not started.
+- Wire Studio shows "Run in Wire CLI" beside "Run in Claude Code" when `wire` is installed.
+- The plugin release keeps the Homebrew formula (`Formula/`) on `wire-plugin`.
+
+**Evidence.** A concept run on a real engagement release with three harness and model combinations (`wire/cli/CONCEPT_RUN.md`), the fork decision (`wire/cli/FORK_DECISION.md`) and the roadmap record (`wire/cli/ROADMAP.md`). Tracked in [wire#408](https://github.com/rittmananalytics/wire/issues/408).
+
 ## v4.5.3: The Wire mod loads on Claude Code 2.1.287 again
 
 **Released**: November 2026

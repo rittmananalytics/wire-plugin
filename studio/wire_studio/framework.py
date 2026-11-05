@@ -35,16 +35,23 @@ class Framework:
             raise FileNotFoundError(f"no release-types/ under {self.root}")
         build = self.root / "scripts" / "build-packages.sh"
         commands = self.root / "commands"
+        catalogue = self.root / "skills" / "wire" / "references" / "commands.json"
         if build.is_file():
             self.layout = "repo"
             self.commands = _commands_from_build_script(build)
         elif commands.is_dir():
             self.layout = "plugin"
             self.commands = {p.stem for p in commands.glob("*.md")}
+        elif catalogue.is_file():
+            # The Codex plugin (wire#408): one dispatcher skill over a catalogue
+            # generated from the same COMMANDS array.
+            self.layout = "codex-plugin"
+            self.commands = _commands_from_catalogue(catalogue)
         else:
             raise FileNotFoundError(
                 f"no command registry under {self.root} "
-                "(expected scripts/build-packages.sh or commands/)")
+                "(expected scripts/build-packages.sh, commands/ or "
+                "skills/wire/references/commands.json)")
         self.no_auto_validate = _auto_validate_false(self.specs_dir)
 
     @lru_cache(maxsize=None)
@@ -83,6 +90,12 @@ def _commands_from_build_script(path):
         for e in m.group(1).splitlines()
         if e.strip().startswith('"')
     }
+
+
+def _commands_from_catalogue(path):
+    import json
+    entries = json.loads(path.read_text(encoding="utf-8"))
+    return {str(e.get("command", "")).replace("/", "-") for e in entries if e.get("command")}
 
 
 def _auto_validate_false(specs_dir):

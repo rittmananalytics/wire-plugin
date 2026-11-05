@@ -88,6 +88,9 @@ def make_handler(framework, repo, clock=datetime.now, launch_mode="auto", launch
                 return self._send(413, {"error": "request body missing or too large"})
             try:
                 body = json.loads(self.rfile.read(length))
+                if body.get("target") == "wire":
+                    # the Wire CLI's session in place of Claude Code
+                    return self._send(200, launch_fn(repo, body.get("directive"), launch_mode, target="wire"))
                 return self._send(200, launch_fn(repo, body.get("directive"), launch_mode))
             except (LaunchError, ValueError) as e:
                 return self._send(400, {"error": str(e)})

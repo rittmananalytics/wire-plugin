@@ -48,3 +48,28 @@ tiers:
 # model and no economy model runs on the session default.
 # validate_model_routing.py fails if an agent definition carries one.
 lane_economy: "claude-haiku-4-5"
+
+# Per-harness routing (wire#408 item 4; roadmap phase 6). The
+# `tiers:` and `lane_economy` values above are Claude model ids and apply to
+# the Claude plugin's build-time stamping and to every Wire CLI run on Claude:
+# the `claude` harness, and the `codex` harness with `--provider anthropic`
+# (wire-agent's native provider) or `--provider wirebridge`. Any other run
+# takes its tier models from `tiers_<provider>:` when it names a provider
+# (lmstudio, ollama), else `tiers_<harness>:`, and its economy model from the
+# matching `lane_economy_<...>`; an empty value or a missing key means the lane
+# runs on the configured model (settings.py, rule 3). The values below stay
+# empty until the eval suite (wire/cli/evals/, `wire eval`) has compared the
+# models on the same cases, the rule at the top of this file: no demotion on
+# intuition. The build script and the 4.x stamping read only the blocks above.
+tiers_codex:
+  mechanical: ""
+  templated-generation: ""
+  judgment: ""
+  planning: ""
+lane_economy_codex: ""
+tiers_lmstudio:
+  mechanical: ""
+  templated-generation: ""
+  judgment: ""
+  planning: ""
+lane_economy_lmstudio: ""

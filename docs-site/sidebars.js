@@ -150,6 +150,20 @@ const sidebars = {
         },
         {
           type: 'category',
+          label: 'Wire CLI (experimental)',
+          link: {type: 'generated-index', title: 'Wire CLI (experimental)', slug: '/technical-reference/wire-cli', description: 'Experimental: Wire as a terminal program that runs without Claude Code, on OpenAI models, Claude through an API key, or a local model. What it is, installing it, connecting models and MCP servers, platforms and limitations, and a session walked through.'},
+          items: [
+            'wire-cli/what-is-the-cli',
+            'wire-cli/installing',
+            'wire-cli/api-connections',
+            'wire-cli/mcp-servers',
+            'wire-cli/platforms-and-limitations',
+            'wire-cli/a-cli-session',
+            'advanced/wire-cli',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Hosted Agents (Rittman Analytics only)',
           link: {type: 'generated-index', title: 'Hosted Agents (Rittman Analytics only)', slug: '/technical-reference/hosted-agents', description: 'A Rittman Analytics-only feature, not part of the plugin or extension. Wire agents that Rittman Analytics runs as members of a delivery team: pods and roles, the delivery process, governance templates, sprints, Jira and Slack, and memory.'},
           items: [

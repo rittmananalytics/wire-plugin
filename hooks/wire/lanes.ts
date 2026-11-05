@@ -51,8 +51,10 @@ export function parseLaneBrief(prompt: string): LaneBrief | null {
   }
   const owns = (fields.get('Owns') ?? [])
     .flatMap(v => v.split(/[,\s]+/))
-    .map(v => v.trim().replace(/[.;]+$/, '').replace(/\/+$/, ''))
+    .map(v => v.trim().replace(/[.;]+$/, ''))
+    // A bare tree name written as `models/` is a path; the slash is judged before it goes.
     .filter(v => v && !/^(nothing|else|—|-)$/i.test(v) && /[\/.]/.test(v))
+    .map(v => v.replace(/\/+$/, ''))
   const missing = (['Owns', 'State file', 'Resume'] as const).filter(k => !(fields.get(k)?.some(v => v !== '')))
   if (owns.length === 0 && !missing.includes('Owns')) {
     missing.push('Owns')
@@ -117,7 +119,12 @@ export function bashWritesRecord(command: string): boolean {
   if (!/\.wire\/releases\/[^\s'"]*\/(status\.md|execution_log\.md)/.test(c)) {
     return false
   }
-  return /(^|[^<>])>{1,2}\s*[^\s&|]/.test(c) || /\bsed\s+(-[a-zA-Z]*i|--in-place)/.test(c) || /\btee\b/.test(c) || /\bpython3?\s+-c\b/.test(c)
+  // A redirect whose target is the record, or a scratch-free redirect; `2>/dev/null`
+  // on a read of status.md is not a write (a lane was refused for it, wire#408).
+  const redirects = [...c.matchAll(/(^|[^<>])\d?>{1,2}\s*([^\s&|;]+)/g)].map(m => m[2] ?? '')
+  const writesRecord = redirects.some(t => /\.wire\/releases\/[^\s'"]*\/(status\.md|execution_log\.md)/.test(t))
+  const teeRecord = /\btee\b[^|;&]*\.wire\/releases\/[^\s'"]*\/(status\.md|execution_log\.md)/.test(c)
+  return writesRecord || teeRecord || /\bsed\s+(-[a-zA-Z]*i|--in-place)/.test(c) || /\bpython3?\s+-c\b/.test(c)
 }
 
 /** `dbt build|run|snapshot|seed`: a warehouse build (rule 2's slot). */
