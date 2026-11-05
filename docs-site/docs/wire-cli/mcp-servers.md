@@ -6,7 +6,7 @@ title: MCP servers
 # MCP servers
 
 :::caution Experimental
-4.6.0. Context7 has been run live through the CLI. Fathom, Jira and the warehouse servers have not yet.
+4.6.1. Context7 has been run live through the CLI. Fathom, Jira and the warehouse servers have not yet.
 :::
 
 MCP servers give Wire's steps access to other tools: Jira and Confluence, meeting transcripts, library documentation, the warehouse. The Claude Code plugin configures a fixed set for every user. In the CLI, each engagement chooses its servers once, and each person signs in once.

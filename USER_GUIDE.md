@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.6.0 | **Date**: October 2026
+**Version**: 4.6.1 | **Date**: October 2026
 
 ---
 
@@ -5564,6 +5564,15 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v4.6.1: the Wire CLI streams, keeps a live panel, and carries the framework in its agent (November 2026)
+
+- **Streaming**: replies in the CLI appear as they are written, with a line per command or edit; on the `codex` harness the agent can ask you a question inside a turn.
+- **Live panel**: the session keeps the bottom two rows of the terminal for the status line, the work in progress, the lanes and the next action.
+- **Framework in the agent**: `wire-agent` carries the Wire specifications and installs them itself, so `wire codex-install` no longer copies the plugin into the repository (`--copy` keeps the old behaviour).
+- **Routing**: a harder eval suite (`wire eval tiers`) moved the `mechanical` tier and the lane economy model to Claude Haiku 5.5, and GPT-6-Luna takes mechanical work on the CLI's `codex` harness.
 
 ---
 

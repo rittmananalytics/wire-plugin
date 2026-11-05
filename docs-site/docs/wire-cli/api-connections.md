@@ -6,7 +6,7 @@ title: API connections
 # API connections
 
 :::caution Experimental
-4.6.0. The routes to Claude through the `codex` harness are the newest part of the CLI.
+4.6.1. The routes to Claude through the `codex` harness are the newest part of the CLI.
 :::
 
 The CLI needs a way to reach a model. This page covers where keys go, the four ways to connect, and how the CLI picks the harness and model for a run.

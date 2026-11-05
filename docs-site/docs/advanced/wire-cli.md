@@ -9,7 +9,7 @@ The Wire CLI is experimental (wire#408). It is for trying out, not for client de
 
 # Wire CLI
 
-Experimental, 4.6.0 (wire#408). Not for client use yet. The Wire
+Experimental, 4.6.1 (wire#408). Not for client use yet. The Wire
 plugin for Claude Code remains the reference way to run Wire; the CLI is a
 second way that does not depend on Claude Code, measured on one real release
 so far (see "Limitations" and "How it was built").
@@ -60,11 +60,11 @@ Claude Code: https://claude.com/claude-code.
 standalone agent for your machine when the release ships one):
 
 ```
-curl -fsSL https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.0/install-wire.sh | sh
+curl -fsSL https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.1/install-wire.sh | sh
 ```
 
 To pin a version, or if the installer cannot look one up, prefix the `sh`
-with `WIRE_VERSION=4.6.0`. Make sure `~/.local/bin` is on your PATH.
+with `WIRE_VERSION=4.6.1`. Make sure `~/.local/bin` is on your PATH.
 
 **Homebrew** (the tap is the public `wire-plugin` repository):
 
@@ -126,12 +126,21 @@ Once per repository, in its root:
 wire codex-install
 ```
 
-This copies the Codex plugin into `.wire/codex-plugin/` and writes the files
-Codex reads from the repository: `.codex/hooks.json` and
-`.codex/hooks/wire_hooks.py` (the lane rules and the lint-on-write),
+This writes the files Codex reads from the repository: `.codex/hooks.json`
+and `.codex/hooks/wire_hooks.py` (the lane rules and the lint-on-write),
 `.codex/agents/*.toml` (the 13 lane agents), `.codex/config.toml` (lanes run
-flat), a marketplace entry and `AGENTS.md`. It refuses to overwrite a file
-that differs unless you pass `--force`.
+flat) and `AGENTS.md`. It refuses to overwrite a file that differs unless you
+pass `--force`.
+
+The standalone `wire-agent` (4.6.1 and later) carries the Wire framework
+itself: the specifications, the command catalogue, the authoring skills, the
+lane agents and Studio. The first run unpacks them under
+`~/.wire/agent/framework/<version>/` and registers them as the agent's `wire`
+plugin, so the repository holds no copy of the plugin. With OpenAI's own
+`codex`, or with `--copy`, `wire codex-install` copies the plugin into
+`.wire/codex-plugin/` and adds a marketplace entry, as before. A copy left by
+an earlier install is not used by `wire-agent`; the installer names it, and it
+can be removed with `git rm -r`.
 
 Then trust the hooks once. Codex runs no untrusted hook:
 
@@ -193,9 +202,28 @@ session shows it, you answer at `you>`, and the same thread continues. During
 is recorded as a ruling (`R-n` in `decisions.md`) and the lane resumes in its
 own worktree and conversation. A blank answer parks it as before.
 
-What the Wire mod gives Claude Code, the session gives here: a status line
-(`[Wire v4.6.0] 02-data-foundation (full_platform) · 5 approved · 1
-parked · claim: you · ctx:42%`, printed when it changes), one note when the
+Replies appear as they are written. On the `codex` harness the session holds
+each turn open on Codex's app-server protocol: the reply streams in, each
+command, file edit and tool call shows as a dimmed line as it starts, and when
+the agent needs a choice from you it asks inside the turn (numbered options;
+type a number or your own answer) and carries on with your answer. On the
+`claude` harness the reply streams the same way, but Claude Code in `-p` mode
+cannot ask mid-turn, so a question still ends the turn and your answer starts
+the next. `wire <command>` and `wire exec` stream too when run in a terminal.
+Lanes in `wire run` stay headless on `codex exec`. `WIRE_STREAM=false` turns
+streaming off; a Codex without the app-server falls back to `codex exec` with
+a note. Ctrl-C during a streamed turn stops the turn; a second Ctrl-C leaves.
+
+What the Wire mod gives Claude Code, the session gives here: a live panel on
+the bottom two rows of the terminal. The first row is the status line
+(`[Wire v4.6.1] 02-data-foundation (full_platform) · 5 approved · 1
+parked · claim: you · ctx:42%`). The second shows the next action when
+nothing runs; while something runs, it shows the command and how long it has
+run, the last command or edit the agent started, and during `wire run` each
+lane with its time, a lane quiet for 30 minutes flagged as the mod's stall
+timer does. The rest of the session scrolls above it. `WIRE_PANEL=false`, a
+pipe or a terminal under 10 rows prints the status line when it changes
+instead. The session also gives one note when the
 conversation reaches 85 percent of its context, the release context (next
 action, claim, parked decisions, last rulings, business rules by domain,
 iterations in flight) in the agent's prompt each turn, the next action on an
@@ -378,15 +406,17 @@ for &lt;release>"), so a lane's merge and its record travel together;
 These are the significant ones. The plugin is the complete product; the CLI
 is an alpha measured on one release.
 
-1. **The Wire mod's band is a printed line, not a live panel.** The session
-   prints the status line when it changes and shows the next action on an
-   empty line; Claude Code shows them continuously above the prompt. The
-   lane stall timer and the drift watch are not in the session.
-2. **Conversations are turn by turn, not streamed.** In the session a typed
-   command, a lane's question and direction all continue the same agent
-   thread (`codex exec resume`, `claude --resume`), but each turn's reply
-   appears when the turn ends, not word by word, and an unattended
-   `wire run --yes --no-interaction` still parks questions. `/wire:new` and
+1. **The panel is a terminal's bottom two rows.** It shows the status line,
+   the work in progress and the lanes with the 30-minute stall flag, as the
+   Wire mod's band does, but it is plain text: no clickable parts, and the
+   drift watch is not in the session. Inside the agent's own full-screen
+   interface (running `wire-agent` directly) there is no panel.
+2. **Lanes are headless.** Replies in the session stream, and on the
+   `codex` harness the agent can ask you inside a turn. A lane in `wire run`
+   runs on `codex exec`: its question ends its turn, and the session relays
+   your answer into a new turn of the lane's thread. An unattended
+   `wire run --yes --no-interaction` still parks questions, and on the
+   `claude` harness the agent cannot ask mid-turn. `/wire:new` and
    `/wire:adopt`, which set up a repository over many questions, are still
    easier in Claude Code. `wire run` never dispatches a review.
 3. **MCP servers need choosing and signing in.** The plugin configures
@@ -435,7 +465,7 @@ is an alpha measured on one release.
     notarised (an Apple developer account is needed), so a copy downloaded
     with a browser rather than the installer meets Gatekeeper. Windows is not
     supported: the launcher, the build-slot lock and the sandbox profile are
-    POSIX. The agent reports `codex-cli 4.6.0+codex.0.166.0`: the
+    POSIX. The agent reports `codex-cli 4.6.1+codex.0.166.0`: the
     Wire version, then the upstream Codex release. Its welcome screen has not
     been checked by eye.
 
@@ -444,7 +474,7 @@ is an alpha measured on one release.
 | Symptom | Cause and fix |
 |---|---|
 | `PyYAML is missing` | `python3 -m pip install --user pyyaml`, or use the Homebrew install |
-| `could not read the latest release` | the pre-release is not GitHub's "latest": prefix `WIRE_VERSION=4.6.0` |
+| `could not read the latest release` | the pre-release is not GitHub's "latest": prefix `WIRE_VERSION=4.6.1` |
 | A lane writes nothing and the hooks log is empty | the hooks are not trusted in this repository: `codex`, `/hooks` |
 | `Command blocked by PreToolUse hook` for a write that was in scope | the parked lane's worktree and `.wire/local/lane-logs/*.hooks.jsonl` show the reason; report it, it is a Wire bug |
 | `LM Studio is not responding` | `lms server start --port 1234`; always pass `--model` |

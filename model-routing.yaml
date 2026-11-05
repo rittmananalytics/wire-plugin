@@ -24,7 +24,9 @@
 tiers:
   # Deterministic, low-judgment work: doc rendering, log summarisation,
   # fixed-rule file migrations, status polling.
-  mechanical: "claude-haiku-4-5"
+  # 4.6.1: Haiku 5.5 in place of 4.5 after the tiers eval suite
+  # (wire/cli/EVALS.md): 7 of 7, and the mechanical cases and the ruling case again.
+  mechanical: "claude-haiku-5-5"
 
   # Template-driven artifact generation. Session default until stage 2.
   templated-generation: ""
@@ -47,7 +49,7 @@ tiers:
 # (wire/agents/*/AGENT.md) carry no `model:` field, so a lane with no tier
 # model and no economy model runs on the session default.
 # validate_model_routing.py fails if an agent definition carries one.
-lane_economy: "claude-haiku-4-5"
+lane_economy: "claude-haiku-5-5"
 
 # Per-harness routing (wire#408 item 4; roadmap phase 6). The
 # `tiers:` and `lane_economy` values above are Claude model ids and apply to
@@ -61,8 +63,17 @@ lane_economy: "claude-haiku-4-5"
 # empty until the eval suite (wire/cli/evals/, `wire eval`) has compared the
 # models on the same cases, the rule at the top of this file: no demotion on
 # intuition. The build script and the 4.x stamping read only the blocks above.
+#
+# 4.6.1, from the tiers suite (wire/cli/EVALS.md, two runs): GPT-6-Luna passed
+# the mechanical cases both times and failed the judgment case both times (it
+# let an email override a director's ruling), so it takes mechanical work only
+# and is not the economy model. Templated generation produces client-facing
+# deliverables and stays on the configured model (the floor above); judgment
+# and planning stay there too, since GPT-6.1-Sol (the default) passed every
+# case and no case needed GPT-6-Astra. The local Qwen model failed a generation
+# and a planning case and is not routed.
 tiers_codex:
-  mechanical: ""
+  mechanical: "gpt-6-luna"
   templated-generation: ""
   judgment: ""
   planning: ""

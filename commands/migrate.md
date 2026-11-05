@@ -1,7 +1,7 @@
 ---
 description: Migrate pre-v3.4.0 flat .wire/ layout to two-tier engagement/releases structure
 argument-hint: (no arguments — auto-detects the .wire/ layout)
-model: claude-haiku-4-5
+model: claude-haiku-5-5
 ---
 
 # Migrate pre-v3.4.0 flat .wire/ layout to two-tier engagement/releases structure

@@ -26,8 +26,8 @@ title: Platforms and limitations
 
 | # | Area | In the CLI | In the plugin |
 |---|---|---|---|
-| 1 | Status display | A status line printed when it changes; the next action on an empty line | A live band above the prompt; lane stall timer; drift watch |
-| 2 | Conversation | Turn by turn: each reply appears when the turn ends, not word by word | Streamed |
+| 1 | Status display | A live panel on the terminal's bottom two rows: the status line, the work in progress, the lanes with the 30-minute stall flag, the next action. No drift watch | A live band above the prompt; lane stall timer; drift watch |
+| 2 | Conversation | Replies stream. On `codex` the agent can ask you inside a turn; on `claude` a question ends the turn. Lanes in `wire run` are headless, so a lane's question ends its turn | Streamed; questions inside a turn |
 | 3 | Setting up an engagement | `/wire:new` and `/wire:adopt` work, but their many questions are easier to answer in Claude Code | Designed for it |
 | 4 | Reviews | `wire run` never dispatches a review; a review is your ruling, recorded with `/approve` | The same rule, through `/wire-approve` |
 | 5 | MCP servers | Chosen per engagement and signed in per person; Fathom, Jira and warehouse servers not yet run live | A fixed set configured for every user |

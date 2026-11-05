@@ -1,7 +1,7 @@
 ---
 description: Show help for Wire Framework commands
 argument-hint: [<command>]
-model: claude-haiku-4-5
+model: claude-haiku-5-5
 ---
 
 # Show help for Wire Framework commands

@@ -8,7 +8,7 @@ title: Model routing
 **As of v4.0.0.** Not every Wire command needs the same intelligence, and paying frontier-model prices to render help text is as wasteful as asking a small model to set up an engagement. Wire therefore runs different commands on different Claude models, through two mechanisms that are independent of each other:
 
 1. **Workload routing**: a command tagged with a workload tier always runs on that tier's model, whatever the session default. It is set per command at build time, and it applies on Claude Code only.
-2. **Lane economy mode**: `budget.model_tier: economy` in a release's `status.md` makes the orchestrator dispatch eligible lanes on the economy model, `lane_economy` in `wire/model-routing.yaml` (`claude-haiku-4-5`). It is set per release by the director. See [The release director](./release-director#budget).
+2. **Lane economy mode**: `budget.model_tier: economy` in a release's `status.md` makes the orchestrator dispatch eligible lanes on the economy model, `lane_economy` in `wire/model-routing.yaml` (`claude-haiku-5-5`). It is set per release by the director. See [The release director](./release-director#budget).
 
 Both take their models from the same file. This page covers the first, and [Lanes](#lanes) below sets out how the two combine when a lane runs a command. Neither mechanism changes the record: `status.md`, `execution_log.md`, the precondition gate and validation run identically on every model, and the [execution log's Duration, Tokens and Cost columns](../getting-started/core-concepts#the-execution-log) show what each run consumed.
 
@@ -22,7 +22,7 @@ The vocabulary is fixed, and the mapping lives in one file, `wire/model-routing.
 
 | Tier | Model (stage 1) | Meaning |
 |---|---|---|
-| `mechanical` | `claude-haiku-4-5` | Deterministic, low-judgment work: doc rendering, log summarisation, fixed-rule migrations |
+| `mechanical` | `claude-haiku-5-5` | Deterministic, low-judgment work: doc rendering, log summarisation, fixed-rule migrations |
 | `templated-generation` | session default | Template-driven artifact generation |
 | `judgment` | session default | Validates and reviews needing interpretation |
 | `planning` | `claude-fable-5` | Engagement setup, orchestration, adoption assessment, sprint planning |
@@ -37,9 +37,9 @@ Stage 1 maps only the extremes. The middle tiers stay on the session model until
 | `/wire:autopilot` | planning | `claude-fable-5` |
 | `/wire:adopt` | planning | `claude-fable-5` |
 | `/wire:sprint-plan-generate` | planning | `claude-fable-5` |
-| `/wire:migrate` | mechanical | `claude-haiku-4-5` |
-| `/wire:utils-session-summary` | mechanical | `claude-haiku-4-5` |
-| `/wire:help` | mechanical | `claude-haiku-4-5` |
+| `/wire:migrate` | mechanical | `claude-haiku-5-5` |
+| `/wire:utils-session-summary` | mechanical | `claude-haiku-5-5` |
+| `/wire:help` | mechanical | `claude-haiku-5-5` |
 
 Every other command inherits the session model, exactly as before.
 

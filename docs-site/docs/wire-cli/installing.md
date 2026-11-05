@@ -6,7 +6,7 @@ title: Installing the CLI
 # Installing the CLI
 
 :::caution Experimental
-4.6.0. Releases are pre-releases on the public `rittmananalytics/wire-plugin` repository.
+4.6.1. Releases are pre-releases on the public `rittmananalytics/wire-plugin` repository.
 :::
 
 ## Prerequisites
@@ -24,12 +24,12 @@ title: Installing the CLI
 ### curl
 
 ```
-curl -fsSL https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.0/install-wire.sh | sh
+curl -fsSL https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.1/install-wire.sh | sh
 ```
 
-This installs the CLI to `~/.wire/versions/4.6.0`, writes the launcher `~/.local/bin/wire`, and fetches the standalone agent for your machine when the release has one. Make sure `~/.local/bin` is on your `PATH`.
+This installs the CLI to `~/.wire/versions/4.6.1`, writes the launcher `~/.local/bin/wire`, and fetches the standalone agent for your machine when the release has one. Make sure `~/.local/bin` is on your `PATH`.
 
-Pre-releases are not GitHub's "latest" release. If the installer cannot find a version, put `WIRE_VERSION=4.6.0` in front of `sh`.
+Pre-releases are not GitHub's "latest" release. If the installer cannot find a version, put `WIRE_VERSION=4.6.1` in front of `sh`.
 
 ### Homebrew
 
@@ -70,16 +70,18 @@ Once per repository, in its root folder:
 wire codex-install
 ```
 
-This copies the Codex form of the Wire plugin into `.wire/codex-plugin/` and writes the files Codex reads from a repository:
+This writes the files Codex reads from a repository:
 
 | File | What it is |
 |---|---|
 | `.codex/hooks.json`, `.codex/hooks/wire_hooks.py` | The lane rules (what a lane may write) and the conventions check after each write |
 | `.codex/agents/*.toml` | Wire's 13 lane agents |
 | `.codex/config.toml` | Lanes run one level deep |
-| `AGENTS.md`, a marketplace entry | Instructions and the plugin entry Codex reads |
+| `AGENTS.md` | Instructions Codex reads |
 
 It will not overwrite a file you have changed unless you pass `--force`.
+
+The standalone agent (4.6.1 and later) carries the Wire framework itself: the specifications, the command list, the authoring skills and the lane agents. On first use it unpacks them under `~/.wire/agent/framework/` and installs them as its own `wire` plugin, so the repository holds no copy of the plugin. With OpenAI's own `codex`, or with `wire codex-install --copy`, the plugin is copied into `.wire/codex-plugin/` with a marketplace entry, as in 4.6.0. A copy left by an earlier install is not used by the standalone agent and can be removed with `git rm -r`.
 
 Then approve the hooks once. Codex does not run a hook until you trust it:
 

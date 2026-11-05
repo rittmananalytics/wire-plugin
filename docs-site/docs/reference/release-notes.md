@@ -9,6 +9,22 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.1: the Wire CLI streams, keeps a live panel, and carries the framework in its agent
+
+**Released**: November 2026
+
+**Replies stream.** In the Wire CLI's session, and for `wire <command>` and `wire exec` in a terminal, the reply appears as it is written, and each command, file edit and tool call shows as a dimmed line as it starts. On the `codex` harness the agent can ask you a question inside a turn, with numbered options, and carries on with your answer. Lanes in `wire run` are unchanged. `WIRE_STREAM=false` turns streaming off.
+
+**A live panel.** The session keeps the bottom two rows of the terminal for the status line and what is happening: the running command and its time, the agent's last command or edit, each lane during `wire run` with the 30-minute stall flag, and the next action when idle. `WIRE_PANEL=false` turns it off.
+
+**The framework travels in the agent.** The standalone `wire-agent` now carries the Wire specifications, command list, skills and lane agents, and installs them as its own `wire` plugin. `wire codex-install` no longer copies the plugin into the engagement repository; `--copy` keeps the old behaviour, and a copy left by 4.6.0 can be removed.
+
+**Evals and routing.** A second eval suite, `wire eval tiers`, has harder cases for each workload tier. On its results, the Claude plugin's `mechanical` tier and the lane economy model move from Claude Haiku 4.5 to Claude Haiku 5.5, and OpenAI's GPT-6-Luna takes the CLI's mechanical work on the `codex` harness. Results are in `wire/cli/EVALS.md`.
+
+**Smaller fixes.** OpenAI through the standalone agent no longer fails sign-in on the new streaming path. The Codex install's `AGENTS.md` no longer runs its session greeting in runs started by the CLI. The panel says "could not resolve the release" plainly for a broken `status.md`.
+
+**For plugin users.** The model-routing change above is the only one: `/wire:migrate`, `/wire:utils-session-summary` and `/wire:help` run on Claude Haiku 5.5, and releases in economy mode dispatch eligible lanes on it.
+
 ## v4.6.0: the Wire CLI (experimental)
 
 **Released**: November 2026

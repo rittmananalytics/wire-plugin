@@ -6,7 +6,7 @@ title: A CLI session
 # A CLI session
 
 :::caution Experimental
-4.6.0. The engagement below is fictional, and long output is shortened with `...`. The screens show the CLI's real formats.
+4.6.1. The engagement below is fictional, and long output is shortened with `...`. The screens show the CLI's real formats.
 :::
 
 This walks through a morning's work on a `dbt_development` release, `02-data-foundation`, from opening the session to handing over. It assumes the CLI is [installed](./installing), the repository is set up with `wire codex-install`, an [API connection](./api-connections) is in place, and the engagement's [MCP servers](./mcp-servers) are added and signed in.
@@ -21,18 +21,24 @@ git pull
 wire
 ```
 
-The CLI shows the Wire mark, the engagement and its releases, the active release and a status line:
+The CLI shows the Wire mark, the engagement and its releases and the active release, and keeps a panel on the bottom two rows of the terminal:
 
 ```
-  Wire CLI 4.6.0 (experimental)
+  Wire CLI 4.6.1 (experimental)
   Engagement: acme_analytics.
   Releases: 02-data-foundation, 01-discovery.
   Active: 02-data-foundation.
   Type `help` for the commands, `quit` to leave.
 
-[Wire v4.6.0] 02-data-foundation (dbt_development) · 1 approved · 0 parked · claim: none
 wire 02-data-foundation>
+
+
+
+[Wire v4.6.1] 02-data-foundation (dbt_development) · 1 approved · 0 parked · claim: none
+next: /wire:data_model-generate 02-data-foundation
 ```
+
+The panel stays put while the session scrolls above it. While a command runs, its second row shows the command, how long it has run and the last command or edit the agent started, for example `running: data_model-generate 2:14 · last: $ dbt parse`. During `wire run` it lists each lane with its time and flags one that has been quiet for 30 minutes.
 
 The active release is the one whose `status.md` changed most recently. `use 01-discovery` changes it; `releases` lists them all.
 
@@ -91,7 +97,7 @@ Running: /wire:data_model-generate 02-data-foundation, /wire:data_model-validate
 Ran: /wire:data_model-generate 02-data-foundation, /wire:data_model-validate 02-data-foundation
 ```
 
-Each command runs through the harness as it would in Claude Code: the precondition gate first, then the spec, which writes the artifact and the record. If a command stops with a question (a setup choice, for example), the session shows it, you answer at the prompt, and the same conversation continues.
+Each command runs through the harness as it would in Claude Code: the precondition gate first, then the spec, which writes the artifact and the record. The reply appears as it is written, with a dimmed line for each command, file edit and tool call as it starts. If the command needs a choice from you (a setup choice, for example), the session shows the question with numbered options; type a number or your own answer at `you>` and the command carries on in the same turn. On the `claude` harness the question ends the turn instead, and your answer starts the next one.
 
 The session keeps the conversation between turns, so a follow-up such as "and which entities did it leave out?" has the context. `new` starts a fresh conversation.
 

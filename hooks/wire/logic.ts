@@ -18,6 +18,9 @@ export const NA = 'n/a'
 // specific ids come before their prefixes. Carried over unchanged from the
 // retired hooks/wire_metrics.py.
 export const PRICING: ReadonlyArray<readonly [string, readonly [number, number, number]]> = [
+  // Haiku 5.5 has two rate cards by prompt length; this is the one for prompts of
+  // 100K tokens or fewer ($0.50 / $2.50 above that), so a long-prompt turn reads low.
+  ['claude-haiku-5-5', [0.1, 0.5, 0.01]],
   ['claude-haiku-4-5', [1.0, 5.0, 0.1]],
   ['claude-sonnet-4-6', [3.0, 15.0, 0.3]],
   ['claude-sonnet-5', [2.0, 10.0, 0.2]],
