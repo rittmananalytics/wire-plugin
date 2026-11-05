@@ -18,7 +18,7 @@ class Wire < Formula
   desc "Wire Framework CLI: the release loop for data platform engagements (experimental)"
   homepage "https://github.com/rittmananalytics/wire"
   url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.1/wire-cli-4.6.1.tar.gz"
-  sha256 "6d072a5cf77711e1b0a49b9ef5d9667f3f714a0954288f5f23a42db8f4043180"
+  sha256 "4be5f727a4c1f33ef7b1f6113c731ef9ef4726ef19cc05ab0812d9f2e001a916"
   license "FSL-1.1-ALv2"
 
   depends_on "python@3.12"
