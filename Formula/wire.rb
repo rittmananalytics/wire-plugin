@@ -1,4 +1,4 @@
-# Homebrew formula for the Wire CLI (experimental, 5.0 alpha, wire#408).
+# Homebrew formula for the Wire CLI (experimental, wire#408).
 #
 # Lives in the public rittmananalytics/wire-plugin repository as Formula/wire.rb
 # is the source of truth, published by the release step with the version and
@@ -17,8 +17,8 @@ class Wire < Formula
 
   desc "Wire Framework CLI: the release loop for data platform engagements (experimental)"
   homepage "https://github.com/rittmananalytics/wire"
-  url "https://github.com/rittmananalytics/wire-plugin/releases/download/v5.0.0-alpha.2/wire-cli-5.0.0-alpha.2.tar.gz"
-  sha256 "66a79f6f0747f77c1591425a1dc860e0b62e132f3b34e0f8f93024e8adad5546"
+  url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.0/wire-cli-4.6.0.tar.gz"
+  sha256 "05077a1b85badd284c50b0c77c8382ad44e6b416c3d84bff596f780bec026894"
   license "FSL-1.1-ALv2"
 
   depends_on "python@3.12"
@@ -34,8 +34,8 @@ class Wire < Formula
   on_macos do
     on_arm do
       resource "wire-agent" do
-        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v5.0.0-alpha.2/wire-agent-5.0.0-alpha.2-darwin-arm64.tar.gz"
-        sha256 "891b26b86d55101977c0f90bf3af1c43cc7c34b99a4a71234275cdc695e9a300"
+        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.0/wire-agent-4.6.0-darwin-arm64.tar.gz"
+        sha256 "f3bc3848f00fff729f0d99e5720eb14459c5fe7bb26037396a7d68b732019209"
       end
     end
   end
@@ -44,8 +44,8 @@ class Wire < Formula
   on_macos do
     on_intel do
       resource "wire-agent" do
-        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v5.0.0-alpha.2/wire-agent-5.0.0-alpha.2-darwin-x86_64.tar.gz"
-        sha256 "f4dcafde509fb87498cdedff7cda0cee12d27c3add641ff5474cf6f2f0d182f5"
+        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.0/wire-agent-4.6.0-darwin-x86_64.tar.gz"
+        sha256 "7f5519174382d2477f38cbe8254acd09523cd01d6b2d35bfc9ac29a2016149bf"
       end
     end
   end
@@ -77,6 +77,6 @@ class Wire < Formula
   end
 
   test do
-    assert_match "wire 5.", shell_output("#{bin}/wire version")
+    assert_match "wire #{version}", shell_output("#{bin}/wire version")
   end
 end
