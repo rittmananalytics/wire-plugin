@@ -19,6 +19,8 @@ phases:
     artifacts:
       - id: business_rules
         command: business-rules
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 1
         depends_on: []
@@ -31,6 +33,9 @@ phases:
     artifacts:
       - id: requirements
         command: requirements
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/requirements"
         required: true
         sequence: 1
         depends_on: []
@@ -40,6 +45,9 @@ phases:
       # sequences became YAML (wire#248), so no release type could produce it.
       - id: workshops
         command: workshops
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/requirements"
         required: false
         sequence: 2
         depends_on:
@@ -55,6 +63,9 @@ phases:
     artifacts:
       - id: pipeline_design
         command: pipeline_design
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/design"
         required: true
         sequence: 1
         depends_on:
@@ -74,6 +85,14 @@ phases:
     artifacts:
       - id: pipeline
         command: pipeline
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - "pipelines"
+          - "ingestion"
+          - "functions"
+          - "src"
+          - "cloud_functions"
         required: true
         sequence: 1
         depends_on:
@@ -89,6 +108,13 @@ phases:
     artifacts:
       - id: data_quality
         command: data_quality
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - ".wire/releases/{release}/test"
+          - "models"
+          - "tests"
+          - "macros"
         required: true
         sequence: 1
         depends_on:
@@ -104,6 +130,14 @@ phases:
     artifacts:
       - id: deployment
         command: deployment
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - ".wire/releases/{release}/deploy"
+          - ".github/workflows"
+          - "deploy"
+          - "infra"
+          - "terraform"
         required: true
         sequence: 1
         depends_on:

@@ -150,7 +150,7 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 
 Validate the integration layer: compile all `int_<group>__*` models, verify they only reference staging models or other integration models (no `{{ source() }}`), and check business logic correctness.
 
-Scope and severity follow `specs/development/dbt_validate.md` (**Scope and Severity**): carried rules apply to every model, both accepted forms pass, and rules new in 4.1.2 apply to changed models only. Wire never renames or moves an existing model, column or schema.
+Scope and severity follow `specs/development/dbt_validate.md` (**Scope and Severity**): carried rules apply to every model, both accepted forms pass, and rules new in 4.1.2 apply to changed models only. A naming finding on a name approved in the data model specification is Accepted, as `dbt_validate.md` Step 2.5 says. Wire never renames or moves an existing model, column or schema.
 
 ## Prerequisites
 

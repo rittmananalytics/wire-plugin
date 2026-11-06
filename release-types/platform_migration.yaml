@@ -20,6 +20,8 @@ phases:
     artifacts:
       - id: business_rules
         command: business-rules
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 1
         depends_on: []
@@ -32,46 +34,64 @@ phases:
     artifacts:
       - id: ingestion_audit
         command: ingestion-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
       - id: db_object_audit
         command: db-object-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 2
         depends_on: []
       - id: security_audit
         command: security-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 3
         depends_on: []
       - id: dbt_audit
         command: dbt-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 4
         depends_on: []
       - id: orchestration_audit
         command: orchestration-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 5
         depends_on: []
       - id: reverse_etl_audit
         command: reverse-etl-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 6
         depends_on: []
       - id: metabase_audit
         command: metabase-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 7
         depends_on: []
       - id: omni_audit
         command: omni-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 8
         depends_on: []
       - id: oac_audit
         command: oac-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 9
         depends_on: []
@@ -84,6 +104,8 @@ phases:
     artifacts:
       - id: migration_inventory
         command: migration-inventory
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -102,6 +124,8 @@ phases:
             enforcement: advisory
       - id: region_tagging
         command: region-tagging
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -120,6 +144,8 @@ phases:
     artifacts:
       - id: migration_strategy
         command: migration-strategy
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -128,6 +154,8 @@ phases:
             outcome: approved
       - id: migration_batching
         command: migration-batching
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -136,6 +164,8 @@ phases:
             outcome: approved
       - id: data_residency_assessment
         command: data-residency-assessment
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 3
         depends_on:
@@ -154,6 +184,8 @@ phases:
     artifacts:
       - id: target_setup
         command: target-setup
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -162,6 +194,8 @@ phases:
             outcome: approved
       - id: logical_access_uat
         command: logical-access-uat
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -177,6 +211,8 @@ phases:
     artifacts:
       - id: ingestion_migration
         command: ingestion-migration
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -185,6 +221,8 @@ phases:
             outcome: approved
       - id: bulk_copy_migration
         command: bulk-copy-migration
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -200,6 +238,8 @@ phases:
     artifacts:
       - id: dbt_migration
         command: dbt-migration
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -208,6 +248,8 @@ phases:
             outcome: approved
       - id: migration_register
         command: migration-register
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -216,6 +258,8 @@ phases:
             outcome: complete
       - id: migration_drift
         command: migration-drift
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 3
         depends_on:
@@ -224,6 +268,8 @@ phases:
             outcome: complete
       - id: dbt_carveout_relocate
         command: dbt-carveout-relocate
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 4
         depends_on:
@@ -242,6 +288,8 @@ phases:
     artifacts:
       - id: orchestration_migration
         command: orchestration-migration
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -250,6 +298,8 @@ phases:
             outcome: approved
       - id: reverse_etl_migration
         command: reverse-etl-migration
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -258,6 +308,8 @@ phases:
             outcome: PASS
       - id: metabase_migration
         command: metabase-migration
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 3
         depends_on:
@@ -269,6 +321,8 @@ phases:
             outcome: approved
       - id: omni_migration
         command: omni-migration
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 4
         depends_on:
@@ -280,6 +334,8 @@ phases:
             outcome: approved
       - id: oac_migration
         command: oac-migration
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 5
         depends_on:
@@ -291,6 +347,8 @@ phases:
             outcome: approved
       - id: metabase_carveout
         command: metabase-carveout
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 6
         depends_on:
@@ -302,6 +360,8 @@ phases:
             outcome: approved
       - id: reverse_etl_twin
         command: reverse-etl-twin
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 7
         depends_on:
@@ -317,6 +377,8 @@ phases:
     artifacts:
       - id: equivalency
         command: equivalency
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -325,6 +387,8 @@ phases:
             outcome: approved
       - id: metabase_equivalency
         command: metabase-equivalency
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -333,6 +397,8 @@ phases:
             outcome: approved
       - id: reverse_etl_equivalency
         command: reverse-etl-equivalency
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 3
         depends_on:
@@ -348,6 +414,8 @@ phases:
     artifacts:
       - id: cutover
         command: cutover
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -356,6 +424,8 @@ phases:
             outcome: PASS
       - id: reverse_etl_retire
         command: reverse-etl-retire
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -371,6 +441,8 @@ phases:
     artifacts:
       - id: migration_report
         command: migration-report
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:

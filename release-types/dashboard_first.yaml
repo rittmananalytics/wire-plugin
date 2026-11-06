@@ -53,6 +53,8 @@ phases:
     artifacts:
       - id: business_rules
         command: business-rules
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 1
         depends_on: []
@@ -65,6 +67,9 @@ phases:
     artifacts:
       - id: requirements
         command: requirements
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/requirements"
         required: true
         sequence: 1
         depends_on: []
@@ -74,6 +79,9 @@ phases:
       # sequences became YAML (wire#248), so no release type could produce it.
       - id: workshops
         command: workshops
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/requirements"
         required: false
         sequence: 2
         depends_on:
@@ -89,6 +97,9 @@ phases:
     artifacts:
       - id: conceptual_model
         command: conceptual_model
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/design"
         required: true
         sequence: 1
         depends_on:
@@ -101,6 +112,9 @@ phases:
             enforcement: advisory
       - id: mockups
         command: mockups
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/design"
         required: true
         sequence: 2
         depends_on:
@@ -109,6 +123,9 @@ phases:
             outcome: approved
       - id: viz_catalog
         command: viz_catalog
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/design"
         required: true
         sequence: 3
         depends_on:
@@ -117,6 +134,9 @@ phases:
             outcome: approved
       - id: data_model
         command: data_model
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/design"
         required: true
         sequence: 4
         depends_on:
@@ -132,6 +152,8 @@ phases:
     artifacts:
       - id: seed_data
         command: seed_data
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -147,6 +169,16 @@ phases:
     artifacts:
       - id: dbt
         command: dbt
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "models"
+          - "tests"
+          - "macros"
+          - "seeds"
+          - "snapshots"
+          - "analyses"
+          - "dbt_project.yml"
+          - "packages.yml"
         required: true
         sequence: 1
         depends_on:
@@ -155,6 +187,15 @@ phases:
             outcome: approved
       - id: semantic_layer
         command: semantic_layer
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "models"
+          - "views"
+          - "explores"
+          - "lookml"
+          - "dashboards"
+          - "cube"
+          - "semantic_models"
         required: true
         sequence: 2
         depends_on:
@@ -163,6 +204,8 @@ phases:
             outcome: PASS
       - id: dashboards
         command: dashboards
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 3
         depends_on:
@@ -171,6 +214,9 @@ phases:
             outcome: approved
       - id: dbtcharts
         command: dbtcharts
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "charts"
         required: false
         sequence: 4
         depends_on:
@@ -181,6 +227,11 @@ phases:
       # schema for AI agents; the semantic layer gate is advisory.
       - id: agents_schema
         command: agents_schema
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "agents.yml"
+          - ".github/workflows"
+          - "skills"
         required: false
         sequence: 5
         depends_on:
@@ -196,6 +247,9 @@ phases:
       # same way. Looker only in this release; bi_tool: omni stops.
       - id: data_app
         command: data_app
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "apps"
         required: false
         sequence: 6
         depends_on:
@@ -211,6 +265,14 @@ phases:
     artifacts:
       - id: data_refactor
         command: data_refactor
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "models"
+          - "tests"
+          - "macros"
+          - "seeds"
+          - "snapshots"
+          - "dbt_project.yml"
         required: true
         sequence: 1
         depends_on:
@@ -228,6 +290,13 @@ phases:
     artifacts:
       - id: data_quality
         command: data_quality
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - ".wire/releases/{release}/test"
+          - "models"
+          - "tests"
+          - "macros"
         required: true
         sequence: 1
         depends_on:
@@ -236,6 +305,10 @@ phases:
             outcome: approved
       - id: uat
         command: uat
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - ".wire/releases/{release}/test"
         required: true
         sequence: 2
         depends_on:
@@ -251,6 +324,14 @@ phases:
     artifacts:
       - id: deployment
         command: deployment
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - ".wire/releases/{release}/deploy"
+          - ".github/workflows"
+          - "deploy"
+          - "infra"
+          - "terraform"
         required: true
         sequence: 1
         depends_on:
@@ -273,6 +354,8 @@ phases:
     artifacts:
       - id: training
         command: training
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 1
         depends_on:
@@ -281,6 +364,8 @@ phases:
             outcome: approved
       - id: documentation
         command: documentation
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:

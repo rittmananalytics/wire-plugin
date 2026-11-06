@@ -15,11 +15,15 @@ phases:
     artifacts:
       - id: training
         command: training
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
       - id: documentation
         command: documentation
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 2
         depends_on: []

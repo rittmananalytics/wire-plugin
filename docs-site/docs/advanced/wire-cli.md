@@ -154,9 +154,17 @@ trust; a changed `hooks.json` needs `/hooks` again (the installer says so
 when it replaces one). Add `.wire/local/` to `.gitignore` if it is not there:
 the CLI keeps worktrees, lane logs, briefs and secrets under it.
 
-The `claude` harness needs none of this: Claude Code applies its own hooks
-(the Wire plugin's, if installed) and the CLI's own checks apply to every
-harness.
+The `claude` harness needs none of this: the CLI's own checks apply to every
+harness, and Claude Code's edits in a lane are limited to the lane's paths.
+
+A `claude` step runs on the repository's settings only
+(`--setting-sources project,local`) and only the MCP servers Wire passes
+(`--strict-mcp-config`). Your own Claude Code settings, plugins and claude.ai
+connectors are left out: on a test machine they added 40 MCP servers and
+cost about five times as much on a one-line question. The Wire plugin's hooks
+load in a step only when the repository enables the plugin in
+`.claude/settings.json`. `WIRE_CLAUDE_USER_SETTINGS=true` keeps your own
+settings for a run.
 
 ## Everyday use
 
@@ -514,7 +522,9 @@ and `.wire/codex-plugin/` if you no longer want the Codex integration.
   upstream tag when a Wire release needs a newer Codex; it is not a
   continuously rebased fork. `WIRE.md` on that branch says the same.
 - **Claude Code** (Anthropic) is the `claude` harness, run as `claude -p`
-  with a restricted tool allow-list. Not changed.
+  with a restricted tool allow-list, on the repository's settings only. Not
+  changed. First run live in 4.6.2: core suite 5/5, tiers suite on Sonnet 5.5
+  (EVALS.md).
 - **LiteLLM** (MIT, Python) is the bridge's proxy, installed into
   `~/.wire/bridge-venv`; the shim in front of it is about 200 lines of Wire
   code. Not forked.

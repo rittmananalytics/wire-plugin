@@ -16,6 +16,8 @@ phases:
     artifacts:
       - id: droughty_setup
         command: droughty/setup
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
@@ -28,11 +30,15 @@ phases:
     artifacts:
       - id: droughty_introspect
         command: droughty/introspect
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
       - id: droughty_dbml
         command: droughty/dbml
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 2
         depends_on:
@@ -41,6 +47,8 @@ phases:
             outcome: complete
       - id: droughty_docs
         command: droughty/docs
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 3
         depends_on:
@@ -49,6 +57,8 @@ phases:
             outcome: complete
       - id: droughty_qa
         command: droughty/qa
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 4
         depends_on:
@@ -64,6 +74,8 @@ phases:
     artifacts:
       - id: droughty_stage
         command: droughty/stage
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 1
         depends_on:
@@ -72,6 +84,8 @@ phases:
             outcome: complete
       - id: droughty_dbt_tests
         command: droughty/dbt-tests
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -80,6 +94,8 @@ phases:
             outcome: complete
       - id: droughty_lookml
         command: droughty/lookml
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 3
         depends_on:

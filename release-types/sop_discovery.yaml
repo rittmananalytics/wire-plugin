@@ -72,6 +72,8 @@ phases:
     artifacts:
       - id: engagement_brief
         command: engagement-brief
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
@@ -84,6 +86,8 @@ phases:
     artifacts:
       - id: stakeholder_map
         command: stakeholder-map
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -99,6 +103,8 @@ phases:
     artifacts:
       - id: stakeholder_interview
         command: stakeholder-interview
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -116,6 +122,8 @@ phases:
     artifacts:
       - id: current_state_appraisal
         command: current-state-appraisal
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 1
         depends_on:
@@ -131,6 +139,8 @@ phases:
     artifacts:
       - id: requirements_matrix
         command: requirements-matrix
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -146,6 +156,8 @@ phases:
     artifacts:
       - id: discovery_analyses
         command: discovery-analyses
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -165,6 +177,9 @@ phases:
     artifacts:
       - id: conceptual_model
         command: conceptual_model
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/target_state_design"
         required: false
         sequence: 1
         depends_on:
@@ -173,6 +188,9 @@ phases:
             outcome: approved
       - id: logical_model
         command: logical_model
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/target_state_design"
         required: false
         sequence: 2
         depends_on:
@@ -181,6 +199,9 @@ phases:
             outcome: approved
       - id: pipeline_design
         command: pipeline_design
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/target_state_design"
         required: false
         sequence: 3
         depends_on:
@@ -196,6 +217,8 @@ phases:
     artifacts:
       - id: findings_playback
         command: findings-playback
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -212,6 +235,8 @@ phases:
     artifacts:
       - id: delivery_roadmap
         command: delivery-roadmap
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -223,6 +248,8 @@ phases:
       # discovery is bought with a build plan attached.
       - id: sprint_plan
         command: sprint-plan
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:

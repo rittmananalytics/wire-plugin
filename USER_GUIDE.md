@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.6.1 | **Date**: October 2026
+**Version**: 4.6.2 | **Date**: October 2026
 
 ---
 
@@ -5564,6 +5564,14 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v4.6.2: approved data model names win over the dbt naming convention (November 2026)
+
+- **Approved names stand**: with the data model specification approved, the dbt generate commands keep its names as written and list them, and the dbt validate commands record naming findings on them as accepted, not as failures.
+- **What each step may write**: every release-type artifact declares `owns:`, the folders a lane may write; no change in behaviour.
+- **Wire CLI**: the `claude` harness runs each step on the repository's settings only, and the tiers eval suite has thirteen cases.
 
 ---
 

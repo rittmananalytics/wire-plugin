@@ -223,6 +223,9 @@ Generate the warehouse layer: dimension tables (`_dim`), fact tables (`_fact`) a
 These rules apply before every other rule in this spec.
 
 - Never rename or move an existing model, column, seed, snapshot or schema. The conventions below apply to new and changed code only.
+- Names in the release's approved data model specification (`data_model.review: approved` in `status.md`) are used as written, even where they do not follow the naming rules in this spec or the convention. Do not rename an approved name, and do not stop to ask about it. List each one that differs from the convention in the generate report, marked "approved in the data model specification".
+- Where the data model specification is not yet approved, use the convention's form, and list each name that differs from the specification in the generate report for the data model review to settle.
+- A model or column the specification does not name follows the convention.
 - Where the project keeps an old form (for example singular staging names, unprefixed columns, `tests:`, or `_<source>__sources.yml`), follow the ruling recorded in the release's `decisions.md` and the `form_choices:` block in the project's `.wire/conventions/dbt.yml`. Generate new models in that form. Keys: `model_name_number: plural|singular`, `column_prefix: entity|none`, `test_key: data_tests|tests`, `source_file_name: _sources|_<source>__sources`.
 - Where no ruling exists, generate new models in the new form. Mixed naming inside one project is allowed.
 - Do not change `dbt_project.yml` or `packages.yml` in an existing project. Report differences from the new-project templates in `specs/development/dbt_generate.md` (Step 8) as suggestions only.

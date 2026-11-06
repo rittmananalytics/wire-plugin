@@ -306,6 +306,7 @@ Run it again with `--path` set to `snapshots/`, `seeds/` and `macros/` where tho
 - Each finding goes under the Step 3 heading it belongs to, with its rule id and file.
 - A script `error` on a carried rule keeps the severity stated in Step 3.
 - A script `error` on a reference rule for a changed file is Important. A script `warning` is Nice-to-have.
+- A naming finding on a model or column named as written in the release's approved data model specification (`data_model.review: approved`) is **Accepted**: list it under its heading with "approved in the data model specification" and no severity. It does not set status FAIL, and the fix is not to rename it. Where the specification is not approved, the finding keeps its severity. Findings that are not about the name (tests, documentation, style) keep their severity on every model.
 - If the script is not found, note "convention lint not run" in the report and do the Step 3 checks by reading the code.
 
 ### Step 2.6: Run dbt_meta_testing Checks (If Installed)

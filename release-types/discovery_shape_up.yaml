@@ -17,6 +17,8 @@ phases:
     artifacts:
       - id: problem_definition
         command: problem-definition
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
@@ -29,6 +31,8 @@ phases:
     artifacts:
       - id: pitch
         command: pitch
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -44,6 +48,8 @@ phases:
     artifacts:
       - id: release_brief
         command: release-brief
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -59,6 +65,8 @@ phases:
     artifacts:
       - id: sprint_plan
         command: sprint-plan
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:

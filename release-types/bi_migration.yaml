@@ -249,6 +249,8 @@ phases:
     artifacts:
       - id: business_rules
         command: business-rules
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 1
         depends_on: []
@@ -260,11 +262,15 @@ phases:
     artifacts:
       - id: looker_audit
         command: looker-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
       - id: omni_audit          # brownfield target only: the client already has Omni content
         command: omni-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on: []
@@ -278,6 +284,8 @@ phases:
     artifacts:
       - id: looker_studio_audit
         command: looker-studio-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
@@ -289,6 +297,8 @@ phases:
     artifacts:
       - id: metric_catalogue
         command: metric-catalogue
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -304,6 +314,8 @@ phases:
     artifacts:
       - id: tableau_audit
         command: tableau-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
@@ -317,6 +329,8 @@ phases:
     artifacts:
       - id: metabase_source_audit
         command: metabase-source-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
@@ -330,6 +344,8 @@ phases:
     artifacts:
       - id: omni_source_audit
         command: omni-source-audit
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on: []
@@ -341,6 +357,8 @@ phases:
     artifacts:
       - id: bi_migration_plan
         command: bi-migration-plan
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -357,6 +375,8 @@ phases:
             enforcement: advisory
       - id: migration_drift        # optional scheduled gate: LookML changed under a translated view, or content edited in Looker
         command: migration-drift
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:
@@ -371,6 +391,8 @@ phases:
     artifacts:
       - id: omni_target_setup
         command: omni-target-setup
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -386,6 +408,8 @@ phases:
     artifacts:
       - id: looker_target_setup
         command: looker-target-setup
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -400,6 +424,12 @@ phases:
     artifacts:
       - id: lookml_model
         command: lookml-model
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "views"
+          - "explores"
+          - "models"
+          - "dashboards"
         required: true
         sequence: 1
         depends_on:
@@ -414,6 +444,10 @@ phases:
     artifacts:
       - id: omni_model
         command: omni-model
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "omni"
+          - "models"
         required: true
         sequence: 1
         depends_on:
@@ -425,6 +459,11 @@ phases:
       # surface as soon as it validates.
       - id: agents_schema
         command: agents_schema
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "agents.yml"
+          - ".github/workflows"
+          - "skills"
         required: false
         sequence: 2
         depends_on:
@@ -439,6 +478,10 @@ phases:
     artifacts:
       - id: omni_content
         command: omni-content
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "omni"
+          - "documents"
         required: true
         sequence: 1
         depends_on:
@@ -453,6 +496,11 @@ phases:
     artifacts:
       - id: looker_content
         command: looker-content
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "dashboards"
+          - "looks"
+          - "views"
         required: true
         sequence: 1
         depends_on:
@@ -467,6 +515,8 @@ phases:
     artifacts:
       - id: bi_equivalency
         command: bi-equivalency
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -481,6 +531,8 @@ phases:
     artifacts:
       - id: cutover
         command: cutover
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: true
         sequence: 1
         depends_on:
@@ -495,6 +547,8 @@ phases:
     artifacts:
       - id: training
         command: training
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 1
         depends_on:
@@ -503,6 +557,8 @@ phases:
             outcome: approved
       - id: documentation
         command: documentation
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 2
         depends_on:

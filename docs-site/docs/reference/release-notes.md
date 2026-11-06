@@ -9,6 +9,16 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.2: approved data model names win over the dbt naming convention
+
+**Released**: November 2026
+
+**Approved names stand (all runtimes).** When a release's data model specification is approved, `/wire:dbt-generate` and the three per-layer generate commands use the model and column names it gives, even where they do not follow the dbt naming convention, and list those names in the generate report. They no longer rename them or stop to ask. `/wire:dbt-validate` and the per-layer validates record a naming finding on such a name as accepted ("approved in the data model specification"), so it no longer sets status FAIL. Findings that are not about the name keep their severity. With the specification not yet approved, generate uses the convention's form and lists each difference for the data model review. A name the specification does not give follows the convention.
+
+**What each step may write.** Every artifact in every release type now declares `owns:`, the folders a lane working it may write. The Wire CLI scopes each lane to them. The lists match the rule the CLI used before, so nothing changes in behaviour; the field is described in `wire/schemas/release-type-schema.md`, and a check refuses any list that would let a lane write `status.md`, `execution_log.md` or another release's folder.
+
+**Wire CLI (experimental).** The `claude` harness was run live for the first time and now runs each step on the engagement repository's settings only, so your own Claude Code plugins and claude.ai connectors no longer load into Wire steps (`WIRE_CLAUDE_USER_SETTINGS=true` keeps them). The tiers eval suite has thirteen cases; results are in `wire/cli/EVALS.md`, and model routing is unchanged.
+
 ## v4.6.1: the Wire CLI streams, keeps a live panel, and carries the framework in its agent
 
 **Released**: November 2026

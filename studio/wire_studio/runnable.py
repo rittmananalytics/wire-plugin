@@ -77,6 +77,8 @@ def flatten(spec, profile):
                 "required": art.get("required", True),
                 "depends_on": overrides.get(art["id"], art.get("depends_on", [])),
             }
+            if art.get("owns"):
+                entry["owns"] = list(art["owns"])  # the paths a lane may write (the Wire CLI)
             if phase["id"] in disabled:
                 not_applicable.append(entry)
                 continue
@@ -210,6 +212,7 @@ def resolve(framework, status, decisions_md="", requested=(), ticket_steps=()):
                       if framework.has_step(a["command"], s)},
             "file": recorded.get("file"),
             "depends_on": [d["artifact"] for d in a["depends_on"]],
+            **({"owns": a["owns"]} if a.get("owns") else {}),
         })
 
     return {

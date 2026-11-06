@@ -20,6 +20,8 @@ phases:
     artifacts:
       - id: business_rules
         command: business-rules
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
         required: false
         sequence: 1
         depends_on: []
@@ -32,6 +34,9 @@ phases:
     artifacts:
       - id: requirements
         command: requirements
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/requirements"
         required: true
         sequence: 1
         depends_on: []
@@ -41,6 +46,9 @@ phases:
       # sequences became YAML (wire#248), so no release type could produce it.
       - id: workshops
         command: workshops
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/requirements"
         required: false
         sequence: 2
         depends_on:
@@ -56,6 +64,9 @@ phases:
     artifacts:
       - id: data_model
         command: data_model
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/design"
         required: true
         sequence: 1
         depends_on:
@@ -75,6 +86,17 @@ phases:
     artifacts:
       - id: dbt
         command: dbt
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - "models"
+          - "tests"
+          - "macros"
+          - "seeds"
+          - "snapshots"
+          - "analyses"
+          - "dbt_project.yml"
+          - "packages.yml"
         required: true
         sequence: 1
         depends_on:
@@ -83,6 +105,16 @@ phases:
             outcome: approved
       - id: semantic_layer
         command: semantic_layer
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - "models"
+          - "views"
+          - "explores"
+          - "lookml"
+          - "dashboards"
+          - "cube"
+          - "semantic_models"
         required: false
         sequence: 2
         depends_on:
@@ -91,6 +123,10 @@ phases:
             outcome: PASS
       - id: dbtcharts
         command: dbtcharts
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - "charts"
         required: false
         sequence: 3
         depends_on:
@@ -101,6 +137,12 @@ phases:
       # schema for AI agents; the semantic layer gate is advisory.
       - id: agents_schema
         command: agents_schema
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - "agents.yml"
+          - ".github/workflows"
+          - "skills"
         required: false
         sequence: 4
         depends_on:
@@ -116,6 +158,10 @@ phases:
       # same way. Looker only in this release; bi_tool: omni stops.
       - id: data_app
         command: data_app
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - "apps"
         required: false
         sequence: 5
         depends_on:
@@ -131,6 +177,13 @@ phases:
     artifacts:
       - id: data_quality
         command: data_quality
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - ".wire/releases/{release}/test"
+          - "models"
+          - "tests"
+          - "macros"
         required: true
         sequence: 1
         depends_on:
@@ -146,6 +199,14 @@ phases:
     artifacts:
       - id: deployment
         command: deployment
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - ".wire/releases/{release}/dev"
+          - ".wire/releases/{release}/deploy"
+          - ".github/workflows"
+          - "deploy"
+          - "infra"
+          - "terraform"
         required: true
         sequence: 1
         depends_on:
