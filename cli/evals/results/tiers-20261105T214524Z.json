@@ -1,0 +1,98 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-05 21:45Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "qwen/qwen3.6-35b-a3b",
+    "--provider",
+    "lmstudio"
+  ],
+  "results": [
+    {
+      "id": "mech-status-table",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 16463,
+      "seconds": 36.5,
+      "exit": 0,
+      "final": "\n\nrequirements: complete/pass/approved\nconceptual_model: complete/pass/approved\npipeline_design: complete/pass/approved\ndata_model: complete/pass/approved\npipeline: complete/pass/approved\ndbt: complete/pass/not_started\nsemantic_layer: not_started/not_started/not_started\norchestration: not_started/no"
+    },
+    {
+      "id": "mech-log-arithmetic",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 24340,
+      "seconds": 6.5,
+      "exit": 0,
+      "final": "\n\nHere are the totals:\n\ntokens: 942000\ncost: $7.10"
+    },
+    {
+      "id": "gen-staging-model",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": false,
+      "fails": [
+        "models/staging/shopify/stg_shopify__orders.sql does not match '\\\\border_pk\\\\b'",
+        "models/staging/shopify/stg_shopify__orders.sql does not match '\\\\b(order_customer_fk|customer_fk)\\\\b'"
+      ],
+      "tokens": 399975,
+      "seconds": 70.7,
+      "exit": 0,
+      "final": "\n\nLint passes clean: **0 errors, 0 warnings**.\n\nThe file `models/staging/shopify/stg_shopify__orders.sql` is written with:\n- `s_source` CTE importing from `{{ source('shopify', 'orders') }}` (advisory prefix `s_`)\n- `final` CTE mapping all 6 columns with entity-prefixed names (`order_id_pk`, `order_"
+    },
+    {
+      "id": "judge-grain-check",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 16423,
+      "seconds": 5.9,
+      "exit": 0,
+      "final": "\n\n**wh_sales__order_fact**: PASS\n**wh_sales__order_line_fact**: FAIL - grain states \"one row per order\" but primary key is `order_line_pk` and columns include line-level attributes (`product_fk`, `order_line_quantity_count`, `order_line_amount`); grain should be \"one row per order line\"\n**wh_sales__"
+    },
+    {
+      "id": "judge-ruling-over-email",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 43635,
+      "seconds": 12.5,
+      "exit": 0,
+      "final": "\n\nBased on what I've read, here's the answer:\n\n**Build for Dagster** (per decision R-2, which states the client already runs Dagster). **First**, the CTO inbox email (2026-10-03) must be processed \u2014 it conflicts with R-2 by directing Airflow instead. A new ruling (R-3) needs to be created to resolve"
+    },
+    {
+      "id": "plan-route",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": false,
+      "fails": [
+        "reply matches '(?i)/wire:(semantic_layer|orchestration)-review'"
+      ],
+      "tokens": 93901,
+      "seconds": 29.0,
+      "exit": 0,
+      "final": "\n\nNow I have the full picture. Here's the plan:\n\n---\n\n## Wire Commands for Release `02-data-foundation`\n\n**Current state:** `dbt` is parked (review not started), `semantic_layer` and `orchestration` are both runnable.\n\n### Commands, in order:\n\n1. **`/wire:semantic_layer-generate 02-data-foundation`*"
+    },
+    {
+      "id": "plan-parallel",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 60902,
+      "seconds": 11.4,
+      "exit": 0,
+      "final": "\n\nHere's the answer from `wire status 02-data-foundation`:\n\n**Runnable parallel lanes (2 of 4):** `semantic_layer`, `orchestration` \u2014 both can dispatch now, well within the `lanes_max` cap of 4.\n\n**One artifact that cannot start yet:** `dashboards` \u2014 it is blocked waiting for `semantic_layer.validat"
+    }
+  ],
+  "passed": 5,
+  "total": 7
+}

@@ -1,0 +1,84 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-06 00:00Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "claude-sonnet-5-5",
+    "--provider",
+    "anthropic"
+  ],
+  "results": [
+    {
+      "id": "mech-parked-question",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 63470,
+      "seconds": 8.9,
+      "exit": 0,
+      "final": "id: PD-3, artifact: dbt\nquestion: Currency for revenue amounts: transaction currency plus GBP, or GBP only?"
+    },
+    {
+      "id": "mech-lane-files",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 30864,
+      "seconds": 6.1,
+      "exit": 0,
+      "final": "L1-dbt.md\nL2-orchestration.md\nL3-data-quality.md"
+    },
+    {
+      "id": "gen-approved-names",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 188840,
+      "seconds": 25.8,
+      "exit": 0,
+      "final": "models/integration/int_orders_enriched.sql (the spec's name is kept even though `wire_lint` flags `integration_model_filename`, which expects `int_<group>__<entity>`)."
+    },
+    {
+      "id": "gen-schema-yml",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 98419,
+      "seconds": 15.9,
+      "exit": 0,
+      "final": "`models/staging/shopify/_schema.yml`"
+    },
+    {
+      "id": "judge-failed-validation",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 47769,
+      "seconds": 9.5,
+      "exit": 0,
+      "final": "I didn't mark dbt validate as pass. The latest report is a FAIL, with a critical `unique` failure on `wh_sales__order_fact.order_pk` (214 duplicate keys). The PM's explanation that they come from a test load is plausible, but it's unverified, and I couldn't re-run the test because dbt isn't installed here.\n\nTo move on to the review, the duplicate keys need fixing or the test load needs removing from the warehouse. Then re-run `dbt test` and the validation will pass on its own result. If the PM wants to waive the failure, that should be an explicit, recorded ruling.\n\nSeparately, the dbt step is parked on an open decision, PD-3, about which currency to use for revenue amounts."
+    },
+    {
+      "id": "plan-unblock-deployment",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": false,
+      "fails": [
+        "reply has ['semantic_layer', 'dashboards', 'uat'] out of order"
+      ],
+      "tokens": 247608,
+      "seconds": 36.9,
+      "exit": 0,
+      "final": "Deployment needs `data_quality.validate` PASS and `uat.review` approved. The status tool only names the first blocker, but `release-types/full_platform.yaml` lists both. Today's `wire_gate` for `deployment-generate` refuses.\n\n1. **Ruling (person):** answer parked PD-3, whether revenue is in transaction currency plus GBP or GBP only. It is parked on dbt.\n2. **`dbt-review` (person approval):** dbt is generated and validated, but its review is not approved. This unblocks `data_quality`.\n3. **`data_quality-generate`, then `data_quality-validate`:** the validate step must return PASS. `data_quality` has no review step.\n4. **`semantic_layer-generate`, then `semantic_layer-validate`:** it is runnable now and needs PASS. It can run in parallel with steps 1\u20133.\n5. **`dashboards-generate`, `dashboards-validate`, then `dashboards-review` (person approval):** the review must be approved.\n6. **`uat-generate`, then `uat-review` (person approval):** UAT needs the dashboards review approved first.\n7. *"
+    }
+  ],
+  "passed": 5,
+  "total": 6
+}

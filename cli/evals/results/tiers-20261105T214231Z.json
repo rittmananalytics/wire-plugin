@@ -1,0 +1,93 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-05 21:42Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "claude-haiku-5-5",
+    "--provider",
+    "anthropic"
+  ],
+  "results": [
+    {
+      "id": "mech-status-table",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 48243,
+      "seconds": 4.3,
+      "exit": 0,
+      "final": "requirements: complete/pass/approved\nconceptual_model: complete/pass/approved\npipeline_design: complete/pass/approved\ndata_model: complete/pass/approved\npipeline: complete/pass/approved\ndbt: complete/pass/not_started\nsemantic_layer: not_started/not_started/not_started\norchestration: not_started/not_"
+    },
+    {
+      "id": "mech-log-arithmetic",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 31309,
+      "seconds": 2.6,
+      "exit": 0,
+      "final": "tokens: 942000\ncost: $7.10"
+    },
+    {
+      "id": "gen-staging-model",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 210314,
+      "seconds": 43.9,
+      "exit": 0,
+      "final": "Lint passed with 0 errors and 0 warnings on `models/staging/shopify/stg_shopify__orders.sql`, after I split a 157-character config line."
+    },
+    {
+      "id": "judge-grain-check",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 31362,
+      "seconds": 4.2,
+      "exit": 0,
+      "final": "wh_sales__order_fact: PASS\nwh_sales__order_line_fact: FAIL - grain is \"one row per order\" but the primary key is `order_line_pk` and the table has order-line columns, so the grain should be one row per order line.\nwh_sales__refund_fact: PASS"
+    },
+    {
+      "id": "judge-ruling-over-email",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 48650,
+      "seconds": 9.0,
+      "exit": 0,
+      "final": "Build for **Dagster**, per ruling R-2 in `decisions.md`, which is the recorded decision and predates the CTO's 2026-10-03 email asking for Airflow. Wire's gate allows `orchestration-generate` now, so nothing is blocking. Still, I'd get the Airflow-vs-Dagster conflict settled and recorded as a new ru"
+    },
+    {
+      "id": "plan-route",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 48954,
+      "seconds": 9.1,
+      "exit": 0,
+      "final": "Release `02-data-foundation` is at `dbt: parked: needs ruling`, with `semantic_layer` and `orchestration` runnable now. The planned order:\n\n1. `/wire:semantic_layer-generate 02-data-foundation`\n2. `/wire:semantic_layer-validate 02-data-foundation` (must PASS before `dashboards` unblocks)\n3. `/wire:o"
+    },
+    {
+      "id": "plan-parallel",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 63841,
+      "seconds": 10.2,
+      "exit": 0,
+      "final": "- Runnable now as parallel lanes: `semantic_layer` (generate) and `orchestration` (generate).\n- That is 2 lanes against the `lanes_max: 4` cap, so 2 slots are free.\n- `dashboards` cannot start yet; it waits for `semantic_layer.validate` to PASS (currently not_started).\n- The cap comes from `.wire/re"
+    }
+  ],
+  "passed": 7,
+  "total": 7
+}

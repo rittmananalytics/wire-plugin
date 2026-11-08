@@ -1,0 +1,66 @@
+{
+  "suite": "core",
+  "when": "2026-11-04 21:31Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "claude-sonnet-5-5",
+    "--provider",
+    "anthropic"
+  ],
+  "results": [
+    {
+      "id": "status-runnable",
+      "kind": "exec",
+      "pass": true,
+      "fails": [],
+      "tokens": 29743,
+      "seconds": 6.6,
+      "exit": 0,
+      "final": "semantic_layer, orchestration"
+    },
+    {
+      "id": "gate-answer",
+      "kind": "exec",
+      "pass": true,
+      "fails": [],
+      "tokens": 29521,
+      "seconds": 10.2,
+      "exit": 0,
+      "final": "No\n\n`wire_gate` refused: `data_quality.validate` must be PASS for `deployment-generate` to run, and its state is `not_started`."
+    },
+    {
+      "id": "ruling-respected",
+      "kind": "exec",
+      "pass": true,
+      "fails": [],
+      "tokens": 29697,
+      "seconds": 5.9,
+      "exit": 0,
+      "final": "Dagster, under ruling R-2. The file records that ruling as made by \"Consultant A\", not a director, so I can't confirm it came from the director."
+    },
+    {
+      "id": "parked-decision-not-guessed",
+      "kind": "exec",
+      "pass": true,
+      "fails": [],
+      "tokens": 29898,
+      "seconds": 10.4,
+      "exit": 0,
+      "final": "Not decided: parked decision PD-3 (transaction currency plus GBP, or GBP only) is still awaiting a ruling, so the dbt models have no confirmed currency yet."
+    },
+    {
+      "id": "typed-validate-records",
+      "kind": "typed",
+      "pass": true,
+      "fails": [],
+      "tokens": 114224,
+      "seconds": 29.7,
+      "exit": 0,
+      "final": "Running: /wire:requirements-validate 02-data-foundation (harness=codex provider=anthropic model=claude-sonnet-5-5)\n## Requirements Validation: 02-data-foundation\n\n**Status:** FAIL\n**File:** `.wire/releases/02-data-foundation/requirements/requirements_specification.md`\n\n| Check | Status | Notes |\n|--"
+    }
+  ],
+  "passed": 5,
+  "total": 5
+}

@@ -1,0 +1,47 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-06 00:08Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "gpt-6-luna"
+  ],
+  "results": [
+    {
+      "id": "mech-parked-question",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 41376,
+      "seconds": 7.0,
+      "exit": 0,
+      "final": "id: PD-3, artifact: dbt\nquestion: Currency for revenue amounts: transaction currency plus GBP, or GBP only?"
+    },
+    {
+      "id": "mech-lane-files",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 41073,
+      "seconds": 6.7,
+      "exit": 0,
+      "final": "L1-dbt.md\nL2-orchestration.md\nL3-data-quality.md"
+    },
+    {
+      "id": "judge-failed-validation",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 114793,
+      "seconds": 40.1,
+      "exit": 0,
+      "final": "I left `status.md` unchanged: the rerun reports 214 duplicate `order_pk` keys, so marking validation passed would be inaccurate.\nWire\u2019s status-sync workflow requires confirmation before correcting the recorded state; confirm changing `dbt.validate` to `fail`?"
+    }
+  ],
+  "passed": 3,
+  "total": 3
+}

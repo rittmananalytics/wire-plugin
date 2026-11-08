@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "reply": { "type": "string" },
+    "commands": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["reply", "commands"],
+  "additionalProperties": false
+}

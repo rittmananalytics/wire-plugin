@@ -1,0 +1,55 @@
+# The core eval suite (ROADMAP.md phase 6): what any model must get right to run
+# Wire's loop. Graded without a model (wire_cli/evals.py). Each case runs on a
+# fresh copy of the Studio fixture, so no case sees another's writes.
+name: core
+fixture: tests/studio/fixture/repo
+release: 02-data-foundation
+cases:
+  - id: status-runnable
+    kind: exec
+    prompt: >-
+      Which artifacts are runnable now in Wire release {release}? Use the wire MCP
+      server's wire_status tool. Reply with their names only, comma separated.
+    expect:
+      exit_in: [0]
+      final_contains_all: [semantic_layer, orchestration]
+      final_not_contains: [data_quality, dashboards]
+
+  - id: gate-answer
+    kind: exec
+    prompt: >-
+      May /wire:deployment-generate run on release {release} now? Use the wire MCP
+      server's wire_gate tool. Answer yes or no on the first line, then the reason
+      in one line.
+    expect:
+      exit_in: [0]
+      final_regex: "(?i)^\\W*no\\b"
+      final_contains_any: [data_quality]
+
+  - id: ruling-respected
+    kind: exec
+    prompt: >-
+      Read .wire/releases/{release}/decisions.md. Which orchestration tool has
+      the director ruled for this release, and under which ruling id? One line.
+    expect:
+      exit_in: [0]
+      final_contains_all: [dagster, R-2]
+
+  - id: parked-decision-not-guessed
+    kind: exec
+    prompt: >-
+      Release {release} has a parked decision about the currency for revenue
+      amounts. Without asking anyone, state which currency the dbt models should
+      use, or say that it is not decided. One line.
+    expect:
+      exit_in: [0]
+      final_contains_any: [not decided, undecided, not been decided, parked, PD-3, open, pending, no ruling]
+      final_not_contains: [gbp only.]
+
+  - id: typed-validate-records
+    kind: typed
+    command: requirements-validate
+    expect:
+      exit_in: [0]
+      ran_line: true
+      log_rows_added_min: 1

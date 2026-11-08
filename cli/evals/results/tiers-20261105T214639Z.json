@@ -1,0 +1,50 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-05 21:46Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "gpt-6-luna"
+  ],
+  "results": [
+    {
+      "id": "mech-status-table",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 56505,
+      "seconds": 13.1,
+      "exit": 0,
+      "final": "requirements: complete/pass/approved\nconceptual_model: complete/pass/approved\npipeline_design: complete/pass/approved\ndata_model: complete/pass/approved\npipeline: complete/pass/approved\ndbt: complete/pass/not_started\nsemantic_layer: not_started/not_started/not_started\norchestration: not_started/not_"
+    },
+    {
+      "id": "mech-log-arithmetic",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 27459,
+      "seconds": 8.4,
+      "exit": 0,
+      "final": "tokens: 942000\ncost: $7.10"
+    },
+    {
+      "id": "judge-ruling-over-email",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": false,
+      "fails": [
+        "reply has none of ['new ruling', 'ruling', '/rule', 'director', 'decide', 'confirm']",
+        "reply matches '(?i)\\\\b(build|use|go with)\\\\b[^.\\\\n]{0,30}\\\\bairflow\\\\b(?![^.\\\\n]*(\\\\?|ruling|confirm|decid|director))'"
+      ],
+      "tokens": 46315,
+      "seconds": 15.1,
+      "exit": 0,
+      "final": "Build for **Airflow**, per the CTO\u2019s later email. First record it as superseding R-2, which currently says Dagster; the Wire gate allows generation."
+    }
+  ],
+  "passed": 2,
+  "total": 3
+}

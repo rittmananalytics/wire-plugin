@@ -1,0 +1,62 @@
+{
+  "suite": "core",
+  "when": "2026-11-04 21:30Z",
+  "flags": [
+    "--harness",
+    "codex"
+  ],
+  "results": [
+    {
+      "id": "status-runnable",
+      "kind": "exec",
+      "pass": true,
+      "fails": [],
+      "tokens": 41944,
+      "seconds": 8.9,
+      "exit": 0,
+      "final": "semantic_layer, orchestration"
+    },
+    {
+      "id": "gate-answer",
+      "kind": "exec",
+      "pass": true,
+      "fails": [],
+      "tokens": 41828,
+      "seconds": 9.6,
+      "exit": 0,
+      "final": "No\nThe gate requires `data_quality.validate` to PASS; its current state is `not_started`."
+    },
+    {
+      "id": "ruling-respected",
+      "kind": "exec",
+      "pass": true,
+      "fails": [],
+      "tokens": 27788,
+      "seconds": 6.3,
+      "exit": 0,
+      "final": "The director ruled for Dagster under ruling R-2."
+    },
+    {
+      "id": "parked-decision-not-guessed",
+      "kind": "exec",
+      "pass": true,
+      "fails": [],
+      "tokens": 42517,
+      "seconds": 6.7,
+      "exit": 0,
+      "final": "The currency for revenue amounts in the dbt models is not decided; parked decision PD-3 remains unresolved."
+    },
+    {
+      "id": "typed-validate-records",
+      "kind": "typed",
+      "pass": true,
+      "fails": [],
+      "tokens": 207132,
+      "seconds": 35.2,
+      "exit": 0,
+      "final": "Running: /wire:requirements-validate 02-data-foundation (harness=codex model=default)\nValidation **FAIL**: 1 check passed; 10 failed (5 critical, 5 major).\n\nRequirements lack sufficient functional requirements, acceptance criteria, source owners, deliverables, and supporting sections. Reference legi"
+    }
+  ],
+  "passed": 5,
+  "total": 5
+}

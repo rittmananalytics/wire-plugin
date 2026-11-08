@@ -99,7 +99,7 @@ The first setting found wins:
 2. Environment: `WIRE_HARNESS`, `WIRE_MODEL`, `WIRE_MODEL_PROVIDER`
 3. The release's `budget.harness` block in `status.md`
 4. The engagement's `harness:` block in `.wire/engagement/context.md`
-5. Nothing set: Claude Opus 5.5 when `ANTHROPIC_API_KEY` is set (the `claude` harness when Claude Code is installed, otherwise `codex` with the Anthropic provider); otherwise the `codex` harness with its own default model (GPT-6.1 Sol)
+5. Nothing set: Claude Opus 5.5 when `ANTHROPIC_API_KEY` is set (the `claude` harness when Claude Code is installed, otherwise `codex` with the Anthropic provider); with no key set at all and Claude Code installed, Claude Opus 5.5 on the `claude` harness on your Claude Code sign-in; otherwise the `codex` harness with its own default model (GPT-6.1 Sol)
 
 An engagement default looks like this:
 

@@ -22,7 +22,7 @@ Studio 4.x runs on your own machine against a client repository you have checked
 | Lanes | Each lane's state file and when it was last written. A lane not marked complete with no write for 30 minutes is shown as stalled, with a re-dispatch directive. |
 | Record and rulings | Rulings from `decisions.md`, the tickets worked inside the release (iterations), and the execution log, newest first |
 | Documents | Any artifact file, with Markdown tables and Mermaid diagrams rendered |
-| Session (Wire CLI, experimental) | The Wire CLI's session in the page (below). Local Studio only, where the Wire CLI is installed. |
+| Session (Wire CLI, experimental) | The Wire CLI's session in the page (below). Local Studio only. |
 
 For a release built from tickets, Studio reads the ticket map and the ticket records through the same script the Wire session uses (`scripts/ticket_delivery.py`), so its slice table and its list of what can start match `/wire:status`. A merged ticket whose work is not yet in the release record appears in the decision inbox with `/wire:status-sync`.
 
@@ -127,7 +127,7 @@ From 4.6.3, Studio can run the [Wire CLI](./wire-cli)'s session in the page. Ope
 
 The session is the Wire CLI's, running on your machine with your harness, model and keys (`~/.wire/secrets.env`). It writes the record as a terminal session would, and if another session holds the release claim it offers join, take-over or move. Studio passes text to it and shows what comes back.
 
-The view needs the Wire CLI installed beside Studio: the CLI install and the Codex plugin have it, the Claude Code plugin does not, and there the view says so. Hosted Studio has no Session view.
+The Wire CLI ships with Studio in the Claude Code plugin (from 4.6.4), the Codex plugin and the CLI install, so there is nothing else to install. In the Claude Code plugin the steps run on Claude Code: with no API key set, they use your Claude Code sign-in and its plan limits, and the model list offers the Claude models, starting on Opus 5.5. Put `ANTHROPIC_API_KEY` in `~/.wire/secrets.env` for API billing, or `OPENAI_API_KEY` (with the Wire CLI's agent installed) for OpenAI models. With no key and neither Claude Code nor the agent installed, the view says what to install or set. Hosted Studio has no Session view.
 
 ## Why Studio never writes to the record
 

@@ -1,0 +1,82 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-05 23:58Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "gpt-6-luna"
+  ],
+  "results": [
+    {
+      "id": "mech-parked-question",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 41592,
+      "seconds": 5.2,
+      "exit": 0,
+      "final": "id: PD-3, artifact: dbt\nquestion: Currency for revenue amounts: transaction currency plus GBP, or GBP only?"
+    },
+    {
+      "id": "mech-lane-files",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 41147,
+      "seconds": 8.4,
+      "exit": 0,
+      "final": "L1-dbt.md\nL2-orchestration.md\nL3-data-quality.md"
+    },
+    {
+      "id": "gen-approved-names",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 254073,
+      "seconds": 68.7,
+      "exit": 0,
+      "final": "models/integration/int_orders_enriched.sql"
+    },
+    {
+      "id": "gen-schema-yml",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 196628,
+      "seconds": 28.3,
+      "exit": 0,
+      "final": "models/staging/shopify/_schema.yml"
+    },
+    {
+      "id": "judge-failed-validation",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": false,
+      "fails": [
+        "status.md was changed"
+      ],
+      "tokens": 227997,
+      "seconds": 56.0,
+      "exit": 0,
+      "final": "Updated dbt validation to `fail` and recorded the rerun in the execution log; the report shows 214 duplicate keys.  \nI didn\u2019t mark it pass because that would contradict the validation evidence; Wire now shows dbt validation as runnable."
+    },
+    {
+      "id": "plan-unblock-deployment",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 244444,
+      "seconds": 69.7,
+      "exit": 0,
+      "final": "Already complete: requirements, conceptual model, pipeline design, data model, and pipeline.\n\n1. A person settles parked decision PD-3: which currency treatment to use for revenue.\n2. Run `/wire:dbt-generate` and `/wire:dbt-validate` (PASS); a person approves `/wire:dbt-review`.\n3. Run `/wire:semant"
+    }
+  ],
+  "passed": 5,
+  "total": 6
+}

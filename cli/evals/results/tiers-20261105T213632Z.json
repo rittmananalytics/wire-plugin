@@ -1,0 +1,91 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-05 21:36Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "gpt-6-astra"
+  ],
+  "results": [
+    {
+      "id": "mech-status-table",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 30624,
+      "seconds": 10.6,
+      "exit": 0,
+      "final": "requirements: complete/pass/approved\nconceptual_model: complete/pass/approved\npipeline_design: complete/pass/approved\ndata_model: complete/pass/approved\npipeline: complete/pass/approved\ndbt: complete/pass/not_started\nsemantic_layer: not_started/not_started/not_started\norchestration: not_started/not_"
+    },
+    {
+      "id": "mech-log-arithmetic",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 28580,
+      "seconds": 8.6,
+      "exit": 0,
+      "final": "tokens: 942000\ncost: $7.10"
+    },
+    {
+      "id": "gen-staging-model",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 198140,
+      "seconds": 27.0,
+      "exit": 0,
+      "final": "Lint passed: 1 file checked \u2014 0 errors, 0 warnings."
+    },
+    {
+      "id": "judge-grain-check",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 46408,
+      "seconds": 9.6,
+      "exit": 0,
+      "final": "wh_sales__order_fact: PASS\nwh_sales__order_line_fact: FAIL - Stated grain is one row per order, but order_line_pk and line-level columns imply one row per order line.\nwh_sales__refund_fact: PASS"
+    },
+    {
+      "id": "judge-ruling-over-email",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 46842,
+      "seconds": 11.2,
+      "exit": 0,
+      "final": "Build for Dagster: recorded ruling R-2 remains authoritative despite the newer CTO email.\nTo use Airflow, first record a new ruling in `decisions.md` explicitly superseding R-2.\nThe Wire gate allows generation; no blocking precondition is unmet."
+    },
+    {
+      "id": "plan-route",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 84096,
+      "seconds": 18.5,
+      "exit": 0,
+      "final": "Wire\u2019s `wire_status` shows both layers are runnable now. Run in this order, resolving any validation failures until each returns PASS:\n\n1. `/wire:semantic_layer-generate 02-data-foundation`\n2. `/wire:semantic_layer-validate 02-data-foundation`\n3. `/wire:orchestration-generate 02-data-foundation`\n4. "
+    },
+    {
+      "id": "plan-parallel",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 79541,
+      "seconds": 20.7,
+      "exit": 0,
+      "final": "`wire_status` reports two dispatchable lanes: `semantic_layer` (generate) and `orchestration` (generate).\nThat is **2 of 4 lanes** allowed by `budget.lanes_max`.\n`dashboards` cannot start yet: it waits for `semantic_layer.validate` to PASS (currently `not_started`)."
+    }
+  ],
+  "passed": 7,
+  "total": 7
+}

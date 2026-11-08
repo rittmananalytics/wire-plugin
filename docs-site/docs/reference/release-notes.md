@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.4: the Wire CLI ships in the Claude Code plugin
+
+**Released**: November 2026
+
+**Nothing else to install.** The Claude Code plugin now carries the [Wire CLI](../wire-cli/what-is-the-cli) beside [Wire Studio](../advanced/wire-studio), with its list of Wire commands, so Studio's Wire CLI view works as soon as the plugin is installed. Before, the view said the CLI was not installed. The `wire-agent` download, needed only for OpenAI or local models, stays with the separate installer.
+
+**Claude Code sign-in.** With Claude Code installed and no API key set, the Wire CLI (in Studio and in a terminal) runs its steps on Claude Code, on your own sign-in and plan limits, and the model list offers the Claude models, starting on Claude Opus 5.5. `ANTHROPIC_API_KEY` in `~/.wire/secrets.env` gives API billing as before; an OpenAI key on its own keeps the OpenAI default.
+
+**Clear messages.** With no key and neither Claude Code nor the Wire CLI's agent installed, the Wire CLI view says what to install or set. A plugin from before this release says to update the plugin.
+
+---
+
 ## v4.6.3: the Wire CLI in Wire Studio
 
 **Released**: November 2026

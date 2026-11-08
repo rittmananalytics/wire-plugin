@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "properties": {
+    "result": {
+      "type": "string",
+      "enum": ["complete", "pass", "fail", "blocked", "stalled", "needs_ruling"]
+    },
+    "detail": { "type": "string" },
+    "files_written": { "type": "array", "items": { "type": "string" } },
+    "decision_needed": { "type": "string" }
+  },
+  "required": ["result", "detail", "files_written", "decision_needed"],
+  "additionalProperties": false
+}

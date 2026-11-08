@@ -6,9 +6,9 @@ root>/cli`), starts sessions there, and relays lines in and events out. The
 session is the single writer of the record, as in a terminal. Local mode
 only: hosted Studio has no sessions.
 
-When the CLI is not beside Studio (the Claude Code plugin ships Studio
-without it) or cannot be loaded (PyYAML missing, an old CLI), the view says
-why and the rest of Studio is unchanged.
+The Claude Code plugin (from 4.6.4) and the Codex plugin both ship the CLI
+beside Studio. When it is not there (an older plugin) or cannot be loaded,
+the view says why and the rest of Studio is unchanged.
 """
 
 from __future__ import annotations
@@ -33,8 +33,8 @@ def load(framework_root: Path, repo: Path, env: dict | None = None):
     """A `Sessions` object for `repo`, or raise Unavailable with the reason."""
     root = cli_root(framework_root)
     if root is None:
-        raise Unavailable("the Wire CLI is not installed beside this Studio (it ships in the Codex plugin "
-                          "and the CLI install, not the Claude Code plugin)")
+        raise Unavailable("the Wire CLI is not beside this Studio; update the Wire plugin to 4.6.4 or later "
+                          "(/plugin update wire@rittman-analytics, then /reload-plugins)")
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
     try:

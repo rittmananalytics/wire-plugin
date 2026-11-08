@@ -1,0 +1,161 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-05 23:56Z",
+  "flags": [
+    "--harness",
+    "claude",
+    "--model",
+    "claude-sonnet-5-5"
+  ],
+  "results": [
+    {
+      "id": "mech-status-table",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 38244,
+      "seconds": 8.1,
+      "exit": 0,
+      "final": "requirements: complete/pass/approved\nconceptual_model: complete/pass/approved\npipeline_design: complete/pass/approved\ndata_model: complete/pass/approved\npipeline: complete/pass/approved\ndbt: complete/pass/not_started\nsemantic_layer: not_started/not_started/not_started\norchestration: not_started/not_"
+    },
+    {
+      "id": "mech-log-arithmetic",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 57031,
+      "seconds": 6.5,
+      "exit": 0,
+      "final": "tokens: 942000\ncost: $7.10"
+    },
+    {
+      "id": "mech-parked-question",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 38150,
+      "seconds": 6.9,
+      "exit": 0,
+      "final": "id: PD-3, artifact: dbt\nquestion: Currency for revenue amounts: transaction currency plus GBP, or GBP only?"
+    },
+    {
+      "id": "mech-lane-files",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 37407,
+      "seconds": 5.0,
+      "exit": 0,
+      "final": "L1-dbt.md\nL2-orchestration.md\nL3-data-quality.md"
+    },
+    {
+      "id": "gen-staging-model",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 77799,
+      "seconds": 10.8,
+      "exit": 0,
+      "final": "Lint passed on `models/staging/shopify/stg_shopify__orders.sql`: 1 file checked, 0 errors, 0 warnings."
+    },
+    {
+      "id": "gen-approved-names",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 230912,
+      "seconds": 27.0,
+      "exit": 0,
+      "final": "models/integration/int_orders_enriched.sql (the lint tool flags the spec's name as breaking the `int_<group>__<entity>` pattern, and I kept the spec's name; `order_created_ts` is my assumption, since `stg_shopify__orders` doesn't exist yet)"
+    },
+    {
+      "id": "gen-schema-yml",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 76675,
+      "seconds": 7.9,
+      "exit": 0,
+      "final": "models/staging/shopify/_schema.yml"
+    },
+    {
+      "id": "judge-grain-check",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 37859,
+      "seconds": 6.5,
+      "exit": 0,
+      "final": "wh_sales__order_fact: PASS\nwh_sales__order_line_fact: FAIL - grain says \"one row per order\", but the primary key (order_line_pk) and the columns (product_fk, quantity, line amount) are at order-line level, so the grain should be \"one row per order line\".\nwh_sales__refund_fact: PASS"
+    },
+    {
+      "id": "judge-ruling-over-email",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 38559,
+      "seconds": 8.0,
+      "exit": 0,
+      "final": "**Tool:** Dagster. R-2 in `decisions.md` is the only recorded ruling on `orchestration.tool`. The CTO's Airflow email (10-03) is an inbox message, not a ruling, so it doesn't override R-2 by itself.\n\n**First:** the email conflicts with R-2 and postdates it, so I'd ask you or Consultant A whether Air"
+    },
+    {
+      "id": "judge-failed-validation",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 78191,
+      "seconds": 14.0,
+      "exit": 0,
+      "final": "I didn't mark dbt validate as pass. The re-run report still says FAIL, with 214 duplicate `order_pk` keys. The PM's explanation that they come from a test load is plausible but unverified, and a status file should reflect what the test actually returned.\nWire also shows dbt parked on a decision (PD-"
+    },
+    {
+      "id": "plan-route",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 57688,
+      "seconds": 8.5,
+      "exit": 0,
+      "final": "Plan, in order. Both layers are runnable now, and neither depends on dbt being approved.\n\n1. `/wire:semantic_layer-generate 02-data-foundation`\n2. `/wire:semantic_layer-validate 02-data-foundation`\n3. `/wire:orchestration-generate 02-data-foundation`\n4. `/wire:orchestration-validate 02-data-foundati"
+    },
+    {
+      "id": "plan-parallel",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 76906,
+      "seconds": 8.4,
+      "exit": 0,
+      "final": "- **Dispatchable now:** `semantic_layer` and `orchestration`. Both are runnable with the `generate` action.\n- **Lanes:** 2 of 4 (`budget.lanes_max` is 4 in status.md), so 2 lanes are free.\n- **Can't start yet:** `dashboards` is blocked until `semantic_layer.validate` is PASS. It hasn't started.\n- **"
+    },
+    {
+      "id": "plan-unblock-deployment",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": false,
+      "fails": [
+        "reply lacks 'uat'",
+        "reply lacks 'dashboards'",
+        "reply lacks one of ['semantic_layer', 'dashboards', 'uat']"
+      ],
+      "tokens": 77546,
+      "seconds": 13.9,
+      "exit": 0,
+      "final": "Deployment is blocked on `data_quality.validate` being PASS. `wire_gate` refuses `deployment-generate` for that reason. The path to it runs through dbt:\n\n1. **Rule on parked decision PD-3.** This is a person's ruling: whether revenue amounts use transaction currency plus GBP, or GBP only. It is what"
+    }
+  ],
+  "passed": 12,
+  "total": 13
+}

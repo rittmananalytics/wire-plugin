@@ -1,0 +1,82 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-06 00:06Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "qwen/qwen3.6-35b-a3b",
+    "--provider",
+    "lmstudio"
+  ],
+  "results": [
+    {
+      "id": "mech-parked-question",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 16315,
+      "seconds": 39.8,
+      "exit": 0,
+      "final": "\n\nid: PD-3, artifact: dbt\nquestion: Currency for revenue amounts: transaction currency plus GBP, or GBP only?"
+    },
+    {
+      "id": "mech-lane-files",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 15906,
+      "seconds": 4.6,
+      "exit": 0,
+      "final": "\n\nL1-dbt.md\nL2-orchestration.md\nL3-data-quality.md"
+    },
+    {
+      "id": "gen-approved-names",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 141056,
+      "seconds": 81.0,
+      "exit": 0,
+      "final": "\n\nmodels/integration/int_orders_enriched.sql"
+    },
+    {
+      "id": "gen-schema-yml",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 79222,
+      "seconds": 15.2,
+      "exit": 0,
+      "final": "\n\nmodels/staging/shopify/_schema.yml"
+    },
+    {
+      "id": "judge-failed-validation",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 60669,
+      "seconds": 10.2,
+      "exit": 0,
+      "final": "\n\nThe dbt artifact in the release status already says `validate: pass`, but the re-run report shows FAIL. I need to update the validation report to reflect the PM's note that these are test-load duplicates, so the status should remain pass. Let me update the validation report.\n\n"
+    },
+    {
+      "id": "plan-unblock-deployment",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 231694,
+      "seconds": 74.0,
+      "exit": 0,
+      "final": "\n\nI've gathered all the information. Here's what must happen, in order, before deployment can start on release **02-data-foundation**:\n\n1. **Person resolves parked decision PD-3** (currency ruling: transaction currency plus GBP, or GBP only?)\n2. **`wire:dbt-review`** (dbt.review is currently `not_started`)\n3. **`wire:semantic_layer-generate`** (semantic_layer.generate is `not_started`)\n4. **`wire:semantic_layer-validate`** (semantic_layer.validate is `not_started`)\n5. **`wire:semantic_layer-review`** (semantic_layer.review is `not_started`)\n6. **`wire:dashboards-generate`** (depends on semantic_layer.validate: PASS)\n7. **`wire:dashboards-validate`** (depends on semantic_layer.validate: PASS)\n8. **`wire:dashboards-review`** (then orchestration \u2192 data_quality \u2192 uat \u2192 `wire:deployment-generate`)\n\nThe release is currently in the **development** phase (`status.md`, line 6). The full_platform release type gates deployment on `data_quality.validate: PASS` and `uat.review: approved` \u2014 both are"
+    }
+  ],
+  "passed": 6,
+  "total": 6
+}

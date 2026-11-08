@@ -355,7 +355,8 @@ harness:
 
 With nothing set and `ANTHROPIC_API_KEY` set: Claude Opus 5.5 (`claude-opus-5-5`), on the
 `claude` harness when `claude` is installed, otherwise on codex's Anthropic
-provider. With nothing set and no Anthropic key: `codex` with its own default
+provider. With nothing set, no key at all and `claude` installed: Opus 5.5 on the `claude`
+harness on Claude Code's own sign-in. Otherwise: `codex` with its own default
 model (GPT-6.1 Sol). The `claude` harness with no model named runs Opus 5.5. A lane's model follows
 `specs/delegate.md`: the command's workload tier, then the economy model
 when `budget.model_tier: economy`, else the configured model. The routing

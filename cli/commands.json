@@ -1,0 +1,2627 @@
+[
+  {
+    "command": "start",
+    "spec": "start",
+    "description": "Session entry point and Wire co-pilot \u2014 orients new users, surfaces the right next action, and helps navigating consultants pick up where they left off",
+    "arguments": "[new/resume/explain]",
+    "telemetry": false
+  },
+  {
+    "command": "new",
+    "spec": "new",
+    "description": "Create a new Wire engagement or add a release to an existing engagement",
+    "arguments": "(no arguments - interactive)",
+    "telemetry": true
+  },
+  {
+    "command": "mcp",
+    "spec": "mcp",
+    "description": "Wire-aware MCP server overview and pre-flight check \u2014 list servers with Wire purpose, view details, check release readiness",
+    "arguments": "[list/view/check] [server-name or release-folder]",
+    "telemetry": false
+  },
+  {
+    "command": "session-start",
+    "spec": "session/start",
+    "description": "DEPRECATED \u2014 context loading is now automatic via the engagement-context skill; use /wire:session-plan for optional structured planning",
+    "arguments": "(optional: release-folder)",
+    "telemetry": false
+  },
+  {
+    "command": "session-end",
+    "spec": "session/end",
+    "description": "DEPRECATED \u2014 session state is now written automatically after each Wire command completes",
+    "arguments": "(optional: release-folder)",
+    "telemetry": false
+  },
+  {
+    "command": "session-plan",
+    "spec": "session/plan",
+    "description": "Optional planning ritual \u2014 propose a focused 3\u20135 step plan before starting work",
+    "arguments": "(optional: release-folder)",
+    "telemetry": false
+  },
+  {
+    "command": "autopilot",
+    "spec": "autopilot",
+    "description": "Autonomous end-to-end engagement execution from SOW \u2014 discovery sprint then all delivery releases",
+    "arguments": "[path-to-sow]",
+    "telemetry": true
+  },
+  {
+    "command": "delegate",
+    "spec": "delegate",
+    "description": "Decompose a release's pending work into typed tasks and dispatch to specialist local subagents",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "status",
+    "spec": "status",
+    "description": "Report on all project statuses or specific project",
+    "arguments": "[project-folder] or --archived",
+    "telemetry": false
+  },
+  {
+    "command": "persona",
+    "spec": "persona",
+    "description": "Show or set your role (persona) on this engagement, so commands with a persona variant focus on it",
+    "arguments": "[set <persona> ",
+    "telemetry": false
+  },
+  {
+    "command": "status-sync",
+    "spec": "utils/status_sync",
+    "description": "Reconcile recorded release state against evidence (git, execution log, disk, sprint plan) and repair the record with confirmation",
+    "arguments": "[release-folder]",
+    "telemetry": false
+  },
+  {
+    "command": "tickets-import",
+    "spec": "tickets/import",
+    "description": "Read a release's tickets from Linear or Jira and propose the ticket map (kind, slices, Wire steps per ticket), using the Modality model where linked; turns on ticket delivery for the release",
+    "arguments": "<release-folder> [--tracker linear",
+    "telemetry": false
+  },
+  {
+    "command": "work",
+    "spec": "work",
+    "description": "Work a ticket inside an existing release \u2014 plan with a command or skill named per step, run only the approved plan, publish via the client's PR, patch stale documents and reconcile the record",
+    "arguments": "<release-folder> [ticket-or-description]",
+    "telemetry": true
+  },
+  {
+    "command": "archive",
+    "spec": "archive",
+    "description": "Archive a completed project",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "remove",
+    "spec": "remove",
+    "description": "Remove a project with confirmation",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "playbook-generate",
+    "spec": "playbook/generate",
+    "description": "Generate a step-by-step BPMN delivery playbook for any Wire release",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "kickoff-generate",
+    "spec": "kickoff/generate",
+    "description": "Generate client kick-off presentation deck from SoW and engagement context",
+    "arguments": "[release-folder]",
+    "telemetry": true
+  },
+  {
+    "command": "kickoff-validate",
+    "spec": "kickoff/validate",
+    "description": "Validate kick-off deck JSON structure and content completeness",
+    "arguments": "[release-folder]",
+    "telemetry": true
+  },
+  {
+    "command": "kickoff-review",
+    "spec": "kickoff/review",
+    "description": "Review kick-off deck internally and export to PDF on approval",
+    "arguments": "[release-folder]",
+    "telemetry": true
+  },
+  {
+    "command": "problem-definition-generate",
+    "spec": "discovery/problem_definition/generate",
+    "description": "Generate structured problem definition for a Shape Up discovery release",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "problem-definition-validate",
+    "spec": "discovery/problem_definition/validate",
+    "description": "Validate problem definition completeness and quality",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "problem-definition-review",
+    "spec": "discovery/problem_definition/review",
+    "description": "Review problem definition with stakeholders",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "business-rules-generate",
+    "spec": "discovery/business_rules/generate",
+    "description": "Discover, define and agree the business rules for one domain, from legacy systems and from the people who own the definitions, before design starts",
+    "arguments": "<release-folder> [--domain <name>] [--import <path>]",
+    "telemetry": true
+  },
+  {
+    "command": "business-rules-validate",
+    "spec": "discovery/business_rules/validate",
+    "description": "Validate the business rules register: statuses consistent with their required fields, assumptions unexpired, every variant sourced, rules and implementations citing each other",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "business-rules-review",
+    "spec": "discovery/business_rules/review",
+    "description": "Review the business rules register with the people who own the numbers \u2014 each disputed rule settled or owned, each assumption accepted with its expiry",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "pitch-generate",
+    "spec": "discovery/pitch/generate",
+    "description": "Generate a Shape Up pitch document from the approved problem definition",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "pitch-validate",
+    "spec": "discovery/pitch/validate",
+    "description": "Validate pitch document structure and Shape Up quality",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "pitch-review",
+    "spec": "discovery/pitch/review",
+    "description": "Review pitch with stakeholders and record appetite decision",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "release-brief-generate",
+    "spec": "discovery/release_brief/generate",
+    "description": "Generate formal release brief from the approved pitch",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "release-brief-validate",
+    "spec": "discovery/release_brief/validate",
+    "description": "Validate release brief against the pitch",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "release-brief-review",
+    "spec": "discovery/release_brief/review",
+    "description": "Review release brief with client and record sign-off",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "sprint-plan-generate",
+    "spec": "discovery/sprint_plan/generate",
+    "description": "Generate sprint plan with epics, stories, and point estimates",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "sprint-plan-validate",
+    "spec": "discovery/sprint_plan/validate",
+    "description": "Validate sprint plan point estimates and appetite budget",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "sprint-plan-review",
+    "spec": "discovery/sprint_plan/review",
+    "description": "Review sprint plan with delivery team and record approval",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "engagement-brief-generate",
+    "spec": "sop_discovery/engagement_brief/generate",
+    "description": "Generate engagement brief from SoW and deal context",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "engagement-brief-validate",
+    "spec": "sop_discovery/engagement_brief/validate",
+    "description": "Validate engagement brief completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "engagement-brief-review",
+    "spec": "sop_discovery/engagement_brief/review",
+    "description": "Internal RA review of engagement brief",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "stakeholder-map-generate",
+    "spec": "sop_discovery/stakeholder_map/generate",
+    "description": "Generate stakeholder map with priorities and booking owners",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "stakeholder-map-validate",
+    "spec": "sop_discovery/stakeholder_map/validate",
+    "description": "Validate stakeholder map completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "stakeholder-map-review",
+    "spec": "sop_discovery/stakeholder_map/review",
+    "description": "Confirm stakeholder map with sponsor",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "stakeholder-interview-generate",
+    "spec": "sop_discovery/stakeholder_interview/generate",
+    "description": "Generate a stakeholder interview write-up with the mandatory four-tag template",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "stakeholder-interview-validate",
+    "spec": "sop_discovery/stakeholder_interview/validate",
+    "description": "Validate four-tag completeness on every theme bullet",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "stakeholder-interview-review",
+    "spec": "sop_discovery/stakeholder_interview/review",
+    "description": "Internal RA peer review of a stakeholder interview write-up",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "current-state-appraisal-generate",
+    "spec": "sop_discovery/current_state_appraisal/generate",
+    "description": "Appraise the client's current state \u2014 platform, sources, replication, tooling, documentation, governance, data quality \u2014 from documentation and interviews rather than system access",
+    "arguments": "<release-folder> [--section \"<title>\"]",
+    "telemetry": true
+  },
+  {
+    "command": "current-state-appraisal-validate",
+    "spec": "sop_discovery/current_state_appraisal/validate",
+    "description": "Validate the current state appraisal: every claim sourced and confidence-rated, sources reconcilable, gaps named rather than empty",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "current-state-appraisal-review",
+    "spec": "sop_discovery/current_state_appraisal/review",
+    "description": "Review the current state appraisal with the client's technical lead \u2014 facts corrected, gaps owned, contradictions resolved or accepted",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "requirements-matrix-generate",
+    "spec": "sop_discovery/requirements_matrix/generate",
+    "description": "Generate the Discovery Requirements Matrix from tagged interviews",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "requirements-matrix-validate",
+    "spec": "sop_discovery/requirements_matrix/validate",
+    "description": "Validate requirements matrix completeness and tag consistency",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "requirements-matrix-review",
+    "spec": "sop_discovery/requirements_matrix/review",
+    "description": "Internal RA review of the requirements matrix",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "discovery-analyses-generate",
+    "spec": "sop_discovery/discovery_analyses/generate",
+    "description": "Generate the three analyses: Hierarchy of Needs, PPT, and Maturity Curve",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "discovery-analyses-validate",
+    "spec": "sop_discovery/discovery_analyses/validate",
+    "description": "Validate the three analyses (chart shape, diagnosis, Maturity pin evidence)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "discovery-analyses-review",
+    "spec": "sop_discovery/discovery_analyses/review",
+    "description": "Internal RA review of the three analyses (HoD + peer consultant)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "findings-playback-generate",
+    "spec": "sop_discovery/findings_playback/generate",
+    "description": "Generate the Findings Playback slide deck",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "findings-playback-validate",
+    "spec": "sop_discovery/findings_playback/validate",
+    "description": "Validate Findings Playback deck structure and EDITMODE population",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "findings-playback-review",
+    "spec": "sop_discovery/findings_playback/review",
+    "description": "Sponsor playback session \u2014 Sponsor Validation Checklist (the canonical gate)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "delivery-roadmap-generate",
+    "spec": "sop_discovery/delivery_roadmap/generate",
+    "description": "Generate the delivery roadmap with Build / Pair / Coach options",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "delivery-roadmap-validate",
+    "spec": "sop_discovery/delivery_roadmap/validate",
+    "description": "Validate the delivery roadmap and Release 1 scope",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "delivery-roadmap-review",
+    "spec": "sop_discovery/delivery_roadmap/review",
+    "description": "Sponsor review of the delivery roadmap and Release 1 scope",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "requirements-generate",
+    "spec": "requirements/generate",
+    "description": "Generate requirements specification from SOW",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "requirements-validate",
+    "spec": "requirements/validate",
+    "description": "Validate requirements completeness",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "requirements-review",
+    "spec": "requirements/review",
+    "description": "Record stakeholder review of requirements",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "workshops-generate",
+    "spec": "design/workshops_generate",
+    "description": "Generate workshop materials for clarification",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "workshops-review",
+    "spec": "design/workshops_review",
+    "description": "Record workshop outcomes",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "conceptual_model-generate",
+    "spec": "design/conceptual_model/generate",
+    "description": "Generate conceptual entity model from requirements",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "conceptual_model-validate",
+    "spec": "design/conceptual_model/validate",
+    "description": "Validate conceptual model completeness and correctness",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "conceptual_model-review",
+    "spec": "design/conceptual_model/review",
+    "description": "Review conceptual model with business stakeholders",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "logical_model-generate",
+    "spec": "design/logical_model/generate",
+    "description": "Logical data model between the conceptual model and the physical dbt design \u2014 per-entity sources and grain, keys, cardinality, identity resolution, normalisation and attribution rules",
+    "arguments": "<release-folder> [--domain <name>]",
+    "telemetry": true
+  },
+  {
+    "command": "logical_model-validate",
+    "spec": "design/logical_model/validate",
+    "description": "Validate the logical model: every conceptual entity accounted for, keys and cardinality decided or explicitly open, sources reconciled, attribution rules complete",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "logical_model-review",
+    "spec": "design/logical_model/review",
+    "description": "Review the logical model \u2014 precedence and attribution decisions confirmed by the people who own them, open questions closed or owned",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "pipeline_design-generate",
+    "spec": "design/pipeline_design/generate",
+    "description": "Design data pipeline architecture and data flow diagram",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "pipeline_design-validate",
+    "spec": "design/pipeline_design/validate",
+    "description": "Validate pipeline design",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "pipeline_design-review",
+    "spec": "design/pipeline_design/review",
+    "description": "Review pipeline design",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_model-generate",
+    "spec": "design/data_model/generate",
+    "description": "Design dbt model structure",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_model-validate",
+    "spec": "design/data_model/validate",
+    "description": "Validate data model conventions",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_model-review",
+    "spec": "design/data_model/review",
+    "description": "Review data model with team",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "mockups-generate",
+    "spec": "design/mockups/generate",
+    "description": "Generate dashboard mockups",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "mockups-review",
+    "spec": "design/mockups/review",
+    "description": "Review mockups with stakeholders",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "viz_catalog-generate",
+    "spec": "design/viz_catalog/generate",
+    "description": "Generate visualization catalog from mockup output",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "pipeline-generate",
+    "spec": "development/pipeline/generate",
+    "description": "Generate data pipeline code",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "pipeline-validate",
+    "spec": "development/pipeline/validate",
+    "description": "Validate pipeline code quality",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "pipeline-review",
+    "spec": "development/pipeline/review",
+    "description": "Review pipeline code",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-generate",
+    "spec": "development/dbt_generate",
+    "description": "Generate dbt models",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-validate",
+    "spec": "development/dbt_validate",
+    "description": "Run dbt tests and validation",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-review",
+    "spec": "development/review",
+    "description": "Review dbt code",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-staging-generate",
+    "spec": "development/dbt_staging_generate",
+    "description": "Generate dbt staging-layer models only (alternative to the monolithic dbt-generate)",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-staging-validate",
+    "spec": "development/dbt_staging_validate",
+    "description": "Validate dbt staging-layer models",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-integration-generate",
+    "spec": "development/dbt_integration_generate",
+    "description": "Generate dbt integration-layer models only (alternative to the monolithic dbt-generate)",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-integration-validate",
+    "spec": "development/dbt_integration_validate",
+    "description": "Validate dbt integration-layer models",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-warehouse-generate",
+    "spec": "development/dbt_warehouse_generate",
+    "description": "Generate dbt warehouse-layer models only (alternative to the monolithic dbt-generate)",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-warehouse-validate",
+    "spec": "development/dbt_warehouse_validate",
+    "description": "Validate dbt warehouse-layer models",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "semantic_layer-generate",
+    "spec": "development/semantic_layer/generate",
+    "description": "Generate semantic layer (LookML, etc.)",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "semantic_layer-validate",
+    "spec": "development/semantic_layer/validate",
+    "description": "Validate semantic layer",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "semantic_layer-review",
+    "spec": "development/semantic_layer/review",
+    "description": "Review semantic layer",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dashboards-generate",
+    "spec": "development/dashboards/generate",
+    "description": "Generate dashboards",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dashboards-validate",
+    "spec": "development/dashboards/validate",
+    "description": "Validate dashboards",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dashboards-review",
+    "spec": "development/dashboards/review",
+    "description": "Review dashboards",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_app-generate",
+    "spec": "development/data_app/generate",
+    "description": "Experimental: Generate a Looker Data App (Google's Data Apps toolkit, Lit) from the approved mockup chain and the semantic layer; one widget per catalog row, fields resolved against the explore, previewed locally. Looker only",
+    "arguments": "<release-folder> [--app <slug>] [--slice <slice>]",
+    "telemetry": true
+  },
+  {
+    "command": "data_app-validate",
+    "spec": "development/data_app/validate",
+    "description": "Experimental: Validate a Looker Data App: every catalog row is a widget, every field resolves, no unmapped chart types, Wire's rules pass, Google's verify stages pass against Looker, titles and filters match the approved mockup",
+    "arguments": "<release-folder> [--app <slug>] [--slice <slice>]",
+    "telemetry": true
+  },
+  {
+    "command": "data_app-review",
+    "spec": "development/data_app/review",
+    "description": "Experimental: Record stakeholder review of a Looker Data App against the approved mockup, on the local preview or the published dashboard",
+    "arguments": "<release-folder> [--app <slug>]",
+    "telemetry": true
+  },
+  {
+    "command": "data_app-publish",
+    "spec": "development/data_app/publish",
+    "description": "Experimental: Publish a validated Looker Data App to the Looker instance through Google's publisher, after a dry run and the user's confirmation; re-publishes in place; never run by a lane or autopilot",
+    "arguments": "<release-folder> [--app <slug>] [--dry-run] [--folder-id <id>]",
+    "telemetry": true
+  },
+  {
+    "command": "dbtcharts-generate",
+    "spec": "development/dbtcharts/generate",
+    "description": "Generate dbt Charts boards, one per warehouse subject area, from the dbt manifest and catalog (deterministic scaffold, then curation)",
+    "arguments": "<release-folder> [--subject-area <folder>[,<folder>]] [--no-warehouse] [--force]",
+    "telemetry": true
+  },
+  {
+    "command": "dbtcharts-validate",
+    "spec": "development/dbtcharts/validate",
+    "description": "Validate dbt Charts boards \u2014 dct structure and warehouse dry-run, ref()-only queries, no inline data, metadata, coverage",
+    "arguments": "<release-folder> [--no-warehouse]",
+    "telemetry": true
+  },
+  {
+    "command": "dbtcharts-review",
+    "spec": "development/dbtcharts/review",
+    "description": "Review dbt Charts boards with stakeholders",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "agents_schema-generate",
+    "spec": "development/agents_schema/generate",
+    "description": "Publish the release's metadata into the warehouse AGENTS schema for AI agents: plan the providers (dbt manifest, LookML, Omni, OSI, Sigma, skills), write the pinned GitHub workflow, agents.yml and the skills, complete the warehouse guide, offer to set the repository secrets from the dbt profile, publish from CI or with --publish; --lookml-repo publishes LookML from its own repository",
+    "arguments": "<release-folder> [--providers <list>] [--skills-source <path>]... [--lookml-repo <owner/repo[@ref]>] [--provider <name>] [--no-guide] [--set-secrets] [--publish] [--no-warehouse] [--force]",
+    "telemetry": true
+  },
+  {
+    "command": "agents_schema-validate",
+    "spec": "development/agents_schema/validate",
+    "description": "Validate the Agents Schema publication \u2014 pinned workflow, sources unchanged, skills well formed, no credentials, AGENTS.ROOT providers, row counts, skill rows, no stale models",
+    "arguments": "<release-folder> [--no-warehouse]",
+    "telemetry": true
+  },
+  {
+    "command": "agents_schema-review",
+    "spec": "development/agents_schema/review",
+    "description": "Review the Agents Schema publication with stakeholders",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "seed_data-generate",
+    "spec": "development/seed_data/generate",
+    "description": "Generate seed data files from data model",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "seed_data-validate",
+    "spec": "development/seed_data/validate",
+    "description": "Validate seed data files",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "seed_data-review",
+    "spec": "development/seed_data/review",
+    "description": "Record stakeholder review of seed data",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_refactor-generate",
+    "spec": "development/data_refactor/generate",
+    "description": "Generate refactoring plan from seed-based to real client data",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_refactor-validate",
+    "spec": "development/data_refactor/validate",
+    "description": "Validate refactored dbt project against real data",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_refactor-review",
+    "spec": "development/data_refactor/review",
+    "description": "Record stakeholder review of data refactor",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "orchestration-generate",
+    "spec": "development/orchestration/generate",
+    "description": "Generate orchestration layer (Dagster or dbt Cloud)",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "orchestration-validate",
+    "spec": "development/orchestration/validate",
+    "description": "Validate orchestration layer against pipeline design",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "orchestration-review",
+    "spec": "development/orchestration/review",
+    "description": "Review orchestration setup with stakeholders",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_quality-generate",
+    "spec": "testing/data_quality/generate",
+    "description": "Generate data quality tests",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_quality-validate",
+    "spec": "testing/data_quality/validate",
+    "description": "Run data quality tests",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data_quality-review",
+    "spec": "testing/data_quality/review",
+    "description": "Review test results",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "uat-generate",
+    "spec": "testing/uat/generate",
+    "description": "Generate UAT plan",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "uat-review",
+    "spec": "testing/uat/review",
+    "description": "Record UAT feedback",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "deployment-generate",
+    "spec": "deployment/generate",
+    "description": "Generate deployment artifacts",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "deployment-validate",
+    "spec": "deployment/validate",
+    "description": "Pre-deployment validation",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "deployment-review",
+    "spec": "deployment/review",
+    "description": "Review deployment plan",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "training-generate",
+    "spec": "enablement/training_generate",
+    "description": "Generate training materials",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "training-validate",
+    "spec": "enablement/validate",
+    "description": "Validate training content",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "training-review",
+    "spec": "enablement/review",
+    "description": "Rehearse training",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "documentation-generate",
+    "spec": "enablement/documentation/generate",
+    "description": "Generate documentation",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "documentation-validate",
+    "spec": "enablement/documentation/validate",
+    "description": "Validate documentation",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "documentation-review",
+    "spec": "enablement/documentation/review",
+    "description": "Review documentation",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-run-dbt",
+    "spec": "utils/run_dbt",
+    "description": "Run dbt models",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-meeting-context",
+    "spec": "utils/meeting_context",
+    "description": "Retrieve Fathom meeting context for artifact reviews",
+    "arguments": "<project-folder> [artifact-name]",
+    "telemetry": true
+  },
+  {
+    "command": "utils-client-context",
+    "spec": "utils/client_context",
+    "description": "Gather external client context from Slack, HubSpot, Harvest, Jira, Confluence and Fathom",
+    "arguments": "<client-name>",
+    "telemetry": false
+  },
+  {
+    "command": "utils-atlassian-search",
+    "spec": "utils/atlassian_search",
+    "description": "Search Confluence and Jira for project context",
+    "arguments": "<project-folder> [artifact-name]",
+    "telemetry": true
+  },
+  {
+    "command": "utils-jira-create",
+    "spec": "utils/jira_create",
+    "description": "Create Jira Epic and issues for a project",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-jira-sync",
+    "spec": "utils/jira_sync",
+    "description": "Sync artifact status to Jira",
+    "arguments": "<project-folder> <artifact> <action>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-jira-status-sync",
+    "spec": "utils/jira_status_sync",
+    "description": "Full Jira reconciliation for all artifacts",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-linear-create",
+    "spec": "utils/linear_create",
+    "description": "Create Linear Project and issues for a project",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-linear-sync",
+    "spec": "utils/linear_sync",
+    "description": "Sync artifact status to Linear",
+    "arguments": "<project-folder> <artifact> <action>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-linear-status-sync",
+    "spec": "utils/linear_status_sync",
+    "description": "Full Linear reconciliation for all artifacts",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-docstore-setup",
+    "spec": "utils/docstore_setup",
+    "description": "Set up document store (Confluence/Notion) for a project",
+    "arguments": "<project-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-docstore-sync",
+    "spec": "utils/docstore_sync",
+    "description": "Sync a generated artifact to the document store",
+    "arguments": "<project-folder> <artifact>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-docstore-fetch",
+    "spec": "utils/docstore_fetch",
+    "description": "Fetch document store content and comments for review",
+    "arguments": "<project-folder> <artifact>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-data-model-registry-setup",
+    "spec": "utils/data_model_registry_setup",
+    "description": "Clone the private wire-data-model-registry repo to this machine, for RA staff with access",
+    "arguments": "(no arguments - interactive)",
+    "telemetry": false
+  },
+  {
+    "command": "utils-repos",
+    "spec": "utils/repos",
+    "description": "List the client's related repositories and look up code in them, read only, cited by repo and commit",
+    "arguments": "list, refresh [<id>], find <text> [--repo <id>] [--path <glob>], add <github_url> --id <id> --role <role>, remove <id>, or check",
+    "telemetry": false
+  },
+  {
+    "command": "utils-fathom-sync",
+    "spec": "utils/fathom_sync",
+    "description": "Pull new Fathom call transcripts for this engagement's client into .wire/engagement/calls/, then extract findings",
+    "arguments": "[--after YYYY-MM-DD] [--before YYYY-MM-DD] [--limit N] [--dry-run] [--no-findings]",
+    "telemetry": true
+  },
+  {
+    "command": "utils-migration-agent-delegate",
+    "spec": "utils/migration_agent_delegate",
+    "description": "Auto-delegation protocol for migration generate commands \u2014 dispatch to migration-specialist subagent when available",
+    "arguments": "(internal \u2014 called by migration generate commands)",
+    "telemetry": false
+  },
+  {
+    "command": "utils-session-summary",
+    "spec": "utils/session_summary",
+    "description": "Draft a Slack-shaped session summary from a release's execution log",
+    "arguments": "<release-folder> [scope]",
+    "telemetry": true
+  },
+  {
+    "command": "utils-commit",
+    "spec": "utils/commit",
+    "description": "Stage and commit generated or validated Wire artifacts to git",
+    "arguments": "<release-folder> <artifact> <action>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-pr-create",
+    "spec": "utils/pr_create",
+    "description": "Create a Wire-aware GitHub pull request pre-populated from session artifacts",
+    "arguments": "[release-folder]",
+    "telemetry": true
+  },
+  {
+    "command": "utils-pipeline-status",
+    "spec": "utils/pipeline_tool_status",
+    "description": "Check configured pipeline tool connection status",
+    "arguments": "<release-folder>",
+    "telemetry": false
+  },
+  {
+    "command": "utils-git-workflow",
+    "spec": "utils/git_workflow",
+    "description": "Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR (composes utils-commit and utils-pr-create)",
+    "arguments": "<release-folder> <artifact-id> <action>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-ci-parity",
+    "spec": "utils/client_ci_parity",
+    "description": "Client CI parity gate: detect the client repo's CI system, replicate its locally-runnable checks against a branch before raising, report pass/fail per check",
+    "arguments": "<release-folder> [--repo <path-or-role>] [--branch <name>]",
+    "telemetry": true
+  },
+  {
+    "command": "utils-dev-deploy",
+    "spec": "utils/dev_deploy",
+    "description": "Deploy a branch's changed Airflow files to the dev environment, one file at a time, after the deploy target check allows every file and the user confirms",
+    "arguments": "<release-folder> [--target <env>] [--files <path>...] [--dry-run]",
+    "telemetry": true
+  },
+  {
+    "command": "utils-dev-test-evidence",
+    "spec": "utils/dev_test_evidence",
+    "description": "Tested-in-dev evidence: per changed file, the dev copy is the PR head, it parsed and it ran after the upload, every mapped task included; verdict yes, partially or no. Read only",
+    "arguments": "<release-folder> [--target <env>]",
+    "telemetry": true
+  },
+  {
+    "command": "utils-client-watch",
+    "spec": "utils/client_watch",
+    "description": "One client-watch tick \u2014 channel replies to tracked posts recorded in the answers ledger, merged client PRs advance the register and fire the post-merge action",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-ask-list-generate",
+    "spec": "utils/ask_list_generate",
+    "description": "Draft the top-N client ask list from the register's blocker taxonomy \u2014 capped, and guarded against re-asking anything the answers ledger holds",
+    "arguments": "<release-folder> [--max N]",
+    "telemetry": true
+  },
+  {
+    "command": "release-spawn",
+    "spec": "utils/release_spawn",
+    "description": "Create downstream delivery release folders from an approved discovery release brief",
+    "arguments": "<discovery-release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migrate",
+    "spec": "migrate",
+    "description": "Migrate pre-v3.4.0 flat .wire/ layout to two-tier engagement/releases structure",
+    "arguments": "(no arguments \u2014 auto-detects the .wire/ layout)",
+    "telemetry": true
+  },
+  {
+    "command": "upgrade",
+    "spec": "upgrade",
+    "description": "Upgrade a release folder's status.md to the current plugin version schema \u2014 adds missing sections, surfaces new commands, never overwrites existing values",
+    "arguments": "[release-folder] [--dry-run]",
+    "telemetry": true
+  },
+  {
+    "command": "adopt",
+    "spec": "adopt",
+    "description": "Adopt an in-flight project into Wire \u2014 assess repo and external sources, map existing work to artifacts, set up engagement structure, generate adoption playbook",
+    "arguments": "[repo-path-or-url]",
+    "telemetry": true
+  },
+  {
+    "command": "utils-delivery-forecast",
+    "spec": "utils/delivery_forecast",
+    "description": "Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates",
+    "arguments": "<client-name> [--release <folder>]",
+    "telemetry": false
+  },
+  {
+    "command": "custom-define",
+    "spec": "custom/define",
+    "description": "Define a custom release type from SoW or project documents \u2014 map deliverables to Wire commands or generate bespoke specs",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "utils-doc-analyze",
+    "spec": "utils/doc_analyze",
+    "description": "Extract deliverables, acceptance criteria, and timeline from SoW or project documents",
+    "arguments": "<file-path-or-url> [<file-path-2> ...]",
+    "telemetry": false
+  },
+  {
+    "command": "utils-modality-link",
+    "spec": "utils/modality_link",
+    "description": "Locate the client's Modality model and record it on the release, so the design commands read the existing model instead of deriving one",
+    "arguments": "<release-folder> [--path <dir>]",
+    "telemetry": true
+  },
+  {
+    "command": "custom-feature-request",
+    "spec": "custom/feature_request",
+    "description": "Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition",
+    "arguments": "<custom-spec-name>",
+    "telemetry": false
+  },
+  {
+    "command": "help",
+    "spec": "help",
+    "description": "Show help for Wire Framework commands",
+    "arguments": "[<command>]",
+    "telemetry": false
+  },
+  {
+    "command": "migration-audit-all",
+    "spec": "utils/migration_audit_all",
+    "description": "Run all platform migration audits in parallel (5 core + optional reverse ETL)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ingestion-audit-generate",
+    "spec": "migration/ingestion_audit/generate",
+    "description": "Catalog all Fivetran connectors with MCP or CSV fallback",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ingestion-audit-validate",
+    "spec": "migration/ingestion_audit/validate",
+    "description": "Validate ingestion audit completeness and migration flags",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ingestion-audit-review",
+    "spec": "migration/ingestion_audit/review",
+    "description": "Internal RA review of ingestion audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "db-object-audit-generate",
+    "spec": "migration/db_object_audit/generate",
+    "description": "Enumerate all databases, schemas, tables, views on source platform",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "db-object-audit-validate",
+    "spec": "migration/db_object_audit/validate",
+    "description": "Validate db object audit classification completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "db-object-audit-review",
+    "spec": "migration/db_object_audit/review",
+    "description": "Internal RA review of db object audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "security-audit-generate",
+    "spec": "migration/security_audit/generate",
+    "description": "Catalog roles, permissions, users, service accounts",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "security-audit-validate",
+    "spec": "migration/security_audit/validate",
+    "description": "Validate security audit completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "security-audit-review",
+    "spec": "migration/security_audit/review",
+    "description": "Internal RA review of security audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-audit-generate",
+    "spec": "migration/dbt_audit/generate",
+    "description": "Catalog dbt models with complexity classification and feature detection",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-audit-validate",
+    "spec": "migration/dbt_audit/validate",
+    "description": "Validate dbt audit completeness and complexity ratings",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-audit-review",
+    "spec": "migration/dbt_audit/review",
+    "description": "Internal RA review of dbt audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "orchestration-audit-generate",
+    "spec": "migration/orchestration_audit/generate",
+    "description": "Catalog orchestration jobs, schedules, and dependencies",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "orchestration-audit-validate",
+    "spec": "migration/orchestration_audit/validate",
+    "description": "Validate orchestration audit completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "orchestration-audit-review",
+    "spec": "migration/orchestration_audit/review",
+    "description": "Internal RA review of orchestration audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "reverse-etl-audit-generate",
+    "spec": "migration/reverse_etl_audit/generate",
+    "description": "Catalog Hightouch reverse ETL syncs, models, and destinations",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "reverse-etl-audit-validate",
+    "spec": "migration/reverse_etl_audit/validate",
+    "description": "Validate reverse ETL audit completeness and dependency mapping",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "reverse-etl-audit-review",
+    "spec": "migration/reverse_etl_audit/review",
+    "description": "Internal RA review of reverse ETL audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "reverse-etl-migration-generate",
+    "spec": "migration/reverse_etl_migration/generate",
+    "description": "Generate Hightouch sync migration runbook \u2014 repoint, rewrite, rebuild",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "reverse-etl-migration-validate",
+    "spec": "migration/reverse_etl_migration/validate",
+    "description": "Validate reverse ETL migration runbook completeness, plus the authored twins \u2014 primaryKey casing (error) and destination-set safety",
+    "arguments": "<release-folder> [--wave id] [--twins-only]",
+    "telemetry": true
+  },
+  {
+    "command": "reverse-etl-migration-review",
+    "spec": "migration/reverse_etl_migration/review",
+    "description": "Internal RA review of reverse ETL migration runbook",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "reverse-etl-equivalency-validate",
+    "spec": "migration/reverse_etl_equivalency/validate",
+    "description": "Sync-level equivalence \u2014 old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass",
+    "arguments": "<release-folder> [--syncs name1,name2] [--tier N]",
+    "telemetry": true
+  },
+  {
+    "command": "reverse-etl-twin-generate",
+    "spec": "migration/reverse_etl_twin/generate",
+    "description": "Author the target-warehouse twin config per in-scope sync \u2014 additive, paused, decoy-pointed, model translated, manifest keyed on the normalised sync id",
+    "arguments": "<release-folder> [--wave id] [--syncs a,b] [--dry-run]",
+    "telemetry": true
+  },
+  {
+    "command": "reverse-etl-retire-generate",
+    "spec": "migration/reverse_etl_retire/generate",
+    "description": "Generate the reverse-ETL retirement runbook \u2014 superseded and retire-classified syncs, ordered, with the evidence each replacement has run cleanly and the rollback",
+    "arguments": "<release-folder> [--wave id] [--min-clean-days N]",
+    "telemetry": true
+  },
+  {
+    "command": "migration-inventory-generate",
+    "spec": "migration/migration_inventory/generate",
+    "description": "Synthesise all audits into unified catalogue with dependency graph",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-inventory-validate",
+    "spec": "migration/migration_inventory/validate",
+    "description": "Validate migration inventory object counts and dependency graph",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-inventory-review",
+    "spec": "migration/migration_inventory/review",
+    "description": "Internal RA and client scope confirmation",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "lineage-generate",
+    "spec": "migration/lineage/generate",
+    "description": "Generate interactive dbt lineage HTML, with optional reverse-ETL layer showing Hightouch syncs and destinations",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-batching-generate",
+    "spec": "migration/migration_batching/generate",
+    "description": "Partition the migration inventory into independently-schedulable domain batches, checked against the real dependency graph",
+    "arguments": "<release-folder> [--seed <path>]",
+    "telemetry": true
+  },
+  {
+    "command": "migration-batching-validate",
+    "spec": "migration/migration_batching/validate",
+    "description": "Validate domain batching \u2014 every object classified once, DAG acyclic, every real cross-batch edge declared",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-batching-review",
+    "spec": "migration/migration_batching/review",
+    "description": "Human/client adjudication gate \u2014 turn the proposed batch partition into a committed schedule",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-strategy-generate",
+    "spec": "migration/migration_strategy/generate",
+    "description": "Generate platform-pair translation guide, phasing, rollback, equivalency criteria",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-strategy-validate",
+    "spec": "migration/migration_strategy/validate",
+    "description": "Validate migration strategy completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-strategy-review",
+    "spec": "migration/migration_strategy/review",
+    "description": "Client sign-off on migration strategy",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "target-setup-generate",
+    "spec": "migration/target_setup/generate",
+    "description": "Generate target warehouse DDL scripts (SAFETY GATE)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "target-setup-validate",
+    "spec": "migration/target_setup/validate",
+    "description": "Validate target setup scripts",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "target-setup-review",
+    "spec": "migration/target_setup/review",
+    "description": "Safety-gated approval before writing to target platform",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ingestion-migration-generate",
+    "spec": "migration/ingestion_migration/generate",
+    "description": "Generate Fivetran connector migration runbook",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "ingestion-migration-validate",
+    "spec": "migration/ingestion_migration/validate",
+    "description": "Validate ingestion migration runbook",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "ingestion-migration-review",
+    "spec": "migration/ingestion_migration/review",
+    "description": "Safety-gated approval before activating Fivetran to target",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-migration-generate",
+    "spec": "migration/dbt_migration/generate",
+    "description": "Translate dbt models batch by batch to target dialect",
+    "arguments": "<release-folder> [--batch N] [--model name]",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-migration-validate",
+    "spec": "migration/dbt_migration/validate",
+    "description": "Validate dbt model translations compile on target profile",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-migration-lint",
+    "spec": "migration/dbt_migration/lint",
+    "description": "Static pre-warehouse equivalence lint \u2014 dialect parse-check plus silent-behaviour-change rules on translated models",
+    "arguments": "<release-folder> [--batch N] [--model name] [--severity LEVEL] [--format FORMAT]",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-migration-pre-pr-review",
+    "spec": "migration/dbt_migration/pre_pr_review",
+    "description": "Pre-submission faithfulness review over a translated diff \u2014 deploy-time defect class static parse/lint cannot catch, before a PR is opened",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "dbt-migration-fix",
+    "spec": "migration/dbt_migration/fix",
+    "description": "Closed fix-and-re-review loop \u2014 auto-apply the deterministic pre-PR-review fixes, re-run the gate, escalate only findings that need a human decision",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "dbt-migration-review",
+    "spec": "migration/dbt_migration/review",
+    "description": "Review translated dbt models",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "dbt-migration-defer-build",
+    "spec": "migration/dbt_migration/defer_build",
+    "description": "Cost-guarded sandbox build: refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors, dry-run cost screen",
+    "arguments": "<release-folder> --models <list> [--allow-graph] [--override-budget] [--dry-run]",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-migration-batch-raise",
+    "spec": "migration/dbt_migration/batch_raise",
+    "description": "Register-driven PR shipping pipeline: derive gate-passing candidates, smoke-build from the client branch, pre-raise comparison, drop-on-defect, raise with evidence-first body",
+    "arguments": "<release-folder> [--wave id ",
+    "telemetry": false
+  },
+  {
+    "command": "dbt-migration-reverse-port",
+    "spec": "migration/dbt_migration/reverse_port",
+    "description": "Carry merged client changes back into the delivery tree \u2014 four-way classification per merged model, never clobbering unraised local work",
+    "arguments": "<release-folder> [--wave id ",
+    "telemetry": false
+  },
+  {
+    "command": "migration-acceptance-pack-review",
+    "spec": "migration/migration_acceptance_pack/review",
+    "description": "Present migration batch acceptance pack for stakeholder sign-off",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "orchestration-migration-generate",
+    "spec": "migration/orchestration_migration/generate",
+    "description": "Generate orchestration job migration runbook",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "orchestration-migration-validate",
+    "spec": "migration/orchestration_migration/validate",
+    "description": "Validate orchestration migration runbook",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "orchestration-migration-review",
+    "spec": "migration/orchestration_migration/review",
+    "description": "Safety-gated approval before activating jobs on target",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "equivalency-validate",
+    "spec": "migration/equivalency/validate",
+    "description": "Run equivalency checks across all in-scope tables (parallel fan-out)",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "equivalency-investigate",
+    "spec": "migration/equivalency/investigate",
+    "description": "Deep diagnostics for a specific failing object",
+    "arguments": "<release-folder> --object <table_or_model>",
+    "telemetry": true
+  },
+  {
+    "command": "equivalency-fix",
+    "spec": "migration/equivalency/fix",
+    "description": "Apply agreed fix and re-run equivalency checks for affected objects",
+    "arguments": "<release-folder> --object <name> --approach <description>",
+    "telemetry": true
+  },
+  {
+    "command": "equivalency-post-merge-verify",
+    "spec": "migration/equivalency/post_merge_verify",
+    "description": "Post-merge production verification: wait for the client pipeline to materialise merged models, compare at the full verdict bar, advance the register to production_verified",
+    "arguments": "<release-folder> [--models list] [--no-wait]",
+    "telemetry": true
+  },
+  {
+    "command": "equivalency-sweep",
+    "spec": "migration/equivalency/sweep",
+    "description": "Estate-wide defect-class sweep \u2014 enumerate one root-caused pattern across delivery tree, client main and open PRs, classify each site, close by encoding the lint rule",
+    "arguments": "<release-folder> --pattern <rule-id> [--dry-run]",
+    "telemetry": true
+  },
+  {
+    "command": "cutover-generate",
+    "spec": "migration/cutover/generate",
+    "description": "Generate cutover runbook (SAFETY GATE \u2014 point of no return)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "cutover-validate",
+    "spec": "migration/cutover/validate",
+    "description": "Validate cutover runbook completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "cutover-review",
+    "spec": "migration/cutover/review",
+    "description": "Safety-gated sign-off before live cutover",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-report-generate",
+    "spec": "migration/migration_report/generate",
+    "description": "Generate post-migration report",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-report-validate",
+    "spec": "migration/migration_report/validate",
+    "description": "Validate migration report completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-report-review",
+    "spec": "migration/migration_report/review",
+    "description": "Final review and archive of migration report",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-register-generate",
+    "spec": "migration/migration_register/generate",
+    "description": "Build and maintain the per-model migration register (source commit, BQ target, state, last equivalence)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-register-validate",
+    "spec": "migration/migration_register/validate",
+    "description": "Validate the migration register \u2014 schema, coverage, state consistency",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-drift-generate",
+    "spec": "migration/migration_drift/generate",
+    "description": "Scheduled drift gate \u2014 diff live source vs last-migrated commit, flag downstream syncs and masking changes",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-drift-validate",
+    "spec": "migration/migration_drift/validate",
+    "description": "Validate the migration drift report \u2014 classification, sync flagging, masking hook",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-status",
+    "spec": "migration/migration_status",
+    "description": "Operational status view \u2014 per-wave exclusive model/sync stages, drift partition, provenance header, item/blocking/exceptions subcommands, JSON output",
+    "arguments": "<release-folder> [waves/item/blocking/exceptions] [--json]",
+    "telemetry": false
+  },
+  {
+    "command": "migration-source-register",
+    "spec": "migration/migration_source/register",
+    "description": "Register a source repository for a given migration source type",
+    "arguments": "<release-folder> <source_type> <github_url>",
+    "telemetry": true
+  },
+  {
+    "command": "migration-source-refresh",
+    "spec": "migration/migration_source/refresh",
+    "description": "Pull a fresh local snapshot of a registered migration source",
+    "arguments": "<release-folder> <source_type>",
+    "telemetry": true
+  },
+  {
+    "command": "data-residency-assessment-generate",
+    "spec": "migration/data_residency_assessment/generate",
+    "description": "Generate the GDPR and data-residency assessment, including the historical-window legal review (tenant carve-out)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data-residency-assessment-validate",
+    "spec": "migration/data_residency_assessment/validate",
+    "description": "Validate the data residency assessment \u2014 all required sections present and non-empty",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "data-residency-assessment-review",
+    "spec": "migration/data_residency_assessment/review",
+    "description": "Client DPO/legal sign-off gate for the data residency assessment",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "region-tagging-generate",
+    "spec": "migration/region_tagging/generate",
+    "description": "Classify in-scope items into region buckets for a tenant carve-out (candidates, never auto-removal)",
+    "arguments": "<release-folder> [--region <code>]",
+    "telemetry": true
+  },
+  {
+    "command": "region-tagging-validate",
+    "spec": "migration/region_tagging/validate",
+    "description": "Validate region tags \u2014 all three buckets populated, every item classified exactly once",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "region-tagging-review",
+    "spec": "migration/region_tagging/review",
+    "description": "Human adjudication gate for region tags",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "bulk-copy-migration-generate",
+    "spec": "migration/bulk_copy_migration/generate",
+    "description": "Generate Snowflake\u2192BigQuery bulk copy runbook (tenant carve-out, two-stage with equivalency gate)",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "bulk-copy-migration-validate",
+    "spec": "migration/bulk_copy_migration/validate",
+    "description": "Validate bulk copy runbook \u2014 tenant guard, two-stage gate, scoped service account",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "bulk-copy-migration-review",
+    "spec": "migration/bulk_copy_migration/review",
+    "description": "Safety-gated approval before the first tenant bulk-copy execution",
+    "arguments": "<release-folder> [--wave id]",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-carveout-relocate-generate",
+    "spec": "migration/dbt_carveout_relocate/generate",
+    "description": "Relocate already-translated dbt models into a post-migration tenant carve-out instead of re-translating them",
+    "arguments": "<release-folder> [--wave id \\",
+    "telemetry": false
+  },
+  {
+    "command": "dbt-carveout-relocate-validate",
+    "spec": "migration/dbt_carveout_relocate/validate",
+    "description": "Validate relocated carve-out dbt models \u2014 files present, predicates re-derived from disk, target compiles",
+    "arguments": "<release-folder> --target-dbt-project-path <path>",
+    "telemetry": true
+  },
+  {
+    "command": "dbt-carveout-relocate-review",
+    "spec": "migration/dbt_carveout_relocate/review",
+    "description": "Human adjudication gate for relocated carve-out dbt models",
+    "arguments": "<release-folder> [--wave id \\",
+    "telemetry": false
+  },
+  {
+    "command": "logical-access-uat-generate",
+    "spec": "migration/logical_access_uat/generate",
+    "description": "Generate a region-scoped logical-access UAT plan and evidence pack (tenant carve-out)",
+    "arguments": "<release-folder> [--region <code>]",
+    "telemetry": true
+  },
+  {
+    "command": "logical-access-uat-validate",
+    "spec": "migration/logical_access_uat/validate",
+    "description": "Validate logical-access UAT \u2014 at least one negative test per IAM boundary",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "logical-access-uat-review",
+    "spec": "migration/logical_access_uat/review",
+    "description": "Execute and sign off logical-access UAT \u2014 the isolation-proof gate before cutover",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-audit-generate",
+    "spec": "migration/metabase_audit/generate",
+    "description": "Catalog Metabase collections, dashboards, cards/SQL, and permission groups",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-audit-validate",
+    "spec": "migration/metabase_audit/validate",
+    "description": "Validate Metabase audit completeness and dependency coverage",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-audit-review",
+    "spec": "migration/metabase_audit/review",
+    "description": "Internal RA review of Metabase audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-migration-generate",
+    "spec": "migration/metabase_migration/generate",
+    "description": "Generate Metabase migration runbook \u2014 translate card SQL, remap permission groups, two-stage connection repoint",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-migration-validate",
+    "spec": "migration/metabase_migration/validate",
+    "description": "Validate Metabase migration runbook completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-migration-review",
+    "spec": "migration/metabase_migration/review",
+    "description": "Internal RA review of Metabase migration runbook",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-carveout-generate",
+    "spec": "migration/metabase_carveout/generate",
+    "description": "Tenant carve-out of the Metabase estate \u2014 layer decision per card set (sandboxing/warehouse/dashboard-parameter/card-edit), registry-resolved filters, dashcard pruning, manifest review gate",
+    "arguments": "<release-folder> [--collection id] [--dashboard id]",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-carveout-validate",
+    "spec": "migration/metabase_carveout/validate",
+    "description": "Validate the Metabase carve-out \u2014 filters re-derived from the registry, no unfiltered card, dashcard-level removals, explicit shared-card decisions",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-carveout-review",
+    "spec": "migration/metabase_carveout/review",
+    "description": "Human gate for the Metabase carve-out \u2014 adjudicate layer decisions, sign off manifest rows, resolve manual-review cards",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-carveout-transport-generate",
+    "spec": "migration/metabase_carveout/transport_generate",
+    "description": "Produce the transport plan as a dry-run artifact: the four id-rewrites plus SQL-text rewrites of hardcoded source-project table references, writing nothing to either instance",
+    "arguments": "<release-folder> [--collection id] [--dashboard id]",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-carveout-transport-validate",
+    "spec": "migration/metabase_carveout/transport_validate",
+    "description": "Validate the transport plan: re-derive the SQL scan from each card's own SQL, prove every source-project reference accounted for and every id-rewrite resolves on the target",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-carveout-transport",
+    "spec": "migration/metabase_carveout/transport",
+    "description": "Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance: executes the validated plan (id and SQL-text rewrites), dependency-ordered, idempotent by recorded target id",
+    "arguments": "<release-folder> [--target-instance-url url] [--collection id] [--dashboard id] [--dry-run]",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-carveout-repoint-generate",
+    "spec": "migration/metabase_carveout/repoint_generate",
+    "description": "Produce the same-instance repoint plan as a dry-run artifact: per warehouse-layer card, the write mode, destinations, database-id and template-tag remaps, and SQL-text rewrites of hardcoded source-project references",
+    "arguments": "<release-folder> [--collection id] [--dashboard id] [--mode duplicate/in_place] [--include-layer card_edit]",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-carveout-repoint-validate",
+    "spec": "migration/metabase_carveout/repoint_validate",
+    "description": "Validate the same-instance repoint plan: re-derive the SQL scan from each card's own SQL, prove every reference accounted for, every remap resolves on the mapped database, every in-place row staged",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-carveout-repoint",
+    "spec": "migration/metabase_carveout/repoint",
+    "description": "Execute the validated same-instance repoint plan: duplicate a card into its target collection, or swap the rewritten query into the existing production card in place, staged for review first",
+    "arguments": "<release-folder> [--stage] [--promote] [--collection id] [--dashboard id] [--card id] [--dry-run]",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-equivalency-validate",
+    "spec": "migration/metabase_equivalency/validate",
+    "description": "Card-level equivalence \u2014 migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover",
+    "arguments": "<release-folder> [--cards id1,id2] [--dashboard id]",
+    "telemetry": true
+  },
+  {
+    "command": "omni-audit-generate",
+    "spec": "migration/omni_audit/generate",
+    "description": "Catalog Omni connections, model (topics/views/dimensions/measures), and folders/workbooks/tiles",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-audit-validate",
+    "spec": "migration/omni_audit/validate",
+    "description": "Validate Omni audit completeness and dependency coverage",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-audit-review",
+    "spec": "migration/omni_audit/review",
+    "description": "Internal RA review of Omni audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-migration-generate",
+    "spec": "migration/omni_migration/generate",
+    "description": "Generate Omni migration runbook \u2014 translate model view SQL on a branch, two-stage connection repoint",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-migration-validate",
+    "spec": "migration/omni_migration/validate",
+    "description": "Validate Omni migration runbook completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-migration-review",
+    "spec": "migration/omni_migration/review",
+    "description": "Internal RA review of Omni migration runbook",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "looker-audit-generate",
+    "spec": "migration/looker_audit/generate",
+    "description": "Catalog the Looker estate: LookML views, explores, fields and joins classified for translation, plus dashboards, Looks, tiles, schedules and usage",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "looker-audit-validate",
+    "spec": "migration/looker_audit/validate",
+    "description": "Validate Looker audit completeness: every construct classified, every content row with usage, counts match status",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "looker-audit-review",
+    "spec": "migration/looker_audit/review",
+    "description": "Internal RA review of the Looker audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "bi-migration-plan-generate",
+    "spec": "migration/bi_migration_plan/generate",
+    "description": "Usage-ranked inventory, director rulings (parity or redesign, drop list, PDT disposition, permissions, topic design), model and content batches, register bootstrap",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "bi-migration-plan-validate",
+    "spec": "migration/bi_migration_plan/validate",
+    "description": "Validate the plan: every object in one batch or the drop list, batch dependencies, register row count",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "bi-migration-plan-review",
+    "spec": "migration/bi_migration_plan/review",
+    "description": "Release director review of the BI migration plan and its rulings",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-target-setup-generate",
+    "spec": "migration/omni_target_setup/generate",
+    "description": "Prepare the Omni target: connection check, model branch, schema refresh, groups and user attributes",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-target-setup-validate",
+    "spec": "migration/omni_target_setup/validate",
+    "description": "Validate the Omni target: branch exists, model validates with no blocking issue, groups exist",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-target-setup-review",
+    "spec": "migration/omni_target_setup/review",
+    "description": "Internal RA review of the Omni target setup",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-model-generate",
+    "spec": "migration/omni_model/generate",
+    "description": "Translate a batch of LookML views and explores, or Tableau or Metabase content (experimental), to Omni views and topics on the model branch (deterministic converter plus agent judgement)",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "omni-model-lint",
+    "spec": "migration/omni_model/lint",
+    "description": "Static lint of emitted Omni YAML for a batch: no ${TABLE}, no Liquid, valid timeframes, aggregate types, filter objects, primary keys, relationship types",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "omni-model-validate",
+    "spec": "migration/omni_model/validate",
+    "description": "Validate a model batch on the branch: Omni validator clean, every in-scope field present, one smoke query per topic",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "omni-model-review",
+    "spec": "migration/omni_model/review",
+    "description": "Release director review of a translated model batch and its needs_human resolutions",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "omni-model-reverse-port",
+    "spec": "migration/omni_model/reverse_port",
+    "description": "Carry changes made to the Omni model downstream (in Omni or its git repo) back into the delivery tree; four-way classification per emitted file, never clobbering unwritten local work",
+    "arguments": "<release-folder> [--batch N] [--dry-run]",
+    "telemetry": true
+  },
+  {
+    "command": "omni-content-generate",
+    "spec": "migration/omni_content/generate",
+    "description": "Plan and create Omni dashboards for a batch of Looker dashboards and Looks, or Tableau or Metabase dashboards (experimental); skipped tiles listed with reasons",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "omni-content-validate",
+    "spec": "migration/omni_content/validate",
+    "description": "Validate a content batch: plan fields exist on the branch, controls map, created documents resolve with the planned tile count",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "omni-content-review",
+    "spec": "migration/omni_content/review",
+    "description": "Release director review of a migrated dashboard batch",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "bi-equivalency-validate",
+    "spec": "migration/bi_equivalency/validate",
+    "description": "Tile-level parity: Looker and Omni results compared under a pinned as-of, verdicts in the model taxonomy; gates cutover",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "tableau-audit-generate",
+    "spec": "migration/tableau_audit/generate",
+    "description": "Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker or Omni, with data source fingerprints",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "tableau-audit-validate",
+    "spec": "migration/tableau_audit/validate",
+    "description": "Experimental: Validate the Tableau audit: reproducible, every construct classified, every data source in one fingerprint group, IR valid",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "tableau-audit-review",
+    "spec": "migration/tableau_audit/review",
+    "description": "Experimental: Internal RA review of the Tableau audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "looker-target-setup-generate",
+    "spec": "migration/looker_target_setup/generate",
+    "description": "Experimental: Prepare the Looker target: connection, LookML migration branch, folders, groups and user attributes",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "looker-target-setup-validate",
+    "spec": "migration/looker_target_setup/validate",
+    "description": "Experimental: Validate the Looker target: branch, connection, project validates, permission objects exist",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "looker-target-setup-review",
+    "spec": "migration/looker_target_setup/review",
+    "description": "Experimental: Internal RA review of the Looker target setup",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "lookml-model-generate",
+    "spec": "migration/lookml_model/generate",
+    "description": "Experimental: Translate a batch of Tableau data sources, Metabase or Omni content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "lookml-model-lint",
+    "spec": "migration/lookml_model/lint",
+    "description": "Experimental: Lint emitted LookML: no Tableau, Metabase or Omni syntax left, LookML conventions, primary keys on joined views",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "lookml-model-validate",
+    "spec": "migration/lookml_model/validate",
+    "description": "Experimental: Validate a LookML batch on the branch: Looker validator clean, fields present, one smoke query per explore",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "lookml-model-review",
+    "spec": "migration/lookml_model/review",
+    "description": "Experimental: Release director review of a translated LookML batch",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "looker-content-generate",
+    "spec": "migration/looker_content/generate",
+    "description": "Experimental: Write a batch of Tableau, Metabase or Omni dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons",
+    "arguments": "<release-folder> [--batch N ",
+    "telemetry": false
+  },
+  {
+    "command": "looker-content-validate",
+    "spec": "migration/looker_content/validate",
+    "description": "Experimental: Validate a LookML dashboard batch: fields exist, dashboards validate, every skipped tile has a reason",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "looker-content-review",
+    "spec": "migration/looker_content/review",
+    "description": "Experimental: Release director review of a migrated LookML dashboard batch",
+    "arguments": "<release-folder> [--batch N]",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-source-audit-generate",
+    "spec": "migration/metabase_source_audit/generate",
+    "description": "Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker or Omni",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-source-audit-validate",
+    "spec": "migration/metabase_source_audit/validate",
+    "description": "Experimental: Validate the Metabase source audit: reproducible, every construct classified, IR valid, tables synced, secrets redacted",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metabase-source-audit-review",
+    "spec": "migration/metabase_source_audit/review",
+    "description": "Experimental: Internal RA review of the Metabase source audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-source-audit-generate",
+    "spec": "migration/omni_source_audit/generate",
+    "description": "Experimental: Snapshot an Omni model and its dashboards through the Omni CLI and classify every view, field, topic, relationship, tile and control for the move to Looker",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-source-audit-validate",
+    "spec": "migration/omni_source_audit/validate",
+    "description": "Experimental: Validate the Omni source audit: reproducible, every construct classified, IR valid, every tile's view in the snapshot",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "omni-source-audit-review",
+    "spec": "migration/omni_source_audit/review",
+    "description": "Experimental: Internal RA review of the Omni source audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "looker-studio-audit-generate",
+    "spec": "migration/looker_studio_audit/generate",
+    "description": "Experimental: Capture and catalog Looker Studio reports (for Omni or Looker): definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "looker-studio-audit-validate",
+    "spec": "migration/looker_studio_audit/validate",
+    "description": "Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "looker-studio-audit-review",
+    "spec": "migration/looker_studio_audit/review",
+    "description": "Experimental: Internal RA review of the Looker Studio audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metric-catalogue-generate",
+    "spec": "migration/metric_catalogue/generate",
+    "description": "Experimental: Group every calculated field by metric name, flag copies, aliases and conflicts, and propose one definition per metric",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metric-catalogue-validate",
+    "spec": "migration/metric_catalogue/validate",
+    "description": "Experimental: Validate the metric catalogue: reproducible, every group proposed, every conflict parked or ruled",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "metric-catalogue-review",
+    "spec": "migration/metric_catalogue/review",
+    "description": "Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "oac-audit-generate",
+    "spec": "migration/oac_audit/generate",
+    "description": "Catalog OAC's SMML semantic model \u2014 physical/logical/presentation layers",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "oac-audit-validate",
+    "spec": "migration/oac_audit/validate",
+    "description": "Validate OAC audit completeness and dependency coverage",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "oac-audit-review",
+    "spec": "migration/oac_audit/review",
+    "description": "Internal RA review of OAC audit",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "oac-migration-generate",
+    "spec": "migration/oac_migration/generate",
+    "description": "Generate OAC migration runbook \u2014 translate physical-layer connection and joins, two-stage connection repoint",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "oac-migration-validate",
+    "spec": "migration/oac_migration/validate",
+    "description": "Validate OAC migration runbook completeness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "oac-migration-review",
+    "spec": "migration/oac_migration/review",
+    "description": "Internal RA review of OAC migration runbook",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads-audit-all",
+    "spec": "utils/ads_audit_all",
+    "description": "Run all three agentic data stack audits in parallel",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_dataset-audit-generate",
+    "spec": "agentic_data_stack/dataset_audit/generate",
+    "description": "Inventory warehouse tables, identify duplicates, grade governance maturity",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_dataset-audit-validate",
+    "spec": "agentic_data_stack/dataset_audit/validate",
+    "description": "Verify dataset audit completeness and tier classifications",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_dataset-audit-review",
+    "spec": "agentic_data_stack/dataset_audit/review",
+    "description": "Stakeholder sign-off on canonical table selections and deprecation list",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_metric-audit-generate",
+    "spec": "agentic_data_stack/metric_audit/generate",
+    "description": "Inventory metric definitions, identify conflicts and coverage gaps",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_metric-audit-validate",
+    "spec": "agentic_data_stack/metric_audit/validate",
+    "description": "Check metric audit completeness and conflict detection quality",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_metric-audit-review",
+    "spec": "agentic_data_stack/metric_audit/review",
+    "description": "Stakeholder sign-off on metric definitions and gap priorities",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_query-audit-generate",
+    "spec": "agentic_data_stack/query_audit/generate",
+    "description": "Analyse query history to extract patterns and classify by semantic-layer answerability",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_query-audit-validate",
+    "spec": "agentic_data_stack/query_audit/validate",
+    "description": "Verify query pattern extraction and classification quality",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_query-audit-review",
+    "spec": "agentic_data_stack/query_audit/review",
+    "description": "Stakeholder sign-off on query patterns and semantic layer addition priorities",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_governance-design-generate",
+    "spec": "agentic_data_stack/governance_design/generate",
+    "description": "Produce canonical dataset model, deprecation plan, and tiering policy",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_governance-design-validate",
+    "spec": "agentic_data_stack/governance_design/validate",
+    "description": "Verify governance design completeness and internal consistency",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_governance-design-review",
+    "spec": "agentic_data_stack/governance_design/review",
+    "description": "Stakeholder sign-off on canonical model and deprecation schedule",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_semantic-layer-design-generate",
+    "spec": "agentic_data_stack/semantic_layer_design/generate",
+    "description": "Design metric definitions and dimension model for semantic layer build",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_semantic-layer-design-validate",
+    "spec": "agentic_data_stack/semantic_layer_design/validate",
+    "description": "Check semantic layer design completeness and metric definition quality",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_semantic-layer-design-review",
+    "spec": "agentic_data_stack/semantic_layer_design/review",
+    "description": "Stakeholder sign-off on metric definitions before implementation",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_canonical-models-generate",
+    "spec": "agentic_data_stack/canonical_models/generate",
+    "description": "Refactor dbt project to implement canonical models and deprecation notices",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_canonical-models-validate",
+    "spec": "agentic_data_stack/canonical_models/validate",
+    "description": "Verify canonical models compile, tests pass, deprecation notices in place",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_canonical-models-review",
+    "spec": "agentic_data_stack/canonical_models/review",
+    "description": "Data team review of canonical model implementation",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_lookml-views-generate",
+    "spec": "agentic_data_stack/lookml_views/generate",
+    "description": "Create or update LookML view files for new and restructured canonical models (Looker only)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_lookml-views-validate",
+    "spec": "agentic_data_stack/lookml_views/validate",
+    "description": "Verify LookML view files are valid, canonical models covered, no orphaned column references",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_lookml-views-review",
+    "spec": "agentic_data_stack/lookml_views/review",
+    "description": "Looker admin sign-off on view files before semantic layer metric build",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_semantic-layer-generate",
+    "spec": "agentic_data_stack/semantic_layer/generate",
+    "description": "Implement semantic layer metrics from approved design",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_semantic-layer-validate",
+    "spec": "agentic_data_stack/semantic_layer/validate",
+    "description": "Verify metrics queryable and coverage target met",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_semantic-layer-review",
+    "spec": "agentic_data_stack/semantic_layer/review",
+    "description": "Data team review of semantic layer implementation",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_knowledge-skill-generate",
+    "spec": "agentic_data_stack/knowledge_skill/generate",
+    "description": "Generate per-domain reference files collocated with dbt models",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_knowledge-skill-validate",
+    "spec": "agentic_data_stack/knowledge_skill/validate",
+    "description": "Check knowledge skill files complete, accurate, and colocated",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_knowledge-skill-review",
+    "spec": "agentic_data_stack/knowledge_skill/review",
+    "description": "Domain owner review of knowledge skill files",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_agent-config-generate",
+    "spec": "agentic_data_stack/agent_config/generate",
+    "description": "Generate agentic data stack Wire skill with routing logic and provenance footer",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_agent-config-validate",
+    "spec": "agentic_data_stack/agent_config/validate",
+    "description": "Verify agent config skill completeness and routing logic",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_agent-config-review",
+    "spec": "agentic_data_stack/agent_config/review",
+    "description": "Technical review of agentic data stack skill before eval suite build",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_eval-suite-generate",
+    "spec": "agentic_data_stack/eval_suite/generate",
+    "description": "Build Q&A eval suite with per-domain accuracy baselines and CI harness",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_eval-suite-validate",
+    "spec": "agentic_data_stack/eval_suite/validate",
+    "description": "Run eval suite and check per-domain accuracy against targets",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_eval-suite-review",
+    "spec": "agentic_data_stack/eval_suite/review",
+    "description": "Stakeholder review of eval coverage and accuracy results",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_adversarial-config-generate",
+    "spec": "agentic_data_stack/adversarial_config/generate",
+    "description": "Configure and test adversarial review sub-agent",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_adversarial-config-validate",
+    "spec": "agentic_data_stack/adversarial_config/validate",
+    "description": "Verify adversarial review configuration and calibration",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_adversarial-config-review",
+    "spec": "agentic_data_stack/adversarial_config/review",
+    "description": "Technical review of adversarial review configuration",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_launch-gate-validate",
+    "spec": "agentic_data_stack/launch_gate/validate",
+    "description": "Per-domain accuracy gate before agent announcement",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_launch-gate-review",
+    "spec": "agentic_data_stack/launch_gate/review",
+    "description": "Platform owner sign-off and launch communications",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_analytics-enablement-generate",
+    "spec": "agentic_data_stack/enablement/generate",
+    "description": "Generate user training and maintenance documentation",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_analytics-enablement-validate",
+    "spec": "agentic_data_stack/enablement/validate",
+    "description": "Verify enablement documents complete and accurate",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "ads_analytics-enablement-review",
+    "spec": "agentic_data_stack/enablement/review",
+    "description": "Sign-off on user guide and maintenance docs before handover",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "droughty-setup",
+    "spec": "droughty/setup",
+    "description": "Install Droughty, generate profile.yaml and droughty_project.yaml",
+    "arguments": "<release-folder> [--force]",
+    "telemetry": true
+  },
+  {
+    "command": "droughty-introspect",
+    "spec": "droughty/introspect",
+    "description": "Schema inventory report \u2014 tables, columns, PK/FK coverage",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "droughty-dbml",
+    "spec": "droughty/dbml",
+    "description": "DBML entity-relationship diagram from warehouse schema",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "droughty-docs",
+    "spec": "droughty/docs",
+    "description": "AI-generated field descriptions for all columns",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "droughty-qa",
+    "spec": "droughty/qa",
+    "description": "LangGraph data quality agent report",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "droughty-stage",
+    "spec": "droughty/stage",
+    "description": "Staging SQL and sources.yml generation (BigQuery only)",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "droughty-dbt-tests",
+    "spec": "droughty/dbt_tests",
+    "description": "Pattern-based dbt schema tests from deployed models",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "droughty-lookml",
+    "spec": "droughty/lookml",
+    "description": "Base LookML views from deployed dbt models",
+    "arguments": "<release-folder>",
+    "telemetry": true
+  },
+  {
+    "command": "droughty-generate",
+    "spec": "droughty/generate",
+    "description": "Run full Droughty phase in sequence (discovery, post-dbt, or full)",
+    "arguments": "<release-folder> [--mode discovery",
+    "telemetry": false
+  }
+]

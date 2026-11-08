@@ -1,0 +1,82 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-05 23:53Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "gpt-6-astra"
+  ],
+  "results": [
+    {
+      "id": "mech-parked-question",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 46521,
+      "seconds": 19.2,
+      "exit": 0,
+      "final": "id: PD-3, artifact: dbt\nquestion: Currency for revenue amounts: transaction currency plus GBP, or GBP only?"
+    },
+    {
+      "id": "mech-lane-files",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 42788,
+      "seconds": 7.8,
+      "exit": 0,
+      "final": "L1-dbt.md\nL2-orchestration.md\nL3-data-quality.md"
+    },
+    {
+      "id": "gen-approved-names",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 170797,
+      "seconds": 26.0,
+      "exit": 0,
+      "final": "models/integration/int_orders_enriched.sql"
+    },
+    {
+      "id": "gen-schema-yml",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 195145,
+      "seconds": 19.4,
+      "exit": 0,
+      "final": "models/staging/shopify/_schema.yml"
+    },
+    {
+      "id": "judge-failed-validation",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": false,
+      "fails": [
+        "status.md was changed"
+      ],
+      "tokens": 129768,
+      "seconds": 21.9,
+      "exit": 0,
+      "final": "Corrected the stale dbt validation status to `fail` and logged the reason: the rerun found 214 duplicate keys.\nI did not mark it pass or start review; the test-load explanation does not establish a passing validation.\nDuplicates need resolving and validation rerunning before recording a pass."
+    },
+    {
+      "id": "plan-unblock-deployment",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 73823,
+      "seconds": 13.3,
+      "exit": 0,
+      "final": "For `02-data-foundation`, `wire_status` and the `full_platform` gates require:\n\n1. Human ruling on PD-3: transaction currency plus GBP, or GBP only.\n2. `$wire dbt-review` \u2192 human approval, incorporating the ruling.\n3. `$wire data_quality-generate` \u2192 `$wire data_quality-validate` \u2192 PASS.\n4. Independe"
+    }
+  ],
+  "passed": 5,
+  "total": 6
+}

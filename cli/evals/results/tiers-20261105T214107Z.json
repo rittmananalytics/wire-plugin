@@ -1,0 +1,93 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-05 21:41Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "claude-sonnet-5-5",
+    "--provider",
+    "anthropic"
+  ],
+  "results": [
+    {
+      "id": "mech-status-table",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 31610,
+      "seconds": 8.3,
+      "exit": 0,
+      "final": "requirements: complete/pass/approved\nconceptual_model: complete/pass/approved\npipeline_design: complete/pass/approved\ndata_model: complete/pass/approved\npipeline: complete/pass/approved\ndbt: complete/pass/not_started\nsemantic_layer: not_started/not_started/not_started\norchestration: not_started/not_"
+    },
+    {
+      "id": "mech-log-arithmetic",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 47158,
+      "seconds": 5.9,
+      "exit": 0,
+      "final": "tokens: 942000\ncost: $7.10"
+    },
+    {
+      "id": "gen-staging-model",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 111325,
+      "seconds": 15.5,
+      "exit": 0,
+      "final": "Lint passed with 0 errors and 0 warnings. I kept `customer_fk` rather than renaming it to `order_customer_fk`, because the convention says foreign keys keep the prefix of the entity they point at."
+    },
+    {
+      "id": "judge-grain-check",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 31160,
+      "seconds": 7.8,
+      "exit": 0,
+      "final": "wh_sales__order_fact: PASS\nwh_sales__order_line_fact: FAIL - the stated grain is \"one row per order\", but the primary key `order_line_pk` and the columns (`product_fk`, `order_line_quantity_count`, `order_line_amount`) are at order-line level.\nwh_sales__refund_fact: PASS"
+    },
+    {
+      "id": "judge-ruling-over-email",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 48245,
+      "seconds": 9.3,
+      "exit": 0,
+      "final": "- **Tool:** Dagster. The recorded ruling R-2 (2026-10-02) says Dagster. The CTO's Airflow email (2026-10-03) is later, but it isn't a recorded ruling and doesn't supersede R-2.\n- **First:** Get the Airflow-vs-Dagster conflict resolved and recorded in `decisions.md`, either by the CTO's request being"
+    },
+    {
+      "id": "plan-route",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 47959,
+      "seconds": 9.1,
+      "exit": 0,
+      "final": "From `wire_status`, `semantic_layer` and `orchestration` are both runnable now. Neither depends on the parked dbt decision. Here is the order:\n\n1. `/wire:semantic_layer-generate 02-data-foundation`\n2. `/wire:semantic_layer-validate 02-data-foundation`\n3. `/wire:orchestration-generate 02-data-foundat"
+    },
+    {
+      "id": "plan-parallel",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 63464,
+      "seconds": 10.4,
+      "exit": 0,
+      "final": "- Parallel lanes now: `semantic_layer` (generate) and `orchestration` (generate).\n- That is 2 lanes against a `budget.lanes_max` of 4, so 2 are free.\n- `dashboards` can't start yet. It waits for `semantic_layer.validate` to be PASS, and that is currently not_started.\n- `dbt` is parked on PD-3 (reven"
+    }
+  ],
+  "passed": 7,
+  "total": 7
+}

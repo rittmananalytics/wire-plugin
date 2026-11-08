@@ -226,6 +226,9 @@ def make_handler(framework, repo, clock=datetime.now, launch_mode="auto", launch
                     except session_bridge.Unavailable as e:
                         return self._send(200, {"available": False, "reason": str(e), "conversations": []})
                     release = q.get("release", [None])[0] or None
+                    reason = ss.unready()
+                    if reason:
+                        return self._send(200, {"available": False, "reason": reason, "conversations": []})
                     return self._send(200, {"available": True, "conversations": ss.listing(), "models": ss.models(),
                                             "default_model": ss.default_model(release),
                                             "opening": ss.opening_commands(release)})

@@ -1,0 +1,94 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-05 21:40Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "gpt-6-luna"
+  ],
+  "results": [
+    {
+      "id": "mech-status-table",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 70209,
+      "seconds": 11.4,
+      "exit": 0,
+      "final": "requirements: complete/pass/approved\nconceptual_model: complete/pass/approved\npipeline_design: complete/pass/approved\ndata_model: complete/pass/approved\npipeline: complete/pass/approved\ndbt: complete/pass/not_started\nsemantic_layer: not_started/not_started/not_started\norchestration: not_started/not_"
+    },
+    {
+      "id": "mech-log-arithmetic",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 27458,
+      "seconds": 4.0,
+      "exit": 0,
+      "final": "tokens: 942000\ncost: $7.10"
+    },
+    {
+      "id": "gen-staging-model",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 239589,
+      "seconds": 38.0,
+      "exit": 0,
+      "final": "Lint passed: 1 file checked \u2014 0 errors, 0 warnings."
+    },
+    {
+      "id": "judge-grain-check",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 29201,
+      "seconds": 8.0,
+      "exit": 0,
+      "final": "wh_sales__order_fact: PASS\nwh_sales__order_line_fact: FAIL - primary key and columns describe order lines, but the stated grain is one row per order\nwh_sales__refund_fact: PASS"
+    },
+    {
+      "id": "judge-ruling-over-email",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": false,
+      "fails": [
+        "reply lacks 'R-2'",
+        "reply has none of ['new ruling', 'ruling', '/rule', 'director', 'decide', 'confirm']"
+      ],
+      "tokens": 43982,
+      "seconds": 10.8,
+      "exit": 0,
+      "final": "Build for **Dagster**, per the recorded decision. The CTO email requests Airflow, so reconcile and record that decision conflict first; Wire\u2019s gate itself currently allows generation."
+    },
+    {
+      "id": "plan-route",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 194122,
+      "seconds": 33.4,
+      "exit": 0,
+      "final": "`wire_status` shows semantic layer and orchestration generation are runnable. In order:\n\n1. `/wire:semantic_layer-generate 02-data-foundation`\n2. `/wire:orchestration-generate 02-data-foundation`\n3. `/wire:semantic_layer-validate 02-data-foundation`\n4. `/wire:orchestration-validate 02-data-foundatio"
+    },
+    {
+      "id": "plan-parallel",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 84580,
+      "seconds": 11.6,
+      "exit": 0,
+      "final": "`semantic_layer` and `orchestration` can start as parallel lanes.\nThat\u2019s 2 lanes against the cap of 4.\n`dashboards` cannot start yet; it waits for `semantic_layer.validate` to pass."
+    }
+  ],
+  "passed": 6,
+  "total": 7
+}

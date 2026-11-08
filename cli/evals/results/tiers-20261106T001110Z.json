@@ -1,0 +1,82 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-06 00:11Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "claude-haiku-5-5",
+    "--provider",
+    "anthropic"
+  ],
+  "results": [
+    {
+      "id": "mech-parked-question",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 31520,
+      "seconds": 9.4,
+      "exit": 0,
+      "final": "id: PD-3, artifact: dbt\nquestion: Currency for revenue amounts: transaction currency plus GBP, or GBP only?"
+    },
+    {
+      "id": "mech-lane-files",
+      "kind": "exec",
+      "tier": "mechanical",
+      "pass": true,
+      "fails": [],
+      "tokens": 30907,
+      "seconds": 3.5,
+      "exit": 0,
+      "final": "L1-dbt.md\nL2-orchestration.md\nL3-data-quality.md"
+    },
+    {
+      "id": "gen-approved-names",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 310033,
+      "seconds": 78.1,
+      "exit": 0,
+      "final": "models/integration/int_orders_enriched.sql\n\nLint still reports `integration_model_filename` because the spec names the model `int_orders_enriched`, which does not match the `int_<group>__<entity>` convention. I kept the spec's name. The model assumes a `order_created_ts` column on `stg_shopify__orders` and uses Europe/London for the local date, because neither is stated in the spec and no staging model exists in this repo."
+    },
+    {
+      "id": "gen-schema-yml",
+      "kind": "exec",
+      "tier": "templated-generation",
+      "pass": true,
+      "fails": [],
+      "tokens": 162867,
+      "seconds": 23.6,
+      "exit": 0,
+      "final": "models/staging/shopify/_schema.yml"
+    },
+    {
+      "id": "judge-failed-validation",
+      "kind": "exec",
+      "tier": "judgment",
+      "pass": true,
+      "fails": [],
+      "tokens": 82307,
+      "seconds": 13.2,
+      "exit": 0,
+      "final": "I did not mark dbt validation as pass. The rerun report says FAIL, so I left `status.md` unchanged.\n\n- **Report:** `validation_report_rerun.md` shows a critical `unique` failure on `wh_sales__order_fact.order_pk`, with 214 duplicate keys from the 2026-10-02 load.\n- **Why not:** Changing the status to pass would record a failed validation as passed. The PM's claim that the duplicates are from a test load doesn't clear the failure. Someone needs to remove the test-load rows and rerun the validation first.\n- **Discrepancy:** `status.md` already lists `dbt validate: pass`, which conflicts with the report. dbt isn't on this machine's PATH, so I couldn't rerun the test to check. Someone with dbt access should rerun it and reconcile the status file."
+    },
+    {
+      "id": "plan-unblock-deployment",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": true,
+      "fails": [],
+      "tokens": 49838,
+      "seconds": 12.4,
+      "exit": 0,
+      "final": "Deployment on `02-data-foundation` is gated only by the data-quality validation, which is blocked by the dbt review, which is parked on a ruling. The steps, in order:\n\n- **Ruling (person):** Decide PD-3, whether revenue amounts are transaction currency plus GBP or GBP only. The dbt artifact is parked on it.\n- **dbt review (person approval):** Once PD-3 is ruled, a reviewer must approve dbt. `wire_gate` allows `dbt-review` now, but `data_quality` requires `dbt.review` approved.\n- **`data_quality-validate` (Wire command):** Must return PASS. `deployment` requires this.\n- **`deployment-generate` (Wire command):** Runs only after data quality passes. The gate currently refuses it.\n- **Not start gates:** `semantic_layer`, `dashboards`, and `uat` are not listed as preconditions for deployment, so they don't block it.\n- **Note:** `wire_gate` for `deploy` returned allow only because no artifact has that name, so it isn't a real check. I confirmed the chain via the artifact commands I tested (`"
+    }
+  ],
+  "passed": 6,
+  "total": 6
+}

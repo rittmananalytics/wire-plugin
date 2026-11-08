@@ -1,0 +1,30 @@
+{
+  "suite": "tiers",
+  "when": "2026-11-06 00:08Z",
+  "flags": [
+    "--harness",
+    "codex",
+    "--model",
+    "claude-sonnet-5-5",
+    "--provider",
+    "anthropic"
+  ],
+  "results": [
+    {
+      "id": "plan-unblock-deployment",
+      "kind": "exec",
+      "tier": "planning",
+      "pass": false,
+      "fails": [
+        "reply lacks 'uat'",
+        "reply lacks 'dashboards'"
+      ],
+      "tokens": 48839,
+      "seconds": 9.6,
+      "exit": 0,
+      "final": "Deployment is blocked on 02-data-foundation (`full_platform`). `wire_gate` refuses `deployment-generate` because `data_quality.validate` is not PASS. The order:\n\n1. A person rules on parked decision PD-3: revenue currency, either transaction currency plus GBP or GBP only. This parks `dbt`.\n2. A person approves the `dbt` review (`/wire:dbt-review`). The gate allows this command now, but status still shows `dbt` as parked.\n3. `/wire:data_quality-generate`. It is blocked until `dbt.review` is approved.\n4. `/wire:data_quality-validate` must return PASS. That is the gate's direct precondition for deployment.\n5. `/wire:deployment-generate` can then run.\n\n`semantic_layer` and `orchestration` are runnable now, but deployment doesn't depend on them. `training` and `documentation` wait on `deployment.review`, so they come after deployment. I took the `data_quality-*` and `deployment-generate` command names from the gate pattern and checked only `data_quality-generate` and `deployment-generate` d"
+    }
+  ],
+  "passed": 0,
+  "total": 1
+}

@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.6.3 | **Date**: October 2026
+**Version**: 4.6.4 | **Date**: October 2026
 
 ---
 
@@ -5564,6 +5564,14 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v4.6.4: the Wire CLI ships in the Claude Code plugin (November 2026)
+
+- **Nothing else to install**: the Claude Code plugin now carries the Wire CLI, so Studio's Wire CLI view works as soon as the plugin is installed.
+- **Claude Code sign-in**: with Claude Code installed and no API key set, Wire CLI steps run on your Claude Code sign-in and its plan limits, on Claude Opus 5.5 by default. Put `ANTHROPIC_API_KEY` in `~/.wire/secrets.env` for API billing.
+- **Clear messages**: with nothing to run on, the view says what to install or set; an older plugin says to update.
 
 ---
 
