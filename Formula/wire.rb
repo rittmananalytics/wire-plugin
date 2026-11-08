@@ -17,8 +17,8 @@ class Wire < Formula
 
   desc "Wire Framework CLI: the release loop for data platform engagements (experimental)"
   homepage "https://github.com/rittmananalytics/wire"
-  url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.2/wire-cli-4.6.2.tar.gz"
-  sha256 "111d05e3eb7b86e358fa3a42aa4e5600c467111579f1d5ea83ac6db1b650276d"
+  url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.3/wire-cli-4.6.3.tar.gz"
+  sha256 "76972e4ef386ad8491fd73bf4de938e343f0485977fe4820d1196e461e2bf282"
   license "FSL-1.1-ALv2"
 
   depends_on "python@3.12"
@@ -34,8 +34,8 @@ class Wire < Formula
   on_macos do
     on_arm do
       resource "wire-agent" do
-        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.2/wire-agent-4.6.2-darwin-arm64.tar.gz"
-        sha256 "3c1e8605601eac6491089ec5ef1f57071fcbf76ceb7cba29465bb45f8aee42e6"
+        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.3/wire-agent-4.6.3-darwin-arm64.tar.gz"
+        sha256 "4bb14d1608cb99d735e0d3ec12f92a9a752bd16c91420463806083bd3bc11a98"
       end
     end
   end
@@ -44,8 +44,8 @@ class Wire < Formula
   on_macos do
     on_intel do
       resource "wire-agent" do
-        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.2/wire-agent-4.6.2-darwin-x86_64.tar.gz"
-        sha256 "deaa46eecdd43cce1ef02d7a15c9de47b35e0b503de3447f8a484edee8459521"
+        url "https://github.com/rittmananalytics/wire-plugin/releases/download/v4.6.3/wire-agent-4.6.3-darwin-x86_64.tar.gz"
+        sha256 "ce53b27ada5b14e3d1f4094324f9cd387fd6599eaa5c05b3432f01fd4b10a5a4"
       end
     end
   end
