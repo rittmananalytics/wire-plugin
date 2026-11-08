@@ -31,8 +31,10 @@ A harness is the agent program that runs a step. The CLI supports two:
 
 | Harness | What runs the step | Models |
 |---|---|---|
-| `codex` (default) | `wire-agent`, the standalone agent the installer ships (OpenAI's open-source Codex with Wire's changes), or OpenAI's own Codex CLI | OpenAI models; Claude through an Anthropic API key; a local model through LM Studio or Ollama |
+| `codex` | `wire-agent`, the standalone agent the installer ships (OpenAI's open-source Codex with Wire's changes), or OpenAI's own Codex CLI | OpenAI models; Claude through an Anthropic API key; a local model through LM Studio or Ollama |
 | `claude` | Claude Code, run headless (`claude -p`) | Claude models |
+
+With no harness or model configured, the CLI runs Claude Opus 5.5 when `ANTHROPIC_API_KEY` is set (on `claude` when Claude Code is installed, otherwise on `codex`), and `codex` with GPT-6.1 Sol when it is not.
 
 See [API connections](./api-connections) for how to set each one up.
 

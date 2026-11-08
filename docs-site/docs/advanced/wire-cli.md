@@ -255,6 +255,18 @@ These write the same entries as the Wire mod's `/wire-approve` and
 `/wire-park` in Claude Code and the rulings format in the director operating
 model, so Studio and the plugin read them unchanged.
 
+**The session in Wire Studio (4.6.3).** `studio` in the session, or
+`python3 <plugin root>/studio/studio.py --repo .`, opens Wire Studio; its
+**Wire CLI** view runs this same session in the browser: a box at the bottom
+for what you would type here, the output scrolling above it, the panel as a
+bar, a running command's options and the run plan's go / adjust / cancel as
+buttons, the model named in the box (your default, or one your keys allow,
+kept with the conversation), and past conversations kept in
+`.wire/local/sessions/` to open again (the director conversation carries on),
+rename, export as Markdown or delete.
+The session runs inside Studio's process with your settings and keys, and
+writes the record as it does here.
+
 **`wire run`.** One pass: checks the status file; resolves the claim (another
 person's claim silent for over 30 minutes needs `--take-over`; a live one
 stops you); computes the runnable set; prints the run plan and waits for
@@ -341,7 +353,10 @@ harness:
     model: claude-sonnet-5-5
 ```
 
-With nothing set: `codex` with its own default model. A lane's model follows
+With nothing set and `ANTHROPIC_API_KEY` set: Claude Opus 5.5 (`claude-opus-5-5`), on the
+`claude` harness when `claude` is installed, otherwise on codex's Anthropic
+provider. With nothing set and no Anthropic key: `codex` with its own default
+model (GPT-6.1 Sol). The `claude` harness with no model named runs Opus 5.5. A lane's model follows
 `specs/delegate.md`: the command's workload tier, then the economy model
 when `budget.model_tier: economy`, else the configured model. The routing
 file's tiers are Claude model ids and apply to the `claude` harness; another

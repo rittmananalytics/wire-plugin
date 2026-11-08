@@ -50,8 +50,10 @@ async function copy(text) {
   catch { toast("Copy failed: select the text and copy it by hand."); }
 }
 function header(crumbs, title, right) {
+  // the page name level with the menu's logo, the engagement and release details to its right
   return h("header", { class: "top" },
-    h("div", {}, h("div", { class: "crumbs" }, crumbs), h("h1", {}, title)), right || null);
+    h("div", { class: "head-left" }, h("h1", {}, title), h("div", { class: "crumbs" }, crumbs)),
+    right ? h("div", { class: "head-right" }, right) : null);
 }
 function stateClass(state) {
   if (state === "complete") return "complete";
@@ -62,8 +64,49 @@ function stepText(steps) {
   const mark = { complete: "✓", pass: "✓", approved: "✓", fail: "✗", failed: "✗", changes_requested: "✗", not_started: "-", not_applicable: "n/a", in_progress: "…" };
   return Object.entries(steps).map(([k, v]) => `${k[0].toUpperCase()} ${mark[String(v).toLowerCase()] || v}`).join("  ");
 }
+// ---------- the release selector (sidebar) ----------
+// One selected release for the whole page: Console opens its overview, the
+// Wire CLI view starts on it and sends `use <release>` when it changes.
+// Kept per browser; greyed out when the repository has no releases.
+const releaseSel = document.getElementById("nav-release-sel");
+function localGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function localSet(k, v) { try { localStorage.setItem(k, v); } catch { /* storage blocked */ } }
+function selectedRelease() {
+  const names = summary ? summary.releases.map((r) => r.name) : [];
+  if (release && names.includes(release.name)) return release.name;
+  const kept = localGet("studio-release");
+  return names.includes(kept) ? kept : (names[0] || null);
+}
+function selectRelease(name) {
+  if (!name || !summary || !summary.releases.some((r) => r.name === name)) return;
+  localSet("studio-release", name);
+  releaseSel.value = name;
+  document.getElementById("nav-console").href = `#/r/${encodeURIComponent(name)}/overview`;
+}
+function fillReleaseSelector() {
+  const names = summary.releases.map((r) => r.name);
+  releaseSel.replaceChildren(...(names.length ? names.map((n) => h("option", { value: n }, n))
+    : [h("option", { value: "" }, "No releases in this repository")]));
+  releaseSel.disabled = !names.length;
+  if (names.length) selectRelease(selectedRelease());
+}
+releaseSel.addEventListener("change", () => {
+  const name = releaseSel.value;
+  selectRelease(name);
+  const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
+  if (parts[0] === "session") {
+    if (typeof onSessionRelease === "function") onSessionRelease(name);
+  } else {
+    const keep = ["overview", "tickets", "decisions", "lanes", "record"];
+    const view = parts[0] === "r" && keep.includes(parts[2]) && parts.length <= 3 ? parts[2] : "overview";
+    location.hash = `#/r/${encodeURIComponent(name)}/${view}`;
+  }
+});
+
 function setNav(view) {
   document.querySelectorAll("[data-nav]").forEach((a) => a.classList.toggle("active", a.dataset.nav === view));
+  document.getElementById("nav-console").classList.toggle("active", view !== "session");
+  document.getElementById("session-nav").hidden = view !== "session";
   const rn = document.getElementById("release-nav");
   rn.hidden = !release || view === "home";
   if (release) {
@@ -116,22 +159,27 @@ function directiveBox(text) {
 // ---------- routing ----------
 async function route() {
   clearInterval(refreshTimer);
+  if (typeof stopSessionView === "function") stopSessionView();
   const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
   try {
-    if (!summary) summary = await api("/api/summary");
-    if (parts[0] === "r" && parts[1]) {
+    if (!summary) { summary = await api("/api/summary"); fillReleaseSelector(); }
+    if (parts[0] === "session" && !HOSTED) {
+      release = null;
+      render("session", parts[1] || "");
+    } else if (parts[0] === "r" && parts[1]) {
       if (!release || release.name !== parts[1]) selected = { node: null, decision: null, lane: null, ticket: null };
       release = await api(`/api/release/${encodeURIComponent(parts[1])}`);
+      selectRelease(release.name);
       const view = parts[2] || "overview";
       render(view, parts.slice(3).join("/"));
       if (view !== "file") refreshTimer = setInterval(refresh, 15000);
-    } else if (HOSTED && parts[0] === "" && summary.releases.length && !sessionGet("studio-home")) {
-      // Hosted: open the most recently updated release first; Releases lists the rest.
-      sessionSet("studio-home", "1");
-      location.replace(`#/r/${encodeURIComponent(summary.releases[0].name)}/overview`);
     } else {
-      release = null;
+      // Console: straight to the selected release's overview; the sidebar picks another.
       summary = await api("/api/summary");
+      fillReleaseSelector();
+      const name = selectedRelease();
+      if (name) { location.replace(`#/r/${encodeURIComponent(name)}/overview`); return; }
+      release = null;
       render("home");
     }
   } catch (e) {
@@ -146,46 +194,31 @@ async function refresh() {
     render(parts[2] || "overview");
   } catch { /* keep the last good view */ }
 }
-function sessionGet(k) { try { return sessionStorage.getItem(k); } catch { return null; } }
-function sessionSet(k, v) { try { sessionStorage.setItem(k, v); } catch { /* storage blocked */ } }
 function hostedChrome() {
   if (!HOSTED) return;
   const back = meta("studio-back");
   const a = document.getElementById("nav-back");
   if (back && /^\/[A-Za-z0-9_/-]*$/.test(back)) { a.href = back; a.hidden = false; }
-  document.getElementById("foot").textContent = "Read only. Reads .wire/ from the project's repository on GitHub and the release-type graph. "
-    + "Work on the release starts from its tickets; decisions are made there.";
+  document.getElementById("nav-session").hidden = true;
+  document.getElementById("nav-session-row").hidden = true;
 }
 hostedChrome();
 function render(view, arg) {
   setNav(view);
-  const views = { home: viewHome, overview: viewOverview, tickets: viewTickets, decisions: viewDecisions, lanes: HOSTED ? viewOverview : viewLanes, record: viewRecord, file: viewFile };
+  const views = { home: viewHome, session: (id) => viewSession(id), overview: viewOverview, tickets: viewTickets, decisions: viewDecisions, lanes: HOSTED ? viewOverview : viewLanes, record: viewRecord, file: viewFile };
   main.replaceChildren((views[view] || viewOverview)(arg));
 }
 
 // ---------- views ----------
 function viewHome() {
+  // Shown only when the repository has no releases; otherwise Console opens the selected release.
   const e = summary.engagement;
-  const rows = summary.releases.map((r) => h("tr", {},
-    h("td", {}, h("a", { href: `#/r/${encodeURIComponent(r.name)}/overview` }, r.name), r.legacy ? h("span", { class: "tag warn", style: "margin-left:8px" }, "pre-3.4 layout") : null),
-    HOSTED ? h("td", { class: "mono" }, r.branch || "-", r.other_branches && r.other_branches.length ? h("span", { class: "muted" }, ` (also on ${r.other_branches.join(", ")})`) : null) : null,
-    HOSTED ? h("td", {}, r.last_updated || "-") : null,
-    h("td", { class: "mono" }, r.project_type || "-"),
-    h("td", {}, r.error ? h("span", { class: "tag bad" }, r.error)
-      : r.tickets ? `${r.tickets.closed} of ${r.tickets.total} tickets closed` : `${r.complete} of ${r.total}`),
-    h("td", {}, r.waiting ? h("strong", {}, r.waiting) : "0"),
-    HOSTED ? null : h("td", {}, r.lanes_live || "0")));
   return h("div", {},
     header([summary.repo, h("span", { class: "tag" }, `framework: ${summary.framework.layout}`),
             e.orchestration_mode === "manual" ? h("span", { class: "tag warn" }, "manual mode") : null],
-           e.present ? e.title : "Releases"),
+           e.present ? e.title : "Console"),
     h("div", { class: "content" },
-      h("section", { class: "card", "aria-labelledby": "rel-h" },
-        h("h2", { id: "rel-h" }, "Releases"),
-        summary.releases.length ? h("div", { class: "table-wrap" }, h("table", {},
-          h("thead", {}, h("tr", {}, h("th", {}, "Release"), HOSTED ? [h("th", {}, "Branch"), h("th", {}, "Last updated")] : null,
-            h("th", {}, "Type"), h("th", {}, "Progress"), h("th", {}, HOSTED ? "Waiting on a decision" : "Waiting on you"), HOSTED ? null : h("th", {}, "Lanes live"))),
-          h("tbody", {}, rows))) : h("p", { class: "empty" }, "No releases found under .wire/releases/."))));
+      h("section", { class: "card" }, h("p", { class: "empty" }, "No releases found under .wire/releases/."))));
 }
 
 function releaseHeader(title, right) {

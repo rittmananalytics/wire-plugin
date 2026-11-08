@@ -29,13 +29,13 @@ chmod 600 ~/.wire/secrets.env
 | Where keys are used | Loaded into the environment of a harness run only |
 | Checking | `wire doctor` shows each key as set or not set |
 
-You only need the keys for the routes you use.
+You only need the keys for the routes you use. When nothing names a harness or model and `ANTHROPIC_API_KEY` is set, the CLI runs Claude Opus 5.5 (on Claude Code when it is installed, otherwise through the standalone agent). Without that key it runs OpenAI's default model, GPT-6.1 Sol.
 
 ## The four routes
 
 | Route | Harness and provider | Key | Billing |
 |---|---|---|---|
-| OpenAI models | `codex` (default) | `OPENAI_API_KEY` | OpenAI API, per token |
+| OpenAI models | `codex` | `OPENAI_API_KEY` | OpenAI API, per token |
 | Claude through the standalone agent | `codex`, `--provider anthropic` | `ANTHROPIC_API_KEY` | Anthropic API, per token |
 | Claude through Claude Code | `claude` | `ANTHROPIC_API_KEY` | Anthropic API, per token |
 | A local model | `codex`, `--provider lmstudio` | None | Free; runs on your machine |
@@ -99,7 +99,7 @@ The first setting found wins:
 2. Environment: `WIRE_HARNESS`, `WIRE_MODEL`, `WIRE_MODEL_PROVIDER`
 3. The release's `budget.harness` block in `status.md`
 4. The engagement's `harness:` block in `.wire/engagement/context.md`
-5. Nothing set: the `codex` harness with its own default model
+5. Nothing set: Claude Opus 5.5 when `ANTHROPIC_API_KEY` is set (the `claude` harness when Claude Code is installed, otherwise `codex` with the Anthropic provider); otherwise the `codex` harness with its own default model (GPT-6.1 Sol)
 
 An engagement default looks like this:
 

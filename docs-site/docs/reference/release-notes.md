@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.3: the Wire CLI in Wire Studio
+
+**Released**: November 2026
+
+**Wire CLI view (experimental, local mode).** [Wire Studio](../advanced/wire-studio) runs the [Wire CLI](../wire-cli/what-is-the-cli)'s session in the page. Open **Wire CLI** in the menu: it opens on one box, "What do you want to build today?", and after the first line the page becomes the console, with the output above and the box at the bottom. Conversations are kept in `.wire/local/sessions/` and can be resumed, renamed, exported as Markdown or deleted; the menu lists the last ten. The session writes the record exactly as a terminal session does; Studio relays.
+
+**Model and suggested commands.** The box names the model the next command runs on, in light grey at its right, and lists the models the keys in `~/.wire/secrets.env` allow. A pick is kept with the conversation. With nothing configured and `ANTHROPIC_API_KEY` set, the Wire CLI's default (in the terminal too) is now Claude Opus 5.5, on Claude Code when it is installed; without that key it stays GPT-6.1 Sol. Under the opening box, five commands: the release's runnable commands in the order `next` takes them, then waiting reviews, then `status`, `next`, `plan`, `releases`, `help`. A click runs one.
+
+**Add Files to release.** The `+` at the left of the box opens your computer's own file picker, then its save dialog, starting in the release's folder (macOS, or Linux with `zenity`). The file is copied only inside the repository, never into `.git/` and never onto a release's `status.md` or `execution_log.md`. This is the one place Studio writes to the repository.
+
+**Layout.** A release selector at the top of the menu; **Console** opens the selected release's overview (the page listing releases is gone); a System, Light and Dark theme switcher; the Wire logo; the page name level with it; and links to these docs.
+
+---
+
 ## v4.6.2: approved data model names win over the dbt naming convention
 
 **Released**: November 2026

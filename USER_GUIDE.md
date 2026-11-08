@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.6.2 | **Date**: October 2026
+**Version**: 4.6.3 | **Date**: October 2026
 
 ---
 
@@ -5564,6 +5564,15 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v4.6.3: the Wire CLI in Wire Studio (November 2026)
+
+- **Wire CLI in the browser**: Wire Studio's Wire CLI view runs the Wire CLI's session in the page. It opens on one box ("What do you want to build today?"); after the first line the page becomes the console. Sessions are kept and can be resumed, renamed, exported or deleted; the menu lists the last ten.
+- **Model and suggested commands**: the box names the model the session runs on and lists the models your API keys allow. With `ANTHROPIC_API_KEY` set and nothing else configured, the CLI now defaults to Claude Opus 5.5. Five commands under the opening box (what the release can run now, then general ones) run with one click.
+- **Add Files to release**: the `+` in the box opens your computer's file picker and save dialog and copies the file into the repository, never outside it and never onto `status.md` or `execution_log.md`.
+- **Layout**: a release selector in the menu, Console opening the selected release's overview, a System, Light and Dark theme, the Wire logo, and links to the docs.
 
 ---
 

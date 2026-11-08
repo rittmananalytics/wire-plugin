@@ -13,13 +13,16 @@ Studio 4.x runs on your own machine against a client repository you have checked
 
 | View | What it shows |
 |---|---|
-| Releases | Every release in the engagement: release type, artifacts complete, decisions waiting on you, live lanes. A release whose `status.md` cannot be read is flagged, not hidden. |
+| Release selector | At the top of the left-hand menu: every release in the engagement. **Console** opens the selected release's overview, and the Wire CLI view starts on it. The choice is remembered in your browser. Greyed out in a repository with no releases. |
+| Theme | At the bottom of the left-hand menu: **System** (the default, following your operating system), **Light** or **Dark**. Remembered in your browser. The menu, the release views and the Wire CLI view all use it. |
+| Add Files to release | The **+** at the left of the Wire CLI box. It opens your computer's own file picker, then its save dialog, starting in the release's folder. Pick any file; it is copied to the place you choose, which must be inside the repository (not `.git/`, and not a release's `status.md` or `execution_log.md`). Somewhere else reopens the save dialog with the reason. Works on macOS, and on Linux with `zenity` installed. |
 | Overview | The artifact graph for the release type, with any profile applied, each artifact's generate, validate and review state, the runnable set (what can start now, in order, within the release's lane budget), and the AI spend the execution log records for the release. For a release built from tickets, each step also shows how many slices are done and how many are in progress. |
 | Tickets | Only for a release built from tickets. One row per slice of the release and one column per Wire step, each cell showing its state and the tickets covering it; how far each step has got across the slices; every ticket with whether it can start, what it waits on or why it is blocked, and how many of its results are recorded; the tracker's missing "blocked by" links; and a `/wire:work` directive for each ticket. Inside each ticket: its progress, the files its branch changed and its activity (below). On the overview, the runnable set gives way to the tickets that can start. |
 | Decision inbox | Parked decisions, review gates and advisory gates waiting on you, each with a directive you can edit and then copy or run |
 | Lanes | Each lane's state file and when it was last written. A lane not marked complete with no write for 30 minutes is shown as stalled, with a re-dispatch directive. |
 | Record and rulings | Rulings from `decisions.md`, the tickets worked inside the release (iterations), and the execution log, newest first |
 | Documents | Any artifact file, with Markdown tables and Mermaid diagrams rendered |
+| Session (Wire CLI, experimental) | The Wire CLI's session in the page (below). Local Studio only, where the Wire CLI is installed. |
 
 For a release built from tickets, Studio reads the ticket map and the ticket records through the same script the Wire session uses (`scripts/ticket_delivery.py`), so its slice table and its list of what can start match `/wire:status`. A merged ticket whose work is not yet in the release record appears in the decision inbox with `/wire:status-sync`.
 
@@ -110,6 +113,22 @@ The second is an ordinary interactive session that you started. Studio tags it w
 
 Studio refuses to launch a directive that still contains a placeholder such as `<your decision>` or `<why>`, so you have to write the ruling before it can run. In `print` mode, or when `claude` is not on your PATH, Studio shows the exact command to run in a terminal instead.
 
+## The Session view (Wire CLI, experimental)
+
+From 4.6.3, Studio can run the [Wire CLI](./wire-cli)'s session in the page. Open **Wire CLI** in the left-hand menu (**Console**, under it, opens the overview of the release chosen in the selector above both). It opens on one box, "What do you want to build today?": type your first command or request and press Enter (the session starts on the release chosen in the menu's release selector). Under the box are five commands to start with: the commands the release can run now, in the order `next` would take them, then any review that waits, then general ones (`status`, `next`, `plan`, `releases`, `help`) to make up five. Wire does not count which commands are used most, so the general ones are a fixed list. Clicking one runs it, as if you had typed it and pressed Enter. Once the first line is sent, the page becomes the console: the output above, the box at the bottom.
+
+- **The model** is named in light grey at the right of the box, on the opening screen and in the console. It starts on your Wire CLI install's default, resolved as `wire` resolves it in a terminal (`WIRE_HARNESS` and `WIRE_MODEL`, the release's `budget.harness`, the engagement's `harness:` block, then the default: Claude Opus 5.5 when `ANTHROPIC_API_KEY` is set, otherwise GPT-6.1 Sol). The down arrow lists the models your keys allow: OpenAI's when `OPENAI_API_KEY` is set, Claude's when `ANTHROPIC_API_KEY` is set (on the claude harness when `claude` is installed, otherwise on codex's Anthropic provider). A model you pick is kept with the conversation and used again when you open it from the list. Changing harness or provider starts a new conversation with the agent; the transcript stays. The model can be changed between commands, not while one runs.
+- **The box at the bottom** takes what you would type in the CLI: a Wire command (`dbt-validate`), plain direction ("get the semantic layer validated"), `/approve`, `/park`, `/rule`, `status` or `next`. Enter sends; Shift+Enter starts a new line.
+- **The output** appears above the box as the session runs: replies as they are written, a dimmed line for each command or edit the agent starts, and `Ran:` at the end. The page follows the output while you are at the bottom; scroll up to read back, and **Jump to latest** brings you down again.
+- **The bar above the box** shows the status line (release, approvals, parked decisions, claim, context), the running command and how long it has run, the agent's last command or edit, and each lane during `wire run`.
+- **Questions become buttons.** When a running command asks you to choose, its numbered options appear as buttons; you can also type your own answer. A run plan's go / adjust / cancel appears the same way.
+- **New session** is the blue icon button beside **Wire CLI** in the menu; it goes back to the opening box. Changing the release selector in the menu while a session runs sends `use <release>` to it; the selector follows the session's release.
+- **Sessions are kept.** While the Wire CLI view is open, the menu lists the last ten sessions for the repository, under **Sessions**. Opening one shows its transcript and carries on the same conversation with the agent. **Rename** names it, **Export (.md)** saves the transcript as Markdown, **Stop** ends the session, and × deletes a stopped conversation. They are stored in the client repository under `.wire/local/sessions/`, which is not committed.
+
+The session is the Wire CLI's, running on your machine with your harness, model and keys (`~/.wire/secrets.env`). It writes the record as a terminal session would, and if another session holds the release claim it offers join, take-over or move. Studio passes text to it and shows what comes back.
+
+The view needs the Wire CLI installed beside Studio: the CLI install and the Codex plugin have it, the Claude Code plugin does not, and there the view says so. Hosted Studio has no Session view.
+
 ## Why Studio never writes to the record
 
 Under the release director model, the orchestrating session is the single writer of `status.md` and `execution_log.md`. In 3.x, several people and sessions writing those files at once corrupted rows and once discarded completed work. So Studio records nothing itself. It reads the record and hands the action to a Claude Code session, which records it as the single writer.
@@ -118,7 +137,7 @@ Studio also stays on your machine:
 
 - It listens only on 127.0.0.1 and refuses requests addressed to any other host name.
 - It serves only text files inside the repository, never `.git` or `.env`.
-- Its one write request, the one behind "Run in Claude Code", needs a token issued when Studio starts and readable only by Studio's own page. Another web page cannot make your browser open a session.
+- Its requests that act, the one behind "Run in Claude Code" and those of the Session view, need a token issued when Studio starts and readable only by Studio's own page. Another web page cannot make your browser open a session or read one.
 
 ## Sending commands to Wire
 

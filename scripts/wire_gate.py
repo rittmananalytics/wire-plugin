@@ -133,6 +133,25 @@ def gate(framework, repo, release, command, split_front_matter, read_rulings, re
     return out
 
 
+def actions(framework, repo, release, split_front_matter, read_rulings, resolve):
+    """Every command the release can take now, in next_action's order: each
+    runnable artifact in the runnable set's order, then each review that
+    waits. next_action is the first of these."""
+    resolved = _resolved(framework, repo, release, split_front_matter, read_rulings, resolve)
+    graph = {g["id"]: g for g in resolved["graph"]}
+    states = resolved["states"]
+    out = []
+    for art in resolved["order"]:
+        action = states[art].split(": ", 1)[1]
+        out.append({"command": f"/wire:{_slug(graph[art]['command'])}-{action} {release}", "kind": "runnable",
+                    "reason": f"{art} is runnable"})
+    for g in resolved["graph"]:
+        if states.get(g["id"]) == "parked: needs ruling (review)":
+            out.append({"command": f"/wire:{_slug(g['command'])}-review {release}", "kind": "review",
+                        "reason": f"{g['id']} waits for its review"})
+    return out
+
+
 def next_action(framework, repo, release, split_front_matter, read_rulings, resolve):
     out = {"release": release, "next": None, "kind": None, "reason": ""}
     try:

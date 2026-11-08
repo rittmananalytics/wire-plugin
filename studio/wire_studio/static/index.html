@@ -11,33 +11,70 @@
 <link rel="icon" type="image/png" href="__STUDIO_BASE__favicon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
 <link rel="stylesheet" href="__STUDIO_BASE__app.css">
+<script src="__STUDIO_BASE__theme.js"></script>
 </head>
 <body>
 <div class="shell">
   <nav class="nav" aria-label="Wire Studio">
-    <div class="brand"><span class="word">wire</span><span class="sub">Studio 4.x</span></div>
+    <a class="brand" href="#/" aria-label="Wire Studio">
+      <!-- The Wire logo (docs-site/static/img/wire_logo.png): the wordmark is the PNG's outline in the theme's text colour;
+           the mark is drawn, blue #4F60FF with cells in black (white in the dark theme). -->
+      <svg class="logo" viewBox="0 0 1758 558" role="img" aria-hidden="true">
+        <defs><mask id="wire-wordmark" mask-type="alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="1758" height="558">
+          <image href="__STUDIO_BASE__wire-logo.png" x="0" y="0" width="1758" height="558"/></mask></defs>
+        <rect class="logo-word" x="0" y="0" width="1400" height="558" mask="url(#wire-wordmark)"/>
+        <path class="logo-blue" d="M1656 0H1758V303H1454V202H1555V101H1656Z"/>
+        <path class="logo-black" d="M1454 0H1656V101H1555V202H1454Z"/>
+      </svg>
+    </a>
+    <div class="group nav-release">
+      <label class="label" for="nav-release-sel">RELEASE</label>
+      <select id="nav-release-sel" disabled><option value="">Loading…</option></select>
+    </div>
     <div class="group">
       <span class="label">ENGAGEMENT</span>
-      <a href="#/" data-nav="home">Releases</a>
+      <div class="nav-row" id="nav-session-row">
+        <a href="#/session" data-nav="session" id="nav-session">Wire CLI</a>
+        <a href="#/session" class="nav-new" id="nav-new-session" title="New session" aria-label="New session"></a>
+      </div>
+      <a href="#/" data-nav="home" id="nav-console">Console</a>
       <a id="nav-back" hidden>Back to the console</a>
     </div>
+    <div class="group" id="session-nav" hidden>
+      <span class="label">SESSIONS</span>
+      <div id="session-nav-list"></div>
+    </div>
     <div class="group" id="release-nav" hidden>
-      <span class="label">RELEASE</span>
+      <span class="label">CONSOLE</span>
       <a data-nav="overview">Overview</a>
       <a data-nav="tickets" id="nav-tickets-link" hidden>Tickets <span class="muted-pill" id="nav-tickets"></span></a>
       <a data-nav="decisions">Decision inbox <span class="pill" id="nav-waiting">0</span></a>
       <a data-nav="lanes" id="nav-lanes-link">Lanes <span class="muted-pill" id="nav-lanes"></span></a>
       <a data-nav="record">Record and rulings</a>
     </div>
-    <p class="foot" id="foot">Reads <code>.wire/</code> and the release-type graph. Writes nothing to the record. Each action gives a directive to copy, or to run in a new Claude Code session.</p>
+    <div class="group theme-switch">
+      <span class="label" id="theme-label">THEME</span>
+      <div class="seg" id="theme-switch" role="radiogroup" aria-labelledby="theme-label">
+        <!-- Lucide (ISC licence, lucide-static 1.70.0): monitor is System, sun Light, moon Dark -->
+        <button type="button" role="radio" data-theme-choice="system" aria-checked="true" aria-label="System" title="System"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></button>
+        <button type="button" role="radio" data-theme-choice="light" aria-checked="false" aria-label="Light" title="Light"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></button>
+        <button type="button" role="radio" data-theme-choice="dark" aria-checked="false" aria-label="Dark" title="Dark"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      </div>
+    </div>
   </nav>
   <main id="main" tabindex="-1">
     <p class="loading">Loading…</p>
   </main>
+  <footer class="page-foot">
+    <a href="https://rittmananalytics.com/services/wire-framework" target="_blank" rel="noopener noreferrer">© Rittman Analytics 2026</a>
+    <a href="https://docs.rittmananalytics.com/en/latest/docs/advanced/wire-studio" target="_blank" rel="noopener noreferrer">Wire Studio docs</a>
+    <a href="https://docs.rittmananalytics.com/en/latest/docs/technical-reference/wire-cli" target="_blank" rel="noopener noreferrer">Wire CLI docs</a>
+  </footer>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.0/mermaid.min.js"></script>
 <script src="__STUDIO_BASE__app.js"></script>
+<script src="__STUDIO_BASE__session.js"></script>
 </body>
 </html>
