@@ -16,10 +16,23 @@ import sys
 from . import Harness, RunRequest, RunResult, Timer, Usage, blocked_from_stderr
 
 
+def _plugin_servers(env: dict | None) -> dict:
+    """The Wire plugin's own MCP servers (key -> url), from the framework this CLI runs in."""
+    from ..framework import framework_root
+    from ..mcp import plugin_servers
+    try:
+        return plugin_servers(framework_root((env or {}).get("WIRE_PLUGIN_ROOT")))
+    except (FileNotFoundError, OSError, ValueError):
+        return {}
+
+
 def _servers(req: RunRequest) -> dict:
-    """The run's MCP servers, with Wire's tools server when the run asks for it."""
-    from ..mcp import with_tools
-    return with_tools(req.mcp, req.cwd, req.env) if req.wire_tools else dict(req.mcp or {})
+    """The run's MCP servers, with Wire's tools server when the run asks for it,
+    named as Claude Code should see them: a server the plugin ships is
+    plugin:wire:<key>, so the person's /mcp sign-in in Claude Code applies."""
+    from ..mcp import claude_names, with_tools
+    servers = with_tools(req.mcp, req.cwd, req.env) if req.wire_tools else dict(req.mcp or {})
+    return claude_names(servers, _plugin_servers(req.env)) if servers else servers
 
 
 def _mcp_note(req: RunRequest) -> str:
@@ -52,7 +65,8 @@ def build_argv(req: RunRequest, claude: str = "claude") -> list:
         # runs (its own scripts, git reads, listing and reading files). Anything
         # else is refused by Claude Code, which a headless run cannot approve.
         # The run's MCP servers are allowed whole (mcp__<server>).
-        tools = list(WORKSPACE_TOOLS) + [f"mcp__{k}" for k in sorted(servers)]
+        from ..mcp import tool_prefix
+        tools = list(WORKSPACE_TOOLS) + [tool_prefix(k)[:-2] for k in sorted(servers)]
         if req.write_paths:
             # a lane: edits only under its paths (Claude Code's path-scoped permission rules)
             tools = [t for t in tools if t not in ("Edit", "Write", "MultiEdit")]
@@ -111,7 +125,7 @@ def tool_note(block: dict) -> str | None:
     if name in ("Edit", "Write", "MultiEdit"):
         return f"editing {inp.get('file_path', '')}".rstrip()
     if name.startswith("mcp__"):
-        return "tool " + ".".join(name.split("__")[1:])
+        return "tool " + ".".join(name.split("__")[1:]).replace("plugin_wire_", "", 1)
     return None
 
 

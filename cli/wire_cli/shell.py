@@ -28,7 +28,10 @@ from .banner import banner
 
 HISTORY = Path.home() / ".wire" / "cli_history"
 BUILTINS = ("help", "?", "releases", "use", "status", "run", "plan", "gate", "exec", "harness", "model",
-            "provider", "sandbox", "settings", "clear", "quit", "exit")
+            "provider", "sandbox", "settings", "clear", "quit", "exit", "mcp", "doctor", "persona", "repos")
+MCP_ACTIONS = ("list", "add", "remove", "login", "check")
+PERSONA_ACTIONS = ("show", "list", "set", "clear")
+REPOS_ACTIONS = ("list", "refresh", "find")  # add and remove change context.md: /wire:utils-repos asks first
 
 
 def releases_of(repo: Path) -> list:
@@ -72,6 +75,13 @@ HELP = """Commands (the active release fills in <release> when it is omitted):
   next                        run the next action (an empty line shows it)
   /handoff                    write a handoff for the next session to the release's lanes folder
   studio                      open Wire Studio for this repository (127.0.0.1:4800)
+  mcp list | add <server> [url] | remove <server> | login <server> | check [release]
+                              the engagement's MCP servers (.wire/engagement/mcp_servers.yml)
+  doctor                      what this machine can run: harnesses, keys, local model server
+  persona [show | list | set <persona> [--local] | clear [--local]]
+                              your persona on this engagement (the team roster, or this clone only)
+  repos [list | refresh [id] | find <text> [--in <id>]]
+                              the client's related repositories, read only
   use <release> | releases    choose or list releases
   harness codex|claude|fake, model <id>, provider <id>, sandbox <mode>, settings
   help, clear, quit"""
@@ -160,7 +170,7 @@ class Shell:
         return None, words
 
     QUIET = ("help", "?", "releases", "use", "harness", "model", "provider", "sandbox", "settings", "clear",
-             "quit", "exit", "new", "/approve", "/park", "/rule", "studio", "status", "gate")
+             "quit", "exit", "new", "/approve", "/park", "/rule", "studio", "status", "gate", "persona", "repos")
 
     def handle(self, line: str) -> bool:
         """One line. Returns False to quit."""
@@ -269,6 +279,9 @@ class Shell:
         if head == "studio":
             self.studio()
             return True
+        if head in ("mcp", "doctor", "persona", "repos"):
+            self.engagement_tool(head, words[1:])
+            return True
         if head == "exec":
             text = line[len(words[0]):].strip()
             main(["exec", text] + self.common_flags(), out=self.out, env=self.env, stream=self.stream)
@@ -280,6 +293,12 @@ class Shell:
         except FileNotFoundError:
             known = {}
         name = normalise_command(words[0])
+        from .commands import NO_RELEASE
+        if name in known and name in NO_RELEASE:
+            rc = main([name] + words[1:] + self.common_flags(), out=self.out, env=self.env, ask=self.ask, stream=self.stream)
+            if rc:
+                self.out(f"(exit {rc})")
+            return True
         if name in known:
             release, rest = self._release_arg(words, 1)
             if not release:
@@ -291,6 +310,77 @@ class Shell:
                 self.out(f"(exit {rc})")
             return True
         return self.direct(line)
+
+    # ------------------------------------------------------------ engagement tools (Studio's + menu sends these)
+
+    def engagement_tool(self, head: str, rest: list) -> None:
+        """`mcp` and `doctor` run the CLI's own commands; `persona` and `repos`
+        run the framework's scripts (/wire:persona, /wire:utils-repos) on this
+        repository. What they write (mcp_servers.yml, the team roster) is
+        written here, by the session, as a typed command would be."""
+        from .main import main
+        if head == "doctor":
+            main(["doctor", "--repo", str(self.repo)] + self._framework_flag(), out=self.out, env=self.env)
+            return
+        if head == "mcp":
+            action = rest[0] if rest else "list"
+            if action not in MCP_ACTIONS:
+                self.out("mcp list | add <server> [url] | remove <server> | login <server> | check [release]")
+                return
+            args = rest[1:]
+            if action == "check" and not args:
+                if not self.active:
+                    self.out("no active release; `use <release>` first")
+                    return
+                args = [self.active]
+            if action in ("add", "remove", "login") and not args:
+                self.out(f"mcp {action} <server>")
+                return
+            flags = ["--repo", str(self.repo)] + self._framework_flag()
+            if self.settings.get("harness"):
+                flags += ["--harness", self.settings["harness"]]
+            try:
+                rc = main(["mcp", action] + args[:2] + flags, out=self.out, env=self.env)
+            except SystemExit:
+                rc = 2
+            if rc and action != "check":
+                self.out(f"(exit {rc})")
+            return
+        action = rest[0] if rest else ("show" if head == "persona" else "list")
+        allowed = PERSONA_ACTIONS if head == "persona" else REPOS_ACTIONS
+        if action not in allowed:
+            usage = ("persona [show | list | set <persona> [--local] | clear [--local]]" if head == "persona"
+                     else "repos [list | refresh [id] | find <text> [--in <id>]]  (add and remove: /wire:utils-repos)")
+            self.out(usage)
+            return
+        self.run_script("persona" if head == "persona" else "related_repos", [action] + rest[1:])
+
+    def _framework_flag(self) -> list:
+        return ["--framework", self.settings["framework"]] if self.settings.get("framework") else []
+
+    def run_script(self, name: str, argv: list) -> int:
+        """A framework script (scripts/<name>.py) on this repository; its output
+        shown as it would be in a terminal."""
+        import subprocess
+        from .framework import framework_root
+        try:
+            script = framework_root(self.settings.get("framework")) / "scripts" / f"{name}.py"
+        except FileNotFoundError as exc:
+            self.out(str(exc))
+            return 1
+        try:
+            proc = subprocess.run([sys.executable, str(script), "--repo", str(self.repo), *argv], cwd=str(self.repo),
+                                  capture_output=True, text=True, env=self.env, timeout=300)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            self.out(f"{name} could not be run: {exc}")
+            return 1
+        for text in (proc.stdout, proc.stderr):
+            for ln in text.rstrip("\n").split("\n"):
+                if ln:
+                    self.out(ln)
+        if proc.returncode:
+            self.out(f"(exit {proc.returncode})")
+        return proc.returncode
 
     # ------------------------------------------------------------ the mod's parity (ROADMAP.md phase 4)
 
@@ -525,7 +615,9 @@ class Shell:
             name, rest = command_argv(c, self.active)
             if not name:
                 continue
-            rc = main([name, self.active] + rest + self.common_flags(), out=self.out, env=run_env, ask=self.ask,
+            from .commands import NO_RELEASE
+            target = [name] if name in NO_RELEASE else [name, self.active]
+            rc = main(target + rest + self.common_flags(), out=self.out, env=run_env, ask=self.ask,
                       stream=self.stream)
             ran.append(c)
             if rc:

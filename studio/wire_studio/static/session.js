@@ -99,12 +99,37 @@ async function refreshSessionNav(release) {
   }
 }
 
-// The "+" at the left of the box: a menu with one item, Add Files to release.
-// The server opens the operating system's file picker and then its save dialog
-// (starting in the release's folder) and copies the file inside the repository only.
-function plusMenu() {
-  const item = h("button", { type: "button", class: "box-menu-item", role: "menuitem" }, "Add Files to release");
-  const menu = h("div", { class: "box-menu", role: "menu", hidden: true }, item);
+// The "+" at the left of the box. Add Files to release is done by the server:
+// it opens the operating system's file picker and then its save dialog
+// (starting in the release's folder) and copies the file inside the
+// repository only. Every other item sends a line to the session, as if typed
+// (`send`), so the session runs it and writes what it changes:
+//   mcp add <server> [url] | mcp remove <server> | mcp check <release>
+//   persona set <persona> [--local] | repos list | repos refresh
+// Lists for the dialogs come from Studio's read-only settings endpoints.
+function plusMenu(send) {
+  const items = [];
+  const item = (label, run) => {
+    const b = h("button", { type: "button", class: "box-menu-item", role: "menuitem" }, label);
+    b.addEventListener("click", async () => { close(); await run(); });
+    items.push(b);
+    return b;
+  };
+  const sep = () => h("div", { class: "box-menu-sep", role: "separator" });
+  const menu = h("div", { class: "box-menu", role: "menu", hidden: true },
+    item("Add Files to release", addFiles),
+    sep(),
+    item("Add MCP server…", addMcp),
+    item("Remove MCP server…", removeMcp),
+    item("Check MCP servers for this release", () => {
+      const rel = selectedRelease();
+      if (!rel) { toast("No release in this repository."); return; }
+      send(`mcp check ${rel}`);
+    }),
+    sep(),
+    item("Set my persona…", setPersona),
+    item("Related repositories", () => send("repos list")),
+    item("Refresh related repositories", () => send("repos refresh")));
   const btn = h("button", { type: "button", class: "box-plus", title: "Add", "aria-label": "Add", "aria-haspopup": "menu", "aria-expanded": "false" },
     lucide("plus", 18));
   const el = h("div", { class: "box-plus-wrap" }, btn, menu);
@@ -113,23 +138,134 @@ function plusMenu() {
     if (!el.isConnected) { document.removeEventListener("click", onOutside); return; }  // the view has gone
     if (!el.contains(ev.target)) close();
   }
+  // Open below the box when it fits, else above it: with a long conversation
+  // the box sits at the bottom of the window and a menu below it is cut off.
+  function place() {
+    menu.classList.remove("up");
+    menu.style.bottom = "";
+    const box = (el.closest(".composer-box") || el).getBoundingClientRect();
+    const below = window.innerHeight - box.bottom;
+    if (below >= menu.offsetHeight + 24 || box.top <= below) return;
+    // above the whole box, 8px clear of its top edge, however tall the text makes it
+    menu.classList.add("up");
+    menu.style.bottom = `calc(100% + ${Math.round(el.getBoundingClientRect().top - box.top) + 8}px)`;
+  }
   btn.addEventListener("click", () => {
     menu.hidden = !menu.hidden;
     btn.setAttribute("aria-expanded", String(!menu.hidden));
-    if (!menu.hidden) item.focus();
+    if (!menu.hidden) place();
+    if (!menu.hidden) items[0].focus();
   });
-  el.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { close(); btn.focus(); } });
+  el.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") { close(); btn.focus(); return; }
+    if (menu.hidden || (ev.key !== "ArrowDown" && ev.key !== "ArrowUp")) return;
+    ev.preventDefault();
+    const i = items.indexOf(document.activeElement);
+    items[(i + (ev.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
+  });
   document.addEventListener("click", onOutside);
-  item.addEventListener("click", async () => {
-    close();
+
+  async function addFiles() {
     btn.disabled = true;
     try {
       const r = await sessionApi("/api/files/add", { release: selectedRelease() });
       if (r.added) toast(`Added ${r.added}`);
     } catch (err) { toast(String(err.message || err)); }
     finally { btn.disabled = false; }
-  });
+  }
+  async function mcpServers() {
+    try { return (await sessionApi("/api/settings/mcp")).servers; }
+    catch (err) { toast(String(err.message || err)); return null; }
+  }
+  async function addMcp() {
+    const servers = await mcpServers();
+    if (!servers) return;
+    const offered = servers.filter((s) => !s.selected);
+    if (!offered.length) { toast("Every server in Wire's catalogue is already in this engagement."); return; }
+    const sel = h("select", { class: "dlg-input", "aria-label": "Server" },
+      ...offered.map((s) => h("option", { value: s.key }, s.purpose ? `${s.key}: ${s.purpose}` : s.key)));
+    const url = h("input", { class: "dlg-input mono", type: "url", "aria-label": "Server URL", spellcheck: "false" });
+    const hint = h("p", { class: "muted", style: "margin:4px 0 0" });
+    const fill = () => {
+      const s = offered.find((x) => x.key === sel.value);
+      url.value = s.placeholder ? "" : s.url;
+      url.placeholder = s.placeholder ? "https://… (your organisation's server)" : s.url;
+      hint.textContent = s.placeholder ? "This server is hosted by each organisation: enter its URL." : "Wire's URL for this server. Change it only if yours differs.";
+    };
+    sel.addEventListener("change", fill);
+    fill();
+    const ok = await dialog("Add MCP server",
+      "Adds the server to .wire/engagement/mcp_servers.yml for the whole team. Commit the file afterwards. Each person then signs in under Settings, MCP sign-ins.",
+      [h("label", { class: "dlg-label" }, "Server", sel), h("label", { class: "dlg-label" }, "URL", url), hint], "Add",
+      () => {
+        const s = offered.find((x) => x.key === sel.value);
+        const u = url.value.trim();
+        if (s.placeholder && !/^https:\/\/\S+$/.test(u)) return "Enter the server's https:// URL.";
+        if (u && !/^https:\/\/\S+$/.test(u)) return "The URL must start with https:// and have no spaces.";
+        return null;
+      });
+    if (!ok) return;
+    const s = offered.find((x) => x.key === sel.value);
+    const u = url.value.trim();
+    send(`mcp add ${s.key}${u && u !== s.url ? " " + u : (s.placeholder ? " " + u : "")}`);
+  }
+  async function removeMcp() {
+    const servers = await mcpServers();
+    if (!servers) return;
+    const mine = servers.filter((s) => s.selected);
+    if (!mine.length) { toast("This engagement uses no MCP servers."); return; }
+    const sel = h("select", { class: "dlg-input", "aria-label": "Server" }, ...mine.map((s) => h("option", { value: s.key }, s.key)));
+    const ok = await dialog("Remove MCP server",
+      "Removes the server from .wire/engagement/mcp_servers.yml for the whole team. Commit the file afterwards. Sign-ins stay in each person's Codex store.",
+      [h("label", { class: "dlg-label" }, "Server", sel)], "Remove");
+    if (ok) send(`mcp remove ${sel.value}`);
+  }
+  async function setPersona() {
+    let st;
+    try { st = await sessionApi("/api/settings/persona"); }
+    catch (err) { toast(String(err.message || err)); return; }
+    const current = st.current && st.current.persona;
+    const radios = st.personas.map((p) => h("label", { class: "dlg-choice" },
+      h("input", { type: "radio", name: "persona", value: p.id, checked: p.id === current ? true : null }),
+      h("span", {}, h("strong", {}, p.name), h("span", { class: "muted" }, ` ${p.focus}`))));
+    const local = h("input", { type: "checkbox" });
+    const ok = await dialog("Set my persona",
+      current ? `Yours now: ${current} (from ${st.current.source}). It changes what some commands show you, never what they write.`
+        : "None set. Your persona changes what some commands show you, never what they write.",
+      [...radios, h("label", { class: "dlg-check" }, local,
+        st.email ? ` This clone only (not the team roster, where you are ${st.email})` : " This clone only (git user.email is not set, so the team roster cannot find you)")],
+      "Set", () => (radios.some((r) => r.querySelector("input").checked) ? null : "Choose a persona."));
+    if (!ok) return;
+    const pick = radios.map((r) => r.querySelector("input")).find((i) => i.checked).value;
+    send(`persona set ${pick}${local.checked || !st.email ? " --local" : ""}`);
+  }
   return el;
+}
+
+// A small modal form. Resolves true on the action button, false on Cancel or
+// Escape. `check` returns an error message to keep the form open, or null.
+function dialog(title, intro, fields, action, check) {
+  return new Promise((resolve) => {
+    const err = h("div", { class: "error", hidden: true, style: "margin-top:10px" });
+    const dlg = h("dialog", { class: "dlg", "aria-label": title });
+    const done = (value) => { dlg.close(); dlg.remove(); resolve(value); };
+    const form = h("form", { method: "dialog", onsubmit: (ev) => {
+      ev.preventDefault();
+      const why = check ? check() : null;
+      if (why) { err.textContent = why; err.hidden = false; return; }
+      done(true);
+    } },
+      h("h2", { class: "key-title" }, title),
+      h("p", { class: "muted", style: "margin:0 0 12px" }, intro),
+      ...fields, err,
+      h("div", { class: "key-form" },
+        h("button", { type: "submit", class: "btn" }, action),
+        h("button", { type: "button", class: "btn ghost", onclick: () => done(false) }, "Cancel")));
+    dlg.append(form);
+    dlg.addEventListener("cancel", (ev) => { ev.preventDefault(); done(false); });
+    document.body.append(dlg);
+    dlg.showModal();
+  });
 }
 
 // The model list at the right of the box: light grey, the model's name and a
@@ -167,6 +303,18 @@ function modelPicker(onPick) {
 }
 
 // The numbered options of a question ("  1. Dagster (the client runs it)").
+// The numbered options at the very end of a reply ("1. New engagement" ...),
+// for a command whose question came in its reply and whose prompt is only `you>`.
+function trailingOptions(text) {
+  const lines = String(text).replace(/\s+$/, "").split("\n");
+  const out = [];
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = /^\s*(\d+)\.\s+(.+?)\s*$/.exec(lines[i]);
+    if (!m) break;
+    out.unshift({ n: m[1], label: m[2] });
+  }
+  return out;
+}
 function optionsOf(prompt) {
   const out = [];
   for (const line of String(prompt).split("\n")) {
@@ -233,7 +381,8 @@ function viewSessionStart() {
     h("div", { class: "hero-inner" },
       h("h1", { class: "hero-title" }, "What do you want to build today?"),
       // the same box as the console's, at the bottom of a running session
-      h("form", { class: "composer-box hero-box", onsubmit: begin }, plusMenu(), box, picker.el, enter),
+      h("form", { class: "composer-box hero-box", onsubmit: begin },
+        plusMenu((line) => { box.value = line; box.rows = 1; begin(); }), box, picker.el, enter),
       opening, note));
 }
 
@@ -306,9 +455,11 @@ function viewSession(cid) {
         outBlock().append(document.createTextNode(e.text));
         break;
       case "ask": {
+        const shown = block ? block.textContent : "";
         block = null;
         transcript.append(h("div", { class: "ask" }, e.prompt));
-        const opts = optionsOf(e.prompt);
+        let opts = optionsOf(e.prompt);
+        if (!opts.length) opts = trailingOptions(shown);
         if (live) showChoices(opts.map((o) => ({ label: `${o.n}. ${o.label}`, send: o.n })));
         input.placeholder = opts.length ? "Pick an option, or type your own answer" : "Your answer";
         break;
@@ -431,7 +582,9 @@ function viewSession(cid) {
         h("div", { class: "transcript-wrap" }, transcript, jump),
         ended, choices,
         h("div", { class: "sbar" }, status, busy),
-        h("div", { class: "composer" }, h("div", { class: "composer-box" }, plusMenu(), input, picker.el, send)))));
+        h("div", { class: "composer" }, h("div", { class: "composer-box" },
+          plusMenu((line) => (SESSION.alive ? sendLine(line) : toast("This session has ended. Start a new one to run this."))),
+          input, picker.el, send)))));
 
   clearInterval(SESSION.timer);
   // the sidebar's release selector: `use <release>` in this session

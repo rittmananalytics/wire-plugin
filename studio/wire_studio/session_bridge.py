@@ -42,3 +42,25 @@ def load(framework_root: Path, repo: Path, env: dict | None = None):
     except ImportError as exc:
         raise Unavailable(f"the Wire CLI beside Studio could not be loaded: {exc}") from exc
     return Sessions(Path(repo), dict(os.environ if env is None else env))
+
+
+def cli_modules(framework_root: Path, *names: str) -> tuple:
+    """Modules of the CLI beside Studio (`wire_cli.<name>`, "" for the package), or raise
+    Unavailable. The CLI owns where keys are kept, the MCP selection and the
+    machine check, so Studio and `wire` in a terminal agree."""
+    import importlib  # noqa: PLC0415
+    root = cli_root(framework_root)
+    if root is None:
+        raise Unavailable("the Wire CLI is not beside this Studio; update the Wire plugin to 4.6.4 or later "
+                          "(/plugin update wire@rittman-analytics, then /reload-plugins)")
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    try:
+        return tuple(importlib.import_module(f"wire_cli.{n}" if n else "wire_cli") for n in names)
+    except ImportError as exc:
+        raise Unavailable(f"the Wire CLI beside Studio could not be loaded: {exc}") from exc
+
+
+def key_modules(framework_root: Path):
+    """(keystore, secrets): the Settings page's API keys."""
+    return cli_modules(framework_root, "keystore", "secrets")

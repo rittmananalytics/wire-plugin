@@ -330,13 +330,28 @@ def lane_env(base: dict, lane: Lane, brief_file: Path, framework_root: Path, log
 QUESTION_RE = re.compile(r"\?\s*$|\b(which|please (choose|confirm|let me know)|your choice|do you want)\b", re.I)
 
 
+OPTION_LINE_RE = re.compile(r"^\s*(\d+[.)]|[-*•]|[A-Za-z][.)])\s+\S")
+
+
 def question_in(final_message: str) -> str | None:
-    """A question the lane asked a person instead of reporting needs_ruling:
-    the last paragraph of its final message, when it reads as one."""
+    """A question the lane or command asked a person: the end of its final
+    message, when it reads as one. A question followed by its numbered or
+    bulleted options counts (the options are what the person picks from);
+    Markdown emphasis around the question is ignored (`**Which one?**`)."""
     text = (final_message or "").strip()
     if not text:
         return None
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    # options at the end: step back over them to the paragraph that asks
+    i = len(paragraphs) - 1
+    while i >= 0 and all(OPTION_LINE_RE.match(ln) for ln in paragraphs[i].split("\n") if ln.strip()):
+        i -= 1
+    if 0 <= i < len(paragraphs) - 1:
+        asked = [re.sub(r"[*_`#]+", "", ln).strip() for ln in paragraphs[i].split("\n")]
+        line = next((ln for ln in reversed(asked) if ln.endswith("?") or ln.endswith("?:")), None)
+        if line:
+            return line[:200]
+    paragraphs = [re.sub(r"[*_`]+", "", p).strip() for p in paragraphs]
     tail = " ".join(paragraphs[-3:])
     if QUESTION_RE.search(tail):
         line = next((l.strip() for l in reversed(tail.split("\n")) if "?" in l), None) or tail

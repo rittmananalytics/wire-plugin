@@ -21,10 +21,12 @@ server Codex reports as `not_logged_in` may still serve anonymous calls
 (Context7 does). So a server that is not signed in is passed with a note,
 never dropped.
 
-Codex and Claude Code name MCP tools the same way, `mcp__<server>__<tool>`,
-so a spec that names `mcp__fathom__search_meetings` works on both when the
-server key is the same. Specs written for the plugin's bundled servers
-(`mcp__plugin_wire_<server>__`) map by dropping `plugin_wire_`.
+Codex and Claude Code name MCP tools the same way, `mcp__<server>__<tool>`.
+On the claude harness a server the plugin ships, at the plugin's URL, is named
+`plugin:wire:<key>` (claude_names), so its tools are `mcp__plugin_wire_<key>__`
+as in the plugin, and the person's /mcp sign-in in Claude Code applies. On the
+codex harness the server key is used as it is; specs written for the plugin's
+servers map by dropping `plugin_wire_`.
 """
 
 from __future__ import annotations
@@ -65,15 +67,22 @@ def needs_url(url: str) -> bool:
     return not url or "your-" in url or not url.startswith("https://")
 
 
+def plugin_servers(root: Path) -> dict:
+    """key -> url: the servers the Wire plugin for Claude Code configures. Its
+    .mcp.json is at the plugin root (Claude Code plugin), in mcp_servers.json
+    (Codex plugin) or under packaging/ (a checkout)."""
+    for candidate in (root / "mcp_servers.json", root / ".mcp.json", root / "packaging" / "claude-plugin" / ".mcp.json"):
+        if candidate.is_file():
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+            return {key: (cfg or {}).get("url", "") for key, cfg in (data.get("mcpServers") or {}).items()}
+    return {}
+
+
 def catalogue(root: Path) -> dict:
     """key -> {url, purpose, placeholder}."""
     servers: dict = {}
-    for candidate in (root / "mcp_servers.json", root / "packaging" / "claude-plugin" / ".mcp.json"):
-        if candidate.is_file():
-            data = json.loads(candidate.read_text(encoding="utf-8"))
-            for key, cfg in (data.get("mcpServers") or {}).items():
-                servers[key] = {"url": cfg.get("url", "")}
-            break
+    for key, url in plugin_servers(root).items():
+        servers[key] = {"url": url}
     for key, url in EXTRA.items():
         servers.setdefault(key, {"url": url})
     for key, cfg in servers.items():
@@ -186,9 +195,9 @@ def prompt_note(servers: dict) -> str:
     and a model that is not told they exist sometimes answers without them."""
     if not servers:
         return ""
-    names = ", ".join(sorted(servers))
-    note = ("\n\nMCP servers in this run: " + names + ". Their tools are named mcp__<server>__<tool>; "
-            "when a step needs one of these services, look the tool up and call it rather than assuming it is absent.")
+    names = ", ".join(f"{k} ({tool_prefix(k)}<tool>)" for k in sorted(servers))
+    note = ("\n\nMCP servers in this run, with how their tools are named: " + names + ". "
+            "When a step needs one of these services, look the tool up and call it rather than assuming it is absent.")
     if TOOLS_KEY in servers:
         note += (" The wire server is Wire's own: wire_status and wire_gate answer what a release's state is and "
                  "whether a command may run; wire_lint checks conventions on files you wrote; dbt runs dbt and "
@@ -213,6 +222,84 @@ def codex_overrides(servers: dict) -> list:
         else:
             argv += ["-c", f'mcp_servers.{key}.url="{v}"']
     return argv
+
+
+# Claude Code files an MCP sign-in under the server's name. The Wire plugin's
+# servers are named plugin:wire:<key> there, so a CLI run that names a plugin
+# server the same way, at the same URL, uses the sign-in the person made with
+# /mcp in Claude Code. Measured on Claude Code 2.1.319: `atlassian` at the
+# plugin's URL reported needs-auth, `plugin:wire:atlassian` connected with
+# 32 tools, after one /mcp sign-in. This is how Claude Code behaves, not a
+# documented contract; validate_wire_cli.py checks the naming, and Settings in
+# Studio shows the status a run actually sees.
+PLUGIN_PREFIX = "plugin:wire:"
+
+
+def claude_names(servers: dict, plugin: dict) -> dict:
+    """The run's servers keyed by the name Claude Code should see: plugin:wire:<key>
+    for a server the plugin ships at the same URL, the key otherwise."""
+    out = {}
+    for key, v in (servers or {}).items():
+        same = isinstance(v, str) and key in (plugin or {}) and plugin[key] == v and not needs_url(v)
+        out[PLUGIN_PREFIX + key if same else key] = v
+    return out
+
+
+def tool_prefix(name: str) -> str:
+    """mcp__<server>__ as Claude Code and Codex name a server's tools
+    (plugin:wire:coupler-io -> mcp__plugin_wire_coupler-io__)."""
+    return "mcp__" + re.sub(r"[^A-Za-z0-9_-]", "_", name) + "__"
+
+
+CLAUDE_STATUS = {"connected": "signed_in", "needs-auth": "not_signed_in"}
+
+
+def parse_claude_init(line: str) -> dict | None:
+    """name -> signed_in | not_signed_in | unreachable from the first event of a
+    `claude -p --output-format stream-json` run, or None when it is not that event."""
+    try:
+        e = json.loads(line)
+    except ValueError:
+        return None
+    if e.get("type") != "system" or e.get("subtype") != "init":
+        return None
+    return {s.get("name"): CLAUDE_STATUS.get(s.get("status"), "unreachable")
+            for s in e.get("mcp_servers") or [] if isinstance(s, dict) and s.get("name")}
+
+
+def claude_sign_in_status(claude: str, servers: dict, cwd: Path, env: dict | None = None,
+                          timeout: int = 90) -> dict | None:
+    """name -> status for servers (already named by claude_names), as a CLI run
+    sees them. Starts a run with the CLI's flags, reads the first event, which
+    reports each server once Claude Code has tried it, and stops the run before
+    the model is asked anything. None when Claude Code could not be asked."""
+    import os
+    import threading
+    if not servers:
+        return {}
+    # the prompt comes straight after -p: --mcp-config takes several values and
+    # would read a prompt after it as another config
+    argv = [claude, "-p", "Reply ok.", "--output-format", "stream-json", "--verbose", "--max-turns", "1",
+            "--setting-sources", "project,local", "--strict-mcp-config",
+            "--mcp-config", claude_mcp_config(servers)]
+    try:
+        proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                text=True, cwd=str(cwd), env=dict(os.environ if env is None else env))
+    except OSError:
+        return None
+    timer = threading.Timer(timeout, proc.kill)
+    timer.start()
+    found = None
+    try:
+        for line in proc.stdout:
+            found = parse_claude_init(line)
+            if found is not None:
+                break
+    finally:
+        timer.cancel()
+        proc.kill()
+        proc.wait()
+    return found
 
 
 def claude_mcp_config(servers: dict) -> str:

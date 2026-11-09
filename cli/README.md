@@ -80,8 +80,14 @@ Codex install set. Updating: run the installer again with the new version
 
 ## Keys and sign-in
 
-Keys live in a file you write yourself. They never pass through a prompt,
-a log, or a chat with the agent. In your own terminal:
+The simplest way: open Wire Studio, go to **Settings, API keys**, and
+paste the Claude and OpenAI keys there. On macOS Studio saves them in the
+Keychain, under service `wire` with the key's name as the account; on Linux
+and WSL it writes `~/.wire/secrets.env` for you (mode 600). `wire` reads
+them on every run. They are never written to the repository.
+
+Or keep them in a file you write yourself. Either way they never pass
+through a prompt, a log, or a chat with the agent. In your own terminal:
 
 ```
 mkdir -p ~/.wire && chmod 700 ~/.wire
@@ -90,9 +96,23 @@ read -rs KEY && printf 'OPENAI_API_KEY=%s\n' "$KEY" >> ~/.wire/secrets.env; unse
 chmod 600 ~/.wire/secrets.env
 ```
 
-Each `read -rs` waits silently for a paste and Enter. A per-repository file,
-`<repo>/.wire/local/secrets.env`, overrides the personal one. A secrets
-file readable by other users is skipped with a note.
+Each `read -rs` waits silently for a paste and Enter. Order of use, the
+later winning: `~/.wire/secrets.env`, then the Keychain or keyring, then the
+per-repository `<repo>/.wire/local/secrets.env`. A key already in the
+environment wins over all three. A secrets file readable by other users is
+skipped with a note. The Keychain is read only when `HOME` is your own home
+directory; `WIRE_KEYSTORE=none` turns it off.
+
+In a session, `mcp list | add | remove | login | check`, `doctor`,
+`persona [set <persona> [--local]]` and `repos [list | refresh | find]` run
+as they do from Studio's + menu.
+
+`/wire:new`, `/wire:adopt`, `/wire:start` and `/wire:help` take no release:
+typed or proposed by the director, they run without one (`new` creates a
+release). Plain direction such as "create a new release for a dashboard"
+is resolved to `/wire:new`. When a command stops to ask something, the
+question and its numbered options end its reply, your next line is the
+answer, and Studio shows the options as buttons.
 
 - **Anthropic.** An API key from the Claude Console. Anthropic's terms keep
   Claude subscriptions (Max, Enterprise) inside Claude Code, so the `claude`
@@ -281,7 +301,8 @@ the CLI fills in the tokens and duration afterwards. The gate runs first;
 
 The servers an engagement uses are listed once, in
 `.wire/engagement/mcp_servers.yml`, committed with the repository. Sign-in is
-per person and stays in Codex's own store; the file holds URLs only.
+per person and stays in the tool that made it, Claude Code or Codex; the file
+holds URLs only.
 
 ```
 wire mcp list                        the catalogue, what this engagement selected, sign-in state
@@ -300,6 +321,16 @@ servers' tools allowed. A server Codex reports as not signed in is still
 passed, with a note: some serve anonymous calls (Context7), and one that needs
 a sign-in fails at start-up with one error line while the run goes on.
 
+**Signing in on Claude Code.** On the claude harness, a server the Wire plugin
+includes (Atlassian, Context7, Coupler.io, Airbyte, Amplitude, and Fathom at
+the plugin's URL) is passed as `plugin:wire:<server>`, the name it has in
+Claude Code. Claude Code keeps a sign-in under the server's name, so one
+sign-in with `/mcp` in Claude Code (choose `plugin:wire:atlassian`) also
+works in Wire CLI runs. Under its own key, `atlassian`, the same server
+reported "needs-auth" after that sign-in (Claude Code 2.1.319). A server the
+plugin does not include, such as Notion or Linear, keeps its key, and a
+`/mcp` sign-in in an ordinary Claude Code session does not reach it.
+
 **Wire's own tools.** Every run (lanes, typed commands, `wire exec`) also
 gets a `wire` MCP server the CLI starts, `wire tools-server`, with four
 tools: `wire_status` and `wire_gate` (a release's state and the gate's answer
@@ -309,8 +340,9 @@ with a short result: counts by status and each failure, not dbt's log; under
 work on both harnesses. `WIRE_TOOLS=false` leaves the server out.
 
 Tool names match: Codex calls an MCP tool `mcp__<server>__<tool>`, as Claude
-Code does, so a specification's tool names work when the server key is the
-same. In a lane under `warehouse_spend: none`, the hook refuses BigQuery
+Code does. On the claude harness the plugin's servers keep the plugin's tool
+names (`mcp__plugin_wire_atlassian__...`); on the codex harness the server key
+is used (`mcp__atlassian__...`). In a lane under `warehouse_spend: none`, the hook refuses BigQuery
 `execute_sql` and Snowflake `sql_exec`, as the Wire mod does in Claude Code.
 
 ## Evals and model routing

@@ -61,7 +61,8 @@ def now_text() -> str:
 # ---------------------------------------------------------------- models
 
 # The models the Session view offers, each shown only when the key it needs is
-# set (secrets.py: ~/.wire/secrets.env or the repository's .wire/local/secrets.env,
+# set (secrets.py: ~/.wire/secrets.env, the Keychain or keyring (Studio's Settings
+# page), or the repository's .wire/local/secrets.env,
 # or the environment). The ids are the ones the eval suites ran (EVALS.md).
 # Claude models run on the claude harness when `claude` is installed, else on
 # the codex harness with the native Anthropic provider. With `claude` installed
@@ -483,14 +484,21 @@ class Sessions:
     conversation already open is returned, not started twice."""
 
     def __init__(self, repo: Path, env: dict, shell_kwargs: dict | None = None):
-        from .secrets import load_secrets
         self.repo = Path(repo)
-        home = Path(env["HOME"]) if env.get("HOME") else None  # the HOME this session was given
-        self.env, _notes = load_secrets(dict(env), self.repo, home=home)  # as `wire` does before its session
+        self.base_env = dict(env)
+        self.reload_secrets()
         self.shell_kwargs = shell_kwargs or {}
         self.store = Store(self.repo)
         self.live: dict = {}
         self.lock = threading.Lock()
+
+    def reload_secrets(self) -> None:
+        """Read the keys again, as `wire` does before its session: after a key
+        is set or removed in Studio's Settings. Sessions already running keep
+        the keys they started with; the next one started gets the new ones."""
+        from .secrets import load_secrets
+        home = Path(self.base_env["HOME"]) if self.base_env.get("HOME") else None  # the HOME this session was given
+        self.env, _notes = load_secrets(dict(self.base_env), self.repo, home=home)
 
     def start(self, release: str | None = None, cid: str | None = None, first: str | None = None,
               model: str | None = None) -> WebSession:
@@ -500,7 +508,7 @@ class Sessions:
         if model and not cid:
             choice = next((c for c in self.models() if c["key"] == model), None)
             if choice is None and model != self.default_model(release)["key"]:
-                raise ValueError("that model is not available; check the keys in ~/.wire/secrets.env")
+                raise ValueError("that model is not available; check the keys under Settings, API keys")
         with self.lock:
             if cid and cid in self.live and self.live[cid].alive:
                 return self.live[cid]
@@ -555,8 +563,8 @@ class Sessions:
         exe = find_codex(self.env)
         if Path(exe).is_file() or shutil.which(exe, path=self.env.get("PATH")):
             return None
-        return ("no model is available: install Claude Code, or put ANTHROPIC_API_KEY or OPENAI_API_KEY "
-                "in ~/.wire/secrets.env")
+        return ("no model is available: install Claude Code, or add a Claude or OpenAI API key "
+                "under Settings, API keys")
 
     def set_model(self, cid: str, key: str) -> dict:
         """Set a conversation's model by its key from models(). A running
@@ -564,7 +572,7 @@ class Sessions:
         when it is opened again."""
         choice = next((c for c in self.models() if c["key"] == key), None)
         if choice is None:
-            raise ValueError("that model is not available; check the keys in ~/.wire/secrets.env")
+            raise ValueError("that model is not available; check the keys under Settings, API keys")
         s = self.live.get(cid)
         if s is not None and s.alive:
             if not s.waiting:

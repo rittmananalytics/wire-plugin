@@ -61,6 +61,8 @@ def install_kind(here: Path | None = None) -> str:
         return "homebrew"
     if "/.wire/versions/" in s:
         return "installer"
+    if "/.claude/plugins/" in s:
+        return "plugin"  # the Wire CLI inside the Claude Code plugin (4.6.4)
     return "checkout"
 
 
@@ -76,6 +78,9 @@ def update(current: str, check_only: bool, out=print, env: dict | None = None, r
     kind = kind or install_kind()
     if kind == "homebrew":
         out("This Wire CLI was installed with Homebrew: `brew update && brew upgrade wire`.")
+        return 0
+    if kind == "plugin":
+        out("This Wire CLI ships in the Wire plugin for Claude Code: /plugin update wire@rittman-analytics, then /reload-plugins.")
         return 0
     if kind == "checkout":
         out("This Wire CLI runs from a source checkout: update it with git.")

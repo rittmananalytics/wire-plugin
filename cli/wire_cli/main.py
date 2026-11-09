@@ -112,10 +112,15 @@ def main(argv: list | None = None, out=print, env: dict | None = None, ask=None,
                          first=shell_args.first)
     if argv and argv[0] not in SUBCOMMANDS and not argv[0].startswith("-"):
         args, rest = typed_parser().parse_known_args(argv)
-        if len(rest) < 2:
+        from .commands import NO_RELEASE
+        from .framework import normalise_command
+        if rest and normalise_command(rest[0]) in NO_RELEASE:
+            args.cmd, args.name, args.release, args.extra = "command", rest[0], "", rest[1:]
+        elif len(rest) < 2:
             out("usage: wire <command> <release> [args] [--harness ...] [--repo ...]")
             return 2
-        args.cmd, args.name, args.release, args.extra = "command", rest[0], rest[1], rest[2:]
+        else:
+            args.cmd, args.name, args.release, args.extra = "command", rest[0], rest[1], rest[2:]
     else:
         ap = build_parser()
         args = ap.parse_args(argv)

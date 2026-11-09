@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.5: Settings in Wire Studio, and MCP sign-ins shared with the Wire CLI
+
+**Released**: November 2026
+
+**Settings.** [Wire Studio](../advanced/wire-studio) has one Settings page with three sections. **API keys** saves your Claude and OpenAI API keys in the macOS Keychain (on Linux and WSL, in `~/.wire/secrets.env`), never in the repository, and shows only the last four characters. You need neither key when Claude Code is installed and signed in: the Wire CLI then runs on your Claude Code sign-in. **MCP sign-ins** lists the engagement's MCP servers and, on **Check sign-ins**, whether a Wire CLI run can use each one. **This machine** shows what `wire doctor` reports and checks for a newer Wire CLI.
+
+**One MCP sign-in.** For the MCP servers the Wire plugin includes (Atlassian, Context7, Coupler.io, Airbyte, Amplitude), a sign-in with `/mcp` in Claude Code now also works in [Wire CLI](../wire-cli/what-is-the-cli) runs. A server the plugin does not include, such as Notion, still needs its own sign-in.
+
+**The + menu.** Besides Add Files to release, the `+` in the Wire CLI box adds or removes an MCP server for the engagement, checks the MCP servers a release needs, sets your persona, and lists or refreshes related repositories. The session makes each change, as if you had typed it.
+
+**Fixes.** "Create a new release" now runs `/wire:new` (it ran onboarding before). `new`, `adopt`, `start` and `help` run without a release. When a step ends on a question with numbered options, the Wire CLI waits for your answer, and Studio shows the options as buttons. The + menu opens above the box when the conversation fills the page. A **Wire docs** link sits beside Settings in the menu.
+
+---
+
 ## v4.6.4: the Wire CLI ships in the Claude Code plugin
 
 **Released**: November 2026

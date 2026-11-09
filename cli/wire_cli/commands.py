@@ -24,6 +24,11 @@ from .orchestrator import read_context, read_release
 EXIT_GATE = 5
 
 
+# Engagement-level commands: they take no release (`/wire:new` creates one). The
+# CLI runs them without one and puts none into the command line or the prompt.
+NO_RELEASE = ("new", "adopt", "start", "help")
+
+
 def typed_prompt(command: str, release: str, extra: list, spec_text: str, root: Path, override: str | None,
                  invoked_by: str = "typed") -> str:
     args = " ".join([release] + list(extra)).strip()
@@ -94,7 +99,9 @@ def run_typed(repo: Path, command: str, release: str, extra: list, settings, arg
         # as it is in Claude Code (a review's stakeholder dialogue, a setup's questions)
         prompt += ("\n\nThis run is a conversation with the person in a terminal session. Where the "
                    "specification asks the person something, end your message with the question and stop; "
-                   "their answer comes back in the next turn. Write the record only once the step is done.")
+                   "their answer comes back in the next turn. Put its options, if any, as a numbered list after "
+                   "the question, with nothing after them. Write the record and the `Ran:` line only once the "
+                   "step is done, not when you stop to ask.")
     env.update({"WIRE_INVOKED_BY": invoked_by, "WIRE_PLUGIN_ROOT": str(root)})
     log_dir = repo / ".wire" / "local" / "lane-logs"
     from .mcp import servers_for_run

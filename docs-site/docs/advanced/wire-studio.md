@@ -125,9 +125,55 @@ From 4.6.3, Studio can run the [Wire CLI](./wire-cli)'s session in the page. Ope
 - **New session** is the blue icon button beside **Wire CLI** in the menu; it goes back to the opening box. Changing the release selector in the menu while a session runs sends `use <release>` to it; the selector follows the session's release.
 - **Sessions are kept.** While the Wire CLI view is open, the menu lists the last ten sessions for the repository, under **Sessions**. Opening one shows its transcript and carries on the same conversation with the agent. **Rename** names it, **Export (.md)** saves the transcript as Markdown, **Stop** ends the session, and × deletes a stopped conversation. They are stored in the client repository under `.wire/local/sessions/`, which is not committed.
 
-The session is the Wire CLI's, running on your machine with your harness, model and keys (`~/.wire/secrets.env`). It writes the record as a terminal session would, and if another session holds the release claim it offers join, take-over or move. Studio passes text to it and shows what comes back.
+The session is the Wire CLI's, running on your machine with your harness, model and keys (set under **Settings, API keys**, or in `~/.wire/secrets.env`). It writes the record as a terminal session would, and if another session holds the release claim it offers join, take-over or move. Studio passes text to it and shows what comes back.
 
-The Wire CLI ships with Studio in the Claude Code plugin (from 4.6.4), the Codex plugin and the CLI install, so there is nothing else to install. In the Claude Code plugin the steps run on Claude Code: with no API key set, they use your Claude Code sign-in and its plan limits, and the model list offers the Claude models, starting on Opus 5.5. Put `ANTHROPIC_API_KEY` in `~/.wire/secrets.env` for API billing, or `OPENAI_API_KEY` (with the Wire CLI's agent installed) for OpenAI models. With no key and neither Claude Code nor the agent installed, the view says what to install or set. Hosted Studio has no Session view.
+The Wire CLI ships with Studio in the Claude Code plugin (from 4.6.4), the Codex plugin and the CLI install, so there is nothing else to install. In the Claude Code plugin the steps run on Claude Code: with no API key set, they use your Claude Code sign-in and its plan limits, and the model list offers the Claude models, starting on Opus 5.5. Add a Claude API key under **Settings, API keys** for API billing, or an OpenAI API key (with the Wire CLI's agent installed) for OpenAI models. With no key and neither Claude Code nor the agent installed, the view says what to install or set. Hosted Studio has no Session view.
+
+## Settings
+
+**Settings** in the menu opens one page with three sections: API keys, MCP sign-ins and This machine. The buttons at the top jump to each. Hosted Studio has no Settings. **Wire docs**, beside it, opens the Wire docs site.
+
+### API keys
+
+Paste your Claude and OpenAI API keys here, so you do not need to edit `~/.wire/secrets.env`.
+
+- Press **Save**. Studio checks the key looks like the right kind (`sk-ant-` for Claude, `sk-` for OpenAI). **Replace** and **Remove** change it later.
+- On macOS the key is saved in your Keychain. On Linux and WSL it is saved in `~/.wire/secrets.env`, readable by you only; Studio changes that key's line and keeps the rest of the file.
+- Keys are never written to the repository, and Studio never shows a saved key again: only its last four characters and where it is kept.
+- The Wire CLI reads them on every run, in a terminal or in Studio's Wire CLI view. A session already running keeps the key it started with; the next one uses the new key.
+- You don't need a key if Claude Code is installed and signed in. Without one, the Wire CLI uses your Claude Code sign-in, and its use counts against your Claude plan. A Claude API key bills usage to an API account instead; an OpenAI API key lets you use OpenAI's models.
+- If the same key is set in more than one place, Wire uses the first one it finds, in this order: a key set in your terminal before Studio was started, the project's `.wire/local/secrets.env`, the Keychain, then `~/.wire/secrets.env`. The page says which one is in use.
+- Windows is not supported; run Wire in WSL.
+
+### MCP sign-ins
+
+The MCP servers this engagement uses, and whether you are signed in to each. Sign-ins are personal and stay with Claude Code or Codex, never in the repository or Studio.
+
+On Claude Code (the usual case), sign in with `/mcp` in Claude Code and choose the server. For the servers the Wire plugin includes, such as `plugin:wire:atlassian`, that one sign-in works in Claude Code and in Wire CLI sessions. **Check sign-ins** starts Claude Code for a few seconds to see what a Wire CLI session would see; no model is used. A server the plugin does not include, such as Notion, cannot yet share a `/mcp` sign-in with Wire CLI sessions.
+
+If Codex is installed, each server also shows its Codex sign-in, and **Sign in with Codex** opens your browser for it.
+
+To add or remove a server for the whole team, use the **+** menu in the Wire CLI box (below).
+
+### This machine
+
+What this machine can run, as `wire doctor` reports it: Codex, Claude Code, keys set (never their values), the engagement's MCP servers, a local model server. **Check for a newer Wire CLI** looks for a newer release.
+
+## The + menu in the Wire CLI box
+
+The **+** at the left of the box:
+
+| Item | What it does |
+|---|---|
+| Add Files to release | Copies a file you pick into the repository (see above) |
+| Add MCP server… | Pick a server from Wire's list; it is added to `.wire/engagement/mcp_servers.yml`. Fathom asks for your organisation's URL. |
+| Remove MCP server… | Removes a server from that file |
+| Check MCP servers for this release | Which servers the release needs and whether you are signed in |
+| Set my persona… | Your role on the engagement, in the team roster (found by your git email) or for this clone only |
+| Related repositories | The client's other repositories this engagement lists |
+| Refresh related repositories | Fetches the latest from each of them, read only |
+
+Each item except the first sends a command to the session, as if you typed it (`mcp add context7`, `persona set analytics-engineer`, `repos list`). The session runs it and shows the result. The server list and the team roster are committed files: commit them so the team shares the change. Adding a related repository is done with `/wire:utils-repos`, which asks before it changes anything.
 
 ## Why Studio never writes to the record
 
@@ -137,7 +183,7 @@ Studio also stays on your machine:
 
 - It listens only on 127.0.0.1 and refuses requests addressed to any other host name.
 - It serves only text files inside the repository, never `.git` or `.env`.
-- Its requests that act, the one behind "Run in Claude Code" and those of the Session view, need a token issued when Studio starts and readable only by Studio's own page. Another web page cannot make your browser open a session or read one.
+- Its requests that act, the one behind "Run in Claude Code", those of the Session view and the Settings page, need a token issued when Studio starts and readable only by Studio's own page. Another web page cannot make your browser open a session or read one.
 
 ## Sending commands to Wire
 

@@ -105,7 +105,7 @@ releaseSel.addEventListener("change", () => {
 
 function setNav(view) {
   document.querySelectorAll("[data-nav]").forEach((a) => a.classList.toggle("active", a.dataset.nav === view));
-  document.getElementById("nav-console").classList.toggle("active", view !== "session");
+  document.getElementById("nav-console").classList.toggle("active", view !== "session" && view !== "settings");
   document.getElementById("session-nav").hidden = view !== "session";
   const rn = document.getElementById("release-nav");
   rn.hidden = !release || view === "home";
@@ -166,6 +166,9 @@ async function route() {
     if (parts[0] === "session" && !HOSTED) {
       release = null;
       render("session", parts[1] || "");
+    } else if (parts[0] === "settings" && !HOSTED) {
+      release = null;
+      render("settings");
     } else if (parts[0] === "r" && parts[1]) {
       if (!release || release.name !== parts[1]) selected = { node: null, decision: null, lane: null, ticket: null };
       release = await api(`/api/release/${encodeURIComponent(parts[1])}`);
@@ -201,11 +204,12 @@ function hostedChrome() {
   if (back && /^\/[A-Za-z0-9_/-]*$/.test(back)) { a.href = back; a.hidden = false; }
   document.getElementById("nav-session").hidden = true;
   document.getElementById("nav-session-row").hidden = true;
+  document.getElementById("settings-nav").hidden = true;  // keys belong to the workstation, not the hosted site
 }
 hostedChrome();
 function render(view, arg) {
   setNav(view);
-  const views = { home: viewHome, session: (id) => viewSession(id), overview: viewOverview, tickets: viewTickets, decisions: viewDecisions, lanes: HOSTED ? viewOverview : viewLanes, record: viewRecord, file: viewFile };
+  const views = { home: viewHome, session: (id) => viewSession(id), settings: () => viewSettings(), overview: viewOverview, tickets: viewTickets, decisions: viewDecisions, lanes: HOSTED ? viewOverview : viewLanes, record: viewRecord, file: viewFile };
   main.replaceChildren((views[view] || viewOverview)(arg));
 }
 

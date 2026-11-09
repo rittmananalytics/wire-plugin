@@ -18,12 +18,34 @@
   release's status.md or execution_log.md (`addfile.py`). It is the one
   place Studio writes to the repository, and only a file the person chose.
   Same token and Origin checks.
+- Settings, API keys: `GET /api/settings/keys` says which keys are set and
+  where from (never a value; the last four characters at most), and
+  `POST /api/settings/keys/set` and `/delete` write or remove the Claude and
+  OpenAI keys in the operating system's secure store (the macOS Keychain or
+  the Linux keyring, `wire_cli/keystore.py`), never in the repository. Same
+  token and Origin checks; the GET needs the token too.
+- Settings, the rest (all read only, token needed): `GET /api/settings/mcp`
+  (the MCP catalogue, the engagement's selection, and with `?signin=1` each
+  server's status as a Claude Code run sees it, from one probe run stopped
+  before the model is asked, and its Codex sign-in when Codex is installed), `GET /api/settings/machine` (`wire doctor`),
+  `GET /api/settings/update` (is a newer Wire CLI out; reads GitHub on
+  request only), `GET /api/settings/persona` (the persona list and yours).
+  `POST /api/settings/mcp/login` starts Codex's sign-in for a selected server
+  (a browser opens; the token stays in Codex's store, never Studio's). The
+  changes to the engagement (adding or removing a server, setting a persona)
+  are not here: the Wire CLI box's + menu sends them to the session, which
+  writes them as a typed command would.
 - Every other POST, and every PUT, PATCH and DELETE, gets 405.
 """
 
 import json
 import mimetypes
+import os
 import secrets
+import shutil
+import subprocess
+import tempfile
+import types
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -41,8 +63,9 @@ MAX_BODY = 16_000
 
 
 def make_handler(framework, repo, clock=datetime.now, launch_mode="auto", launch_fn=launch, token=None,
-                 sessions_factory=None, dialogs=None):
+                 sessions_factory=None, dialogs=None, env=None):
     repo = Path(repo).resolve()
+    env = dict(os.environ if env is None else env)
     token = token or secrets.token_urlsafe(32)
     sessions_box = {}
 
@@ -50,13 +73,88 @@ def make_handler(framework, repo, clock=datetime.now, launch_mode="auto", launch
         """The CLI's sessions for this repository, loaded on first use."""
         if "value" not in sessions_box:
             try:
-                factory = sessions_factory or (lambda: session_bridge.load(framework.root, repo))
+                factory = sessions_factory or (lambda: session_bridge.load(framework.root, repo, env))
                 sessions_box["value"], sessions_box["error"] = factory(), None
             except session_bridge.Unavailable as e:
                 sessions_box["value"], sessions_box["error"] = None, str(e)
         if sessions_box["value"] is None:
             raise session_bridge.Unavailable(sessions_box["error"])
         return sessions_box["value"]
+
+    def keys_listing():
+        """What the Settings page shows. Never a key's value."""
+        keystore, secrets_mod = session_bridge.key_modules(framework.root)
+        store, reason = keystore.store_for(env)
+        found = secrets_mod.sources(env, repo, store=store)
+        in_store = keystore.read_all(store)
+        keys = []
+        for spec in keystore.SETTABLE:
+            src = found.get(spec["name"], {})
+            keys.append({"name": spec["name"], "label": spec["label"], "prefix": spec["prefix"],
+                         "source": src.get("source"), "hint": src.get("hint", ""), "also": src.get("also", []),
+                         "in_store": spec["name"] in in_store,
+                         "store_hint": keystore.hint(in_store.get(spec["name"]))})
+        return {"available": store is not None, "store": store.label if store else None, "reason": reason,
+                "keys": keys}
+
+    logins = {}  # MCP server key -> {"proc", "log"}: Codex sign-ins started from Settings
+
+    def login_state(key):
+        job = logins.get(key)
+        if job is None:
+            return None
+        rc = job["proc"].poll()
+        if rc is None:
+            return {"state": "running"}
+        job["log"].seek(0)
+        tail = job["log"].read().decode("utf-8", "replace").strip().split("\n")[-1:]
+        return {"state": "done" if rc == 0 else "failed", "message": tail[0] if tail else ""}
+
+    def find_codex():
+        (codex_mod,) = session_bridge.cli_modules(framework.root, "harness.codex")
+        exe = codex_mod.find_codex(env)
+        return exe if (Path(exe).is_file() or shutil.which(exe, path=env.get("PATH"))) else None
+
+    def find_claude():
+        return shutil.which("claude", path=env.get("PATH"))
+
+    def mcp_listing(signin):
+        """The catalogue and the engagement's selection, and with signin each
+        selected server's status: on Claude Code as a CLI run sees it (one
+        probe run, stopped before the model is asked), on Codex from its store."""
+        (mcp,) = session_bridge.cli_modules(framework.root, "mcp")
+        cat = mcp.catalogue(framework.root)
+        selection = mcp.load_selection(repo)
+        named = mcp.claude_names(selection, mcp.plugin_servers(framework.root))
+        run_name = {k: n for n in named for k in selection if n in (k, mcp.PLUGIN_PREFIX + k)}
+        codex, claude = find_codex(), find_claude()
+        auth = mcp.sign_in_status(codex, selection, repo, env) if (signin and codex and selection) else None
+        seen = mcp.claude_sign_in_status(claude, named, repo, env) if (signin and claude and selection) else None
+        servers = []
+        for key in sorted(set(cat) | set(selection)):
+            info = cat.get(key, {})
+            chosen = key in selection
+            name = run_name.get(key)
+            servers.append({"key": key, "url": selection.get(key) or info.get("url", ""), "purpose": info.get("purpose", ""),
+                            "placeholder": bool(info.get("placeholder")) and not chosen, "selected": chosen,
+                            # Claude Code: the name a run uses; a plugin server shares the person's /mcp sign-in
+                            "claude_name": name, "plugin": bool(name and name.startswith(mcp.PLUGIN_PREFIX)),
+                            "claude_status": (seen or {}).get(name) if (chosen and seen is not None) else None,
+                            "codex_signed_in": (auth.get(key) != mcp.NOT_SIGNED_IN) if (chosen and auth is not None) else None,
+                            "login": login_state(key)})
+        return {"servers": servers, "file": str(mcp.SELECTION_FILE), "claude": bool(claude), "codex": bool(codex),
+                "checked": bool(signin and selection and (auth is not None or seen is not None))}
+
+    def captured(fn):
+        """(return value, printed lines) of a CLI function that prints through `out`."""
+        lines = []
+        rc = fn(lambda text="": lines.extend(str(text).split("\n")))
+        return rc, [ln for ln in lines if ln.strip()]
+
+    def keys_changed():
+        # sessions started from now on read the new keys; running ones keep theirs
+        if sessions_box.get("value") is not None:
+            sessions_box["value"].reload_secrets()
 
     class Handler(BaseHTTPRequestHandler):
         server_version = f"WireStudio/{__version__}"
@@ -124,7 +222,9 @@ def make_handler(framework, repo, clock=datetime.now, launch_mode="auto", launch
             if not self._host_ok():
                 return self._send(403, {"error": "host not allowed"})
             path = urlparse(self.path).path
-            if path not in ("/api/launch", "/api/files/add") and not path.startswith("/api/session/"):
+            if (path not in ("/api/launch", "/api/files/add", "/api/settings/keys/set", "/api/settings/keys/delete",
+                             "/api/settings/mcp/login")
+                    and not path.startswith("/api/session/")):
                 return self._refuse()
             if not self._origin_ok():
                 return self._send(403, {"error": "requests that act must come from Studio's own page"})
@@ -133,6 +233,12 @@ def make_handler(framework, repo, clock=datetime.now, launch_mode="auto", launch
             if path.startswith("/api/session/"):
                 body = self._json_body()
                 return None if body is None else self._session_post(path, body)
+            if path == "/api/settings/mcp/login":
+                body = self._json_body()
+                return None if body is None else self._mcp_login(body)
+            if path.startswith("/api/settings/keys/"):
+                body = self._json_body()
+                return None if body is None else self._keys_post(path, body)
             if path == "/api/files/add":
                 # Add Files to release: the OS file picker, then its save dialog, the copy
                 # only inside the repository (addfile.py). Never the record files.
@@ -158,6 +264,80 @@ def make_handler(framework, repo, clock=datetime.now, launch_mode="auto", launch
                     return self._send(200, launch_fn(repo, body.get("directive"), launch_mode, target="wire"))
                 return self._send(200, launch_fn(repo, body.get("directive"), launch_mode))
             except (LaunchError, ValueError) as e:
+                return self._send(400, {"error": str(e)})
+
+        def _mcp_login(self, body):
+            key = body.get("key")
+            try:
+                (mcp,) = session_bridge.cli_modules(framework.root, "mcp")
+                selection = mcp.load_selection(repo)
+                if not isinstance(key, str) or key not in selection:
+                    return self._send(400, {"error": "add the server to the engagement first (+ menu, Add MCP server)"})
+                codex = find_codex()
+                if codex is None:
+                    return self._send(409, {"error": "Codex is not installed here; on Claude Code, sign in with /mcp"})
+                if (login_state(key) or {}).get("state") == "running":
+                    return self._send(200, mcp_listing(False))
+                log = tempfile.TemporaryFile()
+                argv = [codex, *mcp.codex_overrides({key: selection[key]}), "mcp", "login", key]
+                proc = subprocess.Popen(argv, cwd=str(repo), env=mcp.agent_env(codex, repo, env), stdin=subprocess.DEVNULL,
+                                        stdout=log, stderr=subprocess.STDOUT)
+                logins[key] = {"proc": proc, "log": log}
+                return self._send(200, mcp_listing(False))
+            except session_bridge.Unavailable as e:
+                return self._send(503, {"error": str(e)})
+            except OSError as e:
+                return self._send(500, {"error": f"Codex could not be started: {e}"})
+
+        def _settings_get(self, path, q):
+            try:
+                if path == "/api/settings/mcp":
+                    return self._send(200, mcp_listing(q.get("signin", ["0"])[0] == "1"))
+                if path == "/api/settings/machine":
+                    secrets_mod, doctor_mod, cli = session_bridge.cli_modules(framework.root, "secrets", "doctor", "")
+                    full, _notes = secrets_mod.load_secrets(env, repo)
+                    _rc, lines = captured(lambda out: doctor_mod.doctor(repo, full, types.SimpleNamespace(json=True), out))
+                    try:
+                        rows = json.loads("\n".join(lines))
+                    except ValueError:
+                        rows = {"doctor": " ".join(lines)}
+                    return self._send(200, {"version": cli.__version__, "rows": rows})
+                if path == "/api/settings/update":
+                    ops, cli = session_bridge.cli_modules(framework.root, "install_ops", "")
+                    rc, lines = captured(lambda out: ops.update(cli.__version__, True, out, env))
+                    return self._send(200, {"version": cli.__version__, "ok": rc == 0, "lines": lines})
+                if path == "/api/settings/persona":
+                    (fw,) = session_bridge.cli_modules(framework.root, "framework")
+                    ps = fw.load_script(framework.root, "persona")
+                    personas = ps.load_personas()
+                    known = [p["id"] for p in personas]
+                    _name, email = ps.git_user(repo)
+                    mine = ps.resolve(known, None, env.get("WIRE_PERSONA"), ps.read_local(repo),
+                                      ps.roster_persona(ps.read_roster(repo), email))
+                    return self._send(200, {"personas": personas, "current": mine, "email": email})
+                return self._send(404, {"error": "no such setting"})
+            except session_bridge.Unavailable as e:
+                return self._send(503, {"error": str(e)})
+
+        def _keys_post(self, path, body):
+            name, value = body.get("name"), body.get("value")
+            try:
+                keystore, _secrets = session_bridge.key_modules(framework.root)
+            except session_bridge.Unavailable as e:
+                return self._send(503, {"error": str(e)})
+            try:
+                if not isinstance(name, str) or name not in keystore.NAMES:
+                    return self._send(400, {"error": f"name must be one of {', '.join(keystore.NAMES)}"})
+                store, reason = keystore.store_for(env)
+                if store is None:
+                    return self._send(409, {"error": f"no secure store on this machine: {reason}"})
+                if path.endswith("/set"):
+                    store.set(name, keystore.check_value(name, value))
+                else:
+                    store.delete(name)
+                keys_changed()
+                return self._send(200, keys_listing())
+            except keystore.KeystoreError as e:
                 return self._send(400, {"error": str(e)})
 
         def _session_post(self, path, body):
@@ -279,6 +459,17 @@ def make_handler(framework, repo, clock=datetime.now, launch_mode="auto", launch
             path, q = url.path, parse_qs(url.query)
             if path == "/api/sessions" or path.startswith("/api/session/"):
                 return self._session_get(path, q)
+            if path == "/api/settings/keys":
+                if not self._token_ok():
+                    return self._send(403, {"error": "missing or wrong Studio token; reload the page"})
+                try:
+                    return self._send(200, keys_listing())
+                except session_bridge.Unavailable as e:
+                    return self._send(200, {"available": False, "store": None, "reason": str(e), "keys": []})
+            if path.startswith("/api/settings/"):
+                if not self._token_ok():
+                    return self._send(403, {"error": "missing or wrong Studio token; reload the page"})
+                return self._settings_get(path, q)
             try:
                 if path == "/api/summary":
                     return self._send(200, {
@@ -343,8 +534,9 @@ def html_attr(value):
 
 
 def serve(framework, repo, port=4800, clock=datetime.now, launch_mode="auto", launch_fn=launch, token=None,
-          sessions_factory=None, dialogs=None):
+          sessions_factory=None, dialogs=None, env=None):
     server = ThreadingHTTPServer(("127.0.0.1", port),
-                                 make_handler(framework, repo, clock, launch_mode, launch_fn, token, sessions_factory, dialogs))
+                                 make_handler(framework, repo, clock, launch_mode, launch_fn, token, sessions_factory, dialogs,
+                                              env))
     server.daemon_threads = True  # a waiting events request never holds Studio open on exit
     return server

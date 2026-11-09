@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.6.4 | **Date**: October 2026
+**Version**: 4.6.5 | **Date**: October 2026
 
 ---
 
@@ -5564,6 +5564,15 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v4.6.5: Settings in Wire Studio, and MCP sign-ins shared with the Wire CLI (November 2026)
+
+- **Settings page**: one Settings page in Wire Studio with three sections. API keys saves the Claude and OpenAI keys in the macOS Keychain (on Linux and WSL, `~/.wire/secrets.env`), never in the repository; the keys are optional when Claude Code is signed in. MCP sign-ins shows each of the engagement's MCP servers and whether a Wire CLI run can use it. This machine shows `wire doctor` and checks for updates.
+- **One sign-in**: for the MCP servers the Wire plugin includes, such as Atlassian, one sign-in with `/mcp` in Claude Code now works in Wire CLI runs too.
+- **More in the + menu**: add or remove an MCP server, check a release's MCP servers, set your persona, and list or refresh related repositories, from the Wire CLI box.
+- **Fixes**: "create a new release" runs `/wire:new`; engagement commands (`new`, `adopt`, `start`, `help`) run without a release; a question with numbered options waits for your answer and Studio shows the options as buttons; the + menu opens above the box when the conversation fills the page; a Wire docs link in the menu.
 
 ---
 

@@ -21,7 +21,7 @@ from .harness import RunRequest, get_harness, parse_report
 from .orchestrator import read_release, session_id
 
 UTILITY_COMMANDS = ("status", "status-sync", "session-plan", "work", "delegate", "help", "start",
-                    "business-rules-generate", "utils-pr-create")
+                    "business-rules-generate", "utils-pr-create", "new", "adopt")
 REPLY_SCHEMA = Path(__file__).with_name("director_reply.schema.json")
 
 
@@ -73,11 +73,16 @@ Commands this release knows (name, arguments, purpose):
 {cat_text}
 
 Rules:
+- To create a new release (or a new engagement), propose `/wire:new`. It asks its own
+  questions (release type, name, inputs) in the session; do not answer them in the command.
+  `/wire:start new` is onboarding for someone new to Wire, not a new release.
+- `/wire:new`, `/wire:adopt`, `/wire:start` and `/wire:help` take no release: write them
+  without one. Every other command takes the release, as below.
 - A review is a ruling by a person: never propose a review as something to run unless the
   director asked for it in words.
 - Propose only commands whose preconditions are met (runnable now), or say what blocks the
   rest and which ruling or command would clear it.
-- Each command in full, as typed: `/wire:<command> {release}` plus flags.
+- Each release command in full, as typed: `/wire:<command> {release}` plus flags.
 - A question or a request for information gets an answer and no commands.
 - Keep the reply under 120 words, plain English, the answer first.
 
