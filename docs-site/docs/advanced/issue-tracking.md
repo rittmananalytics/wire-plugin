@@ -119,6 +119,19 @@ Most delivery teams build a release ticket by ticket from Linear or Jira. Each t
 
 Wire reads the tracker project and proposes, for each ticket, its kind (requirements, business rules, design, build, test, review, plain work), its slices and the Wire steps it covers. A build ticket's steps follow from what it builds: a source gets `dbt` and `data_quality`; a table gets `data_model`, `dbt` and `data_quality` (without `data_model` when a design ticket covers it); a metric or report gets `semantic_layer`; a dashboard gets `dashboards`. Nothing is written until you confirm. Tracker projects that match no release are listed with three choices: start a release, add to one, or ignore. Run it again with `--refresh` to see new, changed and removed tickets.
 
+**One Jira project, several releases (4.6.6).** One Jira project often holds the tickets of more than one Wire release. Each release then records which tickets are its own.
+
+| Where | What it holds |
+|---|---|
+| `jira.release` in `status.md` | The Jira release (Fix versions) that belongs to this Wire release |
+| `tracker_filter` in `tickets.yaml` | The filter the last import used: a Jira release, a label or a JQL clause |
+
+The first import asks once which tickets belong to the release, and offers the Jira release named after the Wire release. Answer "all of them" when the release owns the whole project; no filter is saved. Every `--refresh` then uses the saved filter without asking. If the two records differ, the import stops and asks which is right. A release's epic is never the filter, so epics stay free for grouping work.
+
+The import also lists any ticket another release already holds and asks before it maps a ticket twice: leave it there (the default), move it here, or keep it in both with a reason. With a Jira release as the filter, it lists the tickets that are in no release's Jira release, or in more than one, and asks which release each belongs to. Wire changes a ticket's Fix versions only after you confirm.
+
+`/wire:work` checks which release holds a ticket before it writes anything. If another release holds it, Wire names that release and offers to switch. Given a ticket and no release, it uses the release that holds the ticket and says which. Linear has no such filter yet: a Linear release that shares its project uses a label.
+
 **Setting up a release for ticket delivery, step by step.**
 
 1. Create the release as usual with `/wire:new`, and get its upstream design approved (for most release types, the conceptual model). The tickets should be cut from that design, one per deliverable, not from statement-of-work deliverables.

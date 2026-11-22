@@ -37,11 +37,12 @@ Stage 1 maps only the extremes. The middle tiers stay on the session model until
 | `/wire:autopilot` | planning | `claude-fable-5` |
 | `/wire:adopt` | planning | `claude-fable-5` |
 | `/wire:sprint-plan-generate` | planning | `claude-fable-5` |
+| `/wire:tickets-import` | planning | `claude-fable-5` |
 | `/wire:migrate` | mechanical | `claude-haiku-5-5` |
 | `/wire:utils-session-summary` | mechanical | `claude-haiku-5-5` |
 | `/wire:help` | mechanical | `claude-haiku-5-5` |
 
-Every other command inherits the session model, exactly as before.
+Every other command inherits the session model, exactly as before. `/wire:work` is one of them: it plans and then runs the plan, so it stays on the model the session is using and does not switch mid-session.
 
 ## How it works
 

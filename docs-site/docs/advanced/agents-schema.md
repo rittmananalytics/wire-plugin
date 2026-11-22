@@ -7,13 +7,14 @@ title: "Agents Schema"
 
 **Since v4.0.0.** [Agents Schema](https://github.com/dbt-labs/agents_schema) is dbt Labs' standard for putting the context an AI agent needs to query a warehouse **inside that warehouse**, in a schema named `AGENTS`. One table, `AGENTS.ROOT`, lists which providers have published metadata and how to read their tables. The provider tables hold what the dbt manifest says about every model, column and dependency (`AGENTS.DBT_MODEL`, `AGENTS.DBT_COLUMN`, `AGENTS.DBT_DEPENDENCY`), what the semantic layer exposes (`AGENTS.LOOKML_*`, `AGENTS.OMNI_*`, `AGENTS.OSI_*`, `AGENTS.SIGMA_*`), and skills: markdown instructions for agents, stored as rows whose key starts with `skill/`. Anything that already runs SQL against the warehouse, Claude Code, Cursor, a notebook or an internal agent, reads that context with a `SELECT`, starting from `ROOT`, instead of guessing from `INFORMATION_SCHEMA` or a wiki.
 
-Wire adds one optional artifact, `agents_schema`, to five release types. It publishes a release's metadata through this schema and keeps it current from the client's CI.
+Wire adds one optional artifact, `agents_schema`, to six release types. It publishes a release's metadata through this schema and keeps it current from the client's CI.
 
 | Release type | Phase | Runs after | Providers it usually publishes |
 |---|---|---|---|
 | `full_platform` | development | `dbt` validate PASS; `semantic_layer` validate PASS (advisory) | dbt, looker, skills |
 | `dbt_development` | development | `dbt` validate PASS; `semantic_layer` (advisory) | dbt, skills |
 | `dashboard_first` | build | `dbt` validate PASS; `semantic_layer` (advisory) | dbt, looker, skills |
+| `dashboard_extension` | development | `dashboards` validate PASS | dbt and looker as found in the repository, skills |
 | `agentic_data_stack` | implementation | `canonical_models` validate PASS; `knowledge_skill` and `lookml_views` (advisory) | dbt, looker, skills (the `DOMAIN_REFERENCE.md` files) |
 | `bi_migration` | model | `omni_model` validate PASS | omni |
 
@@ -76,7 +77,7 @@ Recorded in the `agents-schema` skill so nobody rediscovers them:
 | The secrets script | `wire/scripts/agents_schema_secrets.py`, shipped in the plugin under `scripts/`; tested by `wire/tests/development/validate_agents_schema_secrets.py` |
 | The pinned upstream tag | `wire/agents_schema/pinned_version.txt` |
 | The skill | `wire/skills/agents-schema/SKILL.md` |
-| The graph entries | `agents_schema` in `full_platform.yaml`, `dbt_development.yaml`, `dashboard_first.yaml`, `agentic_data_stack.yaml`, `bi_migration.yaml` (optional) |
+| The graph entries | `agents_schema` in `full_platform.yaml`, `dbt_development.yaml`, `dashboard_first.yaml`, `dashboard_extension.yaml`, `agentic_data_stack.yaml`, `bi_migration.yaml` (optional) |
 | The agent that runs it | `wire/agents/agentic-data-stack-developer/AGENT.md` |
 | The test | `wire/tests/development/validate_agents_schema_plan.py` (a fixture repository round-tripped byte for byte) |
 

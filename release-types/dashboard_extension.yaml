@@ -109,6 +109,23 @@ phases:
           - artifact: mockups
             action: review
             outcome: approved
+      # Optional. Publishes the existing platform's metadata (the dbt project
+      # and LookML already in the repository, with this release's dashboards)
+      # into the warehouse AGENTS schema for AI agents. This release type builds
+      # no dbt or semantic layer of its own, so the gate is the dashboards.
+      - id: agents_schema
+        command: agents_schema
+        owns:
+          - ".wire/releases/{release}/artifacts/{artifact}"
+          - "agents.yml"
+          - ".github/workflows"
+          - "skills"
+        required: false
+        sequence: 3
+        depends_on:
+          - artifact: dashboards
+            action: validate
+            outcome: PASS
 
   - id: enablement
     name: "Enablement"

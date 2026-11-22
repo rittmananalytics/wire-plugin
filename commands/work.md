@@ -1,7 +1,6 @@
 ---
 description: Work a ticket inside an existing release — plan with a command or skill named per step, run only the approved plan, publish via the client's PR, patch stale documents and reconcile the record
 argument-hint: <release-folder> [ticket-or-description]
-model: claude-fable-5
 ---
 
 # Work a ticket inside an existing release — plan with a command or skill named per step, run only the approved plan, publish via the client's PR, patch stale documents and reconcile the record
@@ -139,7 +138,6 @@ delegates_to:
   - utils/director_operating_model
   - utils/ticket_delivery
   - utils/repos
-workload: planning
 ---
 
 # Wire Work Command
@@ -209,7 +207,8 @@ Do **not** treat a request as an iteration when any of the following is true. St
 **Ticket delivery.** When `status.md` has `delivery: tickets`:
 
 - Read `tickets.yaml`. A ticket in the map has a record with `state: planned` from the import: this is its first open, not a resume. Set `state: open` in the record's front matter and continue at Step 2.
-- A ticket not in the map: say so, and offer `/wire:tickets-import <release> --refresh` to add it. If the consultant goes on without it, it is an ordinary iteration and Step 3's ordinary boundary check applies.
+- Before writing anything, run `ticket_delivery.py holder <release> <ticket>` (wire#423). `here`: go on. `other`: the ticket is in another release's map. Say so, name that release and offer to switch to it; go on in the named release only if the consultant says to, and record their reason in the iteration file. `several`: two releases hold the ticket; ask which one this work belongs to. `none`: the ticket is in no ticket map; with a Jira release filter in use, read the ticket's Fix versions and offer the release whose `jira.release` matches. When `/wire:work` is given a ticket and no release, use the release `holder` finds and say which it is.
+- A ticket in no map and no release's Jira release: say so, and offer `/wire:tickets-import <release> --refresh` to add it. If the consultant goes on without it, it is an ordinary iteration and Step 3's ordinary boundary check applies.
 - Cut the ticket branch from the release branch (`specs/utils/git_workflow.md`), named from the ticket key and title. Everything from here to Step 6 is written on that branch.
 - On the ticket branch, write only the ticket record (`iterations/<id>.md`), the ticket run log (`iterations/<id>.execution_log.md`) and the files the plan's commands produce. Do not write `status.md`, `execution_log.md`, `tickets.yaml` or `decisions.md` there; the `## Iterations` row and the opened log row go to the ticket run log and are added to the release record when the pull request merges (`specs/utils/ticket_delivery.md`, "One record per ticket"). This is what stops ticket branches clashing on the record files.
 

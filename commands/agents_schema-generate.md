@@ -193,6 +193,7 @@ release_types:
   - full_platform
   - dbt_development
   - dashboard_first
+  - dashboard_extension
   - agentic_data_stack
   - bi_migration
 action_type: artifact
@@ -277,6 +278,7 @@ The command is in two halves, and the line between them is fixed:
 Enforced by the precondition gate (`preconditions: dynamic`, resolved from `wire/release-types/<project_type>.yaml`), release-type dependent:
 
 - **`full_platform`, `dbt_development`, `dashboard_first`**: `dbt` at `validate: PASS`; `semantic_layer` at `validate: PASS` is advisory (without it the plan has no LookML provider, which is a legitimate choice and is recorded as an `advisory_skip`).
+- **`dashboard_extension`**: `dashboards` at `validate: PASS`. The release builds no dbt project or semantic layer, so the plan reads the ones already in the repository.
 - **`agentic_data_stack`**: `canonical_models` at `validate: PASS`; `knowledge_skill` and `lookml_views` at `validate: PASS` are advisory.
 - **`bi_migration`**: `omni_model` at `validate: PASS`.
 
@@ -495,7 +497,7 @@ Next: /wire:agents_schema-validate <release>
 
 ### The release has no dbt project
 
-`dbt_development`, `full_platform` and `dashboard_first` always have one. On `bi_migration` the plan may hold only the omni provider; that is a complete plan. On any release type a plan with no provider at all stops with exit code 2 and the `needs_human` reasons; nothing is written.
+`dbt_development`, `full_platform` and `dashboard_first` always have one. On `bi_migration` the plan may hold only the omni provider; that is a complete plan. On `dashboard_extension` the dbt project is the platform's existing one, found as the Inputs table says; when the repository holds only LookML, the plan may hold only the looker provider, which is also a complete plan. On any release type a plan with no provider at all stops with exit code 2 and the `needs_human` reasons; nothing is written.
 
 ### The client repository already has `.github/workflows/agents-schema.yml` or `agents.yml`
 

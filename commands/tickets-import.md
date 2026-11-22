@@ -188,15 +188,37 @@ Accept both `releases/02-customer-core` and bare `02-customer-core`.
    tracker's projects and ask which belong to this release.
 5. If `tickets.yaml` exists and `--refresh` was not given, say so and ask
    whether to refresh. Never overwrite a ticket map.
+6. Resolve the release filter (wire#423). One tracker project often holds the
+   tickets of several Wire releases, so each release records which tickets
+   are its own. Run `ticket_delivery.py filter <release>`:
+   - `ok`: use the filter it prints, with no prompt. This is every
+     `--refresh` after the first import.
+   - `marker_only`: `jira.release` is set in `status.md` and no import has
+     used it yet. Use it, and say so.
+   - `unset`: ask once: "Which tickets in `<project>` belong to this release?
+     A Jira release (Fix versions), a label, or a JQL clause." Offer the Jira
+     release named after the Wire release as the default. A release that
+     owns the whole tracker project answers "all of them", and no filter is
+     saved.
+   - `differs`: `jira.release` in `status.md` and the filter the last import
+     used are not the same. Stop, show both, and ask which is right. Change
+     nothing until the consultant answers.
+
+   `jira.release` in `status.md` is the source; `tracker_filter` in
+   `tickets.yaml` records the filter the last import used. `jira.epic_key`
+   keeps its meaning and is never the filter: a release spans several epics,
+   and epics stay free for grouping work.
 
 ### Step 2: Read the tickets
 
 - **Linear**: `list_issues` for the project, all states. For each issue read
   key, title, description, state, labels, milestone, estimate, URL and its
   "blocked by" relations.
-- **Jira**: `searchJiraIssuesUsingJql` with `project = <KEY>` plus the release
-  filter (fix version, epic or label recorded on the release). Same fields;
-  "blocked by" from issue links of type Blocks.
+- **Jira**: `searchJiraIssuesUsingJql` with the `jql` that
+  `ticket_delivery.py filter <release>` prints: the project, narrowed by the
+  release filter from Step 1 (a Jira release through Fix versions, a label,
+  or a JQL clause). With no filter, `project = "<KEY>"`. Same fields, plus
+  each ticket's Fix versions; "blocked by" from issue links of type Blocks.
 
 Also list the tracker's other projects (or epics) that look like part of this
 engagement but match no Wire release, for the "Not in any release" question in
@@ -267,10 +289,21 @@ Present, before writing anything:
    work to confirm.
 5. Order: each slice dependency the tracker has no "blocked by" link for, with
    the reason from the design, and an offer to add the link.
-6. Not in any release: tracker projects with no matching Wire release, each
+6. Held by another release: run `ticket_delivery.py overlap <release> --keys
+   <keys.json>` with the keys about to be mapped. For each ticket it lists,
+   name the release that already holds it and ask: leave it there (the
+   default, and it is dropped from this import), move it here, or keep it in
+   both and say why. Never map a ticket twice without the consultant's
+   answer.
+7. In no tracker release, or in two: when the filter is a Jira release, list
+   once the project's tickets that are in no Wire release's Jira release, or
+   in more than one, with the question "which release?". Write the answer to
+   the ticket's Fix versions only after the consultant confirms; a list of
+   tickets is confirmed once, not ticket by ticket.
+8. Not in any release: tracker projects with no matching Wire release, each
    with the choice: start a new release (`/wire:new`), add to an existing
    release, or ignore.
-7. **confirm / adjust / cancel**.
+9. **confirm / adjust / cancel**.
 
 On **adjust**, take the changes, re-run the script and present again. On
 **cancel**, write nothing.
@@ -279,6 +312,10 @@ On **adjust**, take the changes, re-run the script and present again. On
 
 1. `tickets.yaml` in the release folder, in the shape of
    `specs/utils/ticket_delivery.md`, with `imported` and `imported_by`.
+   `tracker_filter` holds the filter this import used (`{kind: release |
+   label | jql, value: ...}`); it is left out when the release owns the whole
+   tracker project. When the filter is a Jira release and `jira.release` in
+   `status.md` is empty, set it to the same name.
 2. One ticket record per ticket in `iterations/<key>.md`, from `/wire:work`'s
    iteration file template, with the front matter block and `state: planned`.
    An existing record (a ticket already worked with `/wire:work`) is kept;
@@ -299,7 +336,8 @@ change, not a ticket.
 
 ### Step 7: Refresh (`--refresh`)
 
-1. Read the tracker as in Step 2 and propose as in Steps 3 and 4.
+1. Read the tracker as in Step 2, with the saved filter from Step 1 and no
+   prompt, and propose as in Steps 3 and 4.
 2. Run `ticket_delivery.py refresh <release> <new-proposal.json>`. It lists
    **new** tickets (with their proposal), **changed** tickets (title, kind,
    slices or steps, was and now) and **removed** tickets (cancelled or gone

@@ -1,0 +1,136 @@
+---
+wire_schema: "1.0"
+command: review
+artifact: region_tagging
+domain: migration
+release_types:
+  - platform_migration
+action_type: artifact
+logs_execution: true
+inputs:
+  required:
+    - name: release_folder
+      description: "Path to the release folder"
+preconditions:
+  - artifact: region_tagging
+    action: validate
+    outcome: PASS
+delegates_to:
+  - utils/precondition_gate
+description: Human adjudication gate for region tags — rule on the shared-row-level and low-confidence pile
+
+---
+
+## Auto-Delegation
+
+Follow `specs/utils/precondition_gate.md` before proceeding.
+
+---
+
+# Region Tagging — Review
+
+## Purpose
+
+The human adjudication gate for region tagging. `generate` produced candidates; this is where a person rules on them. The reviewer works the adjudication pile — every `shared-row-level` item and every low-confidence candidate — and decides, item by item, how it belongs to the carve-out. The tool never made that call; this gate does.
+
+Confident-region and global-deferred items at high confidence are confirmed in bulk unless the reviewer flags one. The shared-row-level items are the real work: each needs a lineage trace and row inspection before it can be ruled in, split, or deferred.
+
+## Prerequisites
+
+- `migration/region_tagging.md` with `validate: pass`
+
+## Workflow
+
+### Step 1: Load meeting context
+
+Follow `specs/utils/meeting_context.md` to surface any Fathom recordings touching the carve-out region, market boundaries, or data-residency scope.
+
+### Step 2: Present the tagging summary
+
+Display:
+- Target region and tenant predicate used
+- Bucket counts: confident-region / shared-row-level / global-deferred
+- The adjudication pile, grouped by bucket, each item with its signal and confidence score
+
+Reaffirm to the reviewer that nothing has been included, excluded, or removed — these are candidates, and this gate is the first point where a scope decision is made.
+
+### Step 3: Adjudicate the pile
+
+For each **shared-row-level** item: review its lineage and a row sample, then rule:
+- **carve in** — the target region's rows are extracted (record the row-level predicate to apply)
+- **split** — the object is shared; define how the region's slice is separated
+- **defer** — move to global-deferred for a later decision
+
+For each **low-confidence** confident-region or global-deferred candidate: confirm the bucket or reassign it.
+
+High-confidence confident-region and global-deferred items: confirm in bulk, or pull any individual item into the pile if the reviewer disagrees.
+
+### Step 4: Apply adjudication and record decision
+
+Update `region_tagging.md` (and the relevant `region_tags.csv` rows, e.g. reassigned buckets) to reflect the adjudicated outcomes. Append:
+
+```markdown
+## Review — Adjudication
+
+**Internal reviewer**: {{RA_REVIEWER}}
+**Client attendees**: {{CLIENT_NAMES}}
+**Review date**: {{TODAY}}
+**Target region**: {{REGION}}
+**Decision**: approved | changes_requested
+
+### Adjudicated items
+[Per item: id, prior bucket, ruling (carve in / split / defer / reassign), and rationale]
+
+### Open items
+[Items still needing lineage/row inspection before strategy can proceed]
+```
+
+### Step 4a: Emit the adjudicated CSV
+
+**Output location**: `.wire/releases/$ARGUMENTS/migration/region_tags_adjudicated.csv`
+
+Downstream commands (e.g. `dbt-carveout-relocate-generate`) consume adjudicated rulings programmatically and must not have to parse `region_tagging.md`'s prose to get them. Write every row from `region_tags.csv` (with any bucket reassignments from this review already applied) plus two new columns:
+
+```
+item_id,item_type,source_audit,bucket,signal,confidence_score,adjudicated_ruling,adjudication_note
+```
+
+`adjudicated_ruling` is one of `carve_in | split | defer | reassign`, snake_case, matching this step's rulings exactly:
+- Every **shared-row-level** item ruled on in Step 3 gets its ruling (`carve_in`, `split`, or `defer`) and, for `carve_in`, the row-level predicate applied in `adjudication_note`.
+- Every **confident-region** or **global-deferred** item confirmed in bulk gets `carve_in` (confident-region) or `defer` (global-deferred) by default, unless the reviewer pulled it into the pile and ruled otherwise (`reassign`, with the new bucket named in `adjudication_note`).
+- This is a full re-emit of every classified item, not just the adjudication pile — a downstream filter for `item_type=dbt_model AND adjudicated_ruling=carve_in` must see every dbt model that belongs in the carve-out, not only the ones that needed a human ruling.
+
+### Step 5: Update status
+
+```yaml
+artifacts:
+  region_tagging:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
+    adjudicated_data_file: migration/region_tags_adjudicated.csv
+```
+
+### Step 6: Output next command
+
+If approved:
+```
+/wire:migration-strategy-generate $ARGUMENTS
+```
+
+## Review Gate
+
+This review is the point where region candidates become scope decisions. The carve-out strategy and the tenant-scoped bulk copy are built against the adjudicated tags. Re-running `region-tagging-generate` after this gate re-proposes candidates and requires re-adjudication.
+
+
+## Post-Execution Hooks
+
+After updating `status.md`, run these in sequence:
+
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
+
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `region_tagging` as artifact, `review` as action.
+
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `region_tagging` as artifact_id, `Region Tagging` as artifact_name, and the `file` value from `artifacts.region_tagging` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `region_tagging` as artifact, `review` as action.

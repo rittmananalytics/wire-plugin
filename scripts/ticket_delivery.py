@@ -1184,6 +1184,137 @@ def _dict_rows(text, first="timestamp"):
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# One tracker release per Wire release (wire#423): the saved filter, which
+# release holds a ticket, and tickets held by two releases or by none.
+# ---------------------------------------------------------------------------
+FILTER_KINDS = ("release", "label", "jql")
+
+
+def tracker_filter(ticket_map):
+    """The filter the last import used, as {kind, value}, or None. A plain
+    string is a tracker release name."""
+    f = (ticket_map or {}).get("tracker_filter")
+    if not f:
+        return None
+    if isinstance(f, str):
+        return {"kind": "release", "value": f}
+    kind, value = f.get("kind"), f.get("value")
+    return {"kind": kind, "value": str(value)} if kind in FILTER_KINDS and value else None
+
+
+def release_marker(status):
+    """`jira.release` in status.md: the tracker release that is this Wire release's own."""
+    value = ((status or {}).get("jira") or {}).get("release")
+    return str(value) if value else None
+
+
+def filter_state(status, ticket_map):
+    """Whether status.md's marker and the ticket map's saved filter agree.
+    `unset`: neither is recorded, so the import asks. `marker_only`: the
+    marker is set and no import has used it yet, so the import uses it.
+    `ok`: use the saved filter with no prompt. `differs`: stop and ask."""
+    marker, saved = release_marker(status), tracker_filter(ticket_map)
+    if not marker and not saved:
+        return {"state": "unset", "filter": None}
+    if marker and not saved:
+        return {"state": "marker_only", "filter": {"kind": "release", "value": marker}}
+    if not marker:
+        return {"state": "ok", "filter": saved}
+    if saved == {"kind": "release", "value": marker}:
+        return {"state": "ok", "filter": saved}
+    return {"state": "differs", "filter": None, "marker": marker, "saved": saved}
+
+
+def _jql_text(value):
+    return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def jira_jql(project, flt):
+    """The JQL an import runs: the project, narrowed by the saved filter."""
+    base = f"project = {_jql_text(project)}"
+    if not flt:
+        return base
+    if flt["kind"] == "release":
+        return f"{base} AND fixVersion = {_jql_text(flt['value'])}"
+    if flt["kind"] == "label":
+        return f"{base} AND labels = {_jql_text(flt['value'])}"
+    return f"{base} AND ({flt['value']})"
+
+
+def load_maps(releases_dir):
+    """{release folder name: ticket map} for every release under `releases_dir` that has one."""
+    out = {}
+    root = Path(releases_dir)
+    if not root.is_dir():
+        return out
+    for path in sorted(root.glob("*/tickets.yaml")):
+        data = yaml.safe_load(path.read_text()) or {}
+        out[path.parent.name] = data
+    return out
+
+
+def holders(maps):
+    """{ticket key: [release, ...]} across every ticket map, releases in name order."""
+    out = {}
+    for name in sorted(maps):
+        for t in (maps[name] or {}).get("tickets") or []:
+            out.setdefault(str(t["key"]), []).append(name)
+    return out
+
+
+def place(ticket, maps, named=None):
+    """Where a ticket belongs, for /wire:work before it writes anything.
+    `here`: only the named release holds it. `found`: no release was named
+    and one holds it. `other`: the named release does not hold it and
+    another does. `several`: more than one release holds it. `none`: no
+    ticket map holds it (look in the tracker next)."""
+    held = holders(maps).get(str(ticket), [])
+    out = {"ticket": str(ticket), "releases": held}
+    if not held:
+        return {**out, "placement": "none"}
+    if len(held) > 1:
+        return {**out, "placement": "several"}
+    if named is None:
+        return {**out, "placement": "found", "release": held[0]}
+    if held[0] == named:
+        return {**out, "placement": "here", "release": named}
+    return {**out, "placement": "other", "release": held[0]}
+
+
+def overlap(release, maps, keys=None):
+    """Tickets another release already holds: of `keys` (tickets an import
+    is about to map), else of the release's own map."""
+    held = holders(maps)
+    if keys is None:
+        keys = [str(t["key"]) for t in (maps.get(release) or {}).get("tickets") or []]
+    out = []
+    for key in sorted({str(k) for k in keys}, key=_key_order):
+        others = [r for r in held.get(key, []) if r != release]
+        if others:
+            out.append({"ticket": key, "also_in": others})
+    return out
+
+
+def unplaced(tracker_tickets, markers):
+    """Tickets the tracker puts in no Wire release's tracker release, or in
+    more than one. `tracker_tickets`: [{key, fix_versions: [...]}].
+    `markers`: {release folder name: its tracker release}. Asked once at
+    import: "which release?"."""
+    by_marker = {}
+    for name in sorted(markers):
+        if markers[name]:
+            by_marker.setdefault(markers[name], []).append(name)
+    out = []
+    for t in sorted(tracker_tickets, key=lambda x: _key_order(str(x["key"]))):
+        found = sorted({r for v in t.get("fix_versions") or [] for r in by_marker.get(v, [])})
+        if not found:
+            out.append({"ticket": str(t["key"]), "problem": "no_release", "releases": []})
+        elif len(found) > 1:
+            out.append({"ticket": str(t["key"]), "problem": "several_releases", "releases": found})
+    return out
+
+
 def _now():
     """The roll-up time: UTC with the `Z` suffix (execution_log.md, 4.4.3)."""
     return log_time.now()
@@ -1202,6 +1333,12 @@ def main(argv=None):
     s = sub.add_parser("scope"); s.add_argument("release"); s.add_argument("request")
     s = sub.add_parser("progress"); s.add_argument("release"); s.add_argument("ticket")
     s.add_argument("--base", action="append", help="base branch for an open ticket branch (repeatable)")
+    s = sub.add_parser("filter", help="the release's saved tracker filter and the JQL it gives (wire#423)")
+    s.add_argument("release")
+    s = sub.add_parser("holder", help="which release's ticket map holds a ticket (wire#423)")
+    s.add_argument("release"); s.add_argument("ticket")
+    s = sub.add_parser("overlap", help="tickets another release already holds (wire#423)")
+    s.add_argument("release"); s.add_argument("--keys", help="JSON file: ticket keys an import is about to map")
     s = sub.add_parser("pr-review"); s.add_argument("ticket"); s.add_argument("artifact")
     s.add_argument("pr_json", help="output of gh pr view <n> --json number,url,reviews")
     s.add_argument("--session", required=True, help="what ran the roll-up, e.g. 'orchestrator [a1b2c3]'")
@@ -1233,6 +1370,21 @@ def main(argv=None):
         return 0
     if a.cmd == "progress":
         print(json.dumps(ticket_progress(rel, a.ticket, bases=a.base), indent=2, ensure_ascii=False))
+        return 0
+    if a.cmd in ("filter", "holder", "overlap"):
+        maps = load_maps(rel.parent)
+        own = maps.get(rel.name) or {}
+        if a.cmd == "filter":
+            state = filter_state(status, own)
+            project = own.get("tracker_project") or (status.get("jira") or {}).get("project_key")
+            if state["filter"] and project and (own.get("tracker") or "jira") == "jira":
+                state["jql"] = jira_jql(project, state["filter"])
+            print(json.dumps(state, indent=2, ensure_ascii=False))
+        elif a.cmd == "holder":
+            print(json.dumps(place(a.ticket, maps, rel.name), indent=2))
+        else:
+            keys = json.loads(Path(a.keys).read_text()) if a.keys else None
+            print(json.dumps({"overlap": overlap(rel.name, maps, keys)}, indent=2))
         return 0
     tmap = load_map(rel)
     records = load_records(rel)

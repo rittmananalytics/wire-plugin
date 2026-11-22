@@ -101,6 +101,8 @@ It reads the tracker project and proposes, for each ticket, its kind, the slices
 
 From then on `/wire:status` shows one row per slice, what can start next is worked out per slice, `/wire:work` accepts a ticket that builds a table in the ticket map and runs each command with `--slice`, and a ticket branch writes only the ticket's own record and log. `/wire:status-sync` adds a merged ticket's work to the release record. The convention is `specs/utils/ticket_delivery.md`; its fixed rules are in `scripts/ticket_delivery.py` and tested by `wire/tests/core/validate_ticket_delivery.py`. See [Releases built from tickets](../advanced/issue-tracking#releases-built-from-tickets-420).
 
+When one Jira project holds the tickets of several Wire releases (v4.6.6, #423), the first import asks which tickets belong to this release: a Jira release (Fix versions), a label or a JQL clause. It saves the answer as `jira.release` in `status.md` and `tracker_filter` in `tickets.yaml`, and `--refresh` uses it without asking. The import lists tickets another release already holds, and tickets in no Jira release or in two, and asks before it maps or changes any of them. `/wire:work` checks which release holds a ticket before it writes, and offers to switch when it is another one. See [One Jira project, several releases](../advanced/issue-tracking#releases-built-from-tickets-420).
+
 ---
 
 ## `/wire:status-sync`

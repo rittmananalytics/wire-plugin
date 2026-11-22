@@ -188,6 +188,10 @@ Some discoveries produce the design in Modality, down to the tables and their co
 
 Wire never writes to the Modality model. A ticket that changes the model is done in Modality, and what it produces becomes a design Wire can read, so the build and its checks still run through Wire. Nothing in this part of the chapter needs Modality; the rest of it follows the release without one.
 
+#### If the Jira Project Holds More Than One Release
+
+One Jira project often holds the tickets of several Wire releases. The first import then asks which tickets belong to this release and offers the Jira release (Fix versions) named after it. Wire saves the answer, so later refreshes read only this release's tickets. If another release already holds a ticket, the import says so and asks before it maps the ticket twice. `/wire:work` makes the same check before it writes anything, and offers to switch to the release that holds the ticket. [Issue tracking](../advanced/issue-tracking#releases-built-from-tickets-420) has the detail.
+
 ### Stage 2: What Can Start?
 
 With the map in place, the release status is shown slice by slice: one row per slice, one column per step, each cell showing its state and the tickets that cover it. A step is complete for the release only when it is complete in every slice that has it.

@@ -9,6 +9,20 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.6: one Jira release per Wire release, and `/wire:work` keeps your model
+
+**Released**: November 2026
+
+**One Jira release per Wire release.** One Jira project often holds the tickets of several Wire releases. [`/wire:tickets-import`](./management-commands#wiretickets-import) now asks once which tickets belong to the release: a Jira release (Fix versions), a label or a JQL clause. It saves the answer in the release's `status.md` and `tickets.yaml`, and every `--refresh` reads only those tickets. The import lists tickets that another release already holds, and tickets in no Jira release or in two, and asks before it maps or changes any of them. `/wire:work` checks which release holds a ticket before it writes anything, and offers to switch when it is another release. See [Releases built from tickets](../advanced/issue-tracking#releases-built-from-tickets-420).
+
+**`/wire:work` keeps your model.** `/wire:work` no longer switches to the planning model part way through a session. It plans and then runs the plan on the model the session is using. `/wire:tickets-import` and the other planning commands are routed as before. See [Model routing](../advanced/model-routing).
+
+**Agents Schema on dashboard extensions.** The optional [`agents_schema`](../advanced/agents-schema) artifact is now available on [`dashboard_extension`](../release-types/dashboard-extension) releases. It runs after the dashboards pass validation and publishes the dbt manifest and LookML already in the repository, with the release's dashboards.
+
+**Fixes.** The Claude Code plugin now ships the full set of command specs.
+
+---
+
 ## v4.6.5: Settings in Wire Studio, and MCP sign-ins shared with the Wire CLI
 
 **Released**: November 2026

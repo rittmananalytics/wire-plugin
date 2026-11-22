@@ -58,6 +58,7 @@ schema: 1
 release: 02-customer-core
 tracker: linear                 # linear | jira
 tracker_project: "Customer Core 1.0"
+tracker_filter: {kind: release, value: "Customer Core 1.0"}   # optional: release | label | jql (wire#423)
 imported: "2026-10-10 14:00"
 imported_by: "<lead consultant>"
 design_source: modality         # wire | modality, from status.md model_source
@@ -106,6 +107,32 @@ Rules:
 5. Slice `depends_on` comes from the design: one table built from another. The
    tracker's `blocked_by` links are recorded as read and compared, never
    trusted in place of the design.
+
+## One tracker release per Wire release (wire#423)
+
+When one tracker project holds the tickets of more than one Wire release, each
+release records which tickets are its own.
+
+- **The marker.** `jira.release` in the release's `status.md` names the Jira
+  release (Fix versions) that is this Wire release's own. It is the source.
+  `jira.epic_key` keeps its meaning and is never the marker.
+- **The saved filter.** `tracker_filter` in `tickets.yaml` is the filter the
+  last import used: `{kind: release, value: "<Jira release>"}`, `{kind:
+  label, value: "<label>"}` or `{kind: jql, value: "<clause>"}`. A release
+  that owns its whole tracker project has none.
+- **`ticket_delivery.py filter <release>`** compares the two and prints the
+  JQL to run: `ok` (use it, no prompt), `marker_only` (use the marker),
+  `unset` (ask), `differs` (stop and ask).
+- **`ticket_delivery.py holder <release> <ticket>`** reads every release's
+  ticket map and says where the ticket is: `here`, `other` (another release
+  holds it), `several` (two releases hold it) or `none`.
+- **`ticket_delivery.py overlap <release> [--keys <file>]`** lists tickets
+  another release already holds, for the import to ask about before it maps
+  a ticket twice.
+
+Wire writes to the tracker (Fix versions on a ticket) only after the
+consultant confirms. The filter for Linear (a project or milestone) is not
+built yet; a Linear release that shares its project uses a label.
 
 ## Ticket kinds
 

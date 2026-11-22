@@ -64,6 +64,8 @@ A worked example of a Dashboard Extension engagement, using a fictional client s
 
 Where the new page is better served as an interactive app than a dashboard grid (tabs, cross-filtering, a freeform layout), the optional `data_app` artifact builds a [Looker Data App](../advanced/data-apps) from the approved mockup: `/wire:data_app-generate <release>` after `mockups-review`, then `-validate`, `-review` and the confirmed `-publish`. It reads the same catalog and spec as `dashboards`, so the two can be delivered together from one approved mockup. Looker only; a Data App cannot be embedded, printed or scheduled, so keep `dashboards` for anything that goes out by email.
 
+Where AI agents will query the warehouse, the optional `agents_schema` artifact runs after the dashboards pass validation and publishes the platform's metadata into the warehouse's `AGENTS` schema through dbt Labs' [Agents Schema](../advanced/agents-schema): the dbt manifest and the LookML already in the repository, with this release's dashboards, and skills including a completed warehouse guide. This release type builds no dbt project or semantic layer, so the plan reads the existing ones; a repository holding only LookML gets a Looker-only plan. Run `/wire:agents_schema-generate <release>`, then `-validate` and `-review`.
+
 ## Business rules discovery (optional first phase)
 
 Before the design work begins, there is a question that is easy to skip and expensive to leave open: what do the numbers actually mean? New in 4.0, `/wire:business-rules-generate` runs before design and establishes this, one business domain at a time.

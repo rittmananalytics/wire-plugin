@@ -1,0 +1,356 @@
+---
+wire_schema: "1.0"
+command: lifecycle
+artifact: status
+domain: status
+release_types: []
+action_type: lifecycle
+logs_execution: false
+inputs:
+  required:
+    - name: release_folder
+      description: "Path to the release folder"
+personas: [delivery-manager]
+description: Report on all release statuses in the current engagement
+
+---
+
+# Wire Engagement Status Report
+
+## Purpose
+
+Generate a concise status report showing artifact lifecycle progress for every release in the current engagement (or for one specific release). Outputs a table format with minimal verbosity.
+
+Wire is one-engagement-per-repo: a single `.wire/engagement/context.md` holds engagement-wide metadata (client, SOW, etc.), and each unit of delivery lives in its own `.wire/releases/<release_folder>/` (e.g. `01-discovery`, `02-full-platform`). `/wire:status` reports across all releases in that one engagement.
+
+## Usage
+
+```bash
+/wire:status                    # Show all releases in this engagement
+/wire:status 01-discovery       # Show detailed status for a specific release
+/wire:status --archived         # Show archived releases (see /wire:archive)
+/wire:status --as delivery-manager   # This run only, as a persona (specs/utils/personas.md)
+```
+
+**Personas.** Before Step 1, find the persona (`specs/utils/personas.md`,
+"Finding the persona"). If it is `delivery-manager`, follow
+"Persona: delivery-manager" below in place of Steps 1 to 4's report. Any
+other persona, or none, runs the default report. Step 4.5 (Jira sync) and
+everything the command writes are the same under every persona.
+
+## Workflow
+
+### Step 1: Read Engagement Context and Scan Release Folders
+
+**Process**:
+1. Read `.wire/engagement/context.md` if it exists and parse its frontmatter for `client_name`, `engagement_name`, and similar engagement-wide fields. These are shown once in the report header — they are no longer duplicated per-release the way `client` used to be repeated in every old per-project `status.md`. If the file is missing, proceed without it (older or partially-set-up repos).
+2. If the `--archived` flag is present, use Glob: `.wire/releases/_archive/*/status.md`
+3. Otherwise, use Glob to find every release in the current engagement: `.wire/releases/*/status.md`
+4. Extract the release folder name (e.g. `01-discovery`) from each matched path
+5. Build the list of all releases to report on
+
+### Step 2: Parse Release Status Files
+
+**For each release**:
+1. Read `status.md`
+2. Parse YAML frontmatter to extract:
+   - `release_id`, `release_name`, `release_type`
+   - `current_phase`
+   - `jira` section (if configured): `epic_key`, artifact issue keys
+   - the artifact lifecycle states (see below — the shape of this varies by release type)
+
+**Reading artifacts generically**
+
+Different release types have genuinely different artifact sets and even different status-tracking shapes (compare `wire/TEMPLATES/status-template.md` to `wire/TEMPLATES/discovery-status-template.md` to `wire/TEMPLATES/droughty-status-template.md`). Rather than hardcoding a fixed artifact list, always read whatever is actually present in the release's own `status.md`:
+
+**Standard shape** (used by `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `dashboard_first`, `enablement`, `discovery`, `sop_discovery`, `custom`, and `platform_migration`): a top-level `artifacts:` YAML map. Each key is an artifact name (e.g. `data_model`, `dbt`, `semantic_layer`, `problem_definition`). Iterate over the map **in the order its keys appear in the file** — every current template's frontmatter key order matches its own phase/dependency order (verified against `wire/TEMPLATES/status-template.md`, whose YAML key order matches its own Artifact Status Summary table order exactly), so no separate ordering rule is needed.
+
+For each artifact entry, look at which of the `generate` / `validate` / `review` keys are actually present on it — the lifecycle progression is simply **whichever of those three keys exist, in that relative order, skipping whichever are absent**:
+- All three present → full lifecycle: generate → validate → review (e.g. `data_model`, `dbt`, `requirements`)
+- `generate` + `review` only (no `validate` key) → generate+review-only (same idiom as `mockups` and `uat` — see `wire/specs/design/mockups/review.md`, which documents "mockups is a generate+review artifact — there is no validate step")
+- `generate` only (no `validate`, no `review`) → generate-only (same idiom as `viz_catalog` and `lineage_view` — see `wire/specs/design/viz_catalog/generate.md`, which documents "This is a generate-only artifact (no validate or review steps)")
+- `validate` + `review` only (no `generate`) — a gate-check artifact with nothing to generate (seen in the `agentic_data_stack` release type's `launch_gate` — see Special Cases below)
+
+The artifact's own key name derives its command — but the exact transform is not identical across every release type, so consult the table in "Command derivation" below rather than assuming one universal rule.
+
+**Special cases** (differently-shaped status tracking — do not force these through the standard-shape logic above):
+
+- **`droughty`**: has no top-level `artifacts:` map at all. Instead it has a `droughty:` section keyed by step name (`setup`, `introspect`, `dbml`, `docs`, `qa`, `stage`, `dbt_tests`, `lookml`), each with a single `status: not_started | complete` field rather than a generate/validate/review triad — these are single-action commands, not three-step lifecycles. Read steps in the order they appear in `wire/TEMPLATES/droughty-status-template.md` (setup → introspect → dbml → docs → qa → stage → dbt_tests → lookml, matching its own Phase headings). The `stage` step is BigQuery-only; if its status reads `not_applicable` (Snowflake warehouse), skip it when determining the next action. See "Command derivation" below for how step names map to commands.
+- **`agentic_data_stack`**: has no top-level `artifacts:` map either. Each artifact's generate/validate/review state is tracked as a YAML code block embedded in the markdown body under its own `###` heading (see `wire/TEMPLATES/agentic_data_stack/status_agentic_data_stack.md`), in document order: `dataset_audit` → `metric_audit` → `query_audit` → `governance_design` → `semantic_layer_design` → `canonical_models` → `lookml_views` → `semantic_layer` → `knowledge_skill` → `agent_config` → `eval_suite` → `adversarial_config` → `launch_gate` → `enablement`. Parse each fenced `yaml` block the same generic generate/validate/review way described above (`launch_gate` has no `generate` key — it's validate+review only). See "Command derivation" below for how artifact keys map to commands, including a naming exception on `enablement`.
+- **`custom`**: artifact keys and their file paths are whatever `/wire:custom-define` decided for this specific engagement — there's no fixed template or predictable command-name transform at all. Its commands are freshly generated per engagement as `.claude/commands/` wrappers, not entries in `wire/scripts/build-packages.sh`. Read the actual generated command names from `.wire/releases/<release_folder>/custom-commands/` rather than deriving them.
+
+**Command derivation**
+
+The artifact key's transform into a command name is **not identical across every release type** — spot-checked directly against `wire/scripts/build-packages.sh`'s COMMANDS array:
+
+| Release type(s) | Transform | Example |
+|---|---|---|
+| `full_platform`, `pipeline_only`, `dbt_development`, `dashboard_extension`, `dashboard_first`, `enablement` (i.e. anything built from `wire/TEMPLATES/status-template.md`) | Key used verbatim — underscores are **kept**, not hyphenated | `data_model` → `/wire:data_model-generate`; `semantic_layer` → `/wire:semantic_layer-review`; `viz_catalog` (generate-only) → `/wire:viz_catalog-generate` |
+| `discovery`, `sop_discovery` | Multi-word keys are **hyphenated** | `problem_definition` → `/wire:problem-definition-generate`; `engagement_brief` → `/wire:engagement-brief-generate`; `stakeholder_map` → `/wire:stakeholder-map-generate`. Exception: `kickoff_deck` is renamed outright, not hyphenated → `/wire:kickoff-generate` |
+| `platform_migration` | Multi-word keys are **hyphenated** | `dbt_audit` → `/wire:dbt-audit-generate`; `ingestion_migration` → `/wire:ingestion-migration-generate`; `cutover` (single word, unaffected) → `/wire:cutover-generate` |
+| `agentic_data_stack` | `ads_` prefix, then the key's underscores **hyphenated** | `dataset_audit` → `/wire:ads_dataset-audit-generate`; `semantic_layer_design` → `/wire:ads_semantic-layer-design-generate`. Exception: `enablement` does not follow the mechanical transform — it maps to `/wire:ads_analytics-enablement-generate` (and `-validate`/`-review`), never a bare "ads_" + "enablement" form |
+| `droughty` | `droughty-` prefix, step name **hyphenated**, single action (no generate/validate/review suffix) | `dbt_tests` → `/wire:droughty-dbt-tests`; also a composite `/wire:droughty-generate` that runs the whole phase in sequence — prefer suggesting that when several steps remain |
+| `custom` | No fixed transform — see the Special Case above | n/a |
+
+If a release type isn't covered above (new release types get added over time), don't guess a transform — confirm the exact command by matching the artifact's `<category>/<artifact_key>/<step>` against the `spec_path` column of a `wire/scripts/build-packages.sh` COMMANDS entry, then take that entry's own first field (before the pipe), replacing `/` with `-`.
+
+**Artifact State Mapping**:
+```
+generate: not_started → ⬜, pending → ⏳, complete → ✅
+validate: not_started → ⬜, pending → ⏳, pass → ✅, fail → ❌
+review:   not_started → ⬜, pending → ⏳, approved → ✅, changes_requested → 🔄
+ready:    auto-calculated from above
+```
+
+**Ready Calculation** (generic — derived from whichever steps the artifact actually has):
+```
+ready = ✅ if every lifecycle step the artifact actually has is in its "done" state
+        (generate=complete, and validate=pass if present, and review=approved if present)
+ready = ⬜ otherwise
+```
+
+### Step 3: Generate Output
+
+Both overview and detail modes use the same artifact lifecycle table format.
+
+**Artifact lifecycle table** (used in both modes — columns present in a given release depend on what that release's artifacts actually track):
+
+```
+| Artifact         | Generate    | Validate   | Review       | Ready |
+|------------------|-------------|------------|--------------|-------|
+| requirements     | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| workshops        | ✅ complete | -          | ✅ approved   | ✅     |
+| conceptual_model | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| data_model       | ✅ complete | ✅ pass     | ⬜            | ⬜     |
+| mockups          | ✅ complete | -          | ⬜            | ⬜     |
+| viz_catalog      | ⬜          | -          | -            | ⬜     |
+```
+
+**Notes:**
+- A row shows "-" in the Validate column when the artifact has no `validate` key (generate+review-only, e.g. `workshops`, `mockups`, `uat`), and "-" in both Validate and Review when it has neither (generate-only, e.g. `viz_catalog`, `lineage_view`).
+- Artifacts with `not_applicable` state (e.g. droughty's `stage` step on Snowflake) are hidden from the table.
+- If `jira.epic_key` exists, add a "Jira" column showing the artifact's `task_key` (e.g., `PROJ-124`)
+- In overview mode, if Jira is configured, show the Epic key in the release header: `## release_folder (release_type | current_phase | PROJ-123)`
+
+---
+
+**If no specific release is given** (overview mode) — show every release in the current engagement (there is only ever one client per `.wire/` root now, so this is no longer "one row per client project"):
+
+```
+# Acme Corporation — Engagement Status
+
+**Engagement:** acme_data_platform
+
+## 01-discovery (discovery | Discovery)
+
+| Artifact           | Generate    | Validate   | Review       | Ready |
+|---------------------|-------------|------------|--------------|-------|
+| problem_definition | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| pitch              | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| release_brief      | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| sprint_plan        | ⬜          | ⬜          | ⬜            | ⬜     |
+
+**Next:** `/wire:sprint-plan-generate 01-discovery`
+
+---
+
+## 02-full-platform (full_platform | Requirements)
+
+| Artifact     | Generate    | Validate   | Review | Ready |
+|--------------|-------------|------------|--------|-------|
+| requirements | ✅ complete | ✅ pass     | ⬜      | ⬜     |
+| workshops    | ⬜          | -          | ⬜      | ⬜     |
+
+**Next:** `/wire:requirements-review 02-full-platform`
+
+---
+
+Summary: 2 release(s) | 0 ready for Prod
+```
+
+**Overview format rules:**
+- A single engagement-level header up top (client + engagement name, from `.wire/engagement/context.md`)
+- Each release gets an H2 header: `## release_folder (release_type | current_phase)`
+- Followed by the standard artifact lifecycle table
+- Followed by a single **Next:** line with the suggested command
+- Releases separated by horizontal rules, in ascending release-folder order (`01-...` before `02-...`)
+- Summary line at the bottom
+
+---
+
+**If a specific release is requested** (detail mode):
+
+Same artifact lifecycle table, plus a Highlights section with additional context:
+
+```
+# 02-full-platform — Status
+
+**Client:** Acme Corporation
+
+| Artifact     | Generate    | Validate   | Review       | Ready |
+|--------------|-------------|------------|--------------|-------|
+| requirements | ✅ complete | ✅ pass     | ✅ approved   | ✅     |
+| workshops    | ✅ complete | -          | ✅ approved   | ✅     |
+| data_model   | ✅ complete | ⬜          | ⬜            | ⬜     |
+
+### Highlights
+
+- **Next:** Run `/wire:data_model-validate 02-full-platform` to validate the data model
+- **Jira:** Epic PROJ-101 — 5 of 16 artifact tasks complete
+- **dbt:** 12 files generated
+```
+
+**Highlights section rules:**
+- Always include a "Next:" line with the suggested command
+- Include a "Jira:" line if `jira.epic_key` exists, showing the Epic key and rough progress
+- Include a "Docstore:" line if `docstore.provider` is set, noting the target space/page
+- For any artifact whose entry has a non-empty `generated_files` array, optionally mention the file count (e.g. "**dbt:** 12 files generated")
+- For any artifact whose entry contains a URL-like field, surface it under that artifact's name
+- Include "Blockers:" only if `blockers` in frontmatter is non-empty
+- Include other notable items (e.g., "requirements approved by [stakeholder] on [date]")
+- If the report itself reveals drift — an execution-log row or artifact file newer than the recorded state, or a `last_updated` older than recent activity — add a line suggesting `/wire:status-sync <release-folder>` (the reconciler in `specs/utils/status_sync.md`)
+- Keep to 2-5 bullet points max
+
+**Releases built from tickets** (`delivery: tickets` in `status.md`,
+`specs/utils/ticket_delivery.md`). In detail mode, after the artifact table:
+
+1. Say the release is built from tickets, and how many of its tickets are
+   closed (`3 of 15 tickets closed`).
+2. Show the per-slice table from
+   `python3 <wire>/scripts/ticket_delivery.py status <release> --markdown`:
+   one row per slice, one column per step, each cell's state and the tickets
+   covering it.
+3. From `ticket_delivery.py runnable <release>`: **Can start now** (tickets
+   whose steps' dependencies are met, with their sprint or milestone),
+   **Waiting** (each ticket and what it waits on, by ticket, with any blocker
+   and the date it was recorded), and **Check** (each "blocked by" link the
+   tracker is missing, with the reason from the design and an offer to add
+   it).
+
+In overview mode, add one line per such release: tickets closed of total, and
+the number that can start now.
+
+### Step 4: Determine Next Action
+
+**Logic for next action** — fully data-driven from whatever the release's own `status.md` documents. Do not hardcode a fixed artifact list here; different release types genuinely differ (see Step 2's "Reading artifacts generically").
+
+**For standard-shape releases** (has a top-level `artifacts:` map):
+1. Walk the artifacts in the order their keys appear in the frontmatter (this is the release's own phase order — see Step 2).
+2. For each artifact, walk its own present lifecycle steps in `generate → validate → review` order (skipping any step key the artifact doesn't have):
+   - If that step's local state is not yet in its "done" value (`generate` ≠ `complete`, `validate` ≠ `pass`, `review` ≠ `approved`): that artifact key and step is the next action — derive the command using the "Command derivation" table in Step 2, and stop.
+   - If every present step on this artifact is done, move to the next artifact.
+3. If every artifact's every present step is done, the release is complete — say so, and suggest starting or resuming the next release (`/wire:status` overview will show what's next) or, if this is the last configured release, wrapping up the engagement.
+
+**For releases built from tickets**: the next action is the first ticket that
+can start, in tracker order, as `/wire:work <release> <ticket>`. If none can
+start, name what the earliest waiting ticket waits on.
+
+**For `droughty` releases**: walk the `droughty:` steps in template order (setup → introspect → dbml → docs → qa → stage → dbt_tests → lookml, skipping any marked `not_applicable`); the first step whose `status` isn't `complete` is the next action — derive its command from the "Command derivation" table in Step 2.
+
+**For `agentic_data_stack` releases**: walk the embedded YAML blocks in document order (see Step 2's Special Cases); apply the same generate→validate→review-present-steps-only rule per block, deriving the command from the "Command derivation" table in Step 2.
+
+### Step 4.5: Sync Jira Status (Optional)
+
+If `jira` section exists in a release's `status.md` and `jira.epic_key` is not null:
+
+1. Follow the full reconciliation workflow in `specs/utils/jira_status_sync.md`
+2. Pass the release folder (e.g. `01-discovery`), so the utility operates on `.wire/releases/<release_folder>/status.md`
+3. The utility will sync all local artifact states to Jira Sub-tasks, Tasks, and Epic
+4. If any discrepancies are found, add them to the Highlights section
+5. If Atlassian MCP is unavailable, skip silently
+
+Run this for every release being reported on (overview mode) or the one release being reported on (detail mode). This ensures Jira stays in sync every time `/wire:status` is run.
+
+## Persona: delivery-manager
+
+A dashboard of one release for the person running delivery, readable in two
+minutes. It replaces the default report; Step 4.5 still runs.
+
+### Scope
+
+1. **Which release.** Run `python3 <wire>/scripts/release_scope.py` in the
+   engagement repository. A branch that a release's claim records, or that
+   names one release folder (`release/<release>`, `<release>/<artifact>`),
+   gives that release, as in active-release resolution (`specs/start.md`
+   Step B1); with one release, that one; on a feature or ticket branch, the
+   release branch it was cut from; on the default branch, or when that
+   cannot be told, it lists the releases to choose from. When it lists, ask which release, unless a release folder was
+   passed on the command. A release folder passed on the command always
+   wins.
+2. **Only that release.** Its own `status.md`, `execution_log.md`,
+   decisions, business rules, iterations and, for a release built from
+   tickets, its ticket map and its own tracker project. Work outside it stays
+   out, even when a call mentions it.
+
+### Sources
+
+Read what exists and skip what does not, saying `not available` in the row:
+`status.md` (artifacts, `blockers`, `## Iterations`), the governing sprint
+plan, `decisions.md`, the business rules document, the release's ticket map
+with `ticket_delivery.py status`, `runnable` and `progress`
+(`specs/utils/ticket_delivery.md`), the tracker (Jira or Linear, read only:
+tickets, points, sprint and its end date), open pull requests on the release
+branch (`gh pr list --base release/<release>`), and the latest call notes
+(`specs/utils/meeting_context.md`, read only).
+
+### Report
+
+1. **Summary table first.** One row each, with a state of `Green`, `Amber`
+   or `Red` and a reason of a few words:
+
+   | Row | Shows |
+   |---|---|
+   | Tickets | Closed of total (`9 of 15`) |
+   | Points | Closed of total, when the tracker has points |
+   | Sprint | Name, end date, working days left |
+   | Schedule | On track, at risk or late against the sprint or release end date |
+   | Blockers | Count, and the oldest one's age |
+   | Needs you | Count of the items in section 4 |
+
+2. **Then four short sections**, each a table, empty ones left out:
+   1. *Work slices*: each slice not yet complete, its state and its ticket;
+      complete ones as a count (`6 of 9 slices complete`).
+   2. *Artifacts*: each artifact not yet ready, the step it is at and the
+      next command; ready ones as a count (`11 of 16 ready`). Hide artifacts
+      that do not apply.
+   3. *Open questions you can answer*: each open question found in the
+      business rules, tickets, decisions and latest call notes, with where it
+      came from.
+   4. *Steps needed from you*: reviews, approvals, sign-offs, pull requests
+      to merge and workshops to run, each with the command or link that does
+      it.
+   Where a step or blocker waits on someone else, name them from the team
+   roster (`.wire/engagement/team.yml`) or the tracker's assignee: "waiting
+   on Raj Patel (analytics engineer)", not "waiting on an engineer".
+3. **End with three ready-to-paste prompts** to dig into a section, for
+   example `/wire:status <release>` for the full artifact table, or
+   `/wire:work <release> <ticket>` for the oldest blocked ticket.
+
+Tables over prose; no full artifact list; words, not icons.
+
+## State Icons Reference
+
+| Icon | Meaning |
+|------|---------|
+| ⬜ | Not started |
+| ⏳ | In progress / Pending |
+| ✅ | Complete / Pass / Approved |
+| ❌ | Failed |
+| 🔄 | Changes requested (needs iteration) |
+
+## Error Handling
+
+- **No releases found in this engagement**: Display a message suggesting `/wire:new` to create a release (and, if `.wire/engagement/context.md` is also missing, that no engagement has been set up in this repo yet)
+- **Invalid status file**: Skip that release with a warning
+- **Missing frontmatter**: Use default "not_started" states
+
+## Design Philosophy
+
+**Minimal verbosity, maximum clarity.**
+
+Key principles:
+1. **Table-first**: Primary output is always a table
+2. **Icon-driven**: Use emoji for quick visual scanning
+3. **Next action**: Always show what to do next
+4. **Auto-calculate Ready**: Don't require manual "ready" state management
+5. **Data-driven, not hardcoded**: Read each release's own artifact set and lifecycle shape from its `status.md` rather than assuming a fixed vocabulary — release types genuinely differ (see `wire/TEMPLATES/*.md`)

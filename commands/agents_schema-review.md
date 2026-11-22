@@ -119,6 +119,7 @@ release_types:
   - full_platform
   - dbt_development
   - dashboard_first
+  - dashboard_extension
   - agentic_data_stack
   - bi_migration
 action_type: artifact

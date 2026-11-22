@@ -23,6 +23,7 @@ delivery: artifacts
 
 jira:
   project_key: null
+  release: null             # the Jira release (Fix versions) that is this Wire release's own; the tickets-import filter (wire#423)
   structure: subtasks       # subtasks (default — one Task + 3 Sub-tasks per artifact) | single_issue (one Task per artifact, status transitions)
   epic_key: null
   artifacts:

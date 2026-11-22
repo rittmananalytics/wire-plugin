@@ -1,0 +1,174 @@
+---
+wire_schema: "1.0"
+command: validate
+artifact: dbt_migration
+domain: migration
+release_types:
+  - platform_migration
+action_type: artifact
+logs_execution: true
+inputs:
+  required:
+    - name: release_folder
+      description: "Path to the release folder"
+preconditions:
+  - artifact: dbt_migration
+    action: generate
+    outcome: complete
+delegates_to:
+  - utils/precondition_gate
+description: Validate dbt model translations compile on target profile
+
+---
+
+## Auto-Delegation
+
+Follow `specs/utils/precondition_gate.md` before proceeding.
+
+---
+
+# dbt Migration — Validate
+
+## Purpose
+
+Validates that translated dbt models compile and pass basic structural checks against the target platform profile, and — when a target profile is accessible — that they build cleanly across **every rendered code path a model can take at deploy time**, not just a single default-target full-refresh compile. A `dbt parse`/`dbt run` pass on the default path is exactly what lets branch-only and test-only defects reach the client PR (see Check 5). Optionally runs `dbt build` (not `dbt run`) if the target profile is accessible.
+
+## Flags
+
+- `--batch N` — validate batch N only (default: current_batch in status.md). Reads `dbt_audit.csv`'s `batch_number` — the topological, finer-grained translation batch.
+- `--wave <id>` — **the intended execution unit for a normal run.** Validate every dbt-model row `migration/migration_batching.csv` assigns to this wave (`batch_id`), cross-referenced against `dbt_audit.csv` for the actual model set — see **Step 0w** below. Accepts zero-padded (`B01`) or bare (`1`) forms, normalised identically to `dbt_migration-generate`'s and `dbt_migration-lint`'s `--wave`. Wave-id form and normalisation are the shared contract in `specs/utils/wave_resolution.md` (normative; accepts `2`, `B02`, `b2`, or the `W02` display form). `--wave` and `--batch` read different numbering schemes — abort if both are supplied: `[wire] --wave and --batch read different numbering schemes and cannot be combined. Pick one.`
+- `--macros` — validate the batch-zero macro pass (`/wire:dbt-migration-generate --macros`) instead of a model batch. See **Macro Mode Checks** below. Standalone scope — abort if combined with `--batch` or `--wave`.
+- `--snapshots` — **targeted snapshot scope.** `--snapshots` (bare) validates every snapshot object-type node (`object_type = snapshot` in the migration register / `audit/dbt_snapshots.csv`); `--snapshots name1,name2` only the named snapshots. Selection resolves against the snapshot object-type rows, never the model selector. When this is the scope, run **only Check 9** (the snapshot three-layer gate) over the selected snapshots and skip the model checks (Checks 1–8). This is the retrofit companion to `dbt-migration-generate --snapshots`. Normal `--batch`/`--wave` runs still run Check 9 over any in-scope snapshot inline; `--snapshots` is an additional targeted scope, not the only path. Standalone scope — abort if combined with `--batch`, `--wave`, `--model`, `--models`, `--select`, `--exclude`, or `--macros`: `[wire] --snapshots is a standalone scope. Run it on its own; do not combine with --batch/--wave/--model/--models/--select/--exclude/--macros.` See **Step 0s** below.
+- `--config <path>` — load a per-run config overlay file overriding status.md-sourced fields (`migration.dbt_project_path`, `migration.target_platform`, etc.) for this invocation only — never written back to status.md. Mirrors `dbt_migration-generate`'s `--config` overlay exactly; see that spec's **Config overlay** section. Orthogonal to scope.
+- `--tag-map <path>` / `--target-dataset <name>` / `--dbt-project-path <path>` — discrete single-field overlay shorthands (for `migration.pii_tag_map_path` / `migration.target_schema` / `migration.dbt_project_path` respectively). Mirror `dbt_migration-generate`'s equivalents exactly; see that spec's **Config overlay** section.
+
+### Step 0 — Load config overlay, resolve project(s)
+If `--config <path>` and/or `--tag-map`/`--target-dataset`/`--dbt-project-path` were supplied, load them exactly as `dbt_migration-generate` Step 0c describes — in-memory for this invocation only, `data_safety.production_projects` never overridable, discrete flags winning over `--config` on a per-key basis. Resolve the dbt project(s) at `migration.dbt_project_path` (or the overlay's equivalent) via `specs/utils/dbt_manifest_parse.md` Steps 1–2 (nested/multi-project aware) rather than assuming a single project directly at that path — this is what Check 5's `dbt compile` needs to run from the correct project directory in a monorepo, and what any check below needing the source manifest (e.g. resolving a model's source layer) reads from.
+
+### Step 0w — Resolve `--wave` (only when `--wave` is used)
+Identical resolution to `dbt_migration-generate`'s Step 1w: normalise the wave id, load `migration/migration_batching.csv` (abort if missing), filter to rows where `batch_id` matches and `object_type` is `dbt_model`, cross-reference `object_id` against `dbt_audit.csv`'s `model_name` to get the actual model set, and print the resolved-model preview before validating. The resolved set replaces "the batch" in every check below — Checks 1–9 run over it exactly as they run over a `--batch`-resolved set.
+
+### Step 0s — Resolve `--snapshots` (only when `--snapshots` is used)
+Resolve the selected snapshots against the **snapshot object-type nodes** only — the `object_type = snapshot` rows in `migration/migration_register.csv`, cross-referenced to `audit/dbt_snapshots.csv`. Never resolve against `dbt_audit.csv`'s model rows or the model selector. Bare `--snapshots` selects every snapshot node; `--snapshots name1,name2` selects only the named ones (a name that does not resolve to a snapshot node is listed as unresolved: `[wire] --snapshots: "<name>" is not a snapshot object-type node — check audit/dbt_snapshots.csv.`). Abort with `[wire] No snapshots matched --snapshots. Aborting.` if the resolved set is empty. Print the resolved-snapshot preview before validating. In this scope **only Check 9** runs, over the resolved snapshot set — Checks 1–8 (the model checks) are skipped.
+
+## Validation Checks
+
+Every check below reads "the batch" as whichever model set is in scope for this run — the `--batch`-resolved set, or the `--wave`-resolved set from Step 0w. The checks themselves are identical either way; only the resolved model list differs.
+
+**Check 1 — Translated files exist for all models in batch**
+Every model in the batch has a corresponding translated `.sql` file in `migration/dbt/`.
+PASS/FAIL with gaps.
+
+**Check 2 — No source-platform-specific functions remain**
+Scan translated SQL for functions that exist only on the source platform (using feature_detection patterns). Any remaining source-platform functions that should have been translated are a FAIL.
+PASS: No source-platform-only functions found.
+FAIL: List functions and models.
+
+**Check 3 — MANUAL REVIEW flags tracked**
+Every `-- MANUAL REVIEW` comment in the translated SQL is listed in the batch summary file.
+PASS: All flags tracked.
+FAIL: Flags found in SQL not in summary.
+
+**Check 4 — Jinja syntax is valid**
+Scan translated Jinja for obvious syntax errors (unclosed tags, undefined variables).
+PASS: No Jinja syntax errors.
+FAIL: List models with errors.
+
+**Check 5 — Build across every rendered code path (if target profile available)**
+
+If `~/.dbt/profiles.yml` has a profile matching `migration.target_platform`, exercise **all** code paths a model can take at deploy time, not just one default-target full-refresh compile. Run everything below from whichever project directory Step 0 resolved for these models (a monorepo may resolve different models to different projects — run once per project the in-scope set touches, not once against a single assumed project root). Each sub-check is independently a FAIL; a model passes Check 5 only when every applicable sub-check passes.
+
+**5a — Compile under every target profile the project defines.** Discover the target names — do **not** hardcode `dev`/`prod`. Read every entry under the resolved dbt profile's `outputs:` in `profiles.yml`, unioned with any target name referenced in the models/`dbt_project.yml` (e.g. `{% if target.name == '...' %}`). At minimum a dev and a prod-like target must be exercised; if the project defines only one, note "single target defined — cannot exercise `target.name` branches" so the reduced coverage is visible rather than assumed. For each discovered target `T`, run `dbt compile --select <in-scope models> --target T --profiles-dir ~/.dbt`. This is what catches a branch gated on `target.name` (e.g. a dev-only filter that references a SELECT alias or an unsupported function signature) — never compiled by a single-target run.
+PASS: every in-scope model compiles under every discovered target. FAIL: list the model, the target, and the compile error.
+
+**5b — Incremental models: build twice (initial then incremental).** For every in-scope model whose resolved config is `materialized: incremental`, run once to seed the relation (full refresh) and then again without `--full-refresh`, so the `is_incremental()` branch and its predicate are actually rendered and executed — a single build only ever renders the initial (non-incremental) branch.
+PASS: both runs succeed for every incremental model. FAIL: list the model and which run (initial / incremental) failed, with the error. Note "no incremental models in scope" when none apply.
+
+**5c — `dbt build`, not `dbt run`, so tests execute.** Run `dbt build --select <in-scope models> --target <prod-like target> --profiles-dir ~/.dbt` (build = run + test + snapshot + seed) so generic and singular tests execute. `dbt parse` and `dbt run` never execute tests, so an unported test macro, or a test referencing an unresolved `var`/`macro`, passes `parse` and fails only at `build` — on the client's CI. Fail if any referenced test, macro, or var is unresolved, or any test fails.
+PASS: build succeeds and all tests pass. FAIL: list the failing/unresolved test, macro, or var per model.
+
+If the target profile is not available, note "Check 5 skipped — target profile not configured" (not a FAIL) and record it as a coverage gap, since none of 5a–5c ran.
+
+**Check 5 coverage report.** Emit a per-model coverage table into the batch/wave summary so a reviewer sees coverage rather than assuming it — one row per in-scope model with: targets compiled (5a, list the target names), incremental second run done (5b: yes / n/a), tests run (5c: count run / passed). A model with an empty coverage cell is not "clean", it is "unchecked on that surface" — say so explicitly.
+
+**Check 6 — Diff files exist**
+Every model in the batch has a `.diff.md` side-by-side diff file.
+PASS/FAIL.
+
+**Check 7 — Companion schema/properties YAML handled**
+For every model in the batch that has a companion schema/properties YAML in the source project, the translation covers it:
+- `sources.yml` referenced by the batch resolves to the target namespace (parameterised `database`/`schema`, or repointed) — not left pointing at the source platform.
+- Singular/custom tests, `where:` filters, and `dbt_utils`/`dbt_expectations` arguments containing source-dialect SQL are translated (no source-platform-only functions remain in test SQL — same scan as Check 2, applied to tests).
+- Any column-level `policy_tags` / masking `meta` is either authored into the YAML (dbt-managed) or explicitly recorded in the batch summary as deferred to the security workstream — not silently dropped.
+PASS: All companion-YAML items handled or explicitly deferred. FAIL: List models with an un-repointed `sources.yml`, untranslated test SQL, or dropped policy-tag/meta config.
+
+**Check 8 — Cross-market Bronze-column substitutions are flagged, not silently dropped**
+This is the companion check to `dbt_migration-generate` Step 3.1 item b (the Bronze-schema existence check). For every translated model in the batch:
+- Scan the translated SQL for a `CAST(NULL AS <type>)` carrying a `-- MARKET GAP:` inline comment (the marker `dbt_migration-generate` emits when a source column doesn't exist in every in-scope market).
+- Confirm every such substitution is also named in the batch summary's "Source-to-ref substitutions and Bronze-schema gaps" section (model, column, synthesized type, affected market(s)).
+- Confirm the reverse also holds: nothing in that batch-summary section is missing a matching `-- MARKET GAP:` comment in the SQL — a gap recorded in the summary but not flagged inline (or vice versa) is a defect either way.
+PASS: every substitution is present in the SQL and tracked in the summary, and every tracked entry has a matching inline flag. FAIL: list models where the SQL and the summary disagree, naming the column and market. If `migration.target_markets` was unset for this engagement (Step 3.1 item b's single-market skip), note "not applicable — single-market engagement" rather than running the scan.
+
+**Check 9 — Snapshot three-layer gate (SELECT-only row-equivalence is not sufficient)**
+For every snapshot in scope (an `object_type = snapshot` row in the migration register / `audit/dbt_snapshots.csv`), a plain row-equivalence check on a SELECT is **explicitly rejected** as the pass criterion — it cannot see SCD-2 continuity. A snapshot passes only when **all three** layers pass; each layer independently gates. Read the SCD meta-column set and types from the active pair's **"Snapshot SCD mechanisms"** section.
+
+- **9a — Copy-parity at `T`.** The target snapshot relation matches the source at the baseline: schema **including the four SCD meta columns** (`dbt_scd_id`, `dbt_updated_at`, `dbt_valid_from`, `dbt_valid_to`) and their ordinal order (payload first, meta columns at the tail in that order), row count, and a row-level checksum over the same pinned row set. For `rebuild_from_T` snapshots (recorded sign-off), copy-parity is not expected — assert instead that the target started fresh at `T` and record the sign-off reference.
+- **9b — Continuation behaviour.** After the target `dbt snapshot` adopt-and-continue run: an unchanged upstream row opens **no** new version; a changed upstream row opens **exactly one** new version (prior version's `dbt_valid_to` closed, new version `dbt_valid_to` NULL); a hard-deleted upstream row is invalidated when `invalidate_hard_deletes: true`; and a **second** `dbt snapshot` run is idempotent (no new versions on unchanged input).
+- **9c — SCD integrity.** `dbt_scd_id` is unique across the relation; `unique_key` and `dbt_valid_from` are not null; there is **no more than one open version** (`dbt_valid_to IS NULL`) per `unique_key`. Overlapping open versions per key is a FAIL.
+
+PASS: every in-scope snapshot passes 9a, 9b, and 9c. FAIL: name the snapshot and the failing layer(s); a snapshot passing only a SELECT row-equivalence but failing any layer is a FAIL, not a pass. Note "no snapshots in scope" when none apply.
+
+## Macro Mode Checks (`--macros`)
+
+Run these instead of Checks 1–9 when `--macros` is supplied. Ground truth is `audit/batch_zero_plan.json` (the `layer: macro`, `action: translate` entries), re-read here rather than trusted from generate's summary.
+
+**Check M1 — Every macro-layer entry has a translated file**
+For every `layer: macro`, `action: translate` entry in `batch_zero_plan.json`, a translated definition exists under `migration/dbt/macros/` at the mirrored relative path. UDF-layer entries are explicitly out of scope (they are validated by `/wire:target-setup-validate`).
+PASS/FAIL with gaps.
+
+**Check M2 — No source-platform-specific functions remain in macro bodies**
+Same scan as Check 2, applied to the translated macro files.
+PASS/FAIL with functions and macros listed.
+
+**Check M3 — Tier order is respected**
+No translated macro references the *source-dialect* form of a lower-tier macro it depends on — a tier-N macro must call the already-translated tier-`<N` version. Rebuild the dependency tiers from `batch_zero_plan.json`.
+PASS/FAIL with violations listed.
+
+**Check M4 — MANUAL REVIEW flags and deferrals tracked**
+Every `-- MANUAL REVIEW` comment in a translated macro, and every `compile: deferred` macro, is listed in `batch_zero_macros_summary.md`.
+PASS/FAIL.
+
+**Check M5 — Diff files exist**
+Every translated macro has a `.diff.md`.
+PASS/FAIL.
+
+### Update status
+
+```yaml
+artifacts:
+  dbt_migration:
+    validate: pass | fail
+    validated_date: "{{TODAY}}"
+    batch_N_validate: pass | fail
+    macros_validate: pass | fail          # set only when run with --macros
+    wave_validate:                        # set only when run with --wave, keyed by wave id
+      B01: pass | fail
+    check5_coverage:                      # Check 5 all-code-path coverage; skipped: true when no target profile
+      targets_compiled: ["dev", "prod"]   # target names exercised in 5a
+      incremental_second_run: pass | n/a  # 5b
+      tests_run: N                        # 5c — generic + singular tests executed via dbt build
+      skipped: false
+```
+
+
+## Post-Execution Hooks
+
+After updating `status.md`, run these in sequence:
+
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
+
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `dbt_migration` as artifact, `validate` as action.
+
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `dbt_migration` as artifact_id, `dbt Migration` as artifact_name, and the `file` value from `artifacts.dbt_migration` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `dbt_migration` as artifact, `validate` as action.
