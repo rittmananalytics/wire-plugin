@@ -1,6 +1,6 @@
 ---
-description: Estate-wide defect-class sweep — enumerate one root-caused pattern across delivery tree, client main and open PRs, classify each site, close by encoding the lint rule
-argument-hint: <release-folder> --pattern <rule-id> [--dry-run]
+description: "Estate-wide defect-class sweep — enumerate one root-caused pattern across delivery tree, client main and open PRs, classify each site, close by encoding the lint rule"
+argument-hint: "<release-folder> --pattern <rule-id> [--dry-run]"
 ---
 
 # Estate-wide defect-class sweep — enumerate one root-caused pattern across delivery tree, client main and open PRs, classify each site, close by encoding the lint rule

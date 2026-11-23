@@ -1,6 +1,6 @@
 ---
-description: Generate Snowflake→BigQuery bulk copy runbook (tenant carve-out, two-stage with equivalency gate)
-argument-hint: <release-folder> [--wave id]
+description: "Generate Snowflake→BigQuery bulk copy runbook (tenant carve-out, two-stage with equivalency gate)"
+argument-hint: "<release-folder> [--wave id]"
 ---
 
 # Generate Snowflake→BigQuery bulk copy runbook (tenant carve-out, two-stage with equivalency gate)

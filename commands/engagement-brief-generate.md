@@ -1,6 +1,6 @@
 ---
-description: Generate engagement brief from SoW and deal context
-argument-hint: <release-folder>
+description: "Generate engagement brief from SoW and deal context"
+argument-hint: "<release-folder>"
 ---
 
 # Generate engagement brief from SoW and deal context

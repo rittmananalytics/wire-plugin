@@ -1,6 +1,6 @@
 ---
-description: Validate problem definition completeness and quality
-argument-hint: <release-folder>
+description: "Validate problem definition completeness and quality"
+argument-hint: "<release-folder>"
 ---
 
 # Validate problem definition completeness and quality

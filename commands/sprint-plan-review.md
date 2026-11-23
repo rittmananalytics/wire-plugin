@@ -1,6 +1,6 @@
 ---
-description: Review sprint plan with delivery team and record approval
-argument-hint: <release-folder>
+description: "Review sprint plan with delivery team and record approval"
+argument-hint: "<release-folder>"
 ---
 
 # Review sprint plan with delivery team and record approval

@@ -1,6 +1,6 @@
 ---
-description: Internal RA and client scope confirmation
-argument-hint: <release-folder>
+description: "Internal RA and client scope confirmation"
+argument-hint: "<release-folder>"
 ---
 
 # Internal RA and client scope confirmation

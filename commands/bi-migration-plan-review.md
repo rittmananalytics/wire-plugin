@@ -1,6 +1,6 @@
 ---
-description: Release director review of the BI migration plan and its rulings
-argument-hint: <release-folder>
+description: "Release director review of the BI migration plan and its rulings"
+argument-hint: "<release-folder>"
 ---
 
 # Release director review of the BI migration plan and its rulings

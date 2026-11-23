@@ -1,6 +1,6 @@
 ---
-description: Review dbt Charts boards with stakeholders
-argument-hint: <release-folder>
+description: "Review dbt Charts boards with stakeholders"
+argument-hint: "<release-folder>"
 ---
 
 # Review dbt Charts boards with stakeholders

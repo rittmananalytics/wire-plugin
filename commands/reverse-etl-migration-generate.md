@@ -1,6 +1,6 @@
 ---
-description: Generate Hightouch sync migration runbook — repoint, rewrite, rebuild
-argument-hint: <release-folder> [--wave id]
+description: "Generate Hightouch sync migration runbook — repoint, rewrite, rebuild"
+argument-hint: "<release-folder> [--wave id]"
 ---
 
 # Generate Hightouch sync migration runbook — repoint, rewrite, rebuild

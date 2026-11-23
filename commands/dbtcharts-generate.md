@@ -1,6 +1,6 @@
 ---
-description: Generate dbt Charts boards, one per warehouse subject area, from the dbt manifest and catalog (deterministic scaffold, then curation)
-argument-hint: <release-folder> [--subject-area <folder>[,<folder>]] [--no-warehouse] [--force]
+description: "Generate dbt Charts boards, one per warehouse subject area, from the dbt manifest and catalog (deterministic scaffold, then curation)"
+argument-hint: "<release-folder> [--subject-area <folder>[,<folder>]] [--no-warehouse] [--force]"
 ---
 
 # Generate dbt Charts boards, one per warehouse subject area, from the dbt manifest and catalog (deterministic scaffold, then curation)

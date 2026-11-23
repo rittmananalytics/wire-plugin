@@ -1,6 +1,6 @@
 ---
-description: Wire-aware MCP server overview and pre-flight check — list servers with Wire purpose, view details, check release readiness
-argument-hint: [list/view/check] [server-name or release-folder]
+description: "Wire-aware MCP server overview and pre-flight check — list servers with Wire purpose, view details, check release readiness"
+argument-hint: "[list/view/check] [server-name or release-folder]"
 ---
 
 # Wire-aware MCP server overview and pre-flight check — list servers with Wire purpose, view details, check release readiness

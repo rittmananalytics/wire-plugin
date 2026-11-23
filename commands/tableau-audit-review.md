@@ -1,6 +1,6 @@
 ---
-description: Experimental: Internal RA review of the Tableau audit
-argument-hint: <release-folder>
+description: "Experimental: Internal RA review of the Tableau audit"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Internal RA review of the Tableau audit

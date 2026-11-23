@@ -1,6 +1,6 @@
 ---
-description: Generate workshop materials for clarification
-argument-hint: <project-folder>
+description: "Generate workshop materials for clarification"
+argument-hint: "<project-folder>"
 ---
 
 # Generate workshop materials for clarification

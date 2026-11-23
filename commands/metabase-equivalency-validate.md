@@ -1,6 +1,6 @@
 ---
-description: Card-level equivalence — migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover
-argument-hint: <release-folder> [--cards id1,id2] [--dashboard id]
+description: "Card-level equivalence — migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover"
+argument-hint: "<release-folder> [--cards id1,id2] [--dashboard id]"
 ---
 
 # Card-level equivalence — migrated/carved cards return the same rows, model verdict taxonomy; gates the connection cutover

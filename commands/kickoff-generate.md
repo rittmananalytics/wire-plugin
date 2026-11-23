@@ -1,6 +1,6 @@
 ---
-description: Generate client kick-off presentation deck from SoW and engagement context
-argument-hint: [release-folder]
+description: "Generate client kick-off presentation deck from SoW and engagement context"
+argument-hint: "[release-folder]"
 ---
 
 # Generate client kick-off presentation deck from SoW and engagement context

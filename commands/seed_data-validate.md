@@ -1,6 +1,6 @@
 ---
-description: Validate seed data files
-argument-hint: <project-folder>
+description: "Validate seed data files"
+argument-hint: "<project-folder>"
 ---
 
 # Validate seed data files

@@ -1,6 +1,6 @@
 ---
-description: Validate orchestration layer against pipeline design
-argument-hint: <project-folder>
+description: "Validate orchestration layer against pipeline design"
+argument-hint: "<project-folder>"
 ---
 
 # Validate orchestration layer against pipeline design

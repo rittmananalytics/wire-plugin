@@ -1,6 +1,6 @@
 ---
-description: Experimental: Publish a validated Looker Data App to the Looker instance through Google's publisher, after a dry run and the user's confirmation; re-publishes in place; never run by a lane or autopilot
-argument-hint: <release-folder> [--app <slug>] [--dry-run] [--folder-id <id>]
+description: "Experimental: Publish a validated Looker Data App to the Looker instance through Google's publisher, after a dry run and the user's confirmation; re-publishes in place; never run by a lane or autopilot"
+argument-hint: "<release-folder> [--app <slug>] [--dry-run] [--folder-id <id>]"
 ---
 
 # Experimental: Publish a validated Looker Data App to the Looker instance through Google's publisher, after a dry run and the user's confirmation; re-publishes in place; never run by a lane or autopilot

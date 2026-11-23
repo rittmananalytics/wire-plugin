@@ -1,6 +1,6 @@
 ---
-description: Relocate already-translated dbt models into a post-migration tenant carve-out instead of re-translating them
-argument-hint: <release-folder> [--wave id | --batch N | --select selector] --source-dbt-project-path <path> --target-dbt-project-path <path> --target-project <name>
+description: "Relocate already-translated dbt models into a post-migration tenant carve-out instead of re-translating them"
+argument-hint: "<release-folder> [--wave id | --batch N | --select selector] --source-dbt-project-path <path> --target-dbt-project-path <path> --target-project <name>"
 ---
 
 # Relocate already-translated dbt models into a post-migration tenant carve-out instead of re-translating them

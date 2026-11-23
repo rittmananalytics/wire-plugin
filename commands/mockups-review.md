@@ -1,6 +1,6 @@
 ---
-description: Review mockups with stakeholders
-argument-hint: <project-folder>
+description: "Review mockups with stakeholders"
+argument-hint: "<project-folder>"
 ---
 
 # Review mockups with stakeholders

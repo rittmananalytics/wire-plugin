@@ -1,6 +1,6 @@
 ---
-description: Generate a Shape Up pitch document from the approved problem definition
-argument-hint: <release-folder>
+description: "Generate a Shape Up pitch document from the approved problem definition"
+argument-hint: "<release-folder>"
 ---
 
 # Generate a Shape Up pitch document from the approved problem definition

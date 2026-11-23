@@ -1,6 +1,6 @@
 ---
-description: Adopt an in-flight project into Wire — assess repo and external sources, map existing work to artifacts, set up engagement structure, generate adoption playbook
-argument-hint: [repo-path-or-url]
+description: "Adopt an in-flight project into Wire — assess repo and external sources, map existing work to artifacts, set up engagement structure, generate adoption playbook"
+argument-hint: "[repo-path-or-url]"
 model: claude-fable-5
 ---
 

@@ -1,6 +1,6 @@
 ---
-description: Validate Metabase migration runbook completeness
-argument-hint: <release-folder>
+description: "Validate Metabase migration runbook completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate Metabase migration runbook completeness

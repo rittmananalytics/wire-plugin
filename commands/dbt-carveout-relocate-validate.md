@@ -1,6 +1,6 @@
 ---
-description: Validate relocated carve-out dbt models — files present, predicates re-derived from disk, target compiles
-argument-hint: <release-folder> --target-dbt-project-path <path>
+description: "Validate relocated carve-out dbt models — files present, predicates re-derived from disk, target compiles"
+argument-hint: "<release-folder> --target-dbt-project-path <path>"
 ---
 
 # Validate relocated carve-out dbt models — files present, predicates re-derived from disk, target compiles

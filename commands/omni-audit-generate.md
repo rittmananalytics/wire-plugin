@@ -1,6 +1,6 @@
 ---
-description: Catalog Omni connections, model (topics/views/dimensions/measures), and folders/workbooks/tiles
-argument-hint: <release-folder>
+description: "Catalog Omni connections, model (topics/views/dimensions/measures), and folders/workbooks/tiles"
+argument-hint: "<release-folder>"
 ---
 
 # Catalog Omni connections, model (topics/views/dimensions/measures), and folders/workbooks/tiles

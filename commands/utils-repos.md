@@ -1,6 +1,6 @@
 ---
-description: List the client's related repositories and look up code in them, read only, cited by repo and commit
-argument-hint: list, refresh [<id>], find <text> [--repo <id>] [--path <glob>], add <github_url> --id <id> --role <role>, remove <id>, or check
+description: "List the client's related repositories and look up code in them, read only, cited by repo and commit"
+argument-hint: "list, refresh [<id>], find <text> [--repo <id>] [--path <glob>], add <github_url> --id <id> --role <role>, remove <id>, or check"
 ---
 
 # List the client's related repositories and look up code in them, read only, cited by repo and commit

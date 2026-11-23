@@ -1,6 +1,6 @@
 ---
-description: Validate reverse ETL audit completeness and dependency mapping
-argument-hint: <release-folder>
+description: "Validate reverse ETL audit completeness and dependency mapping"
+argument-hint: "<release-folder>"
 ---
 
 # Validate reverse ETL audit completeness and dependency mapping

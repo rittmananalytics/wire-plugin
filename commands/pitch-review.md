@@ -1,6 +1,6 @@
 ---
-description: Review pitch with stakeholders and record appetite decision
-argument-hint: <release-folder>
+description: "Review pitch with stakeholders and record appetite decision"
+argument-hint: "<release-folder>"
 ---
 
 # Review pitch with stakeholders and record appetite decision

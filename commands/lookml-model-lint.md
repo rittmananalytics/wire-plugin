@@ -1,6 +1,6 @@
 ---
-description: Experimental: Lint emitted LookML: no Tableau, Metabase or Omni syntax left, LookML conventions, primary keys on joined views
-argument-hint: <release-folder> [--batch N]
+description: "Experimental: Lint emitted LookML: no Tableau, Metabase or Omni syntax left, LookML conventions, primary keys on joined views"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Experimental: Lint emitted LookML: no Tableau, Metabase or Omni syntax left, LookML conventions, primary keys on joined views

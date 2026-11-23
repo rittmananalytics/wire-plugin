@@ -1,6 +1,6 @@
 ---
-description: Search Confluence and Jira for project context
-argument-hint: <project-folder> [artifact-name]
+description: "Search Confluence and Jira for project context"
+argument-hint: "<project-folder> [artifact-name]"
 ---
 
 # Search Confluence and Jira for project context

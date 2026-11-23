@@ -1,6 +1,6 @@
 ---
-description: Validate Looker audit completeness: every construct classified, every content row with usage, counts match status
-argument-hint: <release-folder>
+description: "Validate Looker audit completeness: every construct classified, every content row with usage, counts match status"
+argument-hint: "<release-folder>"
 ---
 
 # Validate Looker audit completeness: every construct classified, every content row with usage, counts match status

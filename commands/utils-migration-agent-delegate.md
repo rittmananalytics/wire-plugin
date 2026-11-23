@@ -1,6 +1,6 @@
 ---
-description: Auto-delegation protocol for migration generate commands — dispatch to migration-specialist subagent when available
-argument-hint: (internal — called by migration generate commands)
+description: "Auto-delegation protocol for migration generate commands — dispatch to migration-specialist subagent when available"
+argument-hint: "(internal — called by migration generate commands)"
 ---
 
 # Auto-delegation protocol for migration generate commands — dispatch to migration-specialist subagent when available

@@ -1,6 +1,6 @@
 ---
-description: Validate the business rules register: statuses consistent with their required fields, assumptions unexpired, every variant sourced, rules and implementations citing each other
-argument-hint: <release-folder>
+description: "Validate the business rules register: statuses consistent with their required fields, assumptions unexpired, every variant sourced, rules and implementations citing each other"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the business rules register: statuses consistent with their required fields, assumptions unexpired, every variant sourced, rules and implementations citing each other

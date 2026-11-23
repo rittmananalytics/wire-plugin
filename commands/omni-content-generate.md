@@ -1,6 +1,6 @@
 ---
-description: Plan and create Omni dashboards for a batch of Looker dashboards and Looks, or Tableau or Metabase dashboards (experimental); skipped tiles listed with reasons
-argument-hint: <release-folder> [--batch N | --all]
+description: "Plan and create Omni dashboards for a batch of Looker dashboards and Looks, or Tableau or Metabase dashboards (experimental); skipped tiles listed with reasons"
+argument-hint: "<release-folder> [--batch N | --all]"
 ---
 
 # Plan and create Omni dashboards for a batch of Looker dashboards and Looks, or Tableau or Metabase dashboards (experimental); skipped tiles listed with reasons

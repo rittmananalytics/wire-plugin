@@ -1,6 +1,6 @@
 ---
-description: Experimental: Group every calculated field by metric name, flag copies, aliases and conflicts, and propose one definition per metric
-argument-hint: <release-folder>
+description: "Experimental: Group every calculated field by metric name, flag copies, aliases and conflicts, and propose one definition per metric"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Group every calculated field by metric name, flag copies, aliases and conflicts, and propose one definition per metric

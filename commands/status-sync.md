@@ -1,6 +1,6 @@
 ---
-description: Reconcile recorded release state against evidence (git, execution log, disk, sprint plan) and repair the record with confirmation
-argument-hint: [release-folder]
+description: "Reconcile recorded release state against evidence (git, execution log, disk, sprint plan) and repair the record with confirmation"
+argument-hint: "[release-folder]"
 ---
 
 # Reconcile recorded release state against evidence (git, execution log, disk, sprint plan) and repair the record with confirmation

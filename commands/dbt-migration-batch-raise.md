@@ -1,6 +1,6 @@
 ---
-description: Register-driven PR shipping pipeline: derive gate-passing candidates, smoke-build from the client branch, pre-raise comparison, drop-on-defect, raise with evidence-first body
-argument-hint: <release-folder> [--wave id | --batch N | --models list] [--max-models N] [--dry-run]
+description: "Register-driven PR shipping pipeline: derive gate-passing candidates, smoke-build from the client branch, pre-raise comparison, drop-on-defect, raise with evidence-first body"
+argument-hint: "<release-folder> [--wave id | --batch N | --models list] [--max-models N] [--dry-run]"
 ---
 
 # Register-driven PR shipping pipeline: derive gate-passing candidates, smoke-build from the client branch, pre-raise comparison, drop-on-defect, raise with evidence-first body

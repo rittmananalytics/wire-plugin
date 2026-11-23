@@ -1,6 +1,6 @@
 ---
-description: Experimental: Internal RA review of the Looker target setup
-argument-hint: <release-folder>
+description: "Experimental: Internal RA review of the Looker target setup"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Internal RA review of the Looker target setup

@@ -1,6 +1,6 @@
 ---
-description: Review release brief with client and record sign-off
-argument-hint: <release-folder>
+description: "Review release brief with client and record sign-off"
+argument-hint: "<release-folder>"
 ---
 
 # Review release brief with client and record sign-off

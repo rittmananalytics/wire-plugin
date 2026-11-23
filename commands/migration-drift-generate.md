@@ -1,6 +1,6 @@
 ---
-description: Scheduled drift gate — diff live source vs last-migrated commit, flag downstream syncs and masking changes
-argument-hint: <release-folder>
+description: "Scheduled drift gate — diff live source vs last-migrated commit, flag downstream syncs and masking changes"
+argument-hint: "<release-folder>"
 ---
 
 # Scheduled drift gate — diff live source vs last-migrated commit, flag downstream syncs and masking changes

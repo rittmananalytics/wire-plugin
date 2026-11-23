@@ -1,6 +1,6 @@
 ---
-description: Show help for Wire Framework commands
-argument-hint: [<command>]
+description: "Show help for Wire Framework commands"
+argument-hint: "[<command>]"
 model: claude-haiku-5-5
 ---
 

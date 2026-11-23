@@ -1,6 +1,6 @@
 ---
-description: Validate the data residency assessment — all required sections present and non-empty
-argument-hint: <release-folder>
+description: "Validate the data residency assessment — all required sections present and non-empty"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the data residency assessment — all required sections present and non-empty

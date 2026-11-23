@@ -1,6 +1,6 @@
 ---
-description: Human gate for the Metabase carve-out — adjudicate layer decisions, sign off manifest rows, resolve manual-review cards
-argument-hint: <release-folder>
+description: "Human gate for the Metabase carve-out — adjudicate layer decisions, sign off manifest rows, resolve manual-review cards"
+argument-hint: "<release-folder>"
 ---
 
 # Human gate for the Metabase carve-out — adjudicate layer decisions, sign off manifest rows, resolve manual-review cards

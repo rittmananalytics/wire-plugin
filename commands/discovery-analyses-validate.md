@@ -1,6 +1,6 @@
 ---
-description: Validate the three analyses (chart shape, diagnosis, Maturity pin evidence)
-argument-hint: <release-folder>
+description: "Validate the three analyses (chart shape, diagnosis, Maturity pin evidence)"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the three analyses (chart shape, diagnosis, Maturity pin evidence)

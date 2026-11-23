@@ -1,6 +1,6 @@
 ---
-description: Tile-level parity: Looker and Omni results compared under a pinned as-of, verdicts in the model taxonomy; gates cutover
-argument-hint: <release-folder> [--batch N | --dashboards id1,id2]
+description: "Tile-level parity: Looker and Omni results compared under a pinned as-of, verdicts in the model taxonomy; gates cutover"
+argument-hint: "<release-folder> [--batch N | --dashboards id1,id2]"
 ---
 
 # Tile-level parity: Looker and Omni results compared under a pinned as-of, verdicts in the model taxonomy; gates cutover

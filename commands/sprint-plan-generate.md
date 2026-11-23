@@ -1,6 +1,6 @@
 ---
-description: Generate sprint plan with epics, stories, and point estimates
-argument-hint: <release-folder>
+description: "Generate sprint plan with epics, stories, and point estimates"
+argument-hint: "<release-folder>"
 model: claude-fable-5
 ---
 

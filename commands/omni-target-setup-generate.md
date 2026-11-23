@@ -1,6 +1,6 @@
 ---
-description: Prepare the Omni target: connection check, model branch, schema refresh, groups and user attributes
-argument-hint: <release-folder>
+description: "Prepare the Omni target: connection check, model branch, schema refresh, groups and user attributes"
+argument-hint: "<release-folder>"
 ---
 
 # Prepare the Omni target: connection check, model branch, schema refresh, groups and user attributes

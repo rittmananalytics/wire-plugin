@@ -1,6 +1,6 @@
 ---
-description: Generate user training and maintenance documentation
-argument-hint: <release-folder>
+description: "Generate user training and maintenance documentation"
+argument-hint: "<release-folder>"
 ---
 
 # Generate user training and maintenance documentation

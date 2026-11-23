@@ -1,6 +1,6 @@
 ---
-description: Validate migration inventory object counts and dependency graph
-argument-hint: <release-folder>
+description: "Validate migration inventory object counts and dependency graph"
+argument-hint: "<release-folder>"
 ---
 
 # Validate migration inventory object counts and dependency graph

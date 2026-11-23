@@ -1,6 +1,6 @@
 ---
-description: Per-domain accuracy gate before agent announcement
-argument-hint: <release-folder>
+description: "Per-domain accuracy gate before agent announcement"
+argument-hint: "<release-folder>"
 ---
 
 # Per-domain accuracy gate before agent announcement

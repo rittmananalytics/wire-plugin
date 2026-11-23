@@ -1,6 +1,6 @@
 ---
-description: Clone the private wire-data-model-registry repo to this machine, for RA staff with access
-argument-hint: (no arguments - interactive)
+description: "Clone the private wire-data-model-registry repo to this machine, for RA staff with access"
+argument-hint: "(no arguments - interactive)"
 ---
 
 # Clone the private wire-data-model-registry repo to this machine, for RA staff with access

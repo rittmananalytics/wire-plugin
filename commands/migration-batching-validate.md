@@ -1,6 +1,6 @@
 ---
-description: Validate domain batching — every object classified once, DAG acyclic, every real cross-batch edge declared
-argument-hint: <release-folder>
+description: "Validate domain batching — every object classified once, DAG acyclic, every real cross-batch edge declared"
+argument-hint: "<release-folder>"
 ---
 
 # Validate domain batching — every object classified once, DAG acyclic, every real cross-batch edge declared

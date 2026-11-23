@@ -1,6 +1,6 @@
 ---
-description: Run dbt models
-argument-hint: <project-folder>
+description: "Run dbt models"
+argument-hint: "<project-folder>"
 ---
 
 # Run dbt models

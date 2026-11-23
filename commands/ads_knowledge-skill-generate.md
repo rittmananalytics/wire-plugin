@@ -1,6 +1,6 @@
 ---
-description: Generate per-domain reference files collocated with dbt models
-argument-hint: <release-folder>
+description: "Generate per-domain reference files collocated with dbt models"
+argument-hint: "<release-folder>"
 ---
 
 # Generate per-domain reference files collocated with dbt models

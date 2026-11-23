@@ -1,6 +1,6 @@
 ---
-description: Review dashboards
-argument-hint: <project-folder>
+description: "Review dashboards"
+argument-hint: "<project-folder>"
 ---
 
 # Review dashboards

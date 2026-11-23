@@ -1,6 +1,6 @@
 ---
-description: Generate OAC migration runbook — translate physical-layer connection and joins, two-stage connection repoint
-argument-hint: <release-folder>
+description: "Generate OAC migration runbook — translate physical-layer connection and joins, two-stage connection repoint"
+argument-hint: "<release-folder>"
 ---
 
 # Generate OAC migration runbook — translate physical-layer connection and joins, two-stage connection repoint

@@ -1,6 +1,6 @@
 ---
-description: Draft a Slack-shaped session summary from a release's execution log
-argument-hint: <release-folder> [scope]
+description: "Draft a Slack-shaped session summary from a release's execution log"
+argument-hint: "<release-folder> [scope]"
 model: claude-haiku-5-5
 ---
 

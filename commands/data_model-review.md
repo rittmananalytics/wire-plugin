@@ -1,6 +1,6 @@
 ---
-description: Review data model with team
-argument-hint: <project-folder>
+description: "Review data model with team"
+argument-hint: "<project-folder>"
 ---
 
 # Review data model with team

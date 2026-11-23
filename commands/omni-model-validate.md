@@ -1,6 +1,6 @@
 ---
-description: Validate a model batch on the branch: Omni validator clean, every in-scope field present, one smoke query per topic
-argument-hint: <release-folder> [--batch N]
+description: "Validate a model batch on the branch: Omni validator clean, every in-scope field present, one smoke query per topic"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Validate a model batch on the branch: Omni validator clean, every in-scope field present, one smoke query per topic

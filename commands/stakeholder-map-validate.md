@@ -1,6 +1,6 @@
 ---
-description: Validate stakeholder map completeness
-argument-hint: <release-folder>
+description: "Validate stakeholder map completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate stakeholder map completeness

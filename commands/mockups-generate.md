@@ -1,6 +1,6 @@
 ---
-description: Generate dashboard mockups
-argument-hint: <project-folder>
+description: "Generate dashboard mockups"
+argument-hint: "<project-folder>"
 ---
 
 # Generate dashboard mockups

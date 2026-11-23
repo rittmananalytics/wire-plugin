@@ -1,6 +1,6 @@
 ---
-description: Review dbt code
-argument-hint: <project-folder>
+description: "Review dbt code"
+argument-hint: "<project-folder>"
 ---
 
 # Review dbt code

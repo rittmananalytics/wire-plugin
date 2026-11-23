@@ -1,6 +1,6 @@
 ---
-description: Validate the logical model: every conceptual entity accounted for, keys and cardinality decided or explicitly open, sources reconciled, attribution rules complete
-argument-hint: <release-folder>
+description: "Validate the logical model: every conceptual entity accounted for, keys and cardinality decided or explicitly open, sources reconciled, attribution rules complete"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the logical model: every conceptual entity accounted for, keys and cardinality decided or explicitly open, sources reconciled, attribution rules complete

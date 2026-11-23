@@ -1,6 +1,6 @@
 ---
-description: Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition
-argument-hint: <custom-spec-name>
+description: "Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition"
+argument-hint: "<custom-spec-name>"
 ---
 
 # Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition

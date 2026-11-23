@@ -1,6 +1,6 @@
 ---
-description: Experimental: Capture and catalog Looker Studio reports (for Omni or Looker): definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified
-argument-hint: <release-folder>
+description: "Experimental: Capture and catalog Looker Studio reports (for Omni or Looker): definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Capture and catalog Looker Studio reports (for Omni or Looker): definitions, layout, data sources, calculated fields, chart data and BigQuery job history, each component and data source classified

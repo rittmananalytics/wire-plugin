@@ -1,6 +1,6 @@
 ---
-description: Operational status view — per-wave exclusive model/sync stages, drift partition, provenance header, item/blocking/exceptions subcommands, JSON output
-argument-hint: <release-folder> [waves/item/blocking/exceptions] [--json]
+description: "Operational status view — per-wave exclusive model/sync stages, drift partition, provenance header, item/blocking/exceptions subcommands, JSON output"
+argument-hint: "<release-folder> [waves/item/blocking/exceptions] [--json]"
 ---
 
 # Operational status view — per-wave exclusive model/sync stages, drift partition, provenance header, item/blocking/exceptions subcommands, JSON output

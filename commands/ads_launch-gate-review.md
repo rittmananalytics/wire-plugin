@@ -1,6 +1,6 @@
 ---
-description: Platform owner sign-off and launch communications
-argument-hint: <release-folder>
+description: "Platform owner sign-off and launch communications"
+argument-hint: "<release-folder>"
 ---
 
 # Platform owner sign-off and launch communications

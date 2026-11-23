@@ -1,6 +1,6 @@
 ---
-description: Validate target setup scripts
-argument-hint: <release-folder>
+description: "Validate target setup scripts"
+argument-hint: "<release-folder>"
 ---
 
 # Validate target setup scripts

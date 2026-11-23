@@ -1,6 +1,6 @@
 ---
-description: Partition the migration inventory into independently-schedulable domain batches, checked against the real dependency graph
-argument-hint: <release-folder> [--seed <path>]
+description: "Partition the migration inventory into independently-schedulable domain batches, checked against the real dependency graph"
+argument-hint: "<release-folder> [--seed <path>]"
 ---
 
 # Partition the migration inventory into independently-schedulable domain batches, checked against the real dependency graph

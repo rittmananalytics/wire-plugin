@@ -1,6 +1,6 @@
 ---
-description: Review conceptual model with business stakeholders
-argument-hint: <project-folder>
+description: "Review conceptual model with business stakeholders"
+argument-hint: "<project-folder>"
 ---
 
 # Review conceptual model with business stakeholders

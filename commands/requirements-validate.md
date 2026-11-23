@@ -1,6 +1,6 @@
 ---
-description: Validate requirements completeness
-argument-hint: <project-folder>
+description: "Validate requirements completeness"
+argument-hint: "<project-folder>"
 ---
 
 # Validate requirements completeness

@@ -1,6 +1,6 @@
 ---
-description: DBML entity-relationship diagram from warehouse schema
-argument-hint: <release-folder>
+description: "DBML entity-relationship diagram from warehouse schema"
+argument-hint: "<release-folder>"
 ---
 
 # DBML entity-relationship diagram from warehouse schema

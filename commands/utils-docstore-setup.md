@@ -1,6 +1,6 @@
 ---
-description: Set up document store (Confluence/Notion) for a project
-argument-hint: <project-folder>
+description: "Set up document store (Confluence/Notion) for a project"
+argument-hint: "<project-folder>"
 ---
 
 # Set up document store (Confluence/Notion) for a project

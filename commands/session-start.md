@@ -1,6 +1,6 @@
 ---
-description: DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:session-plan for optional structured planning
-argument-hint: (optional: release-folder)
+description: "DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:session-plan for optional structured planning"
+argument-hint: "(optional: release-folder)"
 ---
 
 # DEPRECATED — context loading is now automatic via the engagement-context skill; use /wire:session-plan for optional structured planning

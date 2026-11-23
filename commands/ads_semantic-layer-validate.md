@@ -1,6 +1,6 @@
 ---
-description: Verify metrics queryable and coverage target met
-argument-hint: <release-folder>
+description: "Verify metrics queryable and coverage target met"
+argument-hint: "<release-folder>"
 ---
 
 # Verify metrics queryable and coverage target met

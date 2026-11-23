@@ -1,6 +1,6 @@
 ---
-description: Upgrade a release folder's status.md to the current plugin version schema — adds missing sections, surfaces new commands, never overwrites existing values
-argument-hint: [release-folder] [--dry-run]
+description: "Upgrade a release folder's status.md to the current plugin version schema — adds missing sections, surfaces new commands, never overwrites existing values"
+argument-hint: "[release-folder] [--dry-run]"
 ---
 
 # Upgrade a release folder's status.md to the current plugin version schema — adds missing sections, surfaces new commands, never overwrites existing values

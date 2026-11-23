@@ -1,6 +1,6 @@
 ---
-description: Stakeholder sign-off on canonical table selections and deprecation list
-argument-hint: <release-folder>
+description: "Stakeholder sign-off on canonical table selections and deprecation list"
+argument-hint: "<release-folder>"
 ---
 
 # Stakeholder sign-off on canonical table selections and deprecation list

@@ -1,6 +1,6 @@
 ---
-description: Generate requirements specification from SOW
-argument-hint: <release-folder>
+description: "Generate requirements specification from SOW"
+argument-hint: "<release-folder>"
 ---
 
 # Generate requirements specification from SOW

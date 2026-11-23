@@ -1,6 +1,6 @@
 ---
-description: Pull a fresh local snapshot of a registered migration source
-argument-hint: <release-folder> <source_type>
+description: "Pull a fresh local snapshot of a registered migration source"
+argument-hint: "<release-folder> <source_type>"
 ---
 
 # Pull a fresh local snapshot of a registered migration source

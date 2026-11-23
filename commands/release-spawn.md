@@ -1,6 +1,6 @@
 ---
-description: Create downstream delivery release folders from an approved discovery release brief
-argument-hint: <discovery-release-folder>
+description: "Create downstream delivery release folders from an approved discovery release brief"
+argument-hint: "<discovery-release-folder>"
 ---
 
 # Create downstream delivery release folders from an approved discovery release brief

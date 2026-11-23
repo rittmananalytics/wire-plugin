@@ -1,6 +1,6 @@
 ---
-description: Run full Droughty phase in sequence (discovery, post-dbt, or full)
-argument-hint: <release-folder> [--mode discovery|post-dbt|full]
+description: "Run full Droughty phase in sequence (discovery, post-dbt, or full)"
+argument-hint: "<release-folder> [--mode discovery|post-dbt|full]"
 ---
 
 # Run full Droughty phase in sequence (discovery, post-dbt, or full)

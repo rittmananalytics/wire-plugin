@@ -1,6 +1,6 @@
 ---
-description: Run data quality tests
-argument-hint: <project-folder>
+description: "Run data quality tests"
+argument-hint: "<project-folder>"
 ---
 
 # Run data quality tests

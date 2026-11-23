@@ -1,6 +1,6 @@
 ---
-description: Generate orchestration job migration runbook
-argument-hint: <release-folder> [--wave id]
+description: "Generate orchestration job migration runbook"
+argument-hint: "<release-folder> [--wave id]"
 ---
 
 # Generate orchestration job migration runbook

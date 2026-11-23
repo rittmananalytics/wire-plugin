@@ -1,6 +1,6 @@
 ---
-description: Check configured pipeline tool connection status
-argument-hint: <release-folder>
+description: "Check configured pipeline tool connection status"
+argument-hint: "<release-folder>"
 ---
 
 # Check configured pipeline tool connection status

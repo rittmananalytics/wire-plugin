@@ -1,6 +1,6 @@
 ---
-description: Validate the Omni target: branch exists, model validates with no blocking issue, groups exist
-argument-hint: <release-folder>
+description: "Validate the Omni target: branch exists, model validates with no blocking issue, groups exist"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the Omni target: branch exists, model validates with no blocking issue, groups exist

@@ -1,6 +1,6 @@
 ---
-description: Generate the GDPR and data-residency assessment, including the historical-window legal review (tenant carve-out)
-argument-hint: <release-folder>
+description: "Generate the GDPR and data-residency assessment, including the historical-window legal review (tenant carve-out)"
+argument-hint: "<release-folder>"
 ---
 
 # Generate the GDPR and data-residency assessment, including the historical-window legal review (tenant carve-out)

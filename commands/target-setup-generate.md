@@ -1,6 +1,6 @@
 ---
-description: Generate target warehouse DDL scripts (SAFETY GATE)
-argument-hint: <release-folder>
+description: "Generate target warehouse DDL scripts (SAFETY GATE)"
+argument-hint: "<release-folder>"
 ---
 
 # Generate target warehouse DDL scripts (SAFETY GATE)

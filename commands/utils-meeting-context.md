@@ -1,6 +1,6 @@
 ---
-description: Retrieve Fathom meeting context for artifact reviews
-argument-hint: <project-folder> [artifact-name]
+description: "Retrieve Fathom meeting context for artifact reviews"
+argument-hint: "<project-folder> [artifact-name]"
 ---
 
 # Retrieve Fathom meeting context for artifact reviews

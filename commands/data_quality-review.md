@@ -1,6 +1,6 @@
 ---
-description: Review test results
-argument-hint: <project-folder>
+description: "Review test results"
+argument-hint: "<project-folder>"
 ---
 
 # Review test results

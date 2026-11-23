@@ -1,6 +1,6 @@
 ---
-description: Catalog all Fivetran connectors with MCP or CSV fallback
-argument-hint: <release-folder>
+description: "Catalog all Fivetran connectors with MCP or CSV fallback"
+argument-hint: "<release-folder>"
 ---
 
 # Catalog all Fivetran connectors with MCP or CSV fallback

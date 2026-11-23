@@ -1,6 +1,6 @@
 ---
-description: Catalog Metabase collections, dashboards, cards/SQL, and permission groups
-argument-hint: <release-folder>
+description: "Catalog Metabase collections, dashboards, cards/SQL, and permission groups"
+argument-hint: "<release-folder>"
 ---
 
 # Catalog Metabase collections, dashboards, cards/SQL, and permission groups

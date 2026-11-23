@@ -1,6 +1,6 @@
 ---
-description: Validate conceptual model completeness and correctness
-argument-hint: <project-folder>
+description: "Validate conceptual model completeness and correctness"
+argument-hint: "<project-folder>"
 ---
 
 # Validate conceptual model completeness and correctness

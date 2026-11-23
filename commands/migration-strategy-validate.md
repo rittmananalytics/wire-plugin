@@ -1,6 +1,6 @@
 ---
-description: Validate migration strategy completeness
-argument-hint: <release-folder>
+description: "Validate migration strategy completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate migration strategy completeness

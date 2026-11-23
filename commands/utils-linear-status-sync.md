@@ -1,6 +1,6 @@
 ---
-description: Full Linear reconciliation for all artifacts
-argument-hint: <project-folder>
+description: "Full Linear reconciliation for all artifacts"
+argument-hint: "<project-folder>"
 ---
 
 # Full Linear reconciliation for all artifacts

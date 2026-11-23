@@ -1,6 +1,6 @@
 ---
-description: Gather external client context from Slack, HubSpot, Harvest, Jira, Confluence and Fathom
-argument-hint: <client-name>
+description: "Gather external client context from Slack, HubSpot, Harvest, Jira, Confluence and Fathom"
+argument-hint: "<client-name>"
 ---
 
 # Gather external client context from Slack, HubSpot, Harvest, Jira, Confluence and Fathom

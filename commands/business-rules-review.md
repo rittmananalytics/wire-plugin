@@ -1,6 +1,6 @@
 ---
-description: Review the business rules register with the people who own the numbers — each disputed rule settled or owned, each assumption accepted with its expiry
-argument-hint: <release-folder>
+description: "Review the business rules register with the people who own the numbers — each disputed rule settled or owned, each assumption accepted with its expiry"
+argument-hint: "<release-folder>"
 ---
 
 # Review the business rules register with the people who own the numbers — each disputed rule settled or owned, each assumption accepted with its expiry

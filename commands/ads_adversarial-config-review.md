@@ -1,6 +1,6 @@
 ---
-description: Technical review of adversarial review configuration
-argument-hint: <release-folder>
+description: "Technical review of adversarial review configuration"
+argument-hint: "<release-folder>"
 ---
 
 # Technical review of adversarial review configuration

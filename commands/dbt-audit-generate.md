@@ -1,6 +1,6 @@
 ---
-description: Catalog dbt models with complexity classification and feature detection
-argument-hint: <release-folder>
+description: "Catalog dbt models with complexity classification and feature detection"
+argument-hint: "<release-folder>"
 ---
 
 # Catalog dbt models with complexity classification and feature detection

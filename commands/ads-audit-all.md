@@ -1,6 +1,6 @@
 ---
-description: Run all three agentic data stack audits in parallel
-argument-hint: <release-folder>
+description: "Run all three agentic data stack audits in parallel"
+argument-hint: "<release-folder>"
 ---
 
 # Run all three agentic data stack audits in parallel

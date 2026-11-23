@@ -1,6 +1,6 @@
 ---
-description: Validate the plan: every object in one batch or the drop list, batch dependencies, register row count
-argument-hint: <release-folder>
+description: "Validate the plan: every object in one batch or the drop list, batch dependencies, register row count"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the plan: every object in one batch or the drop list, batch dependencies, register row count

@@ -1,6 +1,6 @@
 ---
-description: Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates
-argument-hint: <client-name> [--release <folder>]
+description: "Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates"
+argument-hint: "<client-name> [--release <folder>]"
 ---
 
 # Calculate % delivered and ETA per release using checklist, Jira, Harvest and Fathom velocity, compared against contractual dates

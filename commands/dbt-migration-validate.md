@@ -1,6 +1,6 @@
 ---
-description: Validate dbt model translations compile on target profile
-argument-hint: <release-folder> [--batch N]
+description: "Validate dbt model translations compile on target profile"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Validate dbt model translations compile on target profile

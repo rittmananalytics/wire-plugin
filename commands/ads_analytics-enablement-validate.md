@@ -1,6 +1,6 @@
 ---
-description: Verify enablement documents complete and accurate
-argument-hint: <release-folder>
+description: "Verify enablement documents complete and accurate"
+argument-hint: "<release-folder>"
 ---
 
 # Verify enablement documents complete and accurate

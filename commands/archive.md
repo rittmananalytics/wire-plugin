@@ -1,6 +1,6 @@
 ---
-description: Archive a completed project
-argument-hint: <project-folder>
+description: "Archive a completed project"
+argument-hint: "<project-folder>"
 ---
 
 # Archive a completed project

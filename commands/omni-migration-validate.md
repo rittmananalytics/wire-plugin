@@ -1,6 +1,6 @@
 ---
-description: Validate Omni migration runbook completeness
-argument-hint: <release-folder>
+description: "Validate Omni migration runbook completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate Omni migration runbook completeness

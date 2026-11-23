@@ -1,6 +1,6 @@
 ---
-description: LangGraph data quality agent report
-argument-hint: <release-folder>
+description: "LangGraph data quality agent report"
+argument-hint: "<release-folder>"
 ---
 
 # LangGraph data quality agent report

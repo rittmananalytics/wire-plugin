@@ -1,6 +1,6 @@
 ---
-description: Full Jira reconciliation for all artifacts
-argument-hint: <project-folder>
+description: "Full Jira reconciliation for all artifacts"
+argument-hint: "<project-folder>"
 ---
 
 # Full Jira reconciliation for all artifacts

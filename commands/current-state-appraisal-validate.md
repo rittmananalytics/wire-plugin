@@ -1,6 +1,6 @@
 ---
-description: Validate the current state appraisal: every claim sourced and confidence-rated, sources reconcilable, gaps named rather than empty
-argument-hint: <release-folder>
+description: "Validate the current state appraisal: every claim sourced and confidence-rated, sources reconcilable, gaps named rather than empty"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the current state appraisal: every claim sourced and confidence-rated, sources reconcilable, gaps named rather than empty

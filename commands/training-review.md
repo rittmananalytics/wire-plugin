@@ -1,6 +1,6 @@
 ---
-description: Rehearse training
-argument-hint: <project-folder>
+description: "Rehearse training"
+argument-hint: "<project-folder>"
 ---
 
 # Rehearse training

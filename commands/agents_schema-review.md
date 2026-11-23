@@ -1,6 +1,6 @@
 ---
-description: Review the Agents Schema publication with stakeholders
-argument-hint: <release-folder>
+description: "Review the Agents Schema publication with stakeholders"
+argument-hint: "<release-folder>"
 ---
 
 # Review the Agents Schema publication with stakeholders

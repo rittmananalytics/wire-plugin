@@ -1,6 +1,6 @@
 ---
-description: Locate the client's Modality model and record it on the release, so the design commands read the existing model instead of deriving one
-argument-hint: <release-folder> [--path <dir>]
+description: "Locate the client's Modality model and record it on the release, so the design commands read the existing model instead of deriving one"
+argument-hint: "<release-folder> [--path <dir>]"
 ---
 
 # Locate the client's Modality model and record it on the release, so the design commands read the existing model instead of deriving one

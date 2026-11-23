@@ -1,6 +1,6 @@
 ---
-description: Validate training content
-argument-hint: <project-folder>
+description: "Validate training content"
+argument-hint: "<project-folder>"
 ---
 
 # Validate training content

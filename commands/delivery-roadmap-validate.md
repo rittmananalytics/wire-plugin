@@ -1,6 +1,6 @@
 ---
-description: Validate the delivery roadmap and Release 1 scope
-argument-hint: <release-folder>
+description: "Validate the delivery roadmap and Release 1 scope"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the delivery roadmap and Release 1 scope

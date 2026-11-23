@@ -1,6 +1,6 @@
 ---
-description: Base LookML views from deployed dbt models
-argument-hint: <release-folder>
+description: "Base LookML views from deployed dbt models"
+argument-hint: "<release-folder>"
 ---
 
 # Base LookML views from deployed dbt models

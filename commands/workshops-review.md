@@ -1,6 +1,6 @@
 ---
-description: Record workshop outcomes
-argument-hint: <project-folder>
+description: "Record workshop outcomes"
+argument-hint: "<project-folder>"
 ---
 
 # Record workshop outcomes

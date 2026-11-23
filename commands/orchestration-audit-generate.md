@@ -1,6 +1,6 @@
 ---
-description: Catalog orchestration jobs, schedules, and dependencies
-argument-hint: <release-folder>
+description: "Catalog orchestration jobs, schedules, and dependencies"
+argument-hint: "<release-folder>"
 ---
 
 # Catalog orchestration jobs, schedules, and dependencies

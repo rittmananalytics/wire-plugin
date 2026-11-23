@@ -1,6 +1,6 @@
 ---
-description: Release director review of a translated model batch and its needs_human resolutions
-argument-hint: <release-folder> [--batch N]
+description: "Release director review of a translated model batch and its needs_human resolutions"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Release director review of a translated model batch and its needs_human resolutions

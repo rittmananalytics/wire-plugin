@@ -1,6 +1,6 @@
 ---
-description: Check knowledge skill files complete, accurate, and colocated
-argument-hint: <release-folder>
+description: "Check knowledge skill files complete, accurate, and colocated"
+argument-hint: "<release-folder>"
 ---
 
 # Check knowledge skill files complete, accurate, and colocated

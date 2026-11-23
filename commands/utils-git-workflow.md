@@ -1,6 +1,6 @@
 ---
-description: Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR (composes utils-commit and utils-pr-create)
-argument-hint: <release-folder> <artifact-id> <action>
+description: "Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR (composes utils-commit and utils-pr-create)"
+argument-hint: "<release-folder> <artifact-id> <action>"
 ---
 
 # Ensure a branch-per-artifact exists and, on validate/review, commit and open or update its PR (composes utils-commit and utils-pr-create)

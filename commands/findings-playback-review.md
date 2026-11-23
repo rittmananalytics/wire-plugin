@@ -1,6 +1,6 @@
 ---
-description: Sponsor playback session — Sponsor Validation Checklist (the canonical gate)
-argument-hint: <release-folder>
+description: "Sponsor playback session — Sponsor Validation Checklist (the canonical gate)"
+argument-hint: "<release-folder>"
 ---
 
 # Sponsor playback session — Sponsor Validation Checklist (the canonical gate)

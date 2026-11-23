@@ -1,6 +1,6 @@
 ---
-description: Generate orchestration layer (Dagster or dbt Cloud)
-argument-hint: <project-folder>
+description: "Generate orchestration layer (Dagster or dbt Cloud)"
+argument-hint: "<project-folder>"
 ---
 
 # Generate orchestration layer (Dagster or dbt Cloud)

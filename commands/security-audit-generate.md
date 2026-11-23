@@ -1,6 +1,6 @@
 ---
-description: Catalog roles, permissions, users, service accounts
-argument-hint: <release-folder>
+description: "Catalog roles, permissions, users, service accounts"
+argument-hint: "<release-folder>"
 ---
 
 # Catalog roles, permissions, users, service accounts

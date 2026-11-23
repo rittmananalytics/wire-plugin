@@ -1,6 +1,6 @@
 ---
-description: Validate the migration register — schema, coverage, state consistency
-argument-hint: <release-folder>
+description: "Validate the migration register — schema, coverage, state consistency"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the migration register — schema, coverage, state consistency

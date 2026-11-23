@@ -1,6 +1,6 @@
 ---
-description: Enumerate all databases, schemas, tables, views on source platform
-argument-hint: <release-folder>
+description: "Enumerate all databases, schemas, tables, views on source platform"
+argument-hint: "<release-folder>"
 ---
 
 # Enumerate all databases, schemas, tables, views on source platform

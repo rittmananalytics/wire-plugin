@@ -1,6 +1,6 @@
 ---
-description: Internal RA review of the three analyses (HoD + peer consultant)
-argument-hint: <release-folder>
+description: "Internal RA review of the three analyses (HoD + peer consultant)"
+argument-hint: "<release-folder>"
 ---
 
 # Internal RA review of the three analyses (HoD + peer consultant)

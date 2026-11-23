@@ -1,6 +1,6 @@
 ---
-description: Validate ingestion migration runbook
-argument-hint: <release-folder> [--wave id]
+description: "Validate ingestion migration runbook"
+argument-hint: "<release-folder> [--wave id]"
 ---
 
 # Validate ingestion migration runbook

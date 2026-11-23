@@ -1,6 +1,6 @@
 ---
-description: Build and maintain the per-model migration register (source commit, BQ target, state, last equivalence)
-argument-hint: <release-folder>
+description: "Build and maintain the per-model migration register (source commit, BQ target, state, last equivalence)"
+argument-hint: "<release-folder>"
 ---
 
 # Build and maintain the per-model migration register (source commit, BQ target, state, last equivalence)

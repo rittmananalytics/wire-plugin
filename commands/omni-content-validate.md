@@ -1,6 +1,6 @@
 ---
-description: Validate a content batch: plan fields exist on the branch, controls map, created documents resolve with the planned tile count
-argument-hint: <release-folder> [--batch N]
+description: "Validate a content batch: plan fields exist on the branch, controls map, created documents resolve with the planned tile count"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Validate a content batch: plan fields exist on the branch, controls map, created documents resolve with the planned tile count

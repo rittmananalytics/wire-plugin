@@ -1,6 +1,6 @@
 ---
-description: Verify dataset audit completeness and tier classifications
-argument-hint: <release-folder>
+description: "Verify dataset audit completeness and tier classifications"
+argument-hint: "<release-folder>"
 ---
 
 # Verify dataset audit completeness and tier classifications

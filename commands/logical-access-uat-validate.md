@@ -1,6 +1,6 @@
 ---
-description: Validate logical-access UAT — at least one negative test per IAM boundary
-argument-hint: <release-folder>
+description: "Validate logical-access UAT — at least one negative test per IAM boundary"
+argument-hint: "<release-folder>"
 ---
 
 # Validate logical-access UAT — at least one negative test per IAM boundary

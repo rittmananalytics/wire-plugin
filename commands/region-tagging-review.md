@@ -1,6 +1,6 @@
 ---
-description: Human adjudication gate for region tags
-argument-hint: <release-folder>
+description: "Human adjudication gate for region tags"
+argument-hint: "<release-folder>"
 ---
 
 # Human adjudication gate for region tags

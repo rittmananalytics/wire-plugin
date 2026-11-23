@@ -1,6 +1,6 @@
 ---
-description: Read a release's tickets from Linear or Jira and propose the ticket map (kind, slices, Wire steps per ticket), using the Modality model where linked; turns on ticket delivery for the release
-argument-hint: <release-folder> [--tracker linear|jira] [--project <name-or-key>] [--refresh]
+description: "Read a release's tickets from Linear or Jira and propose the ticket map (kind, slices, Wire steps per ticket), using the Modality model where linked; turns on ticket delivery for the release"
+argument-hint: "<release-folder> [--tracker linear|jira] [--project <name-or-key>] [--refresh]"
 model: claude-fable-5
 ---
 

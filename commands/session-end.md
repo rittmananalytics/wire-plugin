@@ -1,6 +1,6 @@
 ---
-description: DEPRECATED — session state is now written automatically after each Wire command completes
-argument-hint: (optional: release-folder)
+description: "DEPRECATED — session state is now written automatically after each Wire command completes"
+argument-hint: "(optional: release-folder)"
 ---
 
 # DEPRECATED — session state is now written automatically after each Wire command completes

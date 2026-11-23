@@ -1,6 +1,6 @@
 ---
-description: Human/client adjudication gate — turn the proposed batch partition into a committed schedule
-argument-hint: <release-folder>
+description: "Human/client adjudication gate — turn the proposed batch partition into a committed schedule"
+argument-hint: "<release-folder>"
 ---
 
 # Human/client adjudication gate — turn the proposed batch partition into a committed schedule

@@ -1,6 +1,6 @@
 ---
-description: Generate agentic data stack Wire skill with routing logic and provenance footer
-argument-hint: <release-folder>
+description: "Generate agentic data stack Wire skill with routing logic and provenance footer"
+argument-hint: "<release-folder>"
 ---
 
 # Generate agentic data stack Wire skill with routing logic and provenance footer

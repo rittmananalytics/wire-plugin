@@ -1,6 +1,6 @@
 ---
-description: Validate orchestration migration runbook
-argument-hint: <release-folder> [--wave id]
+description: "Validate orchestration migration runbook"
+argument-hint: "<release-folder> [--wave id]"
 ---
 
 # Validate orchestration migration runbook

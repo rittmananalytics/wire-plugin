@@ -1,6 +1,6 @@
 ---
-description: Generate the reverse-ETL retirement runbook — superseded and retire-classified syncs, ordered, with the evidence each replacement has run cleanly and the rollback
-argument-hint: <release-folder> [--wave id] [--min-clean-days N]
+description: "Generate the reverse-ETL retirement runbook — superseded and retire-classified syncs, ordered, with the evidence each replacement has run cleanly and the rollback"
+argument-hint: "<release-folder> [--wave id] [--min-clean-days N]"
 ---
 
 # Generate the reverse-ETL retirement runbook — superseded and retire-classified syncs, ordered, with the evidence each replacement has run cleanly and the rollback

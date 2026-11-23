@@ -1,6 +1,6 @@
 ---
-description: Generate the delivery roadmap with Build / Pair / Coach options
-argument-hint: <release-folder>
+description: "Generate the delivery roadmap with Build / Pair / Coach options"
+argument-hint: "<release-folder>"
 ---
 
 # Generate the delivery roadmap with Build / Pair / Coach options

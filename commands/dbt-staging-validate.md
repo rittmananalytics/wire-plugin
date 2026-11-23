@@ -1,6 +1,6 @@
 ---
-description: Validate dbt staging-layer models
-argument-hint: <project-folder>
+description: "Validate dbt staging-layer models"
+argument-hint: "<project-folder>"
 ---
 
 # Validate dbt staging-layer models

@@ -1,6 +1,6 @@
 ---
-description: Experimental: Validate the Omni source audit: reproducible, every construct classified, IR valid, every tile's view in the snapshot
-argument-hint: <release-folder>
+description: "Experimental: Validate the Omni source audit: reproducible, every construct classified, IR valid, every tile's view in the snapshot"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Validate the Omni source audit: reproducible, every construct classified, IR valid, every tile's view in the snapshot

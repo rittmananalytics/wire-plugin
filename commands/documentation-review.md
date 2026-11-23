@@ -1,6 +1,6 @@
 ---
-description: Review documentation
-argument-hint: <project-folder>
+description: "Review documentation"
+argument-hint: "<project-folder>"
 ---
 
 # Review documentation

@@ -1,6 +1,6 @@
 ---
-description: Validate the transport plan: re-derive the SQL scan from each card's own SQL, prove every source-project reference accounted for and every id-rewrite resolves on the target
-argument-hint: <release-folder>
+description: "Validate the transport plan: re-derive the SQL scan from each card's own SQL, prove every source-project reference accounted for and every id-rewrite resolves on the target"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the transport plan: re-derive the SQL scan from each card's own SQL, prove every source-project reference accounted for and every id-rewrite resolves on the target

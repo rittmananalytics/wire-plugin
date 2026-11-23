@@ -1,6 +1,6 @@
 ---
-description: Record stakeholder review of requirements
-argument-hint: <project-folder>
+description: "Record stakeholder review of requirements"
+argument-hint: "<project-folder>"
 ---
 
 # Record stakeholder review of requirements

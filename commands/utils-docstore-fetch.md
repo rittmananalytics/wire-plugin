@@ -1,6 +1,6 @@
 ---
-description: Fetch document store content and comments for review
-argument-hint: <project-folder> <artifact>
+description: "Fetch document store content and comments for review"
+argument-hint: "<project-folder> <artifact>"
 ---
 
 # Fetch document store content and comments for review

@@ -1,6 +1,6 @@
 ---
-description: Experimental: Translate a batch of Tableau data sources, Metabase or Omni content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)
-argument-hint: <release-folder> [--batch N | --all]
+description: "Experimental: Translate a batch of Tableau data sources, Metabase or Omni content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)"
+argument-hint: "<release-folder> [--batch N | --all]"
 ---
 
 # Experimental: Translate a batch of Tableau data sources, Metabase or Omni content to LookML views and explores on the migration branch (deterministic converter plus agent judgement)

@@ -1,6 +1,6 @@
 ---
-description: Validate orchestration audit completeness
-argument-hint: <release-folder>
+description: "Validate orchestration audit completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate orchestration audit completeness

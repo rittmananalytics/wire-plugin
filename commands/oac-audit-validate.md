@@ -1,6 +1,6 @@
 ---
-description: Validate OAC audit completeness and dependency coverage
-argument-hint: <release-folder>
+description: "Validate OAC audit completeness and dependency coverage"
+argument-hint: "<release-folder>"
 ---
 
 # Validate OAC audit completeness and dependency coverage

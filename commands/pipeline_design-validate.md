@@ -1,6 +1,6 @@
 ---
-description: Validate pipeline design
-argument-hint: <project-folder>
+description: "Validate pipeline design"
+argument-hint: "<project-folder>"
 ---
 
 # Validate pipeline design

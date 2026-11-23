@@ -1,6 +1,6 @@
 ---
-description: Create or update LookML view files for new and restructured canonical models (Looker only)
-argument-hint: <release-folder>
+description: "Create or update LookML view files for new and restructured canonical models (Looker only)"
+argument-hint: "<release-folder>"
 ---
 
 # Create or update LookML view files for new and restructured canonical models (Looker only)

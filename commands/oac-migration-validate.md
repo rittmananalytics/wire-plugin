@@ -1,6 +1,6 @@
 ---
-description: Validate OAC migration runbook completeness
-argument-hint: <release-folder>
+description: "Validate OAC migration runbook completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate OAC migration runbook completeness

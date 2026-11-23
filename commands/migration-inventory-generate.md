@@ -1,6 +1,6 @@
 ---
-description: Synthesise all audits into unified catalogue with dependency graph
-argument-hint: <release-folder>
+description: "Synthesise all audits into unified catalogue with dependency graph"
+argument-hint: "<release-folder>"
 ---
 
 # Synthesise all audits into unified catalogue with dependency graph

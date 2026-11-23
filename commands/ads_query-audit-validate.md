@@ -1,6 +1,6 @@
 ---
-description: Verify query pattern extraction and classification quality
-argument-hint: <release-folder>
+description: "Verify query pattern extraction and classification quality"
+argument-hint: "<release-folder>"
 ---
 
 # Verify query pattern extraction and classification quality

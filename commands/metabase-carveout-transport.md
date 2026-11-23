@@ -1,6 +1,6 @@
 ---
-description: Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance: executes the validated plan (id and SQL-text rewrites), dependency-ordered, idempotent by recorded target id
-argument-hint: <release-folder> [--target-instance-url url] [--collection id] [--dashboard id] [--dry-run]
+description: "Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance: executes the validated plan (id and SQL-text rewrites), dependency-ordered, idempotent by recorded target id"
+argument-hint: "<release-folder> [--target-instance-url url] [--collection id] [--dashboard id] [--dry-run]"
 ---
 
 # Transport signed-off carve-out cards and dashboards onto the separately-hosted tenant Metabase instance: executes the validated plan (id and SQL-text rewrites), dependency-ordered, idempotent by recorded target id

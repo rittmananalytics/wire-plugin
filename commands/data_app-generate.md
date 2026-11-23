@@ -1,6 +1,6 @@
 ---
-description: Experimental: Generate a Looker Data App (Google's Data Apps toolkit, Lit) from the approved mockup chain and the semantic layer; one widget per catalog row, fields resolved against the explore, previewed locally. Looker only
-argument-hint: <release-folder> [--app <slug>] [--slice <slice>]
+description: "Experimental: Generate a Looker Data App (Google's Data Apps toolkit, Lit) from the approved mockup chain and the semantic layer; one widget per catalog row, fields resolved against the explore, previewed locally. Looker only"
+argument-hint: "<release-folder> [--app <slug>] [--slice <slice>]"
 ---
 
 # Experimental: Generate a Looker Data App (Google's Data Apps toolkit, Lit) from the approved mockup chain and the semantic layer; one widget per catalog row, fields resolved against the explore, previewed locally. Looker only

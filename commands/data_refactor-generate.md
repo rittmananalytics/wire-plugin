@@ -1,6 +1,6 @@
 ---
-description: Generate refactoring plan from seed-based to real client data
-argument-hint: <project-folder>
+description: "Generate refactoring plan from seed-based to real client data"
+argument-hint: "<project-folder>"
 ---
 
 # Generate refactoring plan from seed-based to real client data

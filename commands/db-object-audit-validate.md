@@ -1,6 +1,6 @@
 ---
-description: Validate db object audit classification completeness
-argument-hint: <release-folder>
+description: "Validate db object audit classification completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate db object audit classification completeness

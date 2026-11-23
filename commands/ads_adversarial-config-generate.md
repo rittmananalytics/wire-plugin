@@ -1,6 +1,6 @@
 ---
-description: Configure and test adversarial review sub-agent
-argument-hint: <release-folder>
+description: "Configure and test adversarial review sub-agent"
+argument-hint: "<release-folder>"
 ---
 
 # Configure and test adversarial review sub-agent

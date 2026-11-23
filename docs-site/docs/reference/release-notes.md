@@ -9,6 +9,14 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.8: command front matter is valid YAML
+
+**Released**: November 2026
+
+**Command front matter is valid YAML.** The Claude Code plugin's command files now write each command's description and argument hint as quoted text. Before, 71 of 375 files had front matter that a strict YAML reader could not read, or read a hint such as `[<command>]` as a list. Claude Code read them correctly before and reads them the same way now; the change matters for other tools that read the command files. A new check stops a release if any command's front matter is not valid YAML.
+
+---
+
 ## v4.6.7: Gemini CLI commands load again
 
 **Released**: November 2026

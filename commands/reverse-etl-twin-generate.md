@@ -1,6 +1,6 @@
 ---
-description: Author the target-warehouse twin config per in-scope sync — additive, paused, decoy-pointed, model translated, manifest keyed on the normalised sync id
-argument-hint: <release-folder> [--wave id] [--syncs a,b] [--dry-run]
+description: "Author the target-warehouse twin config per in-scope sync — additive, paused, decoy-pointed, model translated, manifest keyed on the normalised sync id"
+argument-hint: "<release-folder> [--wave id] [--syncs a,b] [--dry-run]"
 ---
 
 # Author the target-warehouse twin config per in-scope sync — additive, paused, decoy-pointed, model translated, manifest keyed on the normalised sync id

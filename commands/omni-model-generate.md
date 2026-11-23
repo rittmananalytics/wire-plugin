@@ -1,6 +1,6 @@
 ---
-description: Translate a batch of LookML views and explores, or Tableau or Metabase content (experimental), to Omni views and topics on the model branch (deterministic converter plus agent judgement)
-argument-hint: <release-folder> [--batch N | --all]
+description: "Translate a batch of LookML views and explores, or Tableau or Metabase content (experimental), to Omni views and topics on the model branch (deterministic converter plus agent judgement)"
+argument-hint: "<release-folder> [--batch N | --all]"
 ---
 
 # Translate a batch of LookML views and explores, or Tableau or Metabase content (experimental), to Omni views and topics on the model branch (deterministic converter plus agent judgement)

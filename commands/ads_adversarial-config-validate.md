@@ -1,6 +1,6 @@
 ---
-description: Verify adversarial review configuration and calibration
-argument-hint: <release-folder>
+description: "Verify adversarial review configuration and calibration"
+argument-hint: "<release-folder>"
 ---
 
 # Verify adversarial review configuration and calibration

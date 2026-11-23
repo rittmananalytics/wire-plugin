@@ -1,6 +1,6 @@
 ---
-description: Generate dbt models
-argument-hint: <project-folder>
+description: "Generate dbt models"
+argument-hint: "<project-folder>"
 ---
 
 # Generate dbt models

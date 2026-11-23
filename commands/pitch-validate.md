@@ -1,6 +1,6 @@
 ---
-description: Validate pitch document structure and Shape Up quality
-argument-hint: <release-folder>
+description: "Validate pitch document structure and Shape Up quality"
+argument-hint: "<release-folder>"
 ---
 
 # Validate pitch document structure and Shape Up quality

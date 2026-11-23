@@ -1,6 +1,6 @@
 ---
-description: Catalog the Looker estate: LookML views, explores, fields and joins classified for translation, plus dashboards, Looks, tiles, schedules and usage
-argument-hint: <release-folder>
+description: "Catalog the Looker estate: LookML views, explores, fields and joins classified for translation, plus dashboards, Looks, tiles, schedules and usage"
+argument-hint: "<release-folder>"
 ---
 
 # Catalog the Looker estate: LookML views, explores, fields and joins classified for translation, plus dashboards, Looks, tiles, schedules and usage

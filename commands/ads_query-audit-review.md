@@ -1,6 +1,6 @@
 ---
-description: Stakeholder sign-off on query patterns and semantic layer addition priorities
-argument-hint: <release-folder>
+description: "Stakeholder sign-off on query patterns and semantic layer addition priorities"
+argument-hint: "<release-folder>"
 ---
 
 # Stakeholder sign-off on query patterns and semantic layer addition priorities

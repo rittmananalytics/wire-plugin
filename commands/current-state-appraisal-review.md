@@ -1,6 +1,6 @@
 ---
-description: Review the current state appraisal with the client's technical lead — facts corrected, gaps owned, contradictions resolved or accepted
-argument-hint: <release-folder>
+description: "Review the current state appraisal with the client's technical lead — facts corrected, gaps owned, contradictions resolved or accepted"
+argument-hint: "<release-folder>"
 ---
 
 # Review the current state appraisal with the client's technical lead — facts corrected, gaps owned, contradictions resolved or accepted

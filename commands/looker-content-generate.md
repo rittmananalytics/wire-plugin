@@ -1,6 +1,6 @@
 ---
-description: Experimental: Write a batch of Tableau, Metabase or Omni dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons
-argument-hint: <release-folder> [--batch N | --all]
+description: "Experimental: Write a batch of Tableau, Metabase or Omni dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons"
+argument-hint: "<release-folder> [--batch N | --all]"
 ---
 
 # Experimental: Write a batch of Tableau, Metabase or Omni dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons

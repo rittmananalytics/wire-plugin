@@ -1,6 +1,6 @@
 ---
-description: Present migration batch acceptance pack for stakeholder sign-off
-argument-hint: <release-folder> [--batch N | --wave id]
+description: "Present migration batch acceptance pack for stakeholder sign-off"
+argument-hint: "<release-folder> [--batch N | --wave id]"
 ---
 
 # Present migration batch acceptance pack for stakeholder sign-off

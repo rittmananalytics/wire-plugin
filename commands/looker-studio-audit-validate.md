@@ -1,6 +1,6 @@
 ---
-description: Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored
-argument-hint: <release-folder>
+description: "Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored

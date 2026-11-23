@@ -1,6 +1,6 @@
 ---
-description: Internal RA review of the Omni target setup
-argument-hint: <release-folder>
+description: "Internal RA review of the Omni target setup"
+argument-hint: "<release-folder>"
 ---
 
 # Internal RA review of the Omni target setup

@@ -1,6 +1,6 @@
 ---
-description: Build Q&A eval suite with per-domain accuracy baselines and CI harness
-argument-hint: <release-folder>
+description: "Build Q&A eval suite with per-domain accuracy baselines and CI harness"
+argument-hint: "<release-folder>"
 ---
 
 # Build Q&A eval suite with per-domain accuracy baselines and CI harness

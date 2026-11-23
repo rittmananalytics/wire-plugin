@@ -1,6 +1,6 @@
 ---
-description: Check metric audit completeness and conflict detection quality
-argument-hint: <release-folder>
+description: "Check metric audit completeness and conflict detection quality"
+argument-hint: "<release-folder>"
 ---
 
 # Check metric audit completeness and conflict detection quality

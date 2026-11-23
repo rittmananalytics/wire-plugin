@@ -1,6 +1,6 @@
 ---
-description: Review problem definition with stakeholders
-argument-hint: <release-folder>
+description: "Review problem definition with stakeholders"
+argument-hint: "<release-folder>"
 ---
 
 # Review problem definition with stakeholders

@@ -1,6 +1,6 @@
 ---
-description: Inventory metric definitions, identify conflicts and coverage gaps
-argument-hint: <release-folder>
+description: "Inventory metric definitions, identify conflicts and coverage gaps"
+argument-hint: "<release-folder>"
 ---
 
 # Inventory metric definitions, identify conflicts and coverage gaps

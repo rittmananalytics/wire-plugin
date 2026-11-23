@@ -1,6 +1,6 @@
 ---
-description: Discover, define and agree the business rules for one domain, from legacy systems and from the people who own the definitions, before design starts
-argument-hint: <release-folder> [--domain <name>] [--import <path>]
+description: "Discover, define and agree the business rules for one domain, from legacy systems and from the people who own the definitions, before design starts"
+argument-hint: "<release-folder> [--domain <name>] [--import <path>]"
 ---
 
 # Discover, define and agree the business rules for one domain, from legacy systems and from the people who own the definitions, before design starts

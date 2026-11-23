@@ -1,6 +1,6 @@
 ---
-description: Internal RA review of reverse ETL migration runbook
-argument-hint: <release-folder> [--wave id]
+description: "Internal RA review of reverse ETL migration runbook"
+argument-hint: "<release-folder> [--wave id]"
 ---
 
 # Internal RA review of reverse ETL migration runbook

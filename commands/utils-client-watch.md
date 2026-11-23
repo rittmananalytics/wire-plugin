@@ -1,6 +1,6 @@
 ---
-description: One client-watch tick — channel replies to tracked posts recorded in the answers ledger, merged client PRs advance the register and fire the post-merge action
-argument-hint: <release-folder>
+description: "One client-watch tick — channel replies to tracked posts recorded in the answers ledger, merged client PRs advance the register and fire the post-merge action"
+argument-hint: "<release-folder>"
 ---
 
 # One client-watch tick — channel replies to tracked posts recorded in the answers ledger, merged client PRs advance the register and fire the post-merge action

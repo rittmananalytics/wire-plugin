@@ -1,6 +1,6 @@
 ---
-description: Generate data pipeline code
-argument-hint: <project-folder>
+description: "Generate data pipeline code"
+argument-hint: "<project-folder>"
 ---
 
 # Generate data pipeline code

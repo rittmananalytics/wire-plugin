@@ -1,6 +1,6 @@
 ---
-description: Check semantic layer design completeness and metric definition quality
-argument-hint: <release-folder>
+description: "Check semantic layer design completeness and metric definition quality"
+argument-hint: "<release-folder>"
 ---
 
 # Check semantic layer design completeness and metric definition quality

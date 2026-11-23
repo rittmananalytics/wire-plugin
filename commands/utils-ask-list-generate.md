@@ -1,6 +1,6 @@
 ---
-description: Draft the top-N client ask list from the register's blocker taxonomy — capped, and guarded against re-asking anything the answers ledger holds
-argument-hint: <release-folder> [--max N]
+description: "Draft the top-N client ask list from the register's blocker taxonomy — capped, and guarded against re-asking anything the answers ledger holds"
+argument-hint: "<release-folder> [--max N]"
 ---
 
 # Draft the top-N client ask list from the register's blocker taxonomy — capped, and guarded against re-asking anything the answers ledger holds

@@ -1,6 +1,6 @@
 ---
-description: Run equivalency checks across all in-scope tables (parallel fan-out)
-argument-hint: <release-folder> [--batch N | --wave id]
+description: "Run equivalency checks across all in-scope tables (parallel fan-out)"
+argument-hint: "<release-folder> [--batch N | --wave id]"
 ---
 
 # Run equivalency checks across all in-scope tables (parallel fan-out)

@@ -1,6 +1,6 @@
 ---
-description: Validate dbt warehouse-layer models
-argument-hint: <project-folder>
+description: "Validate dbt warehouse-layer models"
+argument-hint: "<project-folder>"
 ---
 
 # Validate dbt warehouse-layer models

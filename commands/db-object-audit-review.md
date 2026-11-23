@@ -1,6 +1,6 @@
 ---
-description: Internal RA review of db object audit
-argument-hint: <release-folder>
+description: "Internal RA review of db object audit"
+argument-hint: "<release-folder>"
 ---
 
 # Internal RA review of db object audit

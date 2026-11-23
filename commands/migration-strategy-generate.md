@@ -1,6 +1,6 @@
 ---
-description: Generate platform-pair translation guide, phasing, rollback, equivalency criteria
-argument-hint: <release-folder>
+description: "Generate platform-pair translation guide, phasing, rollback, equivalency criteria"
+argument-hint: "<release-folder>"
 ---
 
 # Generate platform-pair translation guide, phasing, rollback, equivalency criteria

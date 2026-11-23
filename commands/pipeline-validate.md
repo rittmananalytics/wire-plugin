@@ -1,6 +1,6 @@
 ---
-description: Validate pipeline code quality
-argument-hint: <project-folder>
+description: "Validate pipeline code quality"
+argument-hint: "<project-folder>"
 ---
 
 # Validate pipeline code quality

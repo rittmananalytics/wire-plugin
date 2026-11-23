@@ -1,6 +1,6 @@
 ---
-description: Validate ingestion audit completeness and migration flags
-argument-hint: <release-folder>
+description: "Validate ingestion audit completeness and migration flags"
+argument-hint: "<release-folder>"
 ---
 
 # Validate ingestion audit completeness and migration flags

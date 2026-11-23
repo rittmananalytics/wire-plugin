@@ -1,6 +1,6 @@
 ---
-description: Looker admin sign-off on view files before semantic layer metric build
-argument-hint: <release-folder>
+description: "Looker admin sign-off on view files before semantic layer metric build"
+argument-hint: "<release-folder>"
 ---
 
 # Looker admin sign-off on view files before semantic layer metric build

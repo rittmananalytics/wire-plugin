@@ -1,6 +1,6 @@
 ---
-description: Stage and commit generated or validated Wire artifacts to git
-argument-hint: <release-folder> <artifact> <action>
+description: "Stage and commit generated or validated Wire artifacts to git"
+argument-hint: "<release-folder> <artifact> <action>"
 ---
 
 # Stage and commit generated or validated Wire artifacts to git

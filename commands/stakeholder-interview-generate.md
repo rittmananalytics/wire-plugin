@@ -1,6 +1,6 @@
 ---
-description: Generate a stakeholder interview write-up with the mandatory four-tag template
-argument-hint: <release-folder>
+description: "Generate a stakeholder interview write-up with the mandatory four-tag template"
+argument-hint: "<release-folder>"
 ---
 
 # Generate a stakeholder interview write-up with the mandatory four-tag template

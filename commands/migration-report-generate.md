@@ -1,6 +1,6 @@
 ---
-description: Generate post-migration report
-argument-hint: <release-folder>
+description: "Generate post-migration report"
+argument-hint: "<release-folder>"
 ---
 
 # Generate post-migration report

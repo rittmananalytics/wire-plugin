@@ -1,6 +1,6 @@
 ---
-description: Produce the transport plan as a dry-run artifact: the four id-rewrites plus SQL-text rewrites of hardcoded source-project table references, writing nothing to either instance
-argument-hint: <release-folder> [--collection id] [--dashboard id]
+description: "Produce the transport plan as a dry-run artifact: the four id-rewrites plus SQL-text rewrites of hardcoded source-project table references, writing nothing to either instance"
+argument-hint: "<release-folder> [--collection id] [--dashboard id]"
 ---
 
 # Produce the transport plan as a dry-run artifact: the four id-rewrites plus SQL-text rewrites of hardcoded source-project table references, writing nothing to either instance

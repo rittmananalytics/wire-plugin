@@ -1,6 +1,6 @@
 ---
-description: Deploy a branch's changed Airflow files to the dev environment, one file at a time, after the deploy target check allows every file and the user confirms
-argument-hint: <release-folder> [--target <env>] [--files <path>...] [--dry-run]
+description: "Deploy a branch's changed Airflow files to the dev environment, one file at a time, after the deploy target check allows every file and the user confirms"
+argument-hint: "<release-folder> [--target <env>] [--files <path>...] [--dry-run]"
 ---
 
 # Deploy a branch's changed Airflow files to the dev environment, one file at a time, after the deploy target check allows every file and the user confirms

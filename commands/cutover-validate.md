@@ -1,6 +1,6 @@
 ---
-description: Validate cutover runbook completeness
-argument-hint: <release-folder>
+description: "Validate cutover runbook completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate cutover runbook completeness

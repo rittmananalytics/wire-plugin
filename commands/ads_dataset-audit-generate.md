@@ -1,6 +1,6 @@
 ---
-description: Inventory warehouse tables, identify duplicates, grade governance maturity
-argument-hint: <release-folder>
+description: "Inventory warehouse tables, identify duplicates, grade governance maturity"
+argument-hint: "<release-folder>"
 ---
 
 # Inventory warehouse tables, identify duplicates, grade governance maturity

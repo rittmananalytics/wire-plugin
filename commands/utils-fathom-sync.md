@@ -1,6 +1,6 @@
 ---
-description: Pull new Fathom call transcripts for this engagement's client into .wire/engagement/calls/, then extract findings
-argument-hint: [--after YYYY-MM-DD] [--before YYYY-MM-DD] [--limit N] [--dry-run] [--no-findings]
+description: "Pull new Fathom call transcripts for this engagement's client into .wire/engagement/calls/, then extract findings"
+argument-hint: "[--after YYYY-MM-DD] [--before YYYY-MM-DD] [--limit N] [--dry-run] [--no-findings]"
 ---
 
 # Pull new Fathom call transcripts for this engagement's client into .wire/engagement/calls/, then extract findings

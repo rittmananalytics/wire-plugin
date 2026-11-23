@@ -1,6 +1,6 @@
 ---
-description: Generate formal release brief from the approved pitch
-argument-hint: <release-folder>
+description: "Generate formal release brief from the approved pitch"
+argument-hint: "<release-folder>"
 ---
 
 # Generate formal release brief from the approved pitch

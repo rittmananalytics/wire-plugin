@@ -1,6 +1,6 @@
 ---
-description: Usage-ranked inventory, director rulings (parity or redesign, drop list, PDT disposition, permissions, topic design), model and content batches, register bootstrap
-argument-hint: <release-folder>
+description: "Usage-ranked inventory, director rulings (parity or redesign, drop list, PDT disposition, permissions, topic design), model and content batches, register bootstrap"
+argument-hint: "<release-folder>"
 ---
 
 # Usage-ranked inventory, director rulings (parity or redesign, drop list, PDT disposition, permissions, topic design), model and content batches, register bootstrap

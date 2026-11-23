@@ -1,6 +1,6 @@
 ---
-description: Static pre-warehouse equivalence lint — dialect parse-check plus silent-behaviour-change rules on translated models
-argument-hint: <release-folder> [--batch N] [--model name] [--severity LEVEL] [--format FORMAT]
+description: "Static pre-warehouse equivalence lint — dialect parse-check plus silent-behaviour-change rules on translated models"
+argument-hint: "<release-folder> [--batch N] [--model name] [--severity LEVEL] [--format FORMAT]"
 ---
 
 # Static pre-warehouse equivalence lint — dialect parse-check plus silent-behaviour-change rules on translated models

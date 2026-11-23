@@ -1,6 +1,6 @@
 ---
-description: Validate release brief against the pitch
-argument-hint: <release-folder>
+description: "Validate release brief against the pitch"
+argument-hint: "<release-folder>"
 ---
 
 # Validate release brief against the pitch

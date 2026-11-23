@@ -1,6 +1,6 @@
 ---
-description: Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric
-argument-hint: <release-folder>
+description: "Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric

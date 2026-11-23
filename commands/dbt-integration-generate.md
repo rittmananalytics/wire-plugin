@@ -1,6 +1,6 @@
 ---
-description: Generate dbt integration-layer models only (alternative to the monolithic dbt-generate)
-argument-hint: <project-folder>
+description: "Generate dbt integration-layer models only (alternative to the monolithic dbt-generate)"
+argument-hint: "<project-folder>"
 ---
 
 # Generate dbt integration-layer models only (alternative to the monolithic dbt-generate)

@@ -1,6 +1,6 @@
 ---
-description: Validate semantic layer
-argument-hint: <project-folder>
+description: "Validate semantic layer"
+argument-hint: "<project-folder>"
 ---
 
 # Validate semantic layer

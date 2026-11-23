@@ -1,6 +1,6 @@
 ---
-description: Confirm stakeholder map with sponsor
-argument-hint: <release-folder>
+description: "Confirm stakeholder map with sponsor"
+argument-hint: "<release-folder>"
 ---
 
 # Confirm stakeholder map with sponsor

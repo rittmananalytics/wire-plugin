@@ -1,6 +1,6 @@
 ---
-description: Generate interactive dbt lineage HTML, with optional reverse-ETL layer showing Hightouch syncs and destinations
-argument-hint: <release-folder>
+description: "Generate interactive dbt lineage HTML, with optional reverse-ETL layer showing Hightouch syncs and destinations"
+argument-hint: "<release-folder>"
 ---
 
 # Generate interactive dbt lineage HTML, with optional reverse-ETL layer showing Hightouch syncs and destinations

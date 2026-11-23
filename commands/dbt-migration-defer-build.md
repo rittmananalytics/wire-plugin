@@ -1,6 +1,6 @@
 ---
-description: Cost-guarded sandbox build: refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors, dry-run cost screen
-argument-hint: <release-folder> --models <list> [--allow-graph] [--override-budget] [--dry-run]
+description: "Cost-guarded sandbox build: refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors, dry-run cost screen"
+argument-hint: "<release-folder> --models <list> [--allow-graph] [--override-budget] [--dry-run]"
 ---
 
 # Cost-guarded sandbox build: refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors, dry-run cost screen

@@ -1,6 +1,6 @@
 ---
-description: Experimental: Validate a LookML batch on the branch: Looker validator clean, fields present, one smoke query per explore
-argument-hint: <release-folder> [--batch N]
+description: "Experimental: Validate a LookML batch on the branch: Looker validator clean, fields present, one smoke query per explore"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Experimental: Validate a LookML batch on the branch: Looker validator clean, fields present, one smoke query per explore

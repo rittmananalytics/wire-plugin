@@ -1,6 +1,6 @@
 ---
-description: AI-generated field descriptions for all columns
-argument-hint: <release-folder>
+description: "AI-generated field descriptions for all columns"
+argument-hint: "<release-folder>"
 ---
 
 # AI-generated field descriptions for all columns

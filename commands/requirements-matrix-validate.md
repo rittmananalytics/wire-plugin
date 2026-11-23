@@ -1,6 +1,6 @@
 ---
-description: Validate requirements matrix completeness and tag consistency
-argument-hint: <release-folder>
+description: "Validate requirements matrix completeness and tag consistency"
+argument-hint: "<release-folder>"
 ---
 
 # Validate requirements matrix completeness and tag consistency

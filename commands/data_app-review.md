@@ -1,6 +1,6 @@
 ---
-description: Experimental: Record stakeholder review of a Looker Data App against the approved mockup, on the local preview or the published dashboard
-argument-hint: <release-folder> [--app <slug>]
+description: "Experimental: Record stakeholder review of a Looker Data App against the approved mockup, on the local preview or the published dashboard"
+argument-hint: "<release-folder> [--app <slug>]"
 ---
 
 # Experimental: Record stakeholder review of a Looker Data App against the approved mockup, on the local preview or the published dashboard

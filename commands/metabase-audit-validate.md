@@ -1,6 +1,6 @@
 ---
-description: Validate Metabase audit completeness and dependency coverage
-argument-hint: <release-folder>
+description: "Validate Metabase audit completeness and dependency coverage"
+argument-hint: "<release-folder>"
 ---
 
 # Validate Metabase audit completeness and dependency coverage

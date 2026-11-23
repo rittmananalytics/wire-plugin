@@ -1,6 +1,6 @@
 ---
-description: Create a Wire-aware GitHub pull request pre-populated from session artifacts
-argument-hint: [release-folder]
+description: "Create a Wire-aware GitHub pull request pre-populated from session artifacts"
+argument-hint: "[release-folder]"
 ---
 
 # Create a Wire-aware GitHub pull request pre-populated from session artifacts

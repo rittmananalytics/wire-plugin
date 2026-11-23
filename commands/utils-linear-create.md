@@ -1,6 +1,6 @@
 ---
-description: Create Linear Project and issues for a project
-argument-hint: <project-folder>
+description: "Create Linear Project and issues for a project"
+argument-hint: "<project-folder>"
 ---
 
 # Create Linear Project and issues for a project

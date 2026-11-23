@@ -1,6 +1,6 @@
 ---
-description: Validate migration report completeness
-argument-hint: <release-folder>
+description: "Validate migration report completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate migration report completeness

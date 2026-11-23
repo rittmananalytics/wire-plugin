@@ -1,6 +1,6 @@
 ---
-description: Staging SQL and sources.yml generation (BigQuery only)
-argument-hint: <release-folder>
+description: "Staging SQL and sources.yml generation (BigQuery only)"
+argument-hint: "<release-folder>"
 ---
 
 # Staging SQL and sources.yml generation (BigQuery only)

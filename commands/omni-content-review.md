@@ -1,6 +1,6 @@
 ---
-description: Release director review of a migrated dashboard batch
-argument-hint: <release-folder> [--batch N]
+description: "Release director review of a migrated dashboard batch"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Release director review of a migrated dashboard batch

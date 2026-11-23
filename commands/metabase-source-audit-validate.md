@@ -1,6 +1,6 @@
 ---
-description: Experimental: Validate the Metabase source audit: reproducible, every construct classified, IR valid, tables synced, secrets redacted
-argument-hint: <release-folder>
+description: "Experimental: Validate the Metabase source audit: reproducible, every construct classified, IR valid, tables synced, secrets redacted"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Validate the Metabase source audit: reproducible, every construct classified, IR valid, tables synced, secrets redacted

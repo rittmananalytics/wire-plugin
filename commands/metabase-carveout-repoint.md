@@ -1,6 +1,6 @@
 ---
-description: Execute the validated same-instance repoint plan: duplicate a card into its target collection, or swap the rewritten query into the existing production card in place, staged for review first
-argument-hint: <release-folder> [--stage] [--promote] [--collection id] [--dashboard id] [--card id] [--dry-run]
+description: "Execute the validated same-instance repoint plan: duplicate a card into its target collection, or swap the rewritten query into the existing production card in place, staged for review first"
+argument-hint: "<release-folder> [--stage] [--promote] [--collection id] [--dashboard id] [--card id] [--dry-run]"
 ---
 
 # Execute the validated same-instance repoint plan: duplicate a card into its target collection, or swap the rewritten query into the existing production card in place, staged for review first

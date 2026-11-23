@@ -1,6 +1,6 @@
 ---
-description: Refactor dbt project to implement canonical models and deprecation notices
-argument-hint: <release-folder>
+description: "Refactor dbt project to implement canonical models and deprecation notices"
+argument-hint: "<release-folder>"
 ---
 
 # Refactor dbt project to implement canonical models and deprecation notices

@@ -1,6 +1,6 @@
 ---
-description: Experimental: Validate the metric catalogue: reproducible, every group proposed, every conflict parked or ruled
-argument-hint: <release-folder>
+description: "Experimental: Validate the metric catalogue: reproducible, every group proposed, every conflict parked or ruled"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Validate the metric catalogue: reproducible, every group proposed, every conflict parked or ruled

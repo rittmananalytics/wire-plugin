@@ -1,6 +1,6 @@
 ---
-description: Define a custom release type from SoW or project documents — map deliverables to Wire commands or generate bespoke specs
-argument-hint: <release-folder>
+description: "Define a custom release type from SoW or project documents — map deliverables to Wire commands or generate bespoke specs"
+argument-hint: "<release-folder>"
 ---
 
 # Define a custom release type from SoW or project documents — map deliverables to Wire commands or generate bespoke specs

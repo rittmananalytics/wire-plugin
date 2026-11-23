@@ -1,6 +1,6 @@
 ---
-description: Review pipeline design
-argument-hint: <project-folder>
+description: "Review pipeline design"
+argument-hint: "<project-folder>"
 ---
 
 # Review pipeline design

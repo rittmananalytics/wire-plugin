@@ -1,6 +1,6 @@
 ---
-description: Sponsor review of the delivery roadmap and Release 1 scope
-argument-hint: <release-folder>
+description: "Sponsor review of the delivery roadmap and Release 1 scope"
+argument-hint: "<release-folder>"
 ---
 
 # Sponsor review of the delivery roadmap and Release 1 scope

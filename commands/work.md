@@ -1,6 +1,6 @@
 ---
-description: Work a ticket inside an existing release — plan with a command or skill named per step, run only the approved plan, publish via the client's PR, patch stale documents and reconcile the record
-argument-hint: <release-folder> [ticket-or-description]
+description: "Work a ticket inside an existing release — plan with a command or skill named per step, run only the approved plan, publish via the client's PR, patch stale documents and reconcile the record"
+argument-hint: "<release-folder> [ticket-or-description]"
 ---
 
 # Work a ticket inside an existing release — plan with a command or skill named per step, run only the approved plan, publish via the client's PR, patch stale documents and reconcile the record

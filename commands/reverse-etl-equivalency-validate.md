@@ -1,6 +1,6 @@
 ---
-description: Sync-level equivalence — old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass
-argument-hint: <release-folder> [--syncs name1,name2] [--tier N]
+description: "Sync-level equivalence — old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass"
+argument-hint: "<release-folder> [--syncs name1,name2] [--tier N]"
 ---
 
 # Sync-level equivalence — old sync vs target twin at the sync grain (PK row set + changed-field hashes), tier-2 decoy diff where possible; promotion requires a tier-1 pass

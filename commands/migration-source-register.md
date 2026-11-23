@@ -1,6 +1,6 @@
 ---
-description: Register a source repository for a given migration source type
-argument-hint: <release-folder> <source_type> <github_url>
+description: "Register a source repository for a given migration source type"
+argument-hint: "<release-folder> <source_type> <github_url>"
 ---
 
 # Register a source repository for a given migration source type

@@ -1,6 +1,6 @@
 ---
-description: Review kick-off deck internally and export to PDF on approval
-argument-hint: [release-folder]
+description: "Review kick-off deck internally and export to PDF on approval"
+argument-hint: "[release-folder]"
 ---
 
 # Review kick-off deck internally and export to PDF on approval

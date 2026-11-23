@@ -1,6 +1,6 @@
 ---
-description: Generate cutover runbook (SAFETY GATE — point of no return)
-argument-hint: <release-folder>
+description: "Generate cutover runbook (SAFETY GATE — point of no return)"
+argument-hint: "<release-folder>"
 ---
 
 # Generate cutover runbook (SAFETY GATE — point of no return)

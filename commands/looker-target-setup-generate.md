@@ -1,6 +1,6 @@
 ---
-description: Experimental: Prepare the Looker target: connection, LookML migration branch, folders, groups and user attributes
-argument-hint: <release-folder>
+description: "Experimental: Prepare the Looker target: connection, LookML migration branch, folders, groups and user attributes"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Prepare the Looker target: connection, LookML migration branch, folders, groups and user attributes

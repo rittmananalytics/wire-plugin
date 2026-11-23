@@ -4,7 +4,7 @@
 
 **Rittman Analytics**
 
-**Version**: 4.6.7 | **Date**: November 2026
+**Version**: 4.6.8 | **Date**: November 2026
 
 ---
 
@@ -5577,6 +5577,12 @@ The detailed content — command sequences, scenario background, deliverable tab
 ## 31. Release Notes
 
 Recent release history for the Wire Framework. Full changelog from v3.0.0 onwards is in [CHANGELOG.md](CHANGELOG.md). Detailed per-release notes are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
+---
+
+### v4.6.8: command front matter is valid YAML (November 2026)
+
+- **Valid front matter**: the Claude Code plugin's command files write each description and argument hint as quoted text, so every file's front matter is valid YAML. Claude Code reads the commands as before; other tools that read the files no longer fail on 71 of them.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
-description: Experimental: Release director review of a migrated LookML dashboard batch
-argument-hint: <release-folder> [--batch N]
+description: "Experimental: Release director review of a migrated LookML dashboard batch"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Experimental: Release director review of a migrated LookML dashboard batch

@@ -1,6 +1,6 @@
 ---
-description: Translate dbt models batch by batch to target dialect
-argument-hint: <release-folder> [--batch N] [--model name]
+description: "Translate dbt models batch by batch to target dialect"
+argument-hint: "<release-folder> [--batch N] [--model name]"
 ---
 
 # Translate dbt models batch by batch to target dialect

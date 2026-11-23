@@ -1,6 +1,6 @@
 ---
-description: Human adjudication gate for relocated carve-out dbt models
-argument-hint: <release-folder> [--wave id | --batch N | --select selector]
+description: "Human adjudication gate for relocated carve-out dbt models"
+argument-hint: "<release-folder> [--wave id | --batch N | --select selector]"
 ---
 
 # Human adjudication gate for relocated carve-out dbt models

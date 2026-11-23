@@ -1,6 +1,6 @@
 ---
-description: Data team review of semantic layer implementation
-argument-hint: <release-folder>
+description: "Data team review of semantic layer implementation"
+argument-hint: "<release-folder>"
 ---
 
 # Data team review of semantic layer implementation

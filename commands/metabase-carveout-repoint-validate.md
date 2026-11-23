@@ -1,6 +1,6 @@
 ---
-description: Validate the same-instance repoint plan: re-derive the SQL scan from each card's own SQL, prove every reference accounted for, every remap resolves on the mapped database, every in-place row staged
-argument-hint: <release-folder>
+description: "Validate the same-instance repoint plan: re-derive the SQL scan from each card's own SQL, prove every reference accounted for, every remap resolves on the mapped database, every in-place row staged"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the same-instance repoint plan: re-derive the SQL scan from each card's own SQL, prove every reference accounted for, every remap resolves on the mapped database, every in-place row staged

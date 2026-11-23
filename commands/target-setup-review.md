@@ -1,6 +1,6 @@
 ---
-description: Safety-gated approval before writing to target platform
-argument-hint: <release-folder>
+description: "Safety-gated approval before writing to target platform"
+argument-hint: "<release-folder>"
 ---
 
 # Safety-gated approval before writing to target platform

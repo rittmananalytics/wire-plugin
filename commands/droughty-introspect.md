@@ -1,6 +1,6 @@
 ---
-description: Schema inventory report — tables, columns, PK/FK coverage
-argument-hint: <release-folder>
+description: "Schema inventory report — tables, columns, PK/FK coverage"
+argument-hint: "<release-folder>"
 ---
 
 # Schema inventory report — tables, columns, PK/FK coverage

@@ -1,6 +1,6 @@
 ---
-description: Publish the release's metadata into the warehouse AGENTS schema for AI agents: plan the providers (dbt manifest, LookML, Omni, OSI, Sigma, skills), write the pinned GitHub workflow, agents.yml and the skills, complete the warehouse guide, offer to set the repository secrets from the dbt profile, publish from CI or with --publish; --lookml-repo publishes LookML from its own repository
-argument-hint: <release-folder> [--providers <list>] [--skills-source <path>]... [--lookml-repo <owner/repo[@ref]>] [--provider <name>] [--no-guide] [--set-secrets] [--publish] [--no-warehouse] [--force]
+description: "Publish the release's metadata into the warehouse AGENTS schema for AI agents: plan the providers (dbt manifest, LookML, Omni, OSI, Sigma, skills), write the pinned GitHub workflow, agents.yml and the skills, complete the warehouse guide, offer to set the repository secrets from the dbt profile, publish from CI or with --publish; --lookml-repo publishes LookML from its own repository"
+argument-hint: "<release-folder> [--providers <list>] [--skills-source <path>]... [--lookml-repo <owner/repo[@ref]>] [--provider <name>] [--no-guide] [--set-secrets] [--publish] [--no-warehouse] [--force]"
 ---
 
 # Publish the release's metadata into the warehouse AGENTS schema for AI agents: plan the providers (dbt manifest, LookML, Omni, OSI, Sigma, skills), write the pinned GitHub workflow, agents.yml and the skills, complete the warehouse guide, offer to set the repository secrets from the dbt profile, publish from CI or with --publish; --lookml-repo publishes LookML from its own repository

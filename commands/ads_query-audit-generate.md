@@ -1,6 +1,6 @@
 ---
-description: Analyse query history to extract patterns and classify by semantic-layer answerability
-argument-hint: <release-folder>
+description: "Analyse query history to extract patterns and classify by semantic-layer answerability"
+argument-hint: "<release-folder>"
 ---
 
 # Analyse query history to extract patterns and classify by semantic-layer answerability

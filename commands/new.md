@@ -1,6 +1,6 @@
 ---
-description: Create a new Wire engagement or add a release to an existing engagement
-argument-hint: (no arguments - interactive)
+description: "Create a new Wire engagement or add a release to an existing engagement"
+argument-hint: "(no arguments - interactive)"
 model: claude-fable-5
 ---
 

@@ -1,6 +1,6 @@
 ---
-description: Generate deployment artifacts
-argument-hint: <project-folder>
+description: "Generate deployment artifacts"
+argument-hint: "<project-folder>"
 ---
 
 # Generate deployment artifacts

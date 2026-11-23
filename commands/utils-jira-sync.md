@@ -1,6 +1,6 @@
 ---
-description: Sync artifact status to Jira
-argument-hint: <project-folder> <artifact> <action>
+description: "Sync artifact status to Jira"
+argument-hint: "<project-folder> <artifact> <action>"
 ---
 
 # Sync artifact status to Jira

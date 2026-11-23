@@ -1,6 +1,6 @@
 ---
-description: Generate the Discovery Requirements Matrix from tagged interviews
-argument-hint: <release-folder>
+description: "Generate the Discovery Requirements Matrix from tagged interviews"
+argument-hint: "<release-folder>"
 ---
 
 # Generate the Discovery Requirements Matrix from tagged interviews

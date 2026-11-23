@@ -1,6 +1,6 @@
 ---
-description: Safety-gated sign-off before live cutover
-argument-hint: <release-folder>
+description: "Safety-gated sign-off before live cutover"
+argument-hint: "<release-folder>"
 ---
 
 # Safety-gated sign-off before live cutover

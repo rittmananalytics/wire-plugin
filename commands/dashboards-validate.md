@@ -1,6 +1,6 @@
 ---
-description: Validate dashboards
-argument-hint: <project-folder>
+description: "Validate dashboards"
+argument-hint: "<project-folder>"
 ---
 
 # Validate dashboards

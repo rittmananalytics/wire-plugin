@@ -1,6 +1,6 @@
 ---
-description: Validate Omni audit completeness and dependency coverage
-argument-hint: <release-folder>
+description: "Validate Omni audit completeness and dependency coverage"
+argument-hint: "<release-folder>"
 ---
 
 # Validate Omni audit completeness and dependency coverage

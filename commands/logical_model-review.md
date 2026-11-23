@@ -1,6 +1,6 @@
 ---
-description: Review the logical model — precedence and attribution decisions confirmed by the people who own them, open questions closed or owned
-argument-hint: <release-folder>
+description: "Review the logical model — precedence and attribution decisions confirmed by the people who own them, open questions closed or owned"
+argument-hint: "<release-folder>"
 ---
 
 # Review the logical model — precedence and attribution decisions confirmed by the people who own them, open questions closed or owned

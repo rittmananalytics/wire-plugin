@@ -1,6 +1,6 @@
 ---
-description: Domain owner review of knowledge skill files
-argument-hint: <release-folder>
+description: "Domain owner review of knowledge skill files"
+argument-hint: "<release-folder>"
 ---
 
 # Domain owner review of knowledge skill files

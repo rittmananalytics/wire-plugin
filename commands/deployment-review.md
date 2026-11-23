@@ -1,6 +1,6 @@
 ---
-description: Review deployment plan
-argument-hint: <project-folder>
+description: "Review deployment plan"
+argument-hint: "<project-folder>"
 ---
 
 # Review deployment plan

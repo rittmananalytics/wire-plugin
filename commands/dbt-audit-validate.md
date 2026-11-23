@@ -1,6 +1,6 @@
 ---
-description: Validate dbt audit completeness and complexity ratings
-argument-hint: <release-folder>
+description: "Validate dbt audit completeness and complexity ratings"
+argument-hint: "<release-folder>"
 ---
 
 # Validate dbt audit completeness and complexity ratings

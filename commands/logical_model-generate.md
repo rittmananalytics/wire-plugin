@@ -1,6 +1,6 @@
 ---
-description: Logical data model between the conceptual model and the physical dbt design — per-entity sources and grain, keys, cardinality, identity resolution, normalisation and attribution rules
-argument-hint: <release-folder> [--domain <name>]
+description: "Logical data model between the conceptual model and the physical dbt design — per-entity sources and grain, keys, cardinality, identity resolution, normalisation and attribution rules"
+argument-hint: "<release-folder> [--domain <name>]"
 ---
 
 # Logical data model between the conceptual model and the physical dbt design — per-entity sources and grain, keys, cardinality, identity resolution, normalisation and attribution rules

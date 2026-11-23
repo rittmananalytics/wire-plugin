@@ -1,6 +1,6 @@
 ---
-description: Sign-off on user guide and maintenance docs before handover
-argument-hint: <release-folder>
+description: "Sign-off on user guide and maintenance docs before handover"
+argument-hint: "<release-folder>"
 ---
 
 # Sign-off on user guide and maintenance docs before handover

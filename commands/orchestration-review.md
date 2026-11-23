@@ -1,6 +1,6 @@
 ---
-description: Review orchestration setup with stakeholders
-argument-hint: <project-folder>
+description: "Review orchestration setup with stakeholders"
+argument-hint: "<project-folder>"
 ---
 
 # Review orchestration setup with stakeholders

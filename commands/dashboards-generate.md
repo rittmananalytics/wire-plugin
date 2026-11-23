@@ -1,6 +1,6 @@
 ---
-description: Generate dashboards
-argument-hint: <project-folder>
+description: "Generate dashboards"
+argument-hint: "<project-folder>"
 ---
 
 # Generate dashboards

@@ -1,6 +1,6 @@
 ---
-description: Implement semantic layer metrics from approved design
-argument-hint: <release-folder>
+description: "Implement semantic layer metrics from approved design"
+argument-hint: "<release-folder>"
 ---
 
 # Implement semantic layer metrics from approved design

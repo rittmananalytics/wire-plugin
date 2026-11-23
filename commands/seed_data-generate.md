@@ -1,6 +1,6 @@
 ---
-description: Generate seed data files from data model
-argument-hint: <project-folder>
+description: "Generate seed data files from data model"
+argument-hint: "<project-folder>"
 ---
 
 # Generate seed data files from data model

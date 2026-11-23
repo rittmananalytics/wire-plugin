@@ -1,6 +1,6 @@
 ---
-description: Run dbt tests and validation
-argument-hint: <project-folder>
+description: "Run dbt tests and validation"
+argument-hint: "<project-folder>"
 ---
 
 # Run dbt tests and validation

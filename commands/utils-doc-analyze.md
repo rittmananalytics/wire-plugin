@@ -1,6 +1,6 @@
 ---
-description: Extract deliverables, acceptance criteria, and timeline from SoW or project documents
-argument-hint: <file-path-or-url> [<file-path-2> ...]
+description: "Extract deliverables, acceptance criteria, and timeline from SoW or project documents"
+argument-hint: "<file-path-or-url> [<file-path-2> ...]"
 ---
 
 # Extract deliverables, acceptance criteria, and timeline from SoW or project documents

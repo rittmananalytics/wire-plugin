@@ -1,6 +1,6 @@
 ---
-description: Generate UAT plan
-argument-hint: <project-folder>
+description: "Generate UAT plan"
+argument-hint: "<project-folder>"
 ---
 
 # Generate UAT plan

@@ -1,6 +1,6 @@
 ---
-description: Tested-in-dev evidence: per changed file, the dev copy is the PR head, it parsed and it ran after the upload, every mapped task included; verdict yes, partially or no. Read only
-argument-hint: <release-folder> [--target <env>]
+description: "Tested-in-dev evidence: per changed file, the dev copy is the PR head, it parsed and it ran after the upload, every mapped task included; verdict yes, partially or no. Read only"
+argument-hint: "<release-folder> [--target <env>]"
 ---
 
 # Tested-in-dev evidence: per changed file, the dev copy is the PR head, it parsed and it ran after the upload, every mapped task included; verdict yes, partially or no. Read only

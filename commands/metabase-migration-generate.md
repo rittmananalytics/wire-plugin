@@ -1,6 +1,6 @@
 ---
-description: Generate Metabase migration runbook — translate card SQL, remap permission groups, two-stage connection repoint
-argument-hint: <release-folder>
+description: "Generate Metabase migration runbook — translate card SQL, remap permission groups, two-stage connection repoint"
+argument-hint: "<release-folder>"
 ---
 
 # Generate Metabase migration runbook — translate card SQL, remap permission groups, two-stage connection repoint

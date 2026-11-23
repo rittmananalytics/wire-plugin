@@ -1,6 +1,6 @@
 ---
-description: Sync a generated artifact to the document store
-argument-hint: <project-folder> <artifact>
+description: "Sync a generated artifact to the document store"
+argument-hint: "<project-folder> <artifact>"
 ---
 
 # Sync a generated artifact to the document store

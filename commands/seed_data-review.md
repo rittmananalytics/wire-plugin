@@ -1,6 +1,6 @@
 ---
-description: Record stakeholder review of seed data
-argument-hint: <project-folder>
+description: "Record stakeholder review of seed data"
+argument-hint: "<project-folder>"
 ---
 
 # Record stakeholder review of seed data

@@ -1,6 +1,6 @@
 ---
-description: Experimental: Snapshot an Omni model and its dashboards through the Omni CLI and classify every view, field, topic, relationship, tile and control for the move to Looker
-argument-hint: <release-folder>
+description: "Experimental: Snapshot an Omni model and its dashboards through the Omni CLI and classify every view, field, topic, relationship, tile and control for the move to Looker"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Snapshot an Omni model and its dashboards through the Omni CLI and classify every view, field, topic, relationship, tile and control for the move to Looker

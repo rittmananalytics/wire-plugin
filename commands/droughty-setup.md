@@ -1,6 +1,6 @@
 ---
-description: Install Droughty, generate profile.yaml and droughty_project.yaml
-argument-hint: <release-folder> [--force]
+description: "Install Droughty, generate profile.yaml and droughty_project.yaml"
+argument-hint: "<release-folder> [--force]"
 ---
 
 # Install Droughty, generate profile.yaml and droughty_project.yaml

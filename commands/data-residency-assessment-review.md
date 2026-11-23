@@ -1,6 +1,6 @@
 ---
-description: Client DPO/legal sign-off gate for the data residency assessment
-argument-hint: <release-folder>
+description: "Client DPO/legal sign-off gate for the data residency assessment"
+argument-hint: "<release-folder>"
 ---
 
 # Client DPO/legal sign-off gate for the data residency assessment

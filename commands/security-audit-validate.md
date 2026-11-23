@@ -1,6 +1,6 @@
 ---
-description: Validate security audit completeness
-argument-hint: <release-folder>
+description: "Validate security audit completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate security audit completeness

@@ -1,6 +1,6 @@
 ---
-description: Validate the Agents Schema publication — pinned workflow, sources unchanged, skills well formed, no credentials, AGENTS.ROOT providers, row counts, skill rows, no stale models
-argument-hint: <release-folder> [--no-warehouse]
+description: "Validate the Agents Schema publication — pinned workflow, sources unchanged, skills well formed, no credentials, AGENTS.ROOT providers, row counts, skill rows, no stale models"
+argument-hint: "<release-folder> [--no-warehouse]"
 ---
 
 # Validate the Agents Schema publication — pinned workflow, sources unchanged, skills well formed, no credentials, AGENTS.ROOT providers, row counts, skill rows, no stale models

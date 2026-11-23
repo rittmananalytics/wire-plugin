@@ -1,6 +1,6 @@
 ---
-description: Validate Findings Playback deck structure and EDITMODE population
-argument-hint: <release-folder>
+description: "Validate Findings Playback deck structure and EDITMODE population"
+argument-hint: "<release-folder>"
 ---
 
 # Validate Findings Playback deck structure and EDITMODE population

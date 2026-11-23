@@ -1,6 +1,6 @@
 ---
-description: Generate data quality tests
-argument-hint: <project-folder>
+description: "Generate data quality tests"
+argument-hint: "<project-folder>"
 ---
 
 # Generate data quality tests

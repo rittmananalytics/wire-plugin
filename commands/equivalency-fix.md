@@ -1,6 +1,6 @@
 ---
-description: Apply agreed fix and re-run equivalency checks for affected objects
-argument-hint: <release-folder> --object <name> --approach <description>
+description: "Apply agreed fix and re-run equivalency checks for affected objects"
+argument-hint: "<release-folder> --object <name> --approach <description>"
 ---
 
 # Apply agreed fix and re-run equivalency checks for affected objects

@@ -1,6 +1,6 @@
 ---
-description: Catalog Hightouch reverse ETL syncs, models, and destinations
-argument-hint: <release-folder>
+description: "Catalog Hightouch reverse ETL syncs, models, and destinations"
+argument-hint: "<release-folder>"
 ---
 
 # Catalog Hightouch reverse ETL syncs, models, and destinations

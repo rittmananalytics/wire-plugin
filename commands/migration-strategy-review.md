@@ -1,6 +1,6 @@
 ---
-description: Client sign-off on migration strategy
-argument-hint: <release-folder>
+description: "Client sign-off on migration strategy"
+argument-hint: "<release-folder>"
 ---
 
 # Client sign-off on migration strategy

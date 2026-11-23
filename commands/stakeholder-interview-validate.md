@@ -1,6 +1,6 @@
 ---
-description: Validate four-tag completeness on every theme bullet
-argument-hint: <release-folder>
+description: "Validate four-tag completeness on every theme bullet"
+argument-hint: "<release-folder>"
 ---
 
 # Validate four-tag completeness on every theme bullet

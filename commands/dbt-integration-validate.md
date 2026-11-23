@@ -1,6 +1,6 @@
 ---
-description: Validate dbt integration-layer models
-argument-hint: <project-folder>
+description: "Validate dbt integration-layer models"
+argument-hint: "<project-folder>"
 ---
 
 # Validate dbt integration-layer models

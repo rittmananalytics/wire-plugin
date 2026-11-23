@@ -1,6 +1,6 @@
 ---
-description: Validate engagement brief completeness
-argument-hint: <release-folder>
+description: "Validate engagement brief completeness"
+argument-hint: "<release-folder>"
 ---
 
 # Validate engagement brief completeness

@@ -1,6 +1,6 @@
 ---
-description: Validate refactored dbt project against real data
-argument-hint: <project-folder>
+description: "Validate refactored dbt project against real data"
+argument-hint: "<project-folder>"
 ---
 
 # Validate refactored dbt project against real data

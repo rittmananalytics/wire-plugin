@@ -1,6 +1,6 @@
 ---
-description: Client CI parity gate: detect the client repo's CI system, replicate its locally-runnable checks against a branch before raising, report pass/fail per check
-argument-hint: <release-folder> [--repo <path-or-role>] [--branch <name>]
+description: "Client CI parity gate: detect the client repo's CI system, replicate its locally-runnable checks against a branch before raising, report pass/fail per check"
+argument-hint: "<release-folder> [--repo <path-or-role>] [--branch <name>]"
 ---
 
 # Client CI parity gate: detect the client repo's CI system, replicate its locally-runnable checks against a branch before raising, report pass/fail per check

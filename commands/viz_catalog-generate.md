@@ -1,6 +1,6 @@
 ---
-description: Generate visualization catalog from mockup output
-argument-hint: <project-folder>
+description: "Generate visualization catalog from mockup output"
+argument-hint: "<project-folder>"
 ---
 
 # Generate visualization catalog from mockup output

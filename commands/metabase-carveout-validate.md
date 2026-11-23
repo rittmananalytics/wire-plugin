@@ -1,6 +1,6 @@
 ---
-description: Validate the Metabase carve-out — filters re-derived from the registry, no unfiltered card, dashcard-level removals, explicit shared-card decisions
-argument-hint: <release-folder>
+description: "Validate the Metabase carve-out — filters re-derived from the registry, no unfiltered card, dashcard-level removals, explicit shared-card decisions"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the Metabase carve-out — filters re-derived from the registry, no unfiltered card, dashcard-level removals, explicit shared-card decisions

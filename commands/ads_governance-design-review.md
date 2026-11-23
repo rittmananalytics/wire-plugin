@@ -1,6 +1,6 @@
 ---
-description: Stakeholder sign-off on canonical model and deprecation schedule
-argument-hint: <release-folder>
+description: "Stakeholder sign-off on canonical model and deprecation schedule"
+argument-hint: "<release-folder>"
 ---
 
 # Stakeholder sign-off on canonical model and deprecation schedule

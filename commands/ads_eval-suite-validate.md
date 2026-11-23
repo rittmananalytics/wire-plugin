@@ -1,6 +1,6 @@
 ---
-description: Run eval suite and check per-domain accuracy against targets
-argument-hint: <release-folder>
+description: "Run eval suite and check per-domain accuracy against targets"
+argument-hint: "<release-folder>"
 ---
 
 # Run eval suite and check per-domain accuracy against targets

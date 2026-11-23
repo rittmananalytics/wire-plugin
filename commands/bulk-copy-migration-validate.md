@@ -1,6 +1,6 @@
 ---
-description: Validate bulk copy runbook — tenant guard, two-stage gate, scoped service account
-argument-hint: <release-folder> [--wave id]
+description: "Validate bulk copy runbook — tenant guard, two-stage gate, scoped service account"
+argument-hint: "<release-folder> [--wave id]"
 ---
 
 # Validate bulk copy runbook — tenant guard, two-stage gate, scoped service account

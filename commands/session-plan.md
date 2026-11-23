@@ -1,6 +1,6 @@
 ---
-description: Optional planning ritual — propose a focused 3–5 step plan before starting work
-argument-hint: (optional: release-folder)
+description: "Optional planning ritual — propose a focused 3–5 step plan before starting work"
+argument-hint: "(optional: release-folder)"
 ---
 
 # Optional planning ritual — propose a focused 3–5 step plan before starting work

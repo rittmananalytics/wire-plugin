@@ -1,6 +1,6 @@
 ---
-description: Validate dbt Charts boards — dct structure and warehouse dry-run, ref()-only queries, no inline data, metadata, coverage
-argument-hint: <release-folder> [--no-warehouse]
+description: "Validate dbt Charts boards — dct structure and warehouse dry-run, ref()-only queries, no inline data, metadata, coverage"
+argument-hint: "<release-folder> [--no-warehouse]"
 ---
 
 # Validate dbt Charts boards — dct structure and warehouse dry-run, ref()-only queries, no inline data, metadata, coverage

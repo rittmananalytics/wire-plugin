@@ -1,6 +1,6 @@
 ---
-description: Appraise the client's current state — platform, sources, replication, tooling, documentation, governance, data quality — from documentation and interviews rather than system access
-argument-hint: <release-folder> [--section "<title>"]
+description: "Appraise the client's current state — platform, sources, replication, tooling, documentation, governance, data quality — from documentation and interviews rather than system access"
+argument-hint: "<release-folder> [--section \"<title>\"]"
 ---
 
 # Appraise the client's current state — platform, sources, replication, tooling, documentation, governance, data quality — from documentation and interviews rather than system access

@@ -1,6 +1,6 @@
 ---
-description: Safety-gated approval before the first tenant bulk-copy execution
-argument-hint: <release-folder> [--wave id]
+description: "Safety-gated approval before the first tenant bulk-copy execution"
+argument-hint: "<release-folder> [--wave id]"
 ---
 
 # Safety-gated approval before the first tenant bulk-copy execution

@@ -1,6 +1,6 @@
 ---
-description: Verify LookML view files are valid, canonical models covered, no orphaned column references
-argument-hint: <release-folder>
+description: "Verify LookML view files are valid, canonical models covered, no orphaned column references"
+argument-hint: "<release-folder>"
 ---
 
 # Verify LookML view files are valid, canonical models covered, no orphaned column references

@@ -1,6 +1,6 @@
 ---
-description: Validate documentation
-argument-hint: <project-folder>
+description: "Validate documentation"
+argument-hint: "<project-folder>"
 ---
 
 # Validate documentation

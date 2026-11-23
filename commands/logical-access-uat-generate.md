@@ -1,6 +1,6 @@
 ---
-description: Generate a region-scoped logical-access UAT plan and evidence pack (tenant carve-out)
-argument-hint: <release-folder> [--region <code>]
+description: "Generate a region-scoped logical-access UAT plan and evidence pack (tenant carve-out)"
+argument-hint: "<release-folder> [--region <code>]"
 ---
 
 # Generate a region-scoped logical-access UAT plan and evidence pack (tenant carve-out)

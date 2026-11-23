@@ -1,6 +1,6 @@
 ---
-description: Create Jira Epic and issues for a project
-argument-hint: <project-folder>
+description: "Create Jira Epic and issues for a project"
+argument-hint: "<project-folder>"
 ---
 
 # Create Jira Epic and issues for a project

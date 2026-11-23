@@ -1,6 +1,6 @@
 ---
-description: Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker or Omni
-argument-hint: <release-folder>
+description: "Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker or Omni"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker or Omni

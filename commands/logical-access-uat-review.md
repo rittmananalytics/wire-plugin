@@ -1,6 +1,6 @@
 ---
-description: Execute and sign off logical-access UAT — the isolation-proof gate before cutover
-argument-hint: <release-folder>
+description: "Execute and sign off logical-access UAT — the isolation-proof gate before cutover"
+argument-hint: "<release-folder>"
 ---
 
 # Execute and sign off logical-access UAT — the isolation-proof gate before cutover

@@ -1,6 +1,6 @@
 ---
-description: Carry merged client changes back into the delivery tree — four-way classification per merged model, never clobbering unraised local work
-argument-hint: <release-folder> [--wave id | --models list] [--dry-run]
+description: "Carry merged client changes back into the delivery tree — four-way classification per merged model, never clobbering unraised local work"
+argument-hint: "<release-folder> [--wave id | --models list] [--dry-run]"
 ---
 
 # Carry merged client changes back into the delivery tree — four-way classification per merged model, never clobbering unraised local work

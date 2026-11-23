@@ -1,6 +1,6 @@
 ---
-description: Experimental: Validate a Looker Data App: every catalog row is a widget, every field resolves, no unmapped chart types, Wire's rules pass, Google's verify stages pass against Looker, titles and filters match the approved mockup
-argument-hint: <release-folder> [--app <slug>] [--slice <slice>]
+description: "Experimental: Validate a Looker Data App: every catalog row is a widget, every field resolves, no unmapped chart types, Wire's rules pass, Google's verify stages pass against Looker, titles and filters match the approved mockup"
+argument-hint: "<release-folder> [--app <slug>] [--slice <slice>]"
 ---
 
 # Experimental: Validate a Looker Data App: every catalog row is a widget, every field resolves, no unmapped chart types, Wire's rules pass, Google's verify stages pass against Looker, titles and filters match the approved mockup

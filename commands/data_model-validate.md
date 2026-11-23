@@ -1,6 +1,6 @@
 ---
-description: Validate data model conventions
-argument-hint: <project-folder>
+description: "Validate data model conventions"
+argument-hint: "<project-folder>"
 ---
 
 # Validate data model conventions

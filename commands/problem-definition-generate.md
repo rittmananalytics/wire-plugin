@@ -1,6 +1,6 @@
 ---
-description: Generate structured problem definition for a Shape Up discovery release
-argument-hint: <release-folder>
+description: "Generate structured problem definition for a Shape Up discovery release"
+argument-hint: "<release-folder>"
 ---
 
 # Generate structured problem definition for a Shape Up discovery release

@@ -1,6 +1,6 @@
 ---
-description: Design data pipeline architecture and data flow diagram
-argument-hint: <project-folder>
+description: "Design data pipeline architecture and data flow diagram"
+argument-hint: "<project-folder>"
 ---
 
 # Design data pipeline architecture and data flow diagram

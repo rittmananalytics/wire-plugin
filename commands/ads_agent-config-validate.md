@@ -1,6 +1,6 @@
 ---
-description: Verify agent config skill completeness and routing logic
-argument-hint: <release-folder>
+description: "Verify agent config skill completeness and routing logic"
+argument-hint: "<release-folder>"
 ---
 
 # Verify agent config skill completeness and routing logic

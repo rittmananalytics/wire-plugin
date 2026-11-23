@@ -1,6 +1,6 @@
 ---
-description: Run all platform migration audits in parallel (5 core + optional reverse ETL)
-argument-hint: <release-folder>
+description: "Run all platform migration audits in parallel (5 core + optional reverse ETL)"
+argument-hint: "<release-folder>"
 ---
 
 # Run all platform migration audits in parallel (5 core + optional reverse ETL)

@@ -1,6 +1,6 @@
 ---
-description: Report on all project statuses or specific project
-argument-hint: [project-folder] or --archived
+description: "Report on all project statuses or specific project"
+argument-hint: "[project-folder] or --archived"
 ---
 
 # Report on all project statuses or specific project

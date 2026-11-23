@@ -1,6 +1,6 @@
 ---
-description: Stakeholder sign-off on metric definitions before implementation
-argument-hint: <release-folder>
+description: "Stakeholder sign-off on metric definitions before implementation"
+argument-hint: "<release-folder>"
 ---
 
 # Stakeholder sign-off on metric definitions before implementation

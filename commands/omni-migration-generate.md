@@ -1,6 +1,6 @@
 ---
-description: Generate Omni migration runbook — translate model view SQL on a branch, two-stage connection repoint
-argument-hint: <release-folder>
+description: "Generate Omni migration runbook — translate model view SQL on a branch, two-stage connection repoint"
+argument-hint: "<release-folder>"
 ---
 
 # Generate Omni migration runbook — translate model view SQL on a branch, two-stage connection repoint

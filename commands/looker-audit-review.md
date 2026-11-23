@@ -1,6 +1,6 @@
 ---
-description: Internal RA review of the Looker audit
-argument-hint: <release-folder>
+description: "Internal RA review of the Looker audit"
+argument-hint: "<release-folder>"
 ---
 
 # Internal RA review of the Looker audit

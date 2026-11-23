@@ -1,6 +1,6 @@
 ---
-description: Experimental: Validate the Looker target: branch, connection, project validates, permission objects exist
-argument-hint: <release-folder>
+description: "Experimental: Validate the Looker target: branch, connection, project validates, permission objects exist"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Validate the Looker target: branch, connection, project validates, permission objects exist

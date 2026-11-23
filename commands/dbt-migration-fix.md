@@ -1,6 +1,6 @@
 ---
-description: Closed fix-and-re-review loop — auto-apply the deterministic pre-PR-review fixes, re-run the gate, escalate only findings that need a human decision
-argument-hint: <release-folder> [--batch N | --wave id | --model name] [--base ref] [--max-iterations N] [--dry-run] [--severity LEVEL]
+description: "Closed fix-and-re-review loop — auto-apply the deterministic pre-PR-review fixes, re-run the gate, escalate only findings that need a human decision"
+argument-hint: "<release-folder> [--batch N | --wave id | --model name] [--base ref] [--max-iterations N] [--dry-run] [--severity LEVEL]"
 ---
 
 # Closed fix-and-re-review loop — auto-apply the deterministic pre-PR-review fixes, re-run the gate, escalate only findings that need a human decision

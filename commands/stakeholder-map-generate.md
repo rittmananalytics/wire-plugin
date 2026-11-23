@@ -1,6 +1,6 @@
 ---
-description: Generate stakeholder map with priorities and booking owners
-argument-hint: <release-folder>
+description: "Generate stakeholder map with priorities and booking owners"
+argument-hint: "<release-folder>"
 ---
 
 # Generate stakeholder map with priorities and booking owners

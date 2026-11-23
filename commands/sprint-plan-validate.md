@@ -1,6 +1,6 @@
 ---
-description: Validate sprint plan point estimates and appetite budget
-argument-hint: <release-folder>
+description: "Validate sprint plan point estimates and appetite budget"
+argument-hint: "<release-folder>"
 ---
 
 # Validate sprint plan point estimates and appetite budget

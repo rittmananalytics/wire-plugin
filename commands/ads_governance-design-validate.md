@@ -1,6 +1,6 @@
 ---
-description: Verify governance design completeness and internal consistency
-argument-hint: <release-folder>
+description: "Verify governance design completeness and internal consistency"
+argument-hint: "<release-folder>"
 ---
 
 # Verify governance design completeness and internal consistency

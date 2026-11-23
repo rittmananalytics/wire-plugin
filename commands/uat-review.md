@@ -1,6 +1,6 @@
 ---
-description: Record UAT feedback
-argument-hint: <project-folder>
+description: "Record UAT feedback"
+argument-hint: "<project-folder>"
 ---
 
 # Record UAT feedback

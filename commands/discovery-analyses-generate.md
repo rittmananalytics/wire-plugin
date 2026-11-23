@@ -1,6 +1,6 @@
 ---
-description: Generate the three analyses: Hierarchy of Needs, PPT, and Maturity Curve
-argument-hint: <release-folder>
+description: "Generate the three analyses: Hierarchy of Needs, PPT, and Maturity Curve"
+argument-hint: "<release-folder>"
 ---
 
 # Generate the three analyses: Hierarchy of Needs, PPT, and Maturity Curve

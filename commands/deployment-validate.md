@@ -1,6 +1,6 @@
 ---
-description: Pre-deployment validation
-argument-hint: <project-folder>
+description: "Pre-deployment validation"
+argument-hint: "<project-folder>"
 ---
 
 # Pre-deployment validation

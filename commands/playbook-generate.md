@@ -1,6 +1,6 @@
 ---
-description: Generate a step-by-step BPMN delivery playbook for any Wire release
-argument-hint: <release-folder>
+description: "Generate a step-by-step BPMN delivery playbook for any Wire release"
+argument-hint: "<release-folder>"
 ---
 
 # Generate a step-by-step BPMN delivery playbook for any Wire release

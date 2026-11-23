@@ -1,6 +1,6 @@
 ---
-description: Generate semantic layer (LookML, etc.)
-argument-hint: <project-folder>
+description: "Generate semantic layer (LookML, etc.)"
+argument-hint: "<project-folder>"
 ---
 
 # Generate semantic layer (LookML, etc.)

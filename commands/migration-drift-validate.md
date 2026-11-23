@@ -1,6 +1,6 @@
 ---
-description: Validate the migration drift report — classification, sync flagging, masking hook
-argument-hint: <release-folder>
+description: "Validate the migration drift report — classification, sync flagging, masking hook"
+argument-hint: "<release-folder>"
 ---
 
 # Validate the migration drift report — classification, sync flagging, masking hook

@@ -1,6 +1,6 @@
 ---
-description: Generate dbt warehouse-layer models only (alternative to the monolithic dbt-generate)
-argument-hint: <project-folder>
+description: "Generate dbt warehouse-layer models only (alternative to the monolithic dbt-generate)"
+argument-hint: "<project-folder>"
 ---
 
 # Generate dbt warehouse-layer models only (alternative to the monolithic dbt-generate)

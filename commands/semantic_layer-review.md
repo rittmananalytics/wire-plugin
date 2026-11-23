@@ -1,6 +1,6 @@
 ---
-description: Review semantic layer
-argument-hint: <project-folder>
+description: "Review semantic layer"
+argument-hint: "<project-folder>"
 ---
 
 # Review semantic layer

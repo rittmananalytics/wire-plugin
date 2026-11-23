@@ -1,6 +1,6 @@
 ---
-description: Static lint of emitted Omni YAML for a batch: no ${TABLE}, no Liquid, valid timeframes, aggregate types, filter objects, primary keys, relationship types
-argument-hint: <release-folder> [--batch N]
+description: "Static lint of emitted Omni YAML for a batch: no ${TABLE}, no Liquid, valid timeframes, aggregate types, filter objects, primary keys, relationship types"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Static lint of emitted Omni YAML for a batch: no ${TABLE}, no Liquid, valid timeframes, aggregate types, filter objects, primary keys, relationship types

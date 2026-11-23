@@ -1,6 +1,6 @@
 ---
-description: Carry changes made to the Omni model downstream (in Omni or its git repo) back into the delivery tree; four-way classification per emitted file, never clobbering unwritten local work
-argument-hint: <release-folder> [--batch N] [--dry-run]
+description: "Carry changes made to the Omni model downstream (in Omni or its git repo) back into the delivery tree; four-way classification per emitted file, never clobbering unwritten local work"
+argument-hint: "<release-folder> [--batch N] [--dry-run]"
 ---
 
 # Carry changes made to the Omni model downstream (in Omni or its git repo) back into the delivery tree; four-way classification per emitted file, never clobbering unwritten local work

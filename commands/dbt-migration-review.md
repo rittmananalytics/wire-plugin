@@ -1,6 +1,6 @@
 ---
-description: Review translated dbt models
-argument-hint: <release-folder> [--batch N | --wave id]
+description: "Review translated dbt models"
+argument-hint: "<release-folder> [--batch N | --wave id]"
 ---
 
 # Review translated dbt models

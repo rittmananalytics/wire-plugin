@@ -1,6 +1,6 @@
 ---
-description: Generate conceptual entity model from requirements
-argument-hint: <project-folder>
+description: "Generate conceptual entity model from requirements"
+argument-hint: "<project-folder>"
 ---
 
 # Generate conceptual entity model from requirements

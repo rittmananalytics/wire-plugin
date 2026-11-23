@@ -1,6 +1,6 @@
 ---
-description: Technical review of agentic data stack skill before eval suite build
-argument-hint: <release-folder>
+description: "Technical review of agentic data stack skill before eval suite build"
+argument-hint: "<release-folder>"
 ---
 
 # Technical review of agentic data stack skill before eval suite build

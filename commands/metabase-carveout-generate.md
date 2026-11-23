@@ -1,6 +1,6 @@
 ---
-description: Tenant carve-out of the Metabase estate — layer decision per card set (sandboxing/warehouse/dashboard-parameter/card-edit), registry-resolved filters, dashcard pruning, manifest review gate
-argument-hint: <release-folder> [--collection id] [--dashboard id]
+description: "Tenant carve-out of the Metabase estate — layer decision per card set (sandboxing/warehouse/dashboard-parameter/card-edit), registry-resolved filters, dashcard pruning, manifest review gate"
+argument-hint: "<release-folder> [--collection id] [--dashboard id]"
 ---
 
 # Tenant carve-out of the Metabase estate — layer decision per card set (sandboxing/warehouse/dashboard-parameter/card-edit), registry-resolved filters, dashcard pruning, manifest review gate

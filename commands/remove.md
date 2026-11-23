@@ -1,6 +1,6 @@
 ---
-description: Remove a project with confirmation
-argument-hint: <project-folder>
+description: "Remove a project with confirmation"
+argument-hint: "<project-folder>"
 ---
 
 # Remove a project with confirmation

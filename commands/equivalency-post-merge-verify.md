@@ -1,6 +1,6 @@
 ---
-description: Post-merge production verification: wait for the client pipeline to materialise merged models, compare at the full verdict bar, advance the register to production_verified
-argument-hint: <release-folder> [--models list] [--no-wait]
+description: "Post-merge production verification: wait for the client pipeline to materialise merged models, compare at the full verdict bar, advance the register to production_verified"
+argument-hint: "<release-folder> [--models list] [--no-wait]"
 ---
 
 # Post-merge production verification: wait for the client pipeline to materialise merged models, compare at the full verdict bar, advance the register to production_verified

@@ -1,6 +1,6 @@
 ---
-description: Classify in-scope items into region buckets for a tenant carve-out (candidates, never auto-removal)
-argument-hint: <release-folder> [--region <code>]
+description: "Classify in-scope items into region buckets for a tenant carve-out (candidates, never auto-removal)"
+argument-hint: "<release-folder> [--region <code>]"
 ---
 
 # Classify in-scope items into region buckets for a tenant carve-out (candidates, never auto-removal)

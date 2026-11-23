@@ -1,6 +1,6 @@
 ---
-description: Design dbt model structure
-argument-hint: <project-folder>
+description: "Design dbt model structure"
+argument-hint: "<project-folder>"
 ---
 
 # Design dbt model structure

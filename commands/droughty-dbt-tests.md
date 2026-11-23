@@ -1,6 +1,6 @@
 ---
-description: Pattern-based dbt schema tests from deployed models
-argument-hint: <release-folder>
+description: "Pattern-based dbt schema tests from deployed models"
+argument-hint: "<release-folder>"
 ---
 
 # Pattern-based dbt schema tests from deployed models

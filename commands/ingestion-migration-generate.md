@@ -1,6 +1,6 @@
 ---
-description: Generate Fivetran connector migration runbook
-argument-hint: <release-folder> [--wave id]
+description: "Generate Fivetran connector migration runbook"
+argument-hint: "<release-folder> [--wave id]"
 ---
 
 # Generate Fivetran connector migration runbook

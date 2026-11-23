@@ -1,6 +1,6 @@
 ---
-description: Validate kick-off deck JSON structure and content completeness
-argument-hint: [release-folder]
+description: "Validate kick-off deck JSON structure and content completeness"
+argument-hint: "[release-folder]"
 ---
 
 # Validate kick-off deck JSON structure and content completeness

@@ -1,6 +1,6 @@
 ---
-description: Design metric definitions and dimension model for semantic layer build
-argument-hint: <release-folder>
+description: "Design metric definitions and dimension model for semantic layer build"
+argument-hint: "<release-folder>"
 ---
 
 # Design metric definitions and dimension model for semantic layer build

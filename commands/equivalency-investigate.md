@@ -1,6 +1,6 @@
 ---
-description: Deep diagnostics for a specific failing object
-argument-hint: <release-folder> --object <table_or_model>
+description: "Deep diagnostics for a specific failing object"
+argument-hint: "<release-folder> --object <table_or_model>"
 ---
 
 # Deep diagnostics for a specific failing object

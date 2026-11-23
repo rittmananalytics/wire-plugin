@@ -1,6 +1,6 @@
 ---
-description: Validate region tags — all three buckets populated, every item classified exactly once
-argument-hint: <release-folder>
+description: "Validate region tags — all three buckets populated, every item classified exactly once"
+argument-hint: "<release-folder>"
 ---
 
 # Validate region tags — all three buckets populated, every item classified exactly once

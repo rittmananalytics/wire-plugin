@@ -1,6 +1,6 @@
 ---
-description: Validate reverse ETL migration runbook completeness, plus the authored twins — primaryKey casing (error) and destination-set safety
-argument-hint: <release-folder> [--wave id] [--twins-only]
+description: "Validate reverse ETL migration runbook completeness, plus the authored twins — primaryKey casing (error) and destination-set safety"
+argument-hint: "<release-folder> [--wave id] [--twins-only]"
 ---
 
 # Validate reverse ETL migration runbook completeness, plus the authored twins — primaryKey casing (error) and destination-set safety

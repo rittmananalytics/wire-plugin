@@ -1,6 +1,6 @@
 ---
-description: Verify canonical models compile, tests pass, deprecation notices in place
-argument-hint: <release-folder>
+description: "Verify canonical models compile, tests pass, deprecation notices in place"
+argument-hint: "<release-folder>"
 ---
 
 # Verify canonical models compile, tests pass, deprecation notices in place

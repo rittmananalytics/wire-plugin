@@ -1,6 +1,6 @@
 ---
-description: Session entry point and Wire co-pilot — orients new users, surfaces the right next action, and helps navigating consultants pick up where they left off
-argument-hint: [new/resume/explain]
+description: "Session entry point and Wire co-pilot — orients new users, surfaces the right next action, and helps navigating consultants pick up where they left off"
+argument-hint: "[new/resume/explain]"
 ---
 
 # Session entry point and Wire co-pilot — orients new users, surfaces the right next action, and helps navigating consultants pick up where they left off

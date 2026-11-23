@@ -1,6 +1,6 @@
 ---
-description: Stakeholder review of eval coverage and accuracy results
-argument-hint: <release-folder>
+description: "Stakeholder review of eval coverage and accuracy results"
+argument-hint: "<release-folder>"
 ---
 
 # Stakeholder review of eval coverage and accuracy results

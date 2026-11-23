@@ -1,6 +1,6 @@
 ---
-description: Generate the Findings Playback slide deck
-argument-hint: <release-folder>
+description: "Generate the Findings Playback slide deck"
+argument-hint: "<release-folder>"
 ---
 
 # Generate the Findings Playback slide deck

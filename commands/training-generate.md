@@ -1,6 +1,6 @@
 ---
-description: Generate training materials
-argument-hint: <project-folder>
+description: "Generate training materials"
+argument-hint: "<project-folder>"
 ---
 
 # Generate training materials

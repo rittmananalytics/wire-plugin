@@ -1,6 +1,6 @@
 ---
-description: Pre-submission faithfulness review over a translated diff — deploy-time defect class static parse/lint cannot catch, before a PR is opened
-argument-hint: <release-folder> [--batch N | --wave id | --model name] [--base ref] [--severity LEVEL] [--format FORMAT]
+description: "Pre-submission faithfulness review over a translated diff — deploy-time defect class static parse/lint cannot catch, before a PR is opened"
+argument-hint: "<release-folder> [--batch N | --wave id | --model name] [--base ref] [--severity LEVEL] [--format FORMAT]"
 ---
 
 # Pre-submission faithfulness review over a translated diff — deploy-time defect class static parse/lint cannot catch, before a PR is opened

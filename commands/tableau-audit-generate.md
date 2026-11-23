@@ -1,6 +1,6 @@
 ---
-description: Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker or Omni, with data source fingerprints
-argument-hint: <release-folder>
+description: "Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker or Omni, with data source fingerprints"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker or Omni, with data source fingerprints

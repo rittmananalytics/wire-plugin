@@ -1,6 +1,6 @@
 ---
-description: Decompose a release's pending work into typed tasks and dispatch to specialist local subagents
-argument-hint: <release-folder>
+description: "Decompose a release's pending work into typed tasks and dispatch to specialist local subagents"
+argument-hint: "<release-folder>"
 ---
 
 # Decompose a release's pending work into typed tasks and dispatch to specialist local subagents

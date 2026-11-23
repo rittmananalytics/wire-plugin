@@ -1,6 +1,6 @@
 ---
-description: Produce the same-instance repoint plan as a dry-run artifact: per warehouse-layer card, the write mode, destinations, database-id and template-tag remaps, and SQL-text rewrites of hardcoded source-project references
-argument-hint: <release-folder> [--collection id] [--dashboard id] [--mode duplicate/in_place] [--include-layer card_edit]
+description: "Produce the same-instance repoint plan as a dry-run artifact: per warehouse-layer card, the write mode, destinations, database-id and template-tag remaps, and SQL-text rewrites of hardcoded source-project references"
+argument-hint: "<release-folder> [--collection id] [--dashboard id] [--mode duplicate/in_place] [--include-layer card_edit]"
 ---
 
 # Produce the same-instance repoint plan as a dry-run artifact: per warehouse-layer card, the write mode, destinations, database-id and template-tag remaps, and SQL-text rewrites of hardcoded source-project references

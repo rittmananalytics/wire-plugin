@@ -1,6 +1,6 @@
 ---
-description: Experimental: Validate a LookML dashboard batch: fields exist, dashboards validate, every skipped tile has a reason
-argument-hint: <release-folder> [--batch N]
+description: "Experimental: Validate a LookML dashboard batch: fields exist, dashboards validate, every skipped tile has a reason"
+argument-hint: "<release-folder> [--batch N]"
 ---
 
 # Experimental: Validate a LookML dashboard batch: fields exist, dashboards validate, every skipped tile has a reason

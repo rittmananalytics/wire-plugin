@@ -1,6 +1,6 @@
 ---
-description: Experimental: Validate the Tableau audit: reproducible, every construct classified, every data source in one fingerprint group, IR valid
-argument-hint: <release-folder>
+description: "Experimental: Validate the Tableau audit: reproducible, every construct classified, every data source in one fingerprint group, IR valid"
+argument-hint: "<release-folder>"
 ---
 
 # Experimental: Validate the Tableau audit: reproducible, every construct classified, every data source in one fingerprint group, IR valid

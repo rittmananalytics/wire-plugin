@@ -1,6 +1,6 @@
 ---
-description: Produce canonical dataset model, deprecation plan, and tiering policy
-argument-hint: <release-folder>
+description: "Produce canonical dataset model, deprecation plan, and tiering policy"
+argument-hint: "<release-folder>"
 ---
 
 # Produce canonical dataset model, deprecation plan, and tiering policy

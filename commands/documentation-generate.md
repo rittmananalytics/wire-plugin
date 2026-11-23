@@ -1,6 +1,6 @@
 ---
-description: Generate documentation
-argument-hint: <project-folder>
+description: "Generate documentation"
+argument-hint: "<project-folder>"
 ---
 
 # Generate documentation

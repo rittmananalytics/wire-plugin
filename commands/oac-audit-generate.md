@@ -1,6 +1,6 @@
 ---
-description: Catalog OAC's SMML semantic model — physical/logical/presentation layers
-argument-hint: <release-folder>
+description: "Catalog OAC's SMML semantic model — physical/logical/presentation layers"
+argument-hint: "<release-folder>"
 ---
 
 # Catalog OAC's SMML semantic model — physical/logical/presentation layers
