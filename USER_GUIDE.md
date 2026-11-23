@@ -5580,6 +5580,13 @@ Recent release history for the Wire Framework. Full changelog from v3.0.0 onward
 
 ---
 
+### v4.6.7: Gemini CLI commands load again (November 2026)
+
+- **Gemini CLI commands load again**: Gemini CLI could not load 14 Wire commands in 4.6.5 and 4.6.6, among them `/wire:dbt-generate`, `/wire:work`, `/wire:help`, `/wire:upgrade` and `/wire:migrate` (`Failed to parse TOML file`). Backslashes in the command text are now escaped, and every Gemini command carries the same text as its spec, including the telemetry step.
+- **Argument hints with alternatives**: 16 commands whose hint lists alternatives, such as `[--batch N | --wave id]`, showed only part of the hint and had no execution-logging step. They show the full hint and log their runs again.
+
+---
+
 ### v4.6.6: one Jira release per Wire release, and `/wire:work` keeps your model (November 2026)
 
 - **One Jira release per Wire release**: `/wire:tickets-import` asks once which tickets in a shared Jira project belong to the release (a Jira release, a label or a JQL clause), saves the answer, and reads only those tickets on every `--refresh`. It lists tickets another release holds, and tickets in no Jira release or in two, and asks before it maps or changes them.
