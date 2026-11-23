@@ -253,18 +253,18 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:dbt-migration-generate` | `<release-folder> [--batch N] [--model name]` | Translate dbt models batch by batch to target dialect |
 | `/wire:dbt-migration-validate` | `<release-folder> [--batch N]` | Validate dbt model translations compile on target profile |
 | `/wire:dbt-migration-lint` | `<release-folder> [--batch N] [--model name] [--severity LEVEL] [--format FORMAT]` | Static pre-warehouse equivalence lint — dialect parse-check plus silent-behaviour-change rules on translated models |
-| `/wire:dbt-migration-pre-pr-review` | `<release-folder> [--batch N ` | Pre-submission faithfulness review over a translated diff — deploy-time defect class static parse/lint cannot catch, before a PR is opened |
-| `/wire:dbt-migration-fix` | `<release-folder> [--batch N ` | Closed fix-and-re-review loop — auto-apply the deterministic pre-PR-review fixes, re-run the gate, escalate only findings that need a human decision |
-| `/wire:dbt-migration-review` | `<release-folder> [--batch N ` | Review translated dbt models |
+| `/wire:dbt-migration-pre-pr-review` | `<release-folder> [--batch N | --wave id | --model name] [--base ref] [--severity LEVEL] [--format FORMAT]` | Pre-submission faithfulness review over a translated diff — deploy-time defect class static parse/lint cannot catch, before a PR is opened |
+| `/wire:dbt-migration-fix` | `<release-folder> [--batch N | --wave id | --model name] [--base ref] [--max-iterations N] [--dry-run] [--severity LEVEL]` | Closed fix-and-re-review loop — auto-apply the deterministic pre-PR-review fixes, re-run the gate, escalate only findings that need a human decision |
+| `/wire:dbt-migration-review` | `<release-folder> [--batch N | --wave id]` | Review translated dbt models |
 | `/wire:dbt-migration-defer-build` | `<release-folder> --models <list> [--allow-graph] [--override-budget] [--dry-run]` | Cost-guarded sandbox build: refs deferred to prod state, writes gated to the scratch dataset, exact-name selectors, dry-run cost screen |
-| `/wire:dbt-migration-batch-raise` | `<release-folder> [--wave id ` | Register-driven PR shipping pipeline: derive gate-passing candidates, smoke-build from the client branch, pre-raise comparison, drop-on-defect, raise with evidence-first body |
-| `/wire:dbt-migration-reverse-port` | `<release-folder> [--wave id ` | Carry merged client changes back into the delivery tree — four-way classification per merged model, never clobbering unraised local work |
+| `/wire:dbt-migration-batch-raise` | `<release-folder> [--wave id | --batch N | --models list] [--max-models N] [--dry-run]` | Register-driven PR shipping pipeline: derive gate-passing candidates, smoke-build from the client branch, pre-raise comparison, drop-on-defect, raise with evidence-first body |
+| `/wire:dbt-migration-reverse-port` | `<release-folder> [--wave id | --models list] [--dry-run]` | Carry merged client changes back into the delivery tree — four-way classification per merged model, never clobbering unraised local work |
 | `/wire:orchestration-migration-generate` | `<release-folder> [--wave id]` | Generate orchestration job migration runbook |
 | `/wire:orchestration-migration-validate` | `<release-folder> [--wave id]` | Validate orchestration migration runbook |
 | `/wire:orchestration-migration-review` | `<release-folder> [--wave id]` | Safety-gated approval before activating jobs on target |
-| `/wire:dbt-carveout-relocate-generate` | `<release-folder> [--wave id \` | Relocate already-translated dbt models into a post-migration tenant carve-out instead of re-translating them |
+| `/wire:dbt-carveout-relocate-generate` | `<release-folder> [--wave id | --batch N | --select selector] --source-dbt-project-path <path> --target-dbt-project-path <path> --target-project <name>` | Relocate already-translated dbt models into a post-migration tenant carve-out instead of re-translating them |
 | `/wire:dbt-carveout-relocate-validate` | `<release-folder> --target-dbt-project-path <path>` | Validate relocated carve-out dbt models — files present, predicates re-derived from disk, target compiles |
-| `/wire:dbt-carveout-relocate-review` | `<release-folder> [--wave id \` | Human adjudication gate for relocated carve-out dbt models |
+| `/wire:dbt-carveout-relocate-review` | `<release-folder> [--wave id | --batch N | --select selector]` | Human adjudication gate for relocated carve-out dbt models |
 
 ### TESTING
 
@@ -372,7 +372,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:ingestion-migration-generate` | `<release-folder> [--wave id]` | Generate Fivetran connector migration runbook |
 | `/wire:ingestion-migration-validate` | `<release-folder> [--wave id]` | Validate ingestion migration runbook |
 | `/wire:ingestion-migration-review` | `<release-folder> [--wave id]` | Safety-gated approval before activating Fivetran to target |
-| `/wire:equivalency-validate` | `<release-folder> [--batch N ` | Run equivalency checks across all in-scope tables (parallel fan-out) |
+| `/wire:equivalency-validate` | `<release-folder> [--batch N | --wave id]` | Run equivalency checks across all in-scope tables (parallel fan-out) |
 | `/wire:equivalency-investigate` | `<release-folder> --object <table_or_model>` | Deep diagnostics for a specific failing object |
 | `/wire:equivalency-fix` | `<release-folder> --object <name> --approach <description>` | Apply agreed fix and re-run equivalency checks for affected objects |
 | `/wire:equivalency-post-merge-verify` | `<release-folder> [--models list] [--no-wait]` | Post-merge production verification: wait for the client pipeline to materialise merged models, compare at the full verdict bar, advance the register to production_verified |
@@ -442,15 +442,15 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:omni-target-setup-generate` | `<release-folder>` | Prepare the Omni target: connection check, model branch, schema refresh, groups and user attributes |
 | `/wire:omni-target-setup-validate` | `<release-folder>` | Validate the Omni target: branch exists, model validates with no blocking issue, groups exist |
 | `/wire:omni-target-setup-review` | `<release-folder>` | Internal RA review of the Omni target setup |
-| `/wire:omni-model-generate` | `<release-folder> [--batch N ` | Translate a batch of LookML views and explores, or Tableau or Metabase content (experimental), to Omni views and topics on the model branch (deterministic converter plus agent judgement) |
+| `/wire:omni-model-generate` | `<release-folder> [--batch N | --all]` | Translate a batch of LookML views and explores, or Tableau or Metabase content (experimental), to Omni views and topics on the model branch (deterministic converter plus agent judgement) |
 | `/wire:omni-model-lint` | `<release-folder> [--batch N]` | Static lint of emitted Omni YAML for a batch: no ${TABLE}, no Liquid, valid timeframes, aggregate types, filter objects, primary keys, relationship types |
 | `/wire:omni-model-validate` | `<release-folder> [--batch N]` | Validate a model batch on the branch: Omni validator clean, every in-scope field present, one smoke query per topic |
 | `/wire:omni-model-review` | `<release-folder> [--batch N]` | Release director review of a translated model batch and its needs_human resolutions |
 | `/wire:omni-model-reverse-port` | `<release-folder> [--batch N] [--dry-run]` | Carry changes made to the Omni model downstream (in Omni or its git repo) back into the delivery tree; four-way classification per emitted file, never clobbering unwritten local work |
-| `/wire:omni-content-generate` | `<release-folder> [--batch N ` | Plan and create Omni dashboards for a batch of Looker dashboards and Looks, or Tableau or Metabase dashboards (experimental); skipped tiles listed with reasons |
+| `/wire:omni-content-generate` | `<release-folder> [--batch N | --all]` | Plan and create Omni dashboards for a batch of Looker dashboards and Looks, or Tableau or Metabase dashboards (experimental); skipped tiles listed with reasons |
 | `/wire:omni-content-validate` | `<release-folder> [--batch N]` | Validate a content batch: plan fields exist on the branch, controls map, created documents resolve with the planned tile count |
 | `/wire:omni-content-review` | `<release-folder> [--batch N]` | Release director review of a migrated dashboard batch |
-| `/wire:bi-equivalency-validate` | `<release-folder> [--batch N ` | Tile-level parity: Looker and Omni results compared under a pinned as-of, verdicts in the model taxonomy; gates cutover |
+| `/wire:bi-equivalency-validate` | `<release-folder> [--batch N | --dashboards id1,id2]` | Tile-level parity: Looker and Omni results compared under a pinned as-of, verdicts in the model taxonomy; gates cutover |
 
 ### DROUGHTY
 
@@ -464,16 +464,16 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:droughty-stage` | `<release-folder>` | Staging SQL and sources.yml generation (BigQuery only) |
 | `/wire:droughty-dbt-tests` | `<release-folder>` | Pattern-based dbt schema tests from deployed models |
 | `/wire:droughty-lookml` | `<release-folder>` | Base LookML views from deployed dbt models |
-| `/wire:droughty-generate` | `<release-folder> [--mode discovery` | Run full Droughty phase in sequence (discovery, post-dbt, or full) |
+| `/wire:droughty-generate` | `<release-folder> [--mode discovery|post-dbt|full]` | Run full Droughty phase in sequence (discovery, post-dbt, or full) |
 
 ### OTHER
 
 | Command | Arguments | Description |
 |---------|-----------|-------------|
 | `/wire:delegate` | `<release-folder>` | Decompose a release's pending work into typed tasks and dispatch to specialist local subagents |
-| `/wire:persona` | `[set <persona> ` | Show or set your role (persona) on this engagement, so commands with a persona variant focus on it |
+| `/wire:persona` | `[set <persona> | clear] [--local]` | Show or set your role (persona) on this engagement, so commands with a persona variant focus on it |
 | `/wire:status-sync` | `[release-folder]` | Reconcile recorded release state against evidence (git, execution log, disk, sprint plan) and repair the record with confirmation |
-| `/wire:tickets-import` | `<release-folder> [--tracker linear` | Read a release's tickets from Linear or Jira and propose the ticket map (kind, slices, Wire steps per ticket), using the Modality model where linked; turns on ticket delivery for the release |
+| `/wire:tickets-import` | `<release-folder> [--tracker linear|jira] [--project <name-or-key>] [--refresh]` | Read a release's tickets from Linear or Jira and propose the ticket map (kind, slices, Wire steps per ticket), using the Modality model where linked; turns on ticket delivery for the release |
 | `/wire:work` | `<release-folder> [ticket-or-description]` | Work a ticket inside an existing release — plan with a command or skill named per step, run only the approved plan, publish via the client's PR, patch stale documents and reconcile the record |
 | `/wire:playbook-generate` | `<release-folder>` | Generate a step-by-step BPMN delivery playbook for any Wire release |
 | `/wire:business-rules-generate` | `<release-folder> [--domain <name>] [--import <path>]` | Discover, define and agree the business rules for one domain, from legacy systems and from the people who own the definitions, before design starts |
@@ -514,7 +514,7 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:adopt` | `[repo-path-or-url]` | Adopt an in-flight project into Wire — assess repo and external sources, map existing work to artifacts, set up engagement structure, generate adoption playbook |
 | `/wire:custom-define` | `<release-folder>` | Define a custom release type from SoW or project documents — map deliverables to Wire commands or generate bespoke specs |
 | `/wire:custom-feature-request` | `<custom-spec-name>` | Raise a GitHub issue on the Wire repo proposing a bespoke command as a framework addition |
-| `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N ` | Present migration batch acceptance pack for stakeholder sign-off |
+| `/wire:migration-acceptance-pack-review` | `<release-folder> [--batch N | --wave id]` | Present migration batch acceptance pack for stakeholder sign-off |
 | `/wire:migration-source-register` | `<release-folder> <source_type> <github_url>` | Register a source repository for a given migration source type |
 | `/wire:migration-source-refresh` | `<release-folder> <source_type>` | Pull a fresh local snapshot of a registered migration source |
 | `/wire:tableau-audit-generate` | `<release-folder>` | Experimental: Snapshot the Tableau estate (Cloud, Server or Desktop files) and classify every workbook, data source, field and join for the move to Looker or Omni, with data source fingerprints |
@@ -523,11 +523,11 @@ for a single command. Modelled on the Unix `man` / `--help` convention.
 | `/wire:looker-target-setup-generate` | `<release-folder>` | Experimental: Prepare the Looker target: connection, LookML migration branch, folders, groups and user attributes |
 | `/wire:looker-target-setup-validate` | `<release-folder>` | Experimental: Validate the Looker target: branch, connection, project validates, permission objects exist |
 | `/wire:looker-target-setup-review` | `<release-folder>` | Experimental: Internal RA review of the Looker target setup |
-| `/wire:lookml-model-generate` | `<release-folder> [--batch N ` | Experimental: Translate a batch of Tableau data sources, Metabase or Omni content to LookML views and explores on the migration branch (deterministic converter plus agent judgement) |
+| `/wire:lookml-model-generate` | `<release-folder> [--batch N | --all]` | Experimental: Translate a batch of Tableau data sources, Metabase or Omni content to LookML views and explores on the migration branch (deterministic converter plus agent judgement) |
 | `/wire:lookml-model-lint` | `<release-folder> [--batch N]` | Experimental: Lint emitted LookML: no Tableau, Metabase or Omni syntax left, LookML conventions, primary keys on joined views |
 | `/wire:lookml-model-validate` | `<release-folder> [--batch N]` | Experimental: Validate a LookML batch on the branch: Looker validator clean, fields present, one smoke query per explore |
 | `/wire:lookml-model-review` | `<release-folder> [--batch N]` | Experimental: Release director review of a translated LookML batch |
-| `/wire:looker-content-generate` | `<release-folder> [--batch N ` | Experimental: Write a batch of Tableau, Metabase or Omni dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons |
+| `/wire:looker-content-generate` | `<release-folder> [--batch N | --all]` | Experimental: Write a batch of Tableau, Metabase or Omni dashboards as LookML dashboards on the migration branch; skipped tiles listed with reasons |
 | `/wire:looker-content-validate` | `<release-folder> [--batch N]` | Experimental: Validate a LookML dashboard batch: fields exist, dashboards validate, every skipped tile has a reason |
 | `/wire:looker-content-review` | `<release-folder> [--batch N]` | Experimental: Release director review of a migrated LookML dashboard batch |
 | `/wire:metabase-source-audit-generate` | `<release-folder>` | Experimental: Snapshot a Metabase instance through its API and classify every question, model, metric, dashboard, table and join for the move to Looker or Omni |

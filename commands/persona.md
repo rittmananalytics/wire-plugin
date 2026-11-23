@@ -1,6 +1,6 @@
 ---
 description: Show or set your role (persona) on this engagement, so commands with a persona variant focus on it
-argument-hint: [set <persona> 
+argument-hint: [set <persona> | clear] [--local]
 ---
 
 # Show or set your role (persona) on this engagement, so commands with a persona variant focus on it

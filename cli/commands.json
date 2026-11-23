@@ -1732,7 +1732,7 @@
     "command": "dbt-carveout-relocate-generate",
     "spec": "migration/dbt_carveout_relocate/generate",
     "description": "Relocate already-translated dbt models into a post-migration tenant carve-out instead of re-translating them",
-    "arguments": "<release-folder> [--wave id \\",
+    "arguments": "<release-folder> [--wave id ",
     "telemetry": false
   },
   {
@@ -1746,7 +1746,7 @@
     "command": "dbt-carveout-relocate-review",
     "spec": "migration/dbt_carveout_relocate/review",
     "description": "Human adjudication gate for relocated carve-out dbt models",
-    "arguments": "<release-folder> [--wave id \\",
+    "arguments": "<release-folder> [--wave id ",
     "telemetry": false
   },
   {

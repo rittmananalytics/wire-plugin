@@ -9,6 +9,16 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.7: Gemini CLI commands load again
+
+**Released**: November 2026
+
+**Gemini CLI commands load again.** In 4.6.5 and 4.6.6, Gemini CLI could not load 14 Wire commands, among them `/wire:dbt-generate`, `/wire:work`, `/wire:help`, `/wire:upgrade` and `/wire:migrate`, and showed `Failed to parse TOML file` at start-up. Backslashes in the command text (regular expressions and shell examples) were written into the command files without escaping. They are escaped now, and every Gemini command carries the same text as its spec. The telemetry step in each Gemini command also sends its data in the right form again.
+
+**Argument hints with alternatives.** 16 commands whose argument hint lists alternatives, such as `[--batch N | --wave id]`, showed only part of the hint in Claude Code and Gemini CLI, and had no execution-logging step. Most are platform migration commands; `/wire:droughty-generate` and `/wire:tickets-import` were affected too. They show the full hint and log their runs again.
+
+---
+
 ## v4.6.6: one Jira release per Wire release, and `/wire:work` keeps your model
 
 **Released**: November 2026
