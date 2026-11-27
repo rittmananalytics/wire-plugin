@@ -20,7 +20,7 @@ Where you add a server depends on how widely you want it available: add it to `.
   "mcpServers": {
     "atlassian": {
       "type": "url",
-      "url": "https://mcp.atlassian.com/v1/mcp"
+      "url": "https://mcp.atlassian.com/v2/mcp"
     },
     "linear": {
       "type": "url",
@@ -52,7 +52,7 @@ Alternatively, you can use the Wire command interface:
 
 ```bash
 # Streamable HTTP transport (Atlassian, Fathom, Context7); SSE for Linear
-claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/mcp
+claude mcp add --transport http atlassian https://mcp.atlassian.com/v2/mcp
 
 # HTTP transport (Notion)
 claude mcp add --transport http-sse notion https://mcp.notion.com/mcp
@@ -65,8 +65,8 @@ Restart Claude Code after adding a new server, and on first use Claude Code prom
 ## Atlassian
 
 **Key**: `atlassian`  
-**URL**: `https://mcp.atlassian.com/v1/mcp`  
-**Transport**: SSE  
+**URL**: `https://mcp.atlassian.com/v2/mcp`  
+**Transport**: HTTP  
 **Provides**: Jira issue tracking and Confluence document search/publishing
 
 ### What Wire uses it for
@@ -99,7 +99,7 @@ If you need to re-authenticate, remove the server and add it again:
 
 ```bash
 claude mcp remove atlassian
-claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/mcp
+claude mcp add --transport http atlassian https://mcp.atlassian.com/v2/mcp
 ```
 
 Restart Claude Code to complete re-authentication.

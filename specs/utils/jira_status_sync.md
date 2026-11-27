@@ -69,7 +69,7 @@ Default state-to-Jira mapping (overridden by `state_mapping` if present):
 
 For each sub-task that needs transitioning:
 
-1. Get available transitions: `getTransitionsForJiraIssue`
+1. Get available transitions: `executeRead` with `name: listJiraIssueTransitions` (see `specs/mcp.md`, "Atlassian v2 tool names")
 2. If current Jira state differs from expected, transition: `transitionJiraIssue`
 3. Track changes made vs already-in-sync
 

@@ -151,12 +151,14 @@ What is the Confluence space key for this engagement?
 Use the Atlassian MCP to confirm the space exists and is accessible:
 
 ```
-getConfluenceSpaces:
+executeRead:
+  name: getConfluenceSpace
   cloudId: "[cloud_id]"
-  spaceKey: "[space_key]"
+  inputs:
+    spaceIdOrKey: "[space_key]"
 ```
 
-- If the space is found: proceed.
+- If the space is found: record its numeric `id` as `[space_id]` (Step 3.5 creates pages by space id) and proceed.
 - If not found or access denied:
   ```
   Error: Confluence space "[space_key]" could not be found or is not accessible.
@@ -180,7 +182,7 @@ Where in the "[space_key]" space should Wire documents be created?
 If the user provides a parent page title:
 - Search for the page using:
   ```
-  searchConfluenceUsingCql:
+  searchConfluence:
     cql: "space = \"[space_key]\" AND title = \"[parent_page_title]\" AND ancestor = root"
   ```
   (Broaden to `ancestor != null` if the root search returns no results.)
@@ -190,23 +192,28 @@ If the user provides a parent page title:
   Page "[parent_page_title]" was not found in space [space_key].
   Creating the Wire Documents folder at the space root instead.
   ```
-  Use space root (omit `parentId` in the create call).
+  Use space root (omit `parentContentId` in the create call).
 
-If the user presses Enter: create at the space root (no `parentId`).
+If the user presses Enter: create at the space root (no `parentContentId`).
 
 #### Step 3.5: Create the Engagement Folder Page
 
 Create a parent page in Confluence titled "[Engagement Name] — Wire Documents". Use `[client_name] [project_name]` as the engagement name:
 
 ```
-createConfluencePage:
+createConfluenceContent:
   cloudId: "[cloud_id]"
-  spaceKey: "[space_key]"
-  parentId: "[confluence_parent_ancestor_id]"  # omit if space root
+  contentType: page
+  parent:
+    spaceId: "[space_id]"
+    parentContentId: "[confluence_parent_ancestor_id]"  # omit if space root
   title: "[client_name] [project_name] — Wire Documents"
-  body: "[build the body as described below]"
-  representation: "storage"
+  body:
+    format: html
+    value: "[build the body as described below]"
 ```
+
+Before the first write in a run, read the format guide once: `executeRead` with `name: getContentFormatGuide`, `inputs: {toolName: createConfluencePage}`. Confluence HTML is not standard HTML; where the guide gives other markup for an element below (for example an internal page link), use the guide's.
 
 Build the page body dynamically from `status.md` so the table only includes artifacts that are in-scope for this engagement:
 

@@ -130,8 +130,8 @@ The three most useful servers are Fathom, Atlassian and Linear. Add them to `.cl
       }
     },
     "atlassian": {
-      "type": "sse",
-      "url": "https://mcp.atlassian.com/v1/mcp"
+      "type": "http",
+      "url": "https://mcp.atlassian.com/v2/mcp"
     },
     "linear": {
       "type": "sse",
@@ -173,6 +173,19 @@ Run `/reload-plugins` after any update; no Claude Code restart is needed. To che
 :::note
 If the installed version and the active version differ, `/reload-plugins` was not run after the last update. Run it before continuing.
 :::
+
+### Atlassian connection after the move to v2
+
+From the release that moves the Atlassian MCP server to `https://mcp.atlassian.com/v2/mcp`, sign in to Atlassian again: run `/mcp`, choose `atlassian` and authorise. The earlier sign-in was for the v1 address, which Atlassian removes on 1 March 2027.
+
+An engagement repository that lists the server itself (`.mcp.json`, `.claude/settings.json` or `.wire/engagement/mcp_servers.yml`) keeps the old address until that entry is changed. `/wire:mcp view atlassian` shows the address in use.
+
+Two connections are outside Wire's files and need changing by hand:
+
+- A server added with `claude mcp add ... atlassian`: remove it and add it again with the v2 address.
+- The Atlassian connector on claude.ai: remove it and add it again in claude.ai's connector settings.
+
+`wire mcp check <release>` names an engagement whose Atlassian server is still on the v1 address.
 
 ## Pinning a version
 

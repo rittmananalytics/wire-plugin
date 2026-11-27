@@ -48,7 +48,7 @@ For each provided path or URL:
 
 1. **Local PDF / Markdown / text**: Read using the Read tool. For multi-page PDFs, read all pages.
 2. **Google Drive URL**: Use `google_drive_read_file_content` if available; otherwise ask the user to export and provide a local path.
-3. **Confluence URL**: Use `mcp__claude_ai_Atlassian__getConfluencePage` if available; extract body text.
+3. **Confluence URL**: Use the Atlassian server's `getConfluenceContent` (`detail: full`, `content_format: markdown`) if available; extract body text.
 4. **Inline paste**: Accept text directly in the conversation.
 
 Record:

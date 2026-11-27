@@ -1,6 +1,6 @@
 <img src="docs/images/wire_logo_transparent.png" alt="Wire Framework" width="220">
 
-# Wire Framework v4.6.8
+# Wire Framework v4.6.9
 
 Wire is a structured delivery system for data platform engagements, built on top of Claude Code and Gemini CLI. It encodes analytics engineering methodology as workflow specifications that the AI reads before generating anything so that output follows consistent patterns, traces back to requirements and can be validated automatically rather than having to be manually eyeballed.
 
@@ -147,7 +147,7 @@ MCP servers are optional but enable issue tracking, document store sync, and mee
 
 ```bash
 # Atlassian (Jira + Confluence)
-claude mcp add --transport http atlassian https://mcp.atlassian.com/v1/mcp
+claude mcp add --transport http atlassian https://mcp.atlassian.com/v2/mcp
 
 # Linear
 claude mcp add --transport http linear https://mcp.linear.app/sse

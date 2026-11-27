@@ -37,7 +37,7 @@ The following servers are recognised by the Wire Framework:
 
 | Key | Default URL | Transport | Wire Purpose |
 |-----|-------------|-----------|-------------|
-| `atlassian` | `https://mcp.atlassian.com/v1/mcp` | SSE | Jira issue tracking; Confluence document store and search |
+| `atlassian` | `https://mcp.atlassian.com/v2/mcp` | HTTP | Jira issue tracking; Confluence document store and search |
 | `linear` | `https://mcp.linear.app/sse` | SSE | Alternative/complementary Linear issue tracking |
 | `fathom` | `https://your-fathom-mcp-server/mcp` | SSE | Meeting transcript retrieval during review commands |
 | `context7` | `https://mcp.context7.com/mcp` | HTTP | Library documentation lookups during development |
@@ -45,6 +45,24 @@ The following servers are recognised by the Wire Framework:
 | `amplitude` | `https://mcp.amplitude.com/mcp` | HTTP | Amplitude product analytics — charts, dashboards, experiments, session replay, instrumentation, taxonomy |
 
 All servers use **OAuth2** authentication managed by Claude Code's built-in auth system. No credentials or tokens are stored in `settings.json` — only the server URL and transport type.
+
+## Atlassian v2 tool names
+
+Wire's specs use the tool names of the Atlassian server at `https://mcp.atlassian.com/v2/mcp` (recorded 27 Nov 2026 from a live v2 connection, wire#423). Some operations are tools of their own. The rest are run through `executeRead` (read) or `executeWrite` (create or update), with the operation's `name`, a top-level `cloudId` and its parameters in `inputs`. `discover` finds an operation's name and inputs when a spec does not give them.
+
+| v1 tool | v2 | How it is called |
+|---|---|---|
+| `searchJiraIssuesUsingJql`, `getJiraIssue`, `createJiraIssue`, `editJiraIssue`, `transitionJiraIssue`, `getAccessibleAtlassianResources`, `atlassianUserInfo` | same names | Tool |
+| `addCommentToJiraIssue` | `addOrEditJiraIssueComment` (`issueIdOrKey`, `commentBody`) | Tool |
+| `searchConfluenceUsingCql` | `searchConfluence` (`cql`, `limit`) | Tool |
+| `getConfluencePage` | `getConfluenceContent` (`content_id`, `detail: full`, `content_format`) | Tool |
+| `createConfluencePage` | `createConfluenceContent` (`contentType: page`, `parent`, `body: {format, value}`) | Tool |
+| `updateConfluencePage` | `updateConfluenceContent` (`contentId`, `snapshotToken` from the last read, `body: {format, value}`). No version number | Tool |
+| `getTransitionsForJiraIssue` | `listJiraIssueTransitions` (`issueIdOrKey`) | `executeRead` |
+| `getVisibleJiraProjects` | `listJiraProjects` | `executeRead` |
+| `lookupJiraAccountId` | `lookupJiraAccountId` (`query`) | `executeRead` |
+| `createIssueLink` | `createJiraIssueLink` (`linkType`, `inwardIssue`, `outwardIssue`) | `executeWrite` |
+| `getConfluenceSpaces` | `getConfluenceSpace` (`spaceIdOrKey`) or `listConfluenceSpaces` | `executeRead` |
 
 ## Workflow
 
@@ -90,7 +108,7 @@ Wire MCP Servers
 
   Server      Status          URL                                          Transport
   ──────────  ──────────────  ───────────────────────────────────────────  ─────────
-  atlassian   ✓ configured    https://mcp.atlassian.com/v1/mcp             SSE
+  atlassian   ✓ configured    https://mcp.atlassian.com/v2/mcp             HTTP
   linear      ✓ configured    https://mcp.linear.app/sse                   SSE
   fathom      ✗ not configured  (default: https://mcp-fathom-server-...)   SSE
   context7    ✓ configured    https://mcp.context7.com/mcp                 HTTP
@@ -119,8 +137,8 @@ Atlassian MCP Server
 
   Key:          atlassian
   Status:       ✓ configured
-  URL:          https://mcp.atlassian.com/v1/mcp
-  Transport:    SSE (type: "url")
+  URL:          https://mcp.atlassian.com/v2/mcp
+  Transport:    HTTP (type: "http")
   Auth method:  OAuth2 — managed by Claude Code
   Config file:  /path/to/.claude/settings.json
 
@@ -140,7 +158,7 @@ Wire Usage
 
 To add or re-authenticate
 ─────────────────────────
-  claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/mcp
+  claude mcp add --transport http atlassian https://mcp.atlassian.com/v2/mcp
   (Remove first if already present:  claude mcp remove atlassian)
 ```
 
@@ -236,3 +254,4 @@ After completing any operation, suggest a logical next action:
 - **Settings file not found**: Report the missing path, show the default catalog, and direct the user to `claude mcp add` to configure servers.
 - **Malformed JSON**: Report the parse error with the file path and line hint.
 - **Unknown server key**: Accept it for `view` but note it is not part of Wire's known catalog and list which Wire commands use it (none).
+- **Atlassian server on the v1 address**: In every mode (`list`, `view atlassian`, the pre-flight check), when the configured `atlassian` URL contains `mcp.atlassian.com/v1`, show a warning on that row and above the result: Atlassian removes the v1 address on 1 March 2027. Give the fix: `claude mcp remove atlassian`, then `claude mcp add --transport http atlassian https://mcp.atlassian.com/v2/mcp`, then sign in again with `/mcp`. In the pre-flight check the row counts as a warning, not a failure, until that date.

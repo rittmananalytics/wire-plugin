@@ -180,7 +180,7 @@ Accept both `releases/02-customer-core` and bare `02-customer-core`.
 2. Resolve the tracker from `--tracker`, else from the `linear:` or `jira:`
    block in `status.md`. If both or neither are configured, ask.
 3. Check the tracker's MCP server is reachable (Linear: `list_projects`;
-   Jira: `getVisibleJiraProjects`). If it is not, stop and say which server
+   Jira: `executeRead` with `name: listJiraProjects`). If it is not, stop and say which server
    failed and how to connect it. Do not fall back to typed-in tickets: a map
    built from memory is the hand-kept list this command replaces.
 4. Resolve the tracker project from `--project`, else `tickets.yaml`'s
@@ -327,7 +327,7 @@ On **adjust**, take the changes, re-run the script and present again. On
    out of every release, plain work agreed), with the consultant's name and
    reason, in the ruling format of `specs/utils/director_operating_model.md`.
 5. Tracker links the consultant agreed to add: Linear `save_issue` with the
-   relation, Jira `createIssueLink`. Only those agreed.
+   relation, Jira `executeWrite` with `name: createJiraIssueLink`. Only those agreed.
 6. One execution-log row:
    `/wire:tickets-import | complete | <n> tickets, <k> slices, <p> plain, from <tracker> <project>`.
 

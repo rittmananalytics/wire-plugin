@@ -1,0 +1,33 @@
+name: Wire checks
+description: >
+  Wire's checks on a pull request: the release records it changes
+  (status_file.py) and the naming and style conventions of the files it
+  changes (lint_conventions.py). No AI call. Fails only on files the pull
+  request adds or changes.
+inputs:
+  base:
+    description: The pull request's base commit. Pass github.event.pull_request.base.sha.
+    required: true
+  path:
+    description: The client repository, checked out with fetch-depth 0.
+    required: false
+    default: .
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Install PyYAML
+      shell: bash
+      run: python3 -m pip install --quiet pyyaml
+    - name: Run Wire checks
+      shell: bash
+      env:
+        WIRE_CHECKS_BASE: ${{ inputs.base }}
+        WIRE_CHECKS_REPO: ${{ inputs.path }}
+        WIRE_CHECKS_SCRIPT: ${{ github.action_path }}/../scripts/wire_checks.py
+      run: |
+        python3 "$WIRE_CHECKS_SCRIPT" --repo "$WIRE_CHECKS_REPO" --base "$WIRE_CHECKS_BASE" \
+          --summary "$GITHUB_STEP_SUMMARY" --annotations --json "$RUNNER_TEMP/wire-checks.json"

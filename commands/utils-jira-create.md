@@ -540,9 +540,9 @@ For each **linked** issue (not newly created ones — those are handled by the c
 
 **Comment on linked Epic:**
 ```
-addCommentToJiraIssue:
-  issueKey: "[epic_key]"
-  body: |
+addOrEditJiraIssueComment:
+  issueIdOrKey: "[epic_key]"
+  commentBody: |
     Linked to Wire Framework project: [project_name]
     Client: [client_name] | Type: [project_type]
     Local tracking: .wire/[folder_name]/status.md
@@ -553,9 +553,9 @@ addCommentToJiraIssue:
 
 **Comment on each linked Task:**
 ```
-addCommentToJiraIssue:
-  issueKey: "[task_key]"
-  body: |
+addOrEditJiraIssueComment:
+  issueIdOrKey: "[task_key]"
+  commentBody: |
     Linked to Wire Framework artifact: [Artifact Display Name]
     Project: [project_name]
 

@@ -75,7 +75,9 @@ def layers(env: dict, repo: Path | None = None, home: Path | None = None, store=
     None for no store, or False to pick the default for `env` and `home`."""
     from . import keystore
     notes = []
-    personal, *repo_file = secret_files(repo, home)
+    # The personal file is under the HOME of the environment the keys are for,
+    # which can differ from this process's (Studio's server is given its env).
+    personal, *repo_file = secret_files(repo, home or (Path(env["HOME"]) if env.get("HOME") else None))
     if store is False:
         store, _reason = keystore.store_for(env, home)
     out = [(str(personal), _file_values(personal, notes))]

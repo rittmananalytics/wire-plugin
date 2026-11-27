@@ -146,6 +146,7 @@ const sidebars = {
             'advanced/data-apps',
             'advanced/review-profile',
             'advanced/convention-rules',
+            'advanced/wire-checks-ci',
           ],
         },
         {

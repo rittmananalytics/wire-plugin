@@ -33,7 +33,7 @@ Templates are a [process registry](../advanced/registries) entry type, like rele
 | `work_plan_approval` | Approving an engineer's plan for a ticket | Engagement lead | Person |
 | `sprint_addition` | Adding a minor ticket to a running sprint | Engagement lead | Person |
 | `release_setup_nonstandard` | A release branch set up other than the standard way | Engagement lead | Person |
-| `code_merge_release` | Merging code into a release branch, after code review | Engagement lead | Person |
+| `code_merge_release` | Merging code into a release branch, after code review | Person | Person |
 | `technical_choice` | Routine technical choices within a ticket's scope | Engagement lead | Engagement lead |
 | `qa_signoff` | Passing a ticket's QA | Engagement lead | Engagement lead |
 | `artifact_review` | Reviewing a generated Wire artifact in QA: approve it, or send it back for rework and resubmission | Engagement lead | Person (the lead asks a human reviewer) |
@@ -49,9 +49,9 @@ Templates are a [process registry](../advanced/registries) entry type, like rele
 
 ### Light: the engagement lead decides all but the most significant
 
-Use it for internal projects and for clients who want speed, where the solution is clear once the first questions are answered. A person decides only the seven kinds that are significant or hard to undo.
+Use it for internal projects and for clients who want speed, where the solution is clear once the first questions are answered. A person decides only the eight kinds that are significant or hard to undo, and merges every pull request that contains code.
 
-The aim is a release that runs through with little of a person's time: the engagement lead asks every open question once, at kick-off (`kickoff_questions`), the pod then plans, builds, checks and merges each ticket into the release branch, and a person's only other step is to review and merge the release pull request into the default branch.
+The aim is a release that runs through with little of a person's time: the engagement lead asks every open question once, at kick-off (`kickoff_questions`), the pod then plans, builds and checks each ticket, a person merges each ticket's pull request into the release branch, and reviews and merges the release pull request into the default branch. The client sponsor accepts the release on its production ticket.
 
 ### Strict: a person decides all but the routine
 
@@ -130,7 +130,9 @@ These checks are made by the agents' own tools, not left to an agent's judgement
 | Code into a release branch | `code_merge_release` |
 | Code into the default branch | `code_merge_default` |
 
-The agent the template names approves and merges with a plain merge, so no branch is ever deleted or rewritten. When a person must merge, the ticket passes QA but stays in QA, and a "Merge requested:" comment and a Slack message ask the named reviewer if one is recorded; else, for a release branch, a person who is the engagement lead; else the escalation contacts; the ticket moves to Done when the pull request is merged. A person's comment on a ticket in QA goes to the engagement lead, who checks the work again with it. Approving code needs a written note of what was checked against the statement of work, the requirements and the business rules; it is posted on the pull request as the record of the review. Under the strict template every merge is a person's.
+The agent the template names approves and merges with a plain merge, so no branch is ever deleted or rewritten. When a person must merge, the ticket passes QA but stays in QA, and a "Merge requested:" comment and a Slack message ask the named reviewer if one is recorded; else, for a release branch, a person who is the engagement lead; else the escalation contacts; the ticket moves to Done when the pull request is merged. A person's comment on a ticket in QA goes to the engagement lead, who checks the work again with it. Approving code needs a written note of what was checked against the statement of work, the requirements and the business rules; it is posted on the pull request as the record of the review. Under both templates every merge of code is a person's, with one exception a person can make: an escalation contact can tell the engagement lead, on a ticket of a release, that it may merge that release's ticket pull requests itself. The lead records it as a standing decision, and the agents' console accepts it only from that person's own comment. It covers the release branch only, never the default branch. Only a pull request that sets up a release (Wire scaffolding under `.wire/`) can be merged by an agent, and under the strict template not that either.
+
+When the project runs Wire checks in CI (the console's Projects page, "Wire checks run in CI"), the delivery manager's review and the engagement lead's QA wait for the check named `Wire checks` on the pull request. A failed check sends the ticket back to its worker. See [Wire checks in CI](../advanced/wire-checks-ci.md).
 
 ## Choosing and adding templates
 

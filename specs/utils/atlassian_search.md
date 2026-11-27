@@ -56,7 +56,7 @@ Execute CQL queries to find relevant pages. Run up to 3 searches and deduplicate
 #### Search 1 — Client + artifact keywords:
 
 ```
-searchConfluenceUsingCql:
+searchConfluence:
   cql: "text ~ \"[client_name]\" AND text ~ \"[artifact_keyword]\""
   limit: 10
 ```
@@ -66,7 +66,7 @@ Example: `text ~ "Acme" AND text ~ "requirements"`
 #### Search 2 — Project name:
 
 ```
-searchConfluenceUsingCql:
+searchConfluence:
   cql: "text ~ \"[project_name]\""
   limit: 10
 ```
@@ -76,7 +76,7 @@ Example: `text ~ "acme_marketing_analytics"`
 #### Search 3 — Client + design/review context:
 
 ```
-searchConfluenceUsingCql:
+searchConfluence:
   cql: "text ~ \"[client_name]\" AND (text ~ \"design\" OR text ~ \"review\" OR text ~ \"feedback\")"
   limit: 10
 ```
@@ -88,8 +88,10 @@ Deduplicate all results by page ID across the three searches.
 For the top 3-5 most relevant pages (prioritize by title match to artifact, then recency):
 
 ```
-getConfluencePage:
-  pageId: [page_id]
+getConfluenceContent:
+  content_id: [page_id]
+  detail: full
+  content_format: markdown
 ```
 
 Extract key content sections relevant to the artifact under review.

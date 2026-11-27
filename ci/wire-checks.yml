@@ -1,0 +1,27 @@
+# Wire checks on every pull request. Copy to .github/workflows/wire-checks.yml
+# in the client repository and set WIRE_PLUGIN_COMMIT to the wire-plugin
+# commit the engagement runs (the hosted agents' worker kit fills it in).
+#
+# Keep the job name "Wire checks": the hosted Wire agents read the check by
+# that name before review and QA.
+name: Wire checks
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  wire-checks:
+    name: Wire checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Wire checks
+        uses: rittmananalytics/wire-plugin/ci@WIRE_PLUGIN_COMMIT
+        with:
+          base: ${{ github.event.pull_request.base.sha }}

@@ -36,7 +36,7 @@ MCP servers (catalogue: 8; this engagement: 0, in .wire/engagement/mcp_servers.y
                Airbyte connectors (ingestion audits and migrations)
   amplitude    not selected                   https://mcp.amplitude.com/mcp
                Amplitude product analytics
-  atlassian    not selected                   https://mcp.atlassian.com/v1/mcp
+  atlassian    not selected                   https://mcp.atlassian.com/v2/mcp
                Jira issue tracking; Confluence document store and search
   context7     not selected                   https://mcp.context7.com/mcp
                Library documentation during development

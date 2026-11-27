@@ -393,12 +393,26 @@ def required(status: dict) -> list:
     return out
 
 
+ATLASSIAN_V1 = "mcp.atlassian.com/v1"
+ATLASSIAN_V1_NOTE = ("uses Atlassian's v1 address, which Atlassian removes on 1 March 2027: "
+                     "wire mcp remove atlassian, then wire mcp add atlassian, then sign in again")
+
+
+def retired_address(key: str, url: str) -> str | None:
+    """What to say when a selected server still uses an address its provider is retiring (wire#423)."""
+    if key == "atlassian" and ATLASSIAN_V1 in str(url or ""):
+        return ATLASSIAN_V1_NOTE
+    return None
+
+
 def check(status: dict, selection: dict, auth: dict | None) -> list:
     """Rows (server, reason, state) for `wire mcp check`."""
     rows = []
     for key, reason, bundled in required(status):
         if key not in selection:
             state = "not in this engagement (wire mcp add " + key + (" <url>)" if not bundled else ")")
+        elif retired_address(key, selection.get(key)):
+            state = retired_address(key, selection.get(key))
         elif auth is not None and auth.get(key) == NOT_SIGNED_IN:
             state = f"selected, not signed in (wire mcp login {key})"
         elif auth is None:

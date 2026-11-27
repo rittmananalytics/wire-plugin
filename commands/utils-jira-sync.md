@@ -220,9 +220,13 @@ Map the local status to a Jira transition on the relevant Sub-task:
 Let `[target_issue_key]` refer to whichever key Step 2 resolved: the sub-task key under `subtasks` structure, or the task key under `single_issue` structure. The rest of the spec uses `[target_issue_key]` interchangeably.
 
 ```
-getTransitionsForJiraIssue:
-  issueKey: "[target_issue_key]"
+executeRead:
+  name: listJiraIssueTransitions
+  inputs:
+    issueIdOrKey: "[target_issue_key]"
 ```
+
+(On the Atlassian v2 server this operation is not a tool of its own: it runs through `executeRead`. See `specs/mcp.md`, "Atlassian v2 tool names".)
 
 **Resolve the target status label** using this two-step lookup:
 
@@ -309,9 +313,9 @@ Determine how many times this artifact has been through the generate cycle, to p
 Add a comment to the Sub-task with detailed information about the lifecycle event:
 
 ```
-addCommentToJiraIssue:
-  issueKey: "[target_issue_key]"
-  body: "[comment_text]"
+addOrEditJiraIssueComment:
+  issueIdOrKey: "[target_issue_key]"
+  commentBody: "[comment_text]"
 ```
 
 **Comment templates by action**:
@@ -514,8 +518,10 @@ This step reconciles two things the rest of this spec doesn't touch: whether the
 1. Read `artifacts.[artifact].owner` from status.md — the artifact's recorded owner. If this field doesn't exist (status.md predates this convention, or no owner has been recorded for this artifact), skip Step 6.6b silently. Treat this the same as the forward-compatible handling already used for `generated_files` and `revision_history` elsewhere in this spec.
 2. Resolve the owner to a Jira account:
    ```
-   lookupJiraAccountId:
-     query: "[owner name or email from status.md]"
+   executeRead:
+     name: lookupJiraAccountId
+     inputs:
+       query: "[owner name or email from status.md]"
    ```
    If no match is found, log: `Note: sync_scope: full could not resolve Jira account for owner "[owner]" on [artifact] — assignee left unchanged.` and skip.
 3. Fetch the issue's current assignee:
@@ -551,16 +557,18 @@ After transitioning the Sub-task, check if all Sub-tasks under the parent Task a
 4. If all applicable steps are done, transition the parent Task to "Done"
 
 ```
-getTransitionsForJiraIssue:
-  issueKey: "[task_key]"
+executeRead:
+  name: listJiraIssueTransitions
+  inputs:
+    issueIdOrKey: "[task_key]"
 
 transitionJiraIssue:
   issueKey: "[task_key]"
   transitionId: "[done_transition_id]"
 
-addCommentToJiraIssue:
-  issueKey: "[task_key]"
-  body: "All lifecycle steps complete. Artifact is ready."
+addOrEditJiraIssueComment:
+  issueIdOrKey: "[task_key]"
+  commentBody: "All lifecycle steps complete. Artifact is ready."
 ```
 
 ### Step 8: Check Epic Completion
@@ -572,9 +580,9 @@ After transitioning a Task to "Done", check if all artifact Tasks under the Epic
 3. If ALL artifacts are fully complete, transition the Epic to "Done"
 
 ```
-addCommentToJiraIssue:
-  issueKey: "[epic_key]"
-  body: "All project artifacts complete. Project ready for closure."
+addOrEditJiraIssueComment:
+  issueIdOrKey: "[epic_key]"
+  commentBody: "All project artifacts complete. Project ready for closure."
 ```
 
 ### Step 9: Handle Edge Cases

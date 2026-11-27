@@ -143,7 +143,7 @@ Dispatch all source queries simultaneously. Each source is independent; none blo
 3. Return: `jira_projects`, `issue_counts_by_status`, `recent_issues`, `wire_artifact_issues`.
 
 **Confluence:**
-1. Use `searchConfluenceUsingCql`:
+1. Use `searchConfluence`:
    ```
    text ~ "[client_name]" ORDER BY lastModified DESC
    ```

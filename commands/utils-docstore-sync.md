@@ -195,7 +195,7 @@ Store the raw markdown content for conversion in subsequent steps.
 
 #### Step 3.1: Convert Markdown to Confluence Storage Format
 
-Convert the markdown content to Confluence storage format (a subset of XHTML). Apply the following transformation rules:
+Convert the markdown content to Confluence HTML (a subset of XHTML). Before the first write in a run, read the format guide once: `executeRead` with `name: getContentFormatGuide`, `inputs: {toolName: updateConfluencePage}`. Where the guide gives other markup for an element below, use the guide's. Apply the following transformation rules:
 
 **Headings**:
 - `# Heading` → `<h1>Heading</h1>`
@@ -288,7 +288,7 @@ If no language is specified, omit the language parameter.
 
 **Images**: `![alt](url)` → `<ac:image><ri:url ri:value="url"/></ac:image>`
 
-Store the converted content as `confluence_storage_body`.
+Store the converted content as `confluence_body`.
 
 #### Step 3.2: Check for Existing Page
 
@@ -298,27 +298,30 @@ Inspect `docstore.confluence.artifacts.[artifact_id]` in `status.md`:
 
 #### Step 3.3: Update Existing Confluence Page
 
-Fetch the current page version number (required for updates):
+Fetch the current page and its snapshot token (required for updates):
 
 ```
-getConfluencePage:
+getConfluenceContent:
   cloudId: "[cloud_id]"
-  pageId: "[existing_page_id]"
+  content_id: "[existing_page_id]"
+  detail: full
+  content_format: html
 ```
 
-Extract `version.number` from the response. Increment by 1 for the update.
-
-Then update the page:
+Keep `snapshotToken` from the response. Then update the page:
 
 ```
-updateConfluencePage:
+updateConfluenceContent:
   cloudId: "[cloud_id]"
-  pageId: "[existing_page_id]"
+  contentId: "[existing_page_id]"
   title: "[artifact_name]"
-  version: [current_version + 1]
-  body: "[confluence_storage_body]"
-  representation: "storage"
+  snapshotToken: "[snapshotToken]"
+  body:
+    format: html
+    value: "[confluence_body]"
 ```
+
+If the update fails with `snapshot_stale`, fetch the page again and retry once with the new token.
 
 On success: record `last_synced` timestamp (current ISO datetime) in `status.md` under `docstore.confluence.artifacts.[artifact_id].last_synced`. The `page_id` and `page_url` remain unchanged.
 
@@ -331,16 +334,18 @@ Proceed to **Step 3.5** to update the index page.
 Create a new page as a child of the engagement's parent page:
 
 ```
-createConfluencePage:
+createConfluenceContent:
   cloudId: "[cloud_id]"
-  spaceKey: "[space_key]"
-  parentId: "[docstore.confluence.parent_page_id]"
+  contentType: page
+  parent:
+    parentContentId: "[docstore.confluence.parent_page_id]"
   title: "[artifact_name]"
-  body: "[confluence_storage_body]"
-  representation: "storage"
+  body:
+    format: html
+    value: "[confluence_body]"
 ```
 
-On success: extract the returned `id` and `_links.webui` (page URL). Write to `status.md`:
+On success: extract the returned `content.id` and `content.webUrl` (page URL). Write to `status.md`:
 
 ```yaml
 docstore:
@@ -366,13 +371,15 @@ After every successful create or update, rebuild the "Wire Documents" index page
    - Read `docstore.confluence.artifacts` from `status.md` (previously persisted entries)
    - Overlay any `page_id`, `page_url`, and `last_synced` values produced **in the current run** (Steps 3.3/3.4) — these may not yet be written to disk, but must be included so the newly synced artifact appears as a live link rather than "Pending generation"
 
-2. Fetch the current version of the parent index page (needed for the update call):
+2. Fetch the parent index page and its snapshot token (needed for the update call):
    ```
-   getConfluencePage:
+   getConfluenceContent:
      cloudId: "[cloud_id]"
-     pageId: "[docstore.confluence.parent_page_id]"
+     content_id: "[docstore.confluence.parent_page_id]"
+     detail: full
+     content_format: html
    ```
-   Extract `version.number`.
+   Keep `snapshotToken`.
 
 3. Rebuild the index table body. For each artifact in the standard artifact order (requirements, workshops, conceptual_model, pipeline_design, data_model, mockups, pipeline, dbt, semantic_layer, dashboards, data_quality, uat, deployment, training, documentation — plus discovery artifacts: problem_definition, pitch, release_brief, sprint_plan):
    - If the artifact has a `page_id` in the merged artifact map: render as a linked row using the Confluence internal page link macro (do NOT use `<a href>` — the `page_url` field from the API is a relative path that will not render as a clickable link)
@@ -413,13 +420,13 @@ After every successful create or update, rebuild the "Wire Documents" index page
 
 4. Update the parent index page with the rebuilt table:
    ```
-   updateConfluencePage:
+   updateConfluenceContent:
      cloudId: "[cloud_id]"
-     pageId: "[docstore.confluence.parent_page_id]"
-     title: "[existing title — do not change]"
-     version: [current_version + 1]
-     body: "[introductory paragraph] + [rebuilt table]"
-     representation: "storage"
+     contentId: "[docstore.confluence.parent_page_id]"
+     snapshotToken: "[snapshotToken]"
+     body:
+       format: html
+       value: "[introductory paragraph] + [rebuilt table]"
    ```
 
 On failure: log `Note: Could not update Confluence index page. Child page was still created/updated successfully.` and continue — do not block.

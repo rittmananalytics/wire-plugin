@@ -9,6 +9,18 @@ Recent release history for the Wire Framework. For full changelog detail from v3
 
 ---
 
+## v4.6.9: Wire checks in CI, and the Atlassian server at its v2 address
+
+**Released**: November 2026
+
+**Wire checks in CI.** A client repository can now run Wire's checks on every pull request, whoever wrote it: a person, a hosted agent or a client's own agent. The check runs the release record check and the convention lint on the files the pull request adds or changes, and needs no AI call. In a file the pull request only changed, a problem fails the check only when it is on a line the pull request touched. Older problems are listed as warnings. Copy `ci/wire-checks.yml` from the plugin into `.github/workflows/`. See [Wire checks in CI](../advanced/wire-checks-ci.md).
+
+**The Atlassian server at its v2 address.** Wire now connects to `https://mcp.atlassian.com/v2/mcp` over HTTP. Atlassian removes the v1 address on 1 March 2027. Wire's commands use the v2 tool names, and `/wire:mcp` and `wire mcp check` warn when a project still lists the v1 address. After updating, run `/mcp`, choose `atlassian` and sign in again. A server added by hand with `claude mcp add`, and the Atlassian connector on claude.ai, need removing and adding again. See [Installing and upgrading](../tutorials/installing-and-upgrading.md).
+
+**Fixes.** The Wire CLI and Studio read the personal secrets file from the home folder of the session they start, not the process running them. Studio's session test no longer fails on its second local run.
+
+---
+
 ## v4.6.8: command front matter is valid YAML
 
 **Released**: November 2026

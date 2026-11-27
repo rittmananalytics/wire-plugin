@@ -190,17 +190,19 @@ If `page_id` is null or absent, skip this step and note: `"[artifact_name] has n
 #### Step 3.1: Fetch Page Content
 
 ```
-getConfluencePage:
+getConfluenceContent:
   cloudId: "[docstore.confluence.cloud_id]"
-  pageId: "[confluence_page_id]"
+  content_id: "[confluence_page_id]"
+  detail: full
+  content_format: html
 ```
 
 Extract:
-- `body.storage.value` — the page content in Confluence storage format (XHTML)
-- `version.number` — current version
-- `version.by.displayName` — last editor name
-- `version.when` — last edited timestamp
-- `_links.webui` — page URL (may differ from the stored URL if the page was moved)
+- `body` — the page content as Confluence HTML
+- `metadata.version.number` — current version
+- `metadata.version.author.displayName` — last editor name
+- `metadata.version.createdAt` — last edited timestamp
+- the page URL, when the response gives one (it may differ from the stored URL if the page was moved); else keep the stored URL
 
 Convert the Confluence storage format body back to plain text for comparison with the canonical markdown (rough conversion — strip all XML tags, decode HTML entities, normalise whitespace). Store as `confluence_plain_text`.
 

@@ -152,7 +152,7 @@ The repo scan (Agent E) runs in parallel with the external queries and does not 
 3. Return: `jira_projects` (list), `issue_summary` (by status), `recent_issues`, `wire_artifact_issues` (issues that look like Wire artifacts).
 
 **Confluence**:
-1. Use `searchConfluenceUsingCql` with:
+1. Use `searchConfluence` with:
    ```
    text ~ "[client_name]" AND space.type = "global" ORDER BY lastModified DESC
    ```
